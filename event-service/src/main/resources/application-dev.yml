@@ -1,0 +1,14 @@
+# Local development (docker-compose in ../../../infra)
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tvu_event
+    username: tvu
+    password: tvu
+  jpa:
+    show-sql: true
+    properties:
+      hibernate.format_sql: true
+
+logging:
+  level:
+    vn.edu.tvu: DEBUG
