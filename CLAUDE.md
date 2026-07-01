@@ -50,6 +50,7 @@ backend/                         # this directory — the whole repo, backend-on
 ├── ticket-service/                # Spring Boot — reservations, tickets, check-in
 ├── notification-service/          # Spring Boot — consumes RabbitMQ, generates QR, sends email
 ├── infra/                        # docker-compose.yml (Postgres, Redis, RabbitMQ for local dev)
+├── .github/workflows/ci.yml      # path-filtered CI: builds/tests only the changed module(s)
 ├── README.md                     # build/run/test commands
 └── CLAUDE.md                     # this file
 ```

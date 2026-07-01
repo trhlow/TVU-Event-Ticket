@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # Determine which service modules were touched so we only build/test the
+  # affected part of the reactor (proposal §6.1) instead of all 4 every time.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.filter.outputs.changes }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api-gateway:
+              - 'pom.xml'
+              - 'api-gateway/**'
+            event-service:
+              - 'pom.xml'
+              - 'event-service/**'
+            ticket-service:
+              - 'pom.xml'
+              - 'ticket-service/**'
+            notification-service:
+              - 'pom.xml'
+              - 'notification-service/**'
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.changes.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build & test ${{ matrix.module }}
+        run: mvn -B -pl ${{ matrix.module }} -am verify
