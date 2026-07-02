@@ -20,17 +20,17 @@ jobs:
         with:
           filters: |
             api-gateway:
-              - 'pom.xml'
-              - 'api-gateway/**'
+              - 'backend/pom.xml'
+              - 'backend/api-gateway/**'
             event-service:
-              - 'pom.xml'
-              - 'event-service/**'
+              - 'backend/pom.xml'
+              - 'backend/event-service/**'
             ticket-service:
-              - 'pom.xml'
-              - 'ticket-service/**'
+              - 'backend/pom.xml'
+              - 'backend/ticket-service/**'
             notification-service:
-              - 'pom.xml'
-              - 'notification-service/**'
+              - 'backend/pom.xml'
+              - 'backend/notification-service/**'
 
   build:
     needs: changes
@@ -51,4 +51,5 @@ jobs:
           cache: maven
 
       - name: Build & test ${{ matrix.module }}
+        working-directory: backend
         run: mvn -B -pl ${{ matrix.module }} -am verify

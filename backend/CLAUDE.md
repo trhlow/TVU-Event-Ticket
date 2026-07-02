@@ -4,15 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This directory is the **backend-only** workspace for the project (the author only works on backend; frontend,
-if it exists, is developed elsewhere and is not part of this repo). The detailed project proposal (đề cương) in
-[decuongTVUEventTicket.md](decuongTVUEventTicket.md) is the authoritative spec for the whole system — read it
-for business rules even though this repo only implements the backend half.
+This directory (`backend/`) is the **backend subfolder** of a team monorepo shared with a teammate working on
+`frontend/` (React) at the repo root — see `../README.md` for the overall layout. This `CLAUDE.md` only covers
+the backend; frontend has its own conventions elsewhere in the repo. The detailed project proposal (đề cương)
+in [../decuongTVUEventTicket.md](../decuongTVUEventTicket.md) is the authoritative spec for the whole system —
+read it for business rules even though this file only covers the backend half.
 
 The Maven multi-module reactor is **scaffolded and compiles** (`mvn clean install` passes from this directory):
 4 services with layer-based packages, Flyway wired up, dev/prod profiles, logging. **No business logic yet** —
-`domain/controller/service/repository` packages are empty (`.gitkeep` placeholders). No `git` repo initialized
-yet. See [Commands](#commands) below.
+`domain/controller/service/repository` packages are empty (`.gitkeep` placeholders). See [Commands](#commands)
+below.
 
 This is a 3-person academic capstone (Đồ án Công nghệ phần mềm) at TVU, built over 4 Scrum sprints, deployed
 entirely on **free-tier cloud** (target cost: $0). The proposal is written in Vietnamese; domain terms below
@@ -42,21 +43,30 @@ beyond the school tenant, native mobile apps.
 
 ## Repo layout
 
+The monorepo root (one level up) looks like this — see `../README.md`:
+
 ```
-backend/                         # this directory — the whole repo, backend-only
-├── pom.xml                       # Maven reactor parent (spring-boot-starter-parent, Java 21)
-├── api-gateway/                  # Spring Cloud Gateway — CORS, JWT, RBAC, rate limiting, routing
-├── event-service/                # Spring Boot — events, clubs
-├── ticket-service/                # Spring Boot — reservations, tickets, check-in
-├── notification-service/          # Spring Boot — consumes RabbitMQ, generates QR, sends email
-├── infra/                        # docker-compose.yml (Postgres, Redis, RabbitMQ for local dev)
-├── .github/workflows/ci.yml      # path-filtered CI: builds/tests only the changed module(s)
-├── README.md                     # build/run/test commands
-└── CLAUDE.md                     # this file
+TVU-Event-Ticket/                 # repo root
+├── .github/workflows/ci.yml      # path-filtered CI (paths are backend/-prefixed, working-directory: backend)
+├── decuongTVUEventTicket.md       # proposal — covers the whole system, not just backend
+├── README.md                     # top-level orientation (points here + to frontend/)
+├── frontend/                     # React — teammate's workspace, own conventions, not covered by this file
+└── backend/                      # <- this directory
+    ├── pom.xml                    # Maven reactor parent (spring-boot-starter-parent, Java 21)
+    ├── api-gateway/               # Spring Cloud Gateway — CORS, JWT, RBAC, rate limiting, routing
+    ├── event-service/             # Spring Boot — events, clubs
+    ├── ticket-service/             # Spring Boot — reservations, tickets, check-in
+    ├── notification-service/       # Spring Boot — consumes RabbitMQ, generates QR, sends email
+    ├── infra/                     # docker-compose.yml (Postgres, Redis, RabbitMQ for local dev)
+    ├── .claude/                   # project-scoped Claude Code config, backend-specific (skills, agents, hooks)
+    ├── README.md                  # build/run/test commands
+    └── CLAUDE.md                  # this file
 ```
 
-The original proposal (§6.1) planned one monorepo with `frontend/` alongside `services/`. This workspace has
-been scoped to **backend only**; if a frontend is added later it lives outside this repo/directory.
+This matches the proposal's original monorepo design (§6.1: one repo, frontend + backend, so an API change and
+its frontend consumer land in the same PR). `.claude/` stays scoped to `backend/` since its skills/agents are
+Java/Spring-Boot-specific — a Claude Code session opened at `backend/` picks this up; one opened at repo root
+or `frontend/` would not (and would need its own, frontend-appropriate config).
 
 Each service uses **layer-based** internal packages under `vn.edu.tvu.<svc>`
 (`controller/service/repository/domain/dto/mapper/config/security/exception`), the main
