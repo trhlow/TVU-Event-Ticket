@@ -8,7 +8,7 @@ on:
 
 jobs:
   # Determine which service modules were touched so we only build/test the
-  # affected part of the reactor (proposal §6.1) instead of all 4 every time.
+  # affected part of the reactor (proposal §6.1) instead of all 5 every time.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -22,6 +22,9 @@ jobs:
             api-gateway:
               - 'backend/pom.xml'
               - 'backend/api-gateway/**'
+            auth-service:
+              - 'backend/pom.xml'
+              - 'backend/auth-service/**'
             event-service:
               - 'backend/pom.xml'
               - 'backend/event-service/**'

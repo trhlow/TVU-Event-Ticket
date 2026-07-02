@@ -21,6 +21,7 @@
 
     <modules>
         <module>api-gateway</module>
+        <module>auth-service</module>
         <module>event-service</module>
         <module>ticket-service</module>
         <module>notification-service</module>

@@ -24,6 +24,16 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
       routes:
+        # auth-service owns login/profile (/api/auth/**) and admin management (/api/admin/**).
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URI:http://localhost:8084}
+          predicates:
+            - Path=/api/auth/**, /api/admin/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
         - id: event-service
           uri: ${EVENT_SERVICE_URI:http://localhost:8081}
           predicates:

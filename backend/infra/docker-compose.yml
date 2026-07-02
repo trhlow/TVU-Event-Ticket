@@ -6,12 +6,14 @@ services:
     environment:
       POSTGRES_USER: tvu
       POSTGRES_PASSWORD: tvu
-      # event-service and ticket-service use separate logical DBs; create tvu_ticket manually or via init script
+      # auth/event/ticket services use separate logical DBs. POSTGRES_DB creates tvu_event;
+      # init-db/01-create-databases.sql creates tvu_ticket + tvu_auth on first startup (no manual step).
       POSTGRES_DB: tvu_event
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d
 
   redis:
     image: redis:7-alpine

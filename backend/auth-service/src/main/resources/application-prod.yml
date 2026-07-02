@@ -1,0 +1,19 @@
+# Production (Neon PostgreSQL + CloudAMQP). All values required from env — no fallback defaults.
+spring:
+  datasource:
+    url: ${AUTH_DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    show-sql: false
+  rabbitmq:
+    host: ${RABBITMQ_HOST}
+    port: ${RABBITMQ_PORT}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+    virtual-host: ${RABBITMQ_VHOST}
+
+logging:
+  level:
+    root: INFO
+    vn.edu.tvu: INFO
