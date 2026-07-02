@@ -4,11 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This directory (`backend/`) is the **backend subfolder** of a team monorepo shared with a teammate working on
-`frontend/` (React) at the repo root — see `../README.md` for the overall layout. This `CLAUDE.md` only covers
-the backend; frontend has its own conventions elsewhere in the repo. The detailed project proposal (đề cương)
-in [../decuongTVUEventTicket.md](../decuongTVUEventTicket.md) is the authoritative spec for the whole system —
-read it for business rules even though this file only covers the backend half.
+This directory (`backend/`) is the **backend subfolder** of a team monorepo (teammate owns `frontend/` React at
+the repo root — see `../README.md`). The proposal [../decuongTVUEventTicket.md](../decuongTVUEventTicket.md) is
+the authoritative spec for business rules (whole system, written in Vietnamese).
 
 The Maven multi-module reactor is **scaffolded and compiles** (`mvn clean install` passes from this directory):
 5 services with layer-based packages, Flyway wired up, dev/prod profiles, logging. **No business logic yet** —
@@ -25,21 +23,11 @@ match it.
 
 ## Working scope — backend/ only (IMPORTANT)
 
-The user only works on the backend. **All Claude Code operations — installing/configuring skills, agents,
-commands, hooks, settings, MCP tool indexes (e.g. GitNexus), or any other tooling — must be confined to this
-`backend/` directory.** Do not create or modify `.claude/`, `CLAUDE.md`, `AGENTS.md`, or similar tooling
-artifacts at the repo root or inside `frontend/` (the teammate's workspace) unless the user explicitly asks
-for that specific file, for that specific task.
-
-The **only** exception is files GitHub/tooling technically requires at the true repo root regardless of who
-owns what — currently just `.github/workflows/*.yml` (GitHub Actions only reads workflows from the repo
-root's `.github/`, never a subfolder's). The root `README.md`, `.gitignore`, and `decuongTVUEventTicket.md`
-were placed at repo root deliberately (§ repo layout below) because they describe the whole monorepo, not
-backend-specific tooling — that's a one-time decision already made, not a pattern to repeat for new tools.
-
-If a tool (like GitNexus) defaults to indexing/writing at the discovered git root, point it explicitly at
-`backend/` and use its "treat this path as root" flag (e.g. `--skip-git` for GitNexus) instead of letting it
-walk up to the monorepo root.
+The user only works on the backend. **Keep all Claude Code tooling — skills, agents, commands, hooks, settings,
+MCP indexes (e.g. GitNexus) — confined to this `backend/` directory.** Do not touch `.claude/`, `CLAUDE.md`, or
+similar tooling at the repo root or in `frontend/` (the teammate's workspace) unless explicitly asked. The only
+root-level exception is `.github/workflows/*.yml` (GitHub Actions only reads workflows from the repo root).
+Point tools that default to the git root back at `backend/` (e.g. GitNexus `--skip-git`).
 
 ## Commands
 
@@ -63,11 +51,9 @@ business flow: create event → open registration → student requests a spot �
 signed QR emailed → QR scanned for check-in → analytics. Explicitly out of scope: paid tickets, native mobile
 apps.
 
-**Auth deviates from proposal §6.8 on purpose:** the team could not obtain the school's Microsoft tenant, so
-login accepts **any Microsoft account** (not single-tenant `@tvu.edu.vn`). Students complete their profile
-(MSSV, class) afterward. This weakens anti-fake-registration; see invariant #3 for the mitigations
-(`mssv UNIQUE`, mandatory `profileComplete` before reserving). Club catalog is owned by **auth-service**, not
-event-service (SUPER_ADMIN manages clubs; organizers carry `club_id` in their JWT).
+**Auth deviates from proposal §6.8 on purpose:** login accepts **any Microsoft account** (the team could not
+get the school tenant); students complete their profile (MSSV) afterward, and the club catalog is owned by
+**auth-service**, not event-service. See invariant #3 for the anti-fake-registration mitigations this requires.
 
 ## Repo layout
 
@@ -92,19 +78,14 @@ TVU-Event-Ticket/                 # repo root
     └── CLAUDE.md                  # this file
 ```
 
-This matches the proposal's original monorepo design (§6.1: one repo, frontend + backend, so an API change and
-its frontend consumer land in the same PR). `.claude/` stays scoped to `backend/` since its skills/agents are
-Java/Spring-Boot-specific — a Claude Code session opened at `backend/` picks this up; one opened at repo root
-or `frontend/` would not (and would need its own, frontend-appropriate config).
+Monorepo rationale (§6.1): one repo so an API change and its frontend consumer land in the same PR. `.claude/`
+stays scoped to `backend/` (its skills are Java/Spring-specific).
 
-Each service uses **layer-based** internal packages under `vn.edu.tvu.<svc>`
-(`controller/service/repository/domain/dto/mapper/config/security/exception`), the main
-`@SpringBootApplication` class in the root package. Chose layer-based over feature-based because each service
-is already a single bounded context — the microservice boundary provides the "easy to split" benefit
-feature-based gives inside a monolith. Schema is managed by **Flyway** (`db/migration/`, immutable versions;
-Hibernate `ddl-auto: validate`). Config is split into `application.yml` (common, default profile `dev`) +
-`application-dev.yml` (localhost) + `application-prod.yml` (env-only, no defaults). See
-[README.md](README.md) for commands.
+Each service uses **layer-based** packages under `vn.edu.tvu.<svc>`
+(`controller/service/repository/domain/dto/mapper/config/security/exception`) with the
+`@SpringBootApplication` in the root package (chosen over feature-based: each microservice is already one
+bounded context). Schema is **Flyway**-managed (`db/migration/`, immutable versions; Hibernate
+`ddl-auto: validate`). Config: `application.yml` (common, default `dev`) + `application-{dev,prod}.yml`.
 
 ## Tech stack
 
@@ -140,12 +121,10 @@ These are the non-obvious rules the proposal commits to. Preserve them; they are
    for spam/bot protection — never for identity or "block re-registration"** (shared campus Wi-Fi/NAT would
    false-positive). Do not add IP-based blocking as an identity mechanism.
 
-   **Revised for the multi-tenant login (deviation from §6.8):** since any Microsoft account can sign in, one
-   person could create several accounts to hold multiple spots. Mitigations: (a) partial unique index
-   `UNIQUE(mssv) WHERE mssv IS NOT NULL` — each MSSV binds to exactly one account; (b) a student must be
-   `profileComplete` (MSSV filled in) **before** `POST /api/reservations`; (c) `mssv_status
-   [UNVERIFIED|VERIFIED]` lets an ORGANIZER/SUPER_ADMIN verify MSSV later. Automatic MSSV verification is not
-   possible without the school tenant — state this limitation in the report.
+   **Revised for multi-tenant login (§6.8 deviation):** any Microsoft account can register, so mitigations are
+   (a) partial unique index `UNIQUE(mssv) WHERE mssv IS NOT NULL`; (b) mandatory `profileComplete` before
+   `POST /api/reservations`; (c) `mssv_status [UNVERIFIED|VERIFIED]` for later manual verification (auto MSSV
+   verification isn't possible without the school tenant — note this limitation in the report).
 
 4. **RBAC + per-club multi-tenancy.** Three roles: `SINH_VIEN` (student), `ORGANIZER` (bound to a `club_id`),
    `SUPER_ADMIN` (school admin). An organizer's queries are always scoped by the `club_id` embedded in their
