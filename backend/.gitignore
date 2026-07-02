@@ -35,3 +35,7 @@ application-local.yaml
 .vscode/
 .DS_Store
 Thumbs.db
+
+# ---- GitNexus local index (graph DB + parse cache) ----
+# Regenerate with: npx gitnexus analyze . --skip-git --name TVU-Event-Ticket-backend  (run from backend/)
+.gitnexus/

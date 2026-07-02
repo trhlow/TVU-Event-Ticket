@@ -1,7 +1,7 @@
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **TVU-Event-Ticket** (166 symbols, 165 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
 
@@ -25,10 +25,10 @@ This project is indexed by GitNexus as **TVU-Event-Ticket** (166 symbols, 165 re
 
 | Resource | Use for |
 |----------|---------|
-| `gitnexus://repo/TVU-Event-Ticket/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/TVU-Event-Ticket/clusters` | All functional areas |
-| `gitnexus://repo/TVU-Event-Ticket/processes` | All execution flows |
-| `gitnexus://repo/TVU-Event-Ticket/process/{name}` | Step-by-step execution trace |
+| `gitnexus://repo/TVU-Event-Ticket-backend/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/TVU-Event-Ticket-backend/clusters` | All functional areas |
+| `gitnexus://repo/TVU-Event-Ticket-backend/processes` | All execution flows |
+| `gitnexus://repo/TVU-Event-Ticket-backend/process/{name}` | Step-by-step execution trace |
 
 ## CLI
 

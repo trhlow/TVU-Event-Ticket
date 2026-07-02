@@ -19,6 +19,24 @@ This is a 3-person academic capstone (Đồ án Công nghệ phần mềm) at TV
 entirely on **free-tier cloud** (target cost: $0). The proposal is written in Vietnamese; domain terms below
 match it.
 
+## Working scope — backend/ only (IMPORTANT)
+
+The user only works on the backend. **All Claude Code operations — installing/configuring skills, agents,
+commands, hooks, settings, MCP tool indexes (e.g. GitNexus), or any other tooling — must be confined to this
+`backend/` directory.** Do not create or modify `.claude/`, `CLAUDE.md`, `AGENTS.md`, or similar tooling
+artifacts at the repo root or inside `frontend/` (the teammate's workspace) unless the user explicitly asks
+for that specific file, for that specific task.
+
+The **only** exception is files GitHub/tooling technically requires at the true repo root regardless of who
+owns what — currently just `.github/workflows/*.yml` (GitHub Actions only reads workflows from the repo
+root's `.github/`, never a subfolder's). The root `README.md`, `.gitignore`, and `decuongTVUEventTicket.md`
+were placed at repo root deliberately (§ repo layout below) because they describe the whole monorepo, not
+backend-specific tooling — that's a one-time decision already made, not a pattern to repeat for new tools.
+
+If a tool (like GitNexus) defaults to indexing/writing at the discovered git root, point it explicitly at
+`backend/` and use its "treat this path as root" flag (e.g. `--skip-git` for GitNexus) instead of letting it
+walk up to the monorepo root.
+
 ## Commands
 
 Run from this directory ([README.md](README.md) has the full list):
@@ -136,3 +154,48 @@ These are the non-obvious rules the proposal commits to. Preserve them; they are
 
 Per §9, the fallback order is: merge Notification-Service into Ticket-Service; trim Dashboard/ADW analytics.
 Always preserve the core flow: **register → QR → check-in**.
+
+<!-- gitnexus:start -->
+# GitNexus — Code Intelligence
+
+This project is indexed by GitNexus as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+
+> Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
+
+## Always Do
+
+- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
+- **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
+- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
+- When exploring unfamiliar code, use `query({search_query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
+- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
+- For security review, `explain({target: "fileOrSymbol"})` lists taint findings (source→sink flows; needs `analyze --pdg`).
+
+## Never Do
+
+- NEVER edit a function, class, or method without first running `impact` on it.
+- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
+- NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
+- NEVER commit changes without running `detect_changes()` to check affected scope.
+
+## Resources
+
+| Resource | Use for |
+|----------|---------|
+| `gitnexus://repo/TVU-Event-Ticket-backend/context` | Codebase overview, check index freshness |
+| `gitnexus://repo/TVU-Event-Ticket-backend/clusters` | All functional areas |
+| `gitnexus://repo/TVU-Event-Ticket-backend/processes` | All execution flows |
+| `gitnexus://repo/TVU-Event-Ticket-backend/process/{name}` | Step-by-step execution trace |
+
+## CLI
+
+| Task | Read this skill file |
+|------|---------------------|
+| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
+| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
+| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
+| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
+| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
+| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
+
+<!-- gitnexus:end -->
