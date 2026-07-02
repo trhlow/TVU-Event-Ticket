@@ -6,3 +6,6 @@
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Git worktrees for isolated feature development (see backend/.claude/skills/using-git-worktrees)
+.worktrees/
