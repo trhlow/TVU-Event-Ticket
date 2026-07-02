@@ -1,12 +1,21 @@
 ---
-description: Quy tắc phát triển — code quality, git conventions, ngôn ngữ, TDD workflow
+description: Quy tắc phát triển backend — commands, git conventions, ngôn ngữ, TDD workflow
 ---
 
-# Workflow — TVU Event Ticket
+# Workflow — TVU Event & Ticket backend
+
+## Commands (chạy từ `backend/`)
+
+```bash
+docker compose -f infra/docker-compose.yml up -d   # Postgres, Redis, RabbitMQ cho dev
+mvn clean install                                   # build toàn reactor
+mvn -pl ticket-service -am spring-boot:run          # chạy 1 service (profile dev)
+mvn -pl ticket-service test -Dtest=SomeTest         # chạy 1 test class
+```
 
 ## Ngôn ngữ
 
-- UI text: **Tiếng Việt**
+- UI text (do frontend giữ): **Tiếng Việt** — backend chỉ trả message/`code` cho frontend hiển thị.
 - Code (variable, function, comment): **Tiếng Anh**
 - Commit message: **Tiếng Anh**, conventional commits
 
@@ -22,36 +31,34 @@ test:     thêm/sửa test
 chore:    build, config, deps
 ```
 
+- **Không** thêm `Co-Authored-By` hay bất kỳ attribution AI/Claude nào vào commit message — trong repo này, không bao giờ.
+- Chỉ commit khi user yêu cầu.
+
 ## Quy tắc viết code
 
-### Không
+- Constructor injection, field `private final` — không field `@Autowired`.
+- Controller mỏng (validate + delegate); business logic ở `@Service`.
+- Validate chỉ tại system boundary (user input, external API).
+- Không expose `@Entity` ra API — dùng DTO + MapStruct.
+- Không comment giải thích "cái gì" — chỉ comment khi WHY không hiển nhiên.
+- Không thêm error handling cho scenario không thể xảy ra.
+- Không thêm feature/refactor/abstraction ngoài phạm vi task.
+- Xóa hẳn code thừa thay vì comment out.
 
-- Không import thư viện UI ngoài (MUI, Ant Design, Chakra) — dùng Tailwind CSS
-- Không `inline style` — chỉ Tailwind class hoặc CSS variable
-- Không hard-code color value trong JSX
-- Không animation phức tạp — chỉ `transition` đơn giản
-- Không comment giải thích "cái gì" — chỉ comment khi WHY không hiển nhiên
-- Không thêm error handling cho scenario không thể xảy ra
-- Không thêm feature, refactor, abstraction ngoài phạm vi task
-
-### Nên
-
-- Mỗi component chỉ làm một việc
-- Validate chỉ tại system boundary (user input, external API)
-- Xóa hẳn code thừa thay vì comment out
+*(Chi tiết code style: `.claude/docs/coding-standards.md`. Bất biến kiến trúc: `.claude/rules/architecture.md`.)*
 
 ## Git workflow
 
-- Branch từ `main`, đặt tên: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`
-- Mỗi PR nhỏ — một tính năng hoặc một fix
-- Không push trực tiếp lên `main`
-- Dùng git worktree khi cần dev song song (xem skill `using-git-worktrees`)
+- Branch từ `main`: `feat/<slug>`, `fix/<slug>`, `chore/<slug>`. Không push trực tiếp lên `main`.
+- Mỗi PR nhỏ — một tính năng hoặc một fix; commit theo từng task.
+- Dùng worktree cô lập cho feature mới: skill `using-git-worktrees` (ưu tiên tool native `EnterWorktree`).
+- Kết thúc branch: skill `finishing-a-development-branch`.
 
 ## TDD (bắt buộc cho logic nghiệp vụ)
 
-RED → GREEN → REFACTOR. Không bỏ qua bước RED.  
-Xem skill `test-driven-development` để biết chi tiết.
+RED → GREEN → REFACTOR. Không bỏ qua bước RED. Scaffold thuần (không logic) thì miễn — nói rõ lý do.
+Xem skill `test-driven-development`.
 
 ## Trước khi báo xong
 
-Chạy skill `verification-before-completion` — không tự tuyên bố hoàn thành mà chưa verify.
+Chạy skill `verification-before-completion` — không tự tuyên bố hoàn thành mà chưa verify (chạy lệnh, xem output).
