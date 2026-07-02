@@ -11,9 +11,13 @@ in [../decuongTVUEventTicket.md](../decuongTVUEventTicket.md) is the authoritati
 read it for business rules even though this file only covers the backend half.
 
 The Maven multi-module reactor is **scaffolded and compiles** (`mvn clean install` passes from this directory):
-4 services with layer-based packages, Flyway wired up, dev/prod profiles, logging. **No business logic yet** —
+5 services with layer-based packages, Flyway wired up, dev/prod profiles, logging. **No business logic yet** —
 `domain/controller/service/repository` packages are empty (`.gitkeep` placeholders). See [Commands](#commands)
 below.
+
+Cross-service contracts (internal JWT, JWKS, CSRF token, QR payload, RabbitMQ message + audit schemas) are
+documented in [.claude/docs/contracts.md](.claude/docs/contracts.md) — the single source of truth for anything
+shared between services.
 
 This is a 3-person academic capstone (Đồ án Công nghệ phần mềm) at TVU, built over 4 Scrum sprints, deployed
 entirely on **free-tier cloud** (target cost: $0). The proposal is written in Vietnamese; domain terms below
@@ -56,8 +60,14 @@ Do not add a "Co-Authored-By" line or any other Claude/AI attribution to commit 
 
 A distributed (microservices) event-management and e-ticketing platform for TVU university clubs (CLB). Core
 business flow: create event → open registration → student requests a spot → **organizer approves** → ticket +
-signed QR emailed → QR scanned for check-in → analytics. Explicitly out of scope: paid tickets, social login
-beyond the school tenant, native mobile apps.
+signed QR emailed → QR scanned for check-in → analytics. Explicitly out of scope: paid tickets, native mobile
+apps.
+
+**Auth deviates from proposal §6.8 on purpose:** the team could not obtain the school's Microsoft tenant, so
+login accepts **any Microsoft account** (not single-tenant `@tvu.edu.vn`). Students complete their profile
+(MSSV, class) afterward. This weakens anti-fake-registration; see invariant #3 for the mitigations
+(`mssv UNIQUE`, mandatory `profileComplete` before reserving). Club catalog is owned by **auth-service**, not
+event-service (SUPER_ADMIN manages clubs; organizers carry `club_id` in their JWT).
 
 ## Repo layout
 
@@ -72,11 +82,12 @@ TVU-Event-Ticket/                 # repo root
 └── backend/                      # <- this directory
     ├── pom.xml                    # Maven reactor parent (spring-boot-starter-parent, Java 21)
     ├── api-gateway/               # Spring Cloud Gateway — CORS, JWT, RBAC, rate limiting, routing
-    ├── event-service/             # Spring Boot — events, clubs
+    ├── auth-service/              # Spring Boot — identity, internal JWT (RS256+JWKS), users, clubs, RBAC, audit log
+    ├── event-service/             # Spring Boot — events (club_id stored as a value, not an FK)
     ├── ticket-service/             # Spring Boot — reservations, tickets, check-in
     ├── notification-service/       # Spring Boot — consumes RabbitMQ, generates QR, sends email
-    ├── infra/                     # docker-compose.yml (Postgres, Redis, RabbitMQ for local dev)
-    ├── .claude/                   # project-scoped Claude Code config, backend-specific (skills, agents, hooks)
+    ├── infra/                     # docker-compose.yml + init-db/ (Postgres, Redis, RabbitMQ for local dev)
+    ├── .claude/                   # project-scoped Claude Code config, backend-specific (skills, agents, hooks, docs/contracts.md)
     ├── README.md                  # build/run/test commands
     └── CLAUDE.md                  # this file
 ```
@@ -99,12 +110,13 @@ Hibernate `ddl-auto: validate`). Config is split into `application.yml` (common,
 
 - **Frontend**: React, TypeScript, Recharts. Deployed on Cloudflare Pages. PWA (browser-camera QR scanning, no native app).
 - **API Gateway**: Spring Cloud Gateway — the single entry point for CORS, JWT auth, RBAC checks, and rate limiting.
+- **Auth Service**: Java Spring Boot (port 8084) — owns identity, users, clubs, RBAC, and the central audit log; issues the internal JWT (RS256) and exposes JWKS.
 - **Services**: Java Spring Boot (Event, Ticket, Notification). Services are loosely coupled and communicate asynchronously via the broker.
 - **Atomic counter / lock**: Redis (ticket-remaining counter, rate-limit counter).
 - **Async messaging**: RabbitMQ (CloudAMQP), Topic Exchange + Dead Letter Queue.
 - **Transactional DB**: PostgreSQL (Neon).
 - **Analytics warehouse**: Oracle Autonomous Data Warehouse (ADW).
-- **Auth**: Microsoft Identity Platform / Entra ID (OAuth2/OIDC via MSAL, single-tenant `@tvu.edu.vn`) → internal JWT.
+- **Auth**: Microsoft Identity Platform (OAuth2/OIDC via MSAL, **multi-tenant — any Microsoft account**, not restricted to `@tvu.edu.vn`; see invariant #3) → auth-service issues an internal RS256 JWT (JWKS-validated by every service). Pluggable identity provider (`DevStub` for dev/test, `Microsoft` for prod).
 - **Packaging/CI**: Docker, Docker Compose, GitHub Actions. Backend runs on Oracle Cloud Always Free (Ampere A1 / ARM).
 - **Load testing**: k6 or JMeter.
 
@@ -123,10 +135,17 @@ These are the non-obvious rules the proposal commits to. Preserve them; they are
    dropped for time reasons: `SELECT ... FOR UPDATE`.
 
 3. **Anti-fake-registration relies on identity, not IP.** Every registration is tied to an authenticated
-   `@tvu.edu.vn` login (no anonymous/manual entry). Dedup via a DB `UNIQUE(event_id, student_id)` constraint
+   login (no anonymous/manual entry). Dedup via a DB `UNIQUE(event_id, student_id)` constraint
    (max 1 ticket/event/account) plus an idempotency key per request. **IP rate limiting at the gateway is only
    for spam/bot protection — never for identity or "block re-registration"** (shared campus Wi-Fi/NAT would
    false-positive). Do not add IP-based blocking as an identity mechanism.
+
+   **Revised for the multi-tenant login (deviation from §6.8):** since any Microsoft account can sign in, one
+   person could create several accounts to hold multiple spots. Mitigations: (a) partial unique index
+   `UNIQUE(mssv) WHERE mssv IS NOT NULL` — each MSSV binds to exactly one account; (b) a student must be
+   `profileComplete` (MSSV filled in) **before** `POST /api/reservations`; (c) `mssv_status
+   [UNVERIFIED|VERIFIED]` lets an ORGANIZER/SUPER_ADMIN verify MSSV later. Automatic MSSV verification is not
+   possible without the school tenant — state this limitation in the report.
 
 4. **RBAC + per-club multi-tenancy.** Three roles: `SINH_VIEN` (student), `ORGANIZER` (bound to a `club_id`),
    `SUPER_ADMIN` (school admin). An organizer's queries are always scoped by the `club_id` embedded in their
