@@ -1,70 +1,27 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+**TVU Event & Ticket** — microservices e-ticketing platform for TVU university clubs: event creation → registration → organizer approval (atomic) → QR-signed ticket + email → check-in → analytics. Backend capstone (3-person team, free-tier cloud, target $0).
 
-**TVU Event & Ticket** — distributed (microservices) event-management & e-ticketing platform for TVU university
-clubs (CLB): create event → open registration → student requests a spot → **organizer approves** → ticket +
-signed QR emailed → QR check-in → analytics. This `backend/` is the backend half of a team monorepo (teammate
-owns `frontend/`); a 3-person academic capstone deployed on free-tier cloud (target $0).
+## Docs & References
 
-## Skills (Superpowers)
+**Rules (always applied):**
+- @.claude/rules/architecture.md
+- @.claude/rules/workflow.md
 
-@.claude/skills/using-superpowers/SKILL.md
+**On-demand reference:**
+- `.claude/docs/contracts.md` — cross-service contracts (JWT/JWKS/CSRF/QR/RabbitMQ)
+- `.claude/docs/coding-standards.md` — package layout, DI, DTO ↔ OpenAPI
+- `.claude/docs/deployment.md` — free-tier topology, JVM flags, CI/CD
 
-## Rules (always applied)
+## GitNexus — Code Intelligence
 
-@.claude/rules/architecture.md
-@.claude/rules/workflow.md
+Indexed as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships). **Always run impact analysis before editing** (`impact({target: "symbolName", direction: "upstream"})`) and **detect_changes() before commit** to verify scope.
 
-## Reference docs (read on demand — NOT auto-loaded)
+**Skills (use when needed):**
+- **Understand code:** `/gitnexus-exploring`
+- **Blast radius:** `/gitnexus-impact-analysis`
+- **Trace bugs:** `/gitnexus-debugging`
+- **Refactor/rename:** `/gitnexus-refactoring`
+- **Index/status:** `/gitnexus-cli`
 
-Open these only when the task needs them:
-
-- `.claude/docs/contracts.md` — cross-service contracts (JWT claims, JWKS, CSRF, QR payload, RabbitMQ + audit schemas)
-- `.claude/docs/coding-standards.md` — package layout, DI, config/profiles, DTO ↔ OpenAPI conventions
-- `.claude/docs/deployment.md` — free-tier topology, mandatory JVM flags, CI/CD
-
-<!-- gitnexus:start -->
-# GitNexus — Code Intelligence
-
-This project is indexed by GitNexus as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships, 0 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
-
-> Index stale? Run `node .gitnexus/run.cjs analyze` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? `npx gitnexus analyze` (npm 11 crash → `npm i -g gitnexus`; #1939).
-
-## Always Do
-
-- **MUST run impact analysis before editing any symbol.** Before modifying a function, class, or method, run `impact({target: "symbolName", direction: "upstream"})` and report the blast radius (direct callers, affected processes, risk level) to the user.
-- **MUST run `detect_changes()` before committing** to verify your changes only affect expected symbols and execution flows. For regression review, compare against the default branch: `detect_changes({scope: "compare", base_ref: "main"})`.
-- **MUST warn the user** if impact analysis returns HIGH or CRITICAL risk before proceeding with edits.
-- When exploring unfamiliar code, use `query({search_query: "concept"})` to find execution flows instead of grepping. It returns process-grouped results ranked by relevance.
-- When you need full context on a specific symbol — callers, callees, which execution flows it participates in — use `context({name: "symbolName"})`.
-- For security review, `explain({target: "fileOrSymbol"})` lists taint findings (source→sink flows; needs `analyze --pdg`).
-
-## Never Do
-
-- NEVER edit a function, class, or method without first running `impact` on it.
-- NEVER ignore HIGH or CRITICAL risk warnings from impact analysis.
-- NEVER rename symbols with find-and-replace — use `rename` which understands the call graph.
-- NEVER commit changes without running `detect_changes()` to check affected scope.
-
-## Resources
-
-| Resource | Use for |
-|----------|---------|
-| `gitnexus://repo/TVU-Event-Ticket-backend/context` | Codebase overview, check index freshness |
-| `gitnexus://repo/TVU-Event-Ticket-backend/clusters` | All functional areas |
-| `gitnexus://repo/TVU-Event-Ticket-backend/processes` | All execution flows |
-| `gitnexus://repo/TVU-Event-Ticket-backend/process/{name}` | Step-by-step execution trace |
-
-## CLI
-
-| Task | Read this skill file |
-|------|---------------------|
-| Understand architecture / "How does X work?" | `.claude/skills/gitnexus/gitnexus-exploring/SKILL.md` |
-| Blast radius / "What breaks if I change X?" | `.claude/skills/gitnexus/gitnexus-impact-analysis/SKILL.md` |
-| Trace bugs / "Why is X failing?" | `.claude/skills/gitnexus/gitnexus-debugging/SKILL.md` |
-| Rename / extract / split / refactor | `.claude/skills/gitnexus/gitnexus-refactoring/SKILL.md` |
-| Tools, resources, schema reference | `.claude/skills/gitnexus/gitnexus-guide/SKILL.md` |
-| Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
-
-<!-- gitnexus:end -->
+**Stale index?** Run `node .gitnexus/run.cjs analyze` from project root (or `npx gitnexus analyze` if missing).
