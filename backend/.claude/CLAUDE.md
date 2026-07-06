@@ -25,3 +25,11 @@ Indexed as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships). **Alway
 - **Index/status:** `/gitnexus-cli`
 
 **Stale index?** Run `node .gitnexus/run.cjs analyze` from project root (or `npx gitnexus analyze` if missing).
+
+## Commit Message Convention
+
+**DO NOT add Co-Authored-By line.** Format: `<type>: <subject>` + optional body (no trailer lines).
+- Type: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`
+- Subject: imperative, under 70 chars
+- Body (if needed): separate blank line, wrap ~72 chars
+- **Example:** `feat: add RBAC guards to admin endpoints`
