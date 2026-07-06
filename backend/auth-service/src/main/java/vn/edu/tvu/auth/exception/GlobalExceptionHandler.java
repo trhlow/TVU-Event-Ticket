@@ -3,6 +3,8 @@ package vn.edu.tvu.auth.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -33,6 +35,11 @@ public class GlobalExceptionHandler {
                                                               HttpServletRequest request) {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
         return build(status, status.name(), ex.getReason(), request, null);
+    }
+
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDenied(Exception ex, HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "FORBIDDEN", "Access denied", request, null);
     }
 
     @ExceptionHandler(Exception.class)

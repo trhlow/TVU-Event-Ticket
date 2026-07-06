@@ -14,6 +14,16 @@ spring:
     username: guest
     password: guest
 
+tvu:
+  auth:
+    csrf:
+      signing-secret: ${CSRF_SIGNING_SECRET:dev-csrf-signing-secret-change-me}
+    bootstrap:
+      email: ${BOOTSTRAP_ADMIN_EMAIL:admin@example.com}
+    cookies:
+      secure: false
+      same-site: Lax
+
 logging:
   level:
     vn.edu.tvu: DEBUG

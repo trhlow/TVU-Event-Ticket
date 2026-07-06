@@ -28,3 +28,10 @@ management:
     web:
       exposure:
         include: health, info
+
+tvu:
+  auth:
+    jwt:
+      issuer: ${JWT_ISSUER_URI:http://localhost:8084}
+      ttl: ${JWT_TTL:15m}
+      key-id: ${JWT_KEY_ID:auth-service-dev}

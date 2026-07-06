@@ -13,6 +13,26 @@ spring:
     password: ${RABBITMQ_PASSWORD}
     virtual-host: ${RABBITMQ_VHOST}
 
+tvu:
+  auth:
+    jwt:
+      issuer: ${JWT_ISSUER_URI}
+      ttl: ${JWT_TTL}
+      key-id: ${JWT_KEY_ID}
+      private-key-pem: ${JWT_PRIVATE_KEY_PEM}
+      public-key-pem: ${JWT_PUBLIC_KEY_PEM}
+    csrf:
+      signing-secret: ${CSRF_SIGNING_SECRET}
+    bootstrap:
+      email: ${BOOTSTRAP_ADMIN_EMAIL}
+    cookies:
+      secure: true
+      same-site: None
+    microsoft:
+      client-id: ${MICROSOFT_CLIENT_ID}
+      issuer-host: ${MICROSOFT_ISSUER_HOST:https://login.microsoftonline.com}
+      jwks-uri: ${MICROSOFT_JWKS_URI:https://login.microsoftonline.com/common/discovery/v2.0/keys}
+
 logging:
   level:
     root: INFO

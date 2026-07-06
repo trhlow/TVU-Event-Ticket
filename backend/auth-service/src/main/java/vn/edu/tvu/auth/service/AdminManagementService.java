@@ -1,0 +1,150 @@
+package vn.edu.tvu.auth.service;
+
+import vn.edu.tvu.auth.domain.Club;
+import vn.edu.tvu.auth.domain.User;
+import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.auth.dto.request.CreateClubRequest;
+import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
+import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
+import vn.edu.tvu.auth.dto.response.ClubResponse;
+import vn.edu.tvu.auth.dto.response.OrganizerResponse;
+import vn.edu.tvu.auth.repository.ClubRepository;
+import vn.edu.tvu.auth.repository.UserRepository;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class AdminManagementService {
+
+    private final ClubRepository clubRepository;
+    private final UserRepository userRepository;
+    private final AuditLogService auditLogService;
+
+    public AdminManagementService(
+            ClubRepository clubRepository,
+            UserRepository userRepository,
+            AuditLogService auditLogService) {
+        this.clubRepository = clubRepository;
+        this.userRepository = userRepository;
+        this.auditLogService = auditLogService;
+    }
+
+    @Transactional
+    public ClubResponse createClub(UUID actorId, CreateClubRequest request) {
+        var name = request.name().trim();
+        if (clubRepository.existsByName(name)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Club name already exists");
+        }
+        var club = clubRepository.save(new Club(name, trimToNull(request.description())));
+        auditLogService.recordLocal(actorId, "auth.club.create", "club", club.getId(),
+                "{\"name\":\"" + club.getName() + "\"}");
+        return clubResponse(club);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ClubResponse> listClubs() {
+        return clubRepository.findAll().stream()
+                .map(this::clubResponse)
+                .toList();
+    }
+
+    @Transactional
+    public ClubResponse updateClub(UUID actorId, UUID clubId, UpdateClubRequest request) {
+        var club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
+        club.update(request.name().trim(), trimToNull(request.description()));
+        auditLogService.recordLocal(actorId, "auth.club.update", "club", club.getId(),
+                "{\"name\":\"" + club.getName() + "\"}");
+        return clubResponse(club);
+    }
+
+    @Transactional
+    public void deactivateClub(UUID actorId, UUID clubId) {
+        var club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
+        club.deactivate();
+        auditLogService.recordLocal(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
+    }
+
+    @Transactional
+    public OrganizerResponse createOrganizer(UUID actorId, CreateOrganizerRequest request) {
+        var email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.findByEmail(email).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
+        }
+        var club = clubRepository.findById(request.clubId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
+        var organizer = userRepository.save(User.organizer("pending:" + email, email, request.displayName().trim(), club));
+        auditLogService.recordLocal(actorId, "auth.organizer.create", "user", organizer.getId(),
+                "{\"email\":\"" + organizer.getEmail() + "\"}");
+        return organizerResponse(organizer);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrganizerResponse> listOrganizers() {
+        return userRepository.findByRole(UserRole.ORGANIZER).stream()
+                .map(this::organizerResponse)
+                .toList();
+    }
+
+    @Transactional
+    public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
+        var organizer = organizer(organizerId);
+        organizer.lock();
+        auditLogService.recordLocal(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
+        return organizerResponse(organizer);
+    }
+
+    @Transactional
+    public OrganizerResponse resetOrganizer(UUID actorId, UUID organizerId) {
+        var organizer = organizer(organizerId);
+        organizer.resetExternalSubject("pending:" + organizer.getEmail());
+        auditLogService.recordLocal(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
+        return organizerResponse(organizer);
+    }
+
+    @Transactional
+    public void deleteOrganizer(UUID actorId, UUID organizerId) {
+        var organizer = organizer(organizerId);
+        userRepository.delete(organizer);
+        auditLogService.recordLocal(actorId, "auth.organizer.delete", "user", organizerId, "{}");
+    }
+
+    private User organizer(UUID organizerId) {
+        var user = userRepository.findById(organizerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Organizer not found"));
+        if (user.getRole() != UserRole.ORGANIZER) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not an organizer");
+        }
+        return user;
+    }
+
+    private ClubResponse clubResponse(Club club) {
+        return new ClubResponse(club.getId(), club.getName(), club.getDescription(), club.getStatus(),
+                club.getCreatedAt());
+    }
+
+    private OrganizerResponse organizerResponse(User user) {
+        return new OrganizerResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getRole(),
+                user.getClub() == null ? null : user.getClub().getId(),
+                user.getStatus());
+    }
+
+    private String trimToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+}

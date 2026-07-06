@@ -1,0 +1,150 @@
+package vn.edu.tvu.auth.service;
+
+import vn.edu.tvu.auth.config.BootstrapAdminProperties;
+import vn.edu.tvu.auth.domain.User;
+import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.auth.dto.request.LoginRequest;
+import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
+import vn.edu.tvu.auth.identity.ExternalIdentity;
+import vn.edu.tvu.auth.identity.IdentityProvider;
+import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.auth.security.CsrfProperties;
+import vn.edu.tvu.auth.security.CsrfTokenService;
+import vn.edu.tvu.auth.security.JwtProperties;
+import vn.edu.tvu.auth.security.RsaKeyManager;
+
+import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.server.ResponseStatusException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class AuthApplicationServiceTest {
+
+    @Mock
+    private IdentityProvider identityProvider;
+
+    @Mock
+    private UserRepository userRepository;
+
+    private RsaKeyManager keyManager;
+    private CsrfTokenService csrfTokenService;
+    private AuthApplicationService service;
+
+    @BeforeEach
+    void setUp() {
+        var jwtProperties = new JwtProperties(
+                "http://localhost:8084",
+                Duration.ofMinutes(15),
+                "test-key",
+                null,
+                null);
+        keyManager = RsaKeyManager.generate(jwtProperties.keyId());
+        var jwtService = new InternalJwtService(jwtProperties, keyManager);
+        csrfTokenService = new CsrfTokenService(new CsrfProperties("dev-csrf-test-secret"));
+        service = new AuthApplicationService(
+                identityProvider,
+                userRepository,
+                jwtService,
+                csrfTokenService,
+                new BootstrapAdminProperties("admin@example.com"));
+    }
+
+    @Test
+    void login_createsStudentAndReturnsJwtBoundCsrfToken() {
+        var userId = UUID.randomUUID();
+        when(identityProvider.verify("student@example.com"))
+                .thenReturn(new ExternalIdentity("dev:student@example.com", "student@example.com", "Student"));
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByExtSubject("dev:student@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> persisted(invocation.getArgument(0), userId));
+
+        var result = service.login(new LoginRequest("student@example.com", null));
+
+        var decoded = NimbusJwtDecoder.withPublicKey(keyManager.publicKey()).build().decode(result.jwt().value());
+        assertThat(result.profile().id()).isEqualTo(userId);
+        assertThat(result.profile().email()).isEqualTo("student@example.com");
+        assertThat(result.profile().role()).isEqualTo(UserRole.SINH_VIEN);
+        assertThat(result.profile().profileComplete()).isFalse();
+        assertThat(decoded.getSubject()).isEqualTo(userId.toString());
+        assertThat(decoded.getClaimAsStringList("roles")).containsExactly("SINH_VIEN");
+        assertThat(result.csrfToken()).isEqualTo(csrfTokenService.sign(result.jwt().jti(), result.jwt().expiresAt()));
+    }
+
+    @Test
+    void login_withBootstrapEmailKeepsSeededSuperAdminInsteadOfCreatingStudent() {
+        var adminId = UUID.randomUUID();
+        var seeded = persisted(User.superAdmin("bootstrap:admin@example.com", "admin@example.com", "Bootstrap Admin"),
+                adminId);
+        when(identityProvider.verify("admin@example.com"))
+                .thenReturn(new ExternalIdentity("dev:admin@example.com", "admin@example.com", "Admin"));
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(seeded));
+        when(userRepository.save(seeded)).thenReturn(seeded);
+
+        var result = service.login(new LoginRequest("admin@example.com", null));
+
+        assertThat(result.profile().id()).isEqualTo(adminId);
+        assertThat(result.profile().role()).isEqualTo(UserRole.SUPER_ADMIN);
+        assertThat(seeded.getExtSubject()).isEqualTo("dev:admin@example.com");
+        assertThat(seeded.getDisplayName()).isEqualTo("Admin");
+    }
+
+    @Test
+    void login_rejectsLockedAccount() {
+        var locked = persisted(User.organizer("dev:organizer@example.com", "organizer@example.com", "Organizer", null),
+                UUID.randomUUID());
+        locked.lock();
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("dev:organizer@example.com", "organizer@example.com", "Organizer"));
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(locked));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Account is locked");
+    }
+
+    @Test
+    void updateProfile_setsMssvAndReturnsTokenContainingMssv() {
+        var userId = UUID.randomUUID();
+        var student = persisted(User.student("dev:student@example.com", "student@example.com", "Student"), userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(student));
+        when(userRepository.existsByMssvAndIdNot("110122001", userId)).thenReturn(false);
+        when(userRepository.save(student)).thenReturn(student);
+
+        var result = service.updateProfile(userId, new UpdateProfileRequest("110122001", "DA21CNTT"));
+
+        var decoded = NimbusJwtDecoder.withPublicKey(keyManager.publicKey()).build().decode(result.jwt().value());
+        assertThat(result.profile().profileComplete()).isTrue();
+        assertThat(result.profile().mssv()).isEqualTo("110122001");
+        assertThat(result.profile().classCode()).isEqualTo("DA21CNTT");
+        assertThat(decoded.getClaimAsString("mssv")).isEqualTo("110122001");
+    }
+
+    @Test
+    void updateProfile_rejectsDuplicateMssv() {
+        var userId = UUID.randomUUID();
+        when(userRepository.existsByMssvAndIdNot("110122001", userId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.updateProfile(userId, new UpdateProfileRequest("110122001", "DA21CNTT")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("MSSV already exists");
+    }
+
+    private static User persisted(User user, UUID id) {
+        ReflectionTestUtils.setField(user, "id", id);
+        return user;
+    }
+}

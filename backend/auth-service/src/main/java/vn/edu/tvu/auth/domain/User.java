@@ -81,6 +81,29 @@ public class User {
         return new User(extSubject, email, displayName, UserRole.ORGANIZER, club);
     }
 
+    public static User superAdmin(String extSubject, String email, String displayName) {
+        return new User(extSubject, email, displayName, UserRole.SUPER_ADMIN, null);
+    }
+
+    public void updateIdentity(String extSubject, String email, String displayName) {
+        this.extSubject = extSubject;
+        this.email = email;
+        this.displayName = displayName;
+    }
+
+    public void promoteToSuperAdmin() {
+        this.role = UserRole.SUPER_ADMIN;
+        this.club = null;
+    }
+
+    public void lock() {
+        this.status = UserStatus.LOCKED;
+    }
+
+    public void resetExternalSubject(String extSubject) {
+        this.extSubject = extSubject;
+    }
+
     public void completeProfile(String mssv, String classCode) {
         this.mssv = mssv;
         this.classCode = classCode;

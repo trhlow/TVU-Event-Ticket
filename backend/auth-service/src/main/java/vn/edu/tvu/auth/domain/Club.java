@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
@@ -40,6 +41,15 @@ public class Club {
     public Club(String name, String description) {
         this.name = name;
         this.description = description;
+    }
+
+    public void update(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+
+    public void deactivate() {
+        this.status = ClubStatus.INACTIVE;
     }
 
     @PrePersist
