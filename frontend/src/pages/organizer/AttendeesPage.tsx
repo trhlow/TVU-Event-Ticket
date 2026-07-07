@@ -6,7 +6,16 @@ import { getTickets } from '../../data/mockTickets';
 import { getCurrentUser } from '../../data/mockAuth';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import DataTable from '../../components/common/DataTable';
+import Toast from '../../components/common/Toast';
 import { formatDateTime } from '../../utils/formatDate';
+import { Reservation } from '../../types/reservation';
+
+type AttendeeRow = Reservation & {
+  eventTitle: string;
+  checkInStatus: string;
+  checkInAt: string | null;
+  ticketCode: string;
+};
 
 export default function AttendeesPage() {
   const currentUser = getCurrentUser();
@@ -20,9 +29,10 @@ export default function AttendeesPage() {
 
   const [search, setSearch] = useState('');
   const [filterEvent, setFilterEvent] = useState('ALL');
+  const [toastMsg, setToastMsg] = useState('');
 
   // Enhance registrations with checkin details
-  const attendees = allReservations.map(res => {
+  const attendees: AttendeeRow[] = allReservations.map(res => {
     const event = events.find(e => e.id === res.eventId);
     const ticket = tickets.find(t => t.eventId === res.eventId && t.studentId === res.studentId);
     return {
@@ -46,13 +56,13 @@ export default function AttendeesPage() {
   });
 
   const handleExportCSV = () => {
-    alert('Đang chuẩn bị trích xuất danh sách người tham dự dưới dạng file CSV.');
+    setToastMsg('Đang chuẩn bị trích xuất danh sách người tham dự dưới dạng file CSV.');
   };
 
   const columns = [
     {
       header: 'Họ và tên',
-      accessor: (att: any) => (
+      accessor: (att: AttendeeRow) => (
         <div className="text-left font-semibold">
           <span className="font-bold text-gray-950 block">{att.studentName}</span>
           <span className="text-[10px] text-gray-400 block mt-0.5">{att.email}</span>
@@ -61,7 +71,7 @@ export default function AttendeesPage() {
     },
     {
       header: 'MSSV / Lớp',
-      accessor: (att: any) => (
+      accessor: (att: AttendeeRow) => (
         <div className="text-left font-semibold">
           <span className="font-bold text-gray-800 font-mono">{att.mssv}</span>
           <span className="text-[10px] text-gray-400 block">{att.className}</span>
@@ -70,7 +80,7 @@ export default function AttendeesPage() {
     },
     {
       header: 'Sự Kiện Đăng Ký',
-      accessor: (att: any) => (
+      accessor: (att: AttendeeRow) => (
         <span className="text-xs font-bold text-gray-700 block max-w-xs truncate" title={att.eventTitle}>
           {att.eventTitle}
         </span>
@@ -78,7 +88,7 @@ export default function AttendeesPage() {
     },
     {
       header: 'Mã Vé QR',
-      accessor: (att: any) => (
+      accessor: (att: AttendeeRow) => (
         <span className="text-xs font-bold text-gray-900 font-mono block bg-gray-50 px-2 py-0.5 rounded border border-gray-100 w-fit">
           {att.ticketCode}
         </span>
@@ -86,14 +96,14 @@ export default function AttendeesPage() {
     },
     {
       header: 'Điểm Danh (Check-in)',
-      accessor: (att: any) => (
+      accessor: (att: AttendeeRow) => (
         <div className="text-left">
           {att.checkInStatus === 'CHECKED_IN' ? (
             <div>
               <span className="text-[10px] bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded block w-fit">
                 ĐÃ ĐIỂM DANH
               </span>
-              <span className="text-[9px] text-gray-400 font-semibold block mt-0.5">Lúc: {formatDateTime(att.checkInAt)}</span>
+              <span className="text-[9px] text-gray-400 font-semibold block mt-0.5">Lúc: {att.checkInAt ? formatDateTime(att.checkInAt) : "Chưa ghi nhận"}</span>
             </div>
           ) : (
             <span className="text-[10px] bg-amber-50 text-amber-700 font-extrabold px-2 py-0.5 rounded block w-fit">
@@ -161,6 +171,7 @@ export default function AttendeesPage() {
           searchField="studentName"
         />
       </div>
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
     </div>
   );
 }

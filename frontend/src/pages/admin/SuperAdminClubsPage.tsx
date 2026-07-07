@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Lock, Unlock } from "lucide-react";
+import { Edit3, Lock, Plus, Unlock } from "lucide-react";
+import { Link } from "react-router-dom";
 import { mockClubs } from "../../data/mockClubs";
 import DataTable from "../../components/common/DataTable";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -82,6 +83,12 @@ export default function SuperAdminClubsPage() {
       header: "Phê duyệt",
       accessor: (club: Club) => (
         <div className="flex gap-1.5 justify-end">
+          <Link
+            to={`/admin/clubs/${club.id}/edit`}
+            className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
+          >
+            <Edit3 className="w-3.5 h-3.5" /> Sửa
+          </Link>
           {club.status === "ACTIVE" ? (
             <button
               onClick={() => handleToggleStatus(club)}
@@ -111,13 +118,21 @@ export default function SuperAdminClubsPage() {
         ]}
       />
 
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">
-          Danh Sách Câu Lạc Bộ Đoàn Trường
-        </h2>
-        <p className="text-xs text-gray-500 font-semibold">
-          Giám sát các đơn vị, khóa tạm thời hoặc kích hoạt tài khoản tổ chức sự kiện
-        </p>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div className="space-y-1">
+          <h2 className="text-xl font-black text-gray-950 tracking-tight">
+            Danh Sách Câu Lạc Bộ Đoàn Trường
+          </h2>
+          <p className="text-xs text-gray-500 font-semibold">
+            Giám sát các đơn vị, khóa tạm thời hoặc kích hoạt tài khoản tổ chức sự kiện
+          </p>
+        </div>
+        <Link
+          to="/admin/clubs/create"
+          className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800"
+        >
+          <Plus className="h-4 w-4" /> Thêm CLB
+        </Link>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">

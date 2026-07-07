@@ -11,7 +11,7 @@ export default function SuperAdminLayout() {
   if (!user || user.role !== "SUPER_ADMIN") return <Navigate to="/login" replace />;
 
   return (
-    <div className="app-shell-surface flex h-screen overflow-hidden font-sans">
+    <main className="app-shell-surface flex h-screen w-full max-w-full overflow-hidden font-sans">
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-slate-950/35 backdrop-blur-sm md:hidden" onClick={() => setSidebarOpen(false)} />
       )}
@@ -20,12 +20,12 @@ export default function SuperAdminLayout() {
       </div>
       <div className="flex min-w-0 flex-1 flex-col md:ml-[258px]">
         <Header onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} title="Tổng quan toàn trường" />
-        <main className="min-h-0 flex-1 overflow-y-auto">
+        <section className="min-h-0 flex-1 overflow-y-auto">
           <div className="page-enter mx-auto w-full max-w-[1320px] px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
             <Outlet />
           </div>
-        </main>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }

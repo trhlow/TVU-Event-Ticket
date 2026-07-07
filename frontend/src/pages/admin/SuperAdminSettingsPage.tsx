@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Save, Server, Shield, HardDrive } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import Toast from '../../components/common/Toast';
 
 export default function SuperAdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -12,10 +13,11 @@ export default function SuperAdminSettingsPage() {
     maintenanceMode: false,
     backupInterval: 'Hàng ngày',
   });
+  const [toastMsg, setToastMsg] = useState('');
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    alert('Đã cập nhật cấu hình hệ thống TVU Event Ticket thành công!');
+    setToastMsg('Đã cập nhật cấu hình hệ thống TVU Event Ticket.');
   };
 
   return (
@@ -162,6 +164,7 @@ export default function SuperAdminSettingsPage() {
           </div>
         </div>
       </form>
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
     </div>
   );
 }

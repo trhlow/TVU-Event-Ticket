@@ -1,5 +1,6 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
-const ENABLE_MOCK_FALLBACK = import.meta.env.DEV || import.meta.env.VITE_ENABLE_MOCK_FALLBACK === "true";
+const USE_DEMO_DATA = import.meta.env.VITE_USE_DEMO_DATA !== "false";
+const ENABLE_MOCK_FALLBACK = USE_DEMO_DATA || import.meta.env.VITE_ENABLE_MOCK_FALLBACK === "true";
 
 export class ApiError extends Error {
   status: number;
@@ -35,6 +36,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
 export const apiConfig = {
   baseUrl: API_BASE_URL,
+  useDemoData: USE_DEMO_DATA,
   enableMockFallback: ENABLE_MOCK_FALLBACK,
 };
 
@@ -54,5 +56,5 @@ async function readErrorMessage(response: Response): Promise<string> {
     // Fall through to default handling.
   }
 
-  return "Khong the ket noi may chu. Vui long thu lai sau.";
+  return "Không thể kết nối máy chủ. Vui lòng thử lại sau.";
 }

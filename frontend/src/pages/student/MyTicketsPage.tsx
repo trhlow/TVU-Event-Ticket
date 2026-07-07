@@ -7,14 +7,16 @@ import TicketCard from '../../components/tickets/TicketCard';
 import QRDisplayCard from '../../components/tickets/QRDisplayCard';
 import DetailDrawer from '../../components/common/DetailDrawer';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import Toast from '../../components/common/Toast';
 
 export default function MyTicketsPage() {
   const currentUser = getCurrentUser();
   const [tickets] = useState(() => 
-    getTickets().filter(t => t.studentId === currentUser.id && t.status === 'VALID')
+    getTickets().filter(t => t.studentId === currentUser.id)
   );
 
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState('');
 
   const activeTicket = tickets.find(t => t.id === selectedTicketId);
   const activeEvent = activeTicket ? mockEvents.find(e => e.id === activeTicket.eventId) : null;
@@ -80,11 +82,12 @@ export default function MyTicketsPage() {
             <QRDisplayCard
               ticket={activeTicket}
               event={activeEvent}
-              onDownload={() => alert('Đang chuẩn bị tải vé điện tử của bạn.')}
+              onDownload={() => setToastMsg('Đang chuẩn bị tải vé điện tử của bạn.')}
             />
           </div>
         </DetailDrawer>
       )}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
     </div>
   );
 }

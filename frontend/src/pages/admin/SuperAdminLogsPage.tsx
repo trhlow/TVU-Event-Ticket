@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { mockAuditLogs } from '../../data/mockAuditLogs';
 import DataTable from '../../components/common/DataTable';
 import Breadcrumb from '../../components/common/Breadcrumb';
@@ -6,6 +6,19 @@ import { formatDateTime } from '../../utils/formatDate';
 import { AuditLog } from '../../types/audit';
 
 export default function SuperAdminLogsPage() {
+  const [roleFilter, setRoleFilter] = useState("ALL");
+  const [actionFilter, setActionFilter] = useState("ALL");
+
+  const filteredLogs = useMemo(
+    () =>
+      mockAuditLogs.filter((log) => {
+        const matchesRole = roleFilter === "ALL" || log.role === roleFilter;
+        const matchesAction = actionFilter === "ALL" || log.action.toLowerCase().includes(actionFilter.toLowerCase());
+        return matchesRole && matchesAction;
+      }),
+    [roleFilter, actionFilter],
+  );
+
   const columns = [
     {
       header: 'Thời Gian',
@@ -51,14 +64,39 @@ export default function SuperAdminLogsPage() {
     <div className="space-y-6 text-left">
       <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Nhật ký hệ thống' }]} />
 
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">Nhật Ký Bảo Mật & Hoạt Động</h2>
-        <p className="text-xs text-gray-500 font-semibold">Bản ghi vết kiểm toán toàn bộ hoạt động đăng ký, cấp phát vé và điểm danh check-in</p>
+      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+        <div className="space-y-1">
+          <h1 className="tvu-page-title text-2xl">Nhật ký bảo mật và hoạt động</h1>
+          <p className="max-w-3xl text-sm font-semibold leading-6 text-slate-500">
+            Bản ghi kiểm toán toàn bộ hoạt động đăng ký, cấp phát vé QR, điểm danh check-in và thay đổi cấu hình hệ thống.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Vai trò</span>
+            <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="tvu-input">
+              <option value="ALL">Tất cả vai trò</option>
+              <option value="SINH_VIEN">Sinh viên</option>
+              <option value="ORGANIZER">Ban tổ chức</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Nhóm hành động</span>
+            <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="tvu-input">
+              <option value="ALL">Tất cả</option>
+              <option value="đăng ký">Đăng ký</option>
+              <option value="vé">Vé QR</option>
+              <option value="check-in">Check-in</option>
+              <option value="CLB">Câu lạc bộ</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
         <DataTable
-          data={mockAuditLogs}
+          data={filteredLogs}
           columns={columns}
           searchPlaceholder="Tìm kiếm hành động, người dùng..."
           searchField="action"

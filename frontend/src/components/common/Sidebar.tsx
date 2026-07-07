@@ -73,8 +73,8 @@ export default function Sidebar({ onClose }: SidebarProps) {
     currentUser.role === "SINH_VIEN"
       ? "/student/account"
       : currentUser.role === "ORGANIZER"
-        ? "/organizer/settings"
-        : "/admin/settings";
+        ? "/organizer/profile"
+        : "/admin/profile";
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[258px] flex-col border-r border-white/70 bg-[#eef2ff]/88 text-slate-600 shadow-[12px_0_35px_rgba(15,23,42,0.08)] backdrop-blur-xl">

@@ -1,19 +1,60 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, Bolt, CheckCircle2, ClipboardCheck, GraduationCap, QrCode, ShieldCheck, Ticket, Users } from "lucide-react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useGSAP } from "@gsap/react";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
 import EventCard from "../../components/events/EventCard";
 import { mockEvents } from "../../data/mockEvents";
 
+gsap.registerPlugin(ScrollTrigger);
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const featuredEvents = mockEvents.slice(0, 3);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useGSAP(
+    () => {
+      gsap.from(".landing-hero-copy > *", {
+        y: 28,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.08,
+        ease: "power3.out",
+      });
+
+      gsap.from(".landing-system-card", {
+        y: 34,
+        opacity: 0,
+        scale: 0.96,
+        duration: 0.9,
+        ease: "power3.out",
+        delay: 0.15,
+      });
+
+      gsap.from(".process-step", {
+        y: 36,
+        opacity: 0,
+        stagger: 0.12,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: ".process-section",
+          start: "top 72%",
+          end: "bottom 48%",
+          scrub: 0.7,
+        },
+      });
+    },
+    { scope: rootRef },
+  );
 
   return (
-    <div className="subtle-gradient-bg overflow-hidden text-left">
+    <main ref={rootRef} className="subtle-gradient-bg w-full max-w-full overflow-x-hidden text-left">
       <section className="relative px-5 py-16 md:px-8 md:py-24">
         <div className="mx-auto grid max-w-[1180px] items-center gap-12 lg:grid-cols-[1fr_520px]">
-          <div>
+          <div className="landing-hero-copy">
             <p className="animate-slide-right inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/80 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-brand-800 shadow-sm">
               <ShieldCheck className="h-4 w-4" /> TVU Event & Ticketing Platform
             </p>
@@ -33,17 +74,17 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="animate-scale-in enterprise-card hover-lift soft-glow p-4" style={{ animationDelay: "180ms" }}>
+          <div className="landing-system-card animate-scale-in enterprise-card hover-lift soft-glow p-4" style={{ animationDelay: "180ms" }}>
             <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-brand-50 p-5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <img src="/src/assets/images/tvu_logo_1783065060265.jpg" alt="TVU" className="h-10 w-10 rounded-2xl bg-white object-contain p-1 shadow-sm" />
                   <div>
                     <p className="font-display text-lg font-extrabold text-brand-800">TVU Event</p>
-                    <p className="text-xs font-semibold text-slate-500">Live dashboard preview</p>
+                    <p className="text-xs font-semibold text-slate-500">Bảng vận hành sự kiện</p>
                   </div>
                 </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">Online</span>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">Đang hoạt động</span>
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-3">
                 {[
@@ -96,7 +137,7 @@ export default function LandingPage() {
 
       <RevealOnScroll as="section" className="px-5 py-12 md:px-8">
         <div className="mx-auto max-w-[1180px]">
-          <div className="grid gap-5 md:grid-cols-3">
+          <div className="grid grid-flow-dense gap-5 md:grid-cols-3">
             {[
               { icon: GraduationCap, title: "Sinh viên", text: "Xem sự kiện, gửi đăng ký, nhận vé QR sau khi được duyệt." },
               { icon: Users, title: "Ban tổ chức", text: "Quản lý sự kiện CLB, duyệt đăng ký và điểm danh bằng QR." },
@@ -115,7 +156,7 @@ export default function LandingPage() {
         </div>
       </RevealOnScroll>
 
-      <RevealOnScroll as="section" className="px-5 py-12 md:px-8">
+      <RevealOnScroll as="section" className="process-section px-5 py-12 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="enterprise-card p-6 md:p-8">
             <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -134,7 +175,7 @@ export default function LandingPage() {
                 ["03", "Organizer duyệt và phát vé"],
                 ["04", "Quét QR để điểm danh"],
               ].map(([step, label], index) => (
-                <RevealOnScroll key={step} delay={index * 80} className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+                <RevealOnScroll key={step} delay={index * 80} className="process-step rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
                   <p className="font-display text-2xl font-extrabold text-brand-700">{step}</p>
                   <p className="mt-2 text-sm font-bold text-slate-700">{label}</p>
                 </RevealOnScroll>
@@ -173,6 +214,6 @@ export default function LandingPage() {
           </Link>
         </div>
       </RevealOnScroll>
-    </div>
+    </main>
   );
 }

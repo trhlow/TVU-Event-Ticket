@@ -25,7 +25,7 @@ export default function StudentHomePage() {
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
-              <Sparkles className="h-4 w-4" /> Student portal
+              <Sparkles className="h-4 w-4" /> Cổng sinh viên
             </p>
             <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Xin chào, {currentUser.fullName}</h1>
             <p className="mt-3 max-w-3xl text-base font-medium leading-7 text-white/82">

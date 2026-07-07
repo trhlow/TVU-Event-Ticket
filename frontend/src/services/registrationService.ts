@@ -1,5 +1,7 @@
 import { getReservations, saveReservations } from '../data/mockReservations';
+import { getTickets, saveTickets } from '../data/mockTickets';
 import { Reservation } from '../types/reservation';
+import { Ticket } from '../types/ticket';
 import { apiConfig, apiRequest } from './apiClient';
 
 async function withReservationFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
@@ -58,6 +60,9 @@ export const registrationService = {
         const updated = { ...reservations[index], status, rejectReason };
         reservations[index] = updated;
         saveReservations(reservations);
+        if (status === 'APPROVED') {
+          issueTicketForApprovedReservation(updated);
+        }
         return updated;
       },
     );
@@ -66,3 +71,25 @@ export const registrationService = {
     saveReservations(reservations);
   },
 };
+
+function issueTicketForApprovedReservation(reservation: Reservation): void {
+  const tickets = getTickets();
+  const existingTicket = tickets.find((ticket) => ticket.reservationId === reservation.id);
+  if (existingTicket) return;
+
+  const shortEventCode = reservation.eventId.replace(/^event_/, '').slice(0, 4).toUpperCase();
+  const ticketCode = `TVU-${shortEventCode}-${reservation.id.slice(-4).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+  const ticket: Ticket = {
+    id: `tkt_${reservation.id}`,
+    reservationId: reservation.id,
+    eventId: reservation.eventId,
+    studentId: reservation.studentId,
+    ticketCode,
+    qrCodeValue: ticketCode,
+    status: 'VALID',
+    checkInStatus: 'PENDING',
+    issuedAt: new Date().toISOString(),
+  };
+
+  saveTickets([ticket, ...tickets]);
+}

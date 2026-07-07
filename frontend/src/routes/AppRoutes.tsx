@@ -16,6 +16,8 @@ const ForbiddenPage = lazy(() => import("../pages/public/ForbiddenPage"));
 const ServerErrorPage = lazy(() => import("../pages/public/ServerErrorPage"));
 const FeaturePlaceholderPage = lazy(() => import("../pages/common/FeaturePlaceholderPage"));
 const NotFound404Page = lazy(() => import("../pages/common/NotFound404Page"));
+const NotificationsPage = lazy(() => import("../pages/common/NotificationsPage"));
+const RoleProfilePage = lazy(() => import("../pages/common/RoleProfilePage"));
 
 const StudentHomePage = lazy(() => import("../pages/student/StudentHomePage"));
 const CompleteProfilePage = lazy(() => import("../pages/student/CompleteProfilePage"));
@@ -55,7 +57,19 @@ const SuperAdminEventsPage = lazy(() => import("../pages/admin/SuperAdminEventsP
 const SuperAdminClubDetailPage = lazy(() => import("../pages/admin/SuperAdminClubDetailPage"));
 
 function routeElement(element: React.ReactNode) {
-  return <Suspense fallback={null}>{element}</Suspense>;
+  return (
+    <Suspense
+      fallback={
+        <div className="grid min-h-[260px] place-items-center p-6">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-600 shadow-sm">
+            Đang tải giao diện...
+          </div>
+        </div>
+      }
+    >
+      {element}
+    </Suspense>
+  );
 }
 
 export default function AppRoutes() {
@@ -117,18 +131,7 @@ export default function AppRoutes() {
           <Route path="/student/profile" element={<StudentProfilePage />} />
           <Route path="/student/account" element={<StudentProfilePage />} />
           <Route path="/student/profile/complete" element={<CompleteProfilePage />} />
-          <Route
-            path="/student/notifications"
-            element={
-              <FeaturePlaceholderPage
-                title="Thông báo sinh viên"
-                description="Theo dõi thông báo duyệt đăng ký, nhắc lịch sự kiện và cập nhật vé QR điện tử của sinh viên."
-                backTo="/student/home"
-                backLabel="Về trang sinh viên"
-                highlights={["Trạng thái đăng ký", "Nhắc lịch sự kiện", "Thông báo vé QR"]}
-              />
-            }
-          />
+          <Route path="/student/notifications" element={<NotificationsPage scope="student" />} />
         </Route>
       </Route>
 
@@ -138,6 +141,7 @@ export default function AppRoutes() {
           <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
           <Route path="/organizer/events" element={<OrganizerEventsPage />} />
           <Route path="/organizer/events/create" element={<OrganizerCreateEventPage />} />
+          <Route path="/organizer/events/new" element={<Navigate to="/organizer/events/create" replace />} />
           <Route path="/organizer/events/:eventId/edit" element={<OrganizerEditEventPage />} />
           <Route path="/organizer/events/:eventId" element={<OrganizerEventDetailPage />} />
           <Route path="/organizer/events/:eventId/registration-qr" element={<OrganizerRegistrationQRPage />} />
@@ -159,18 +163,7 @@ export default function AppRoutes() {
           />
           <Route path="/organizer/events/:eventId/statistics" element={<OrganizerEventStatsPage />} />
           <Route path="/organizer/members" element={<AttendeesPage />} />
-          <Route
-            path="/organizer/notifications"
-            element={
-              <FeaturePlaceholderPage
-                title="Thông báo Ban tổ chức"
-                description="Thông báo liên quan tới sự kiện của CLB, trạng thái đăng ký và nhắc nhở check-in sẽ hiển thị tại đây."
-                backTo="/organizer/dashboard"
-                backLabel="Về tổng quan"
-                highlights={["Duyệt đăng ký", "Nhắc check-in", "Cảnh báo sự kiện"]}
-              />
-            }
-          />
+          <Route path="/organizer/notifications" element={<NotificationsPage scope="organizer" />} />
           <Route
             path="/organizer/account/settings"
             element={
@@ -196,11 +189,14 @@ export default function AppRoutes() {
             }
           />
           <Route path="/organizer/reservations" element={<OrganizerReservationsPage />} />
+          <Route path="/organizer/registrations" element={<OrganizerReservationsPage />} />
           <Route path="/organizer/tickets" element={<OrganizerTicketsPage />} />
           <Route path="/organizer/scan" element={<OrganizerScanPage />} />
           <Route path="/organizer/check-in" element={<OrganizerScanPage />} />
           <Route path="/organizer/attendees" element={<AttendeesPage />} />
           <Route path="/organizer/reports" element={<ClubReportPage />} />
+          <Route path="/organizer/statistics" element={<ClubReportPage />} />
+          <Route path="/organizer/profile" element={<RoleProfilePage scope="organizer" />} />
         </Route>
       </Route>
 
@@ -263,18 +259,7 @@ export default function AppRoutes() {
           <Route path="/admin/statistics" element={<SuperAdminStatsPage />} />
           <Route path="/admin/audit-logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/roles" element={<SuperAdminRBACPage />} />
-          <Route
-            path="/admin/notifications"
-            element={
-              <FeaturePlaceholderPage
-                title="Thông báo quản trị"
-                description="Thông báo hệ thống và cảnh báo quản trị dành cho quản trị viên nhà trường."
-                backTo="/admin/dashboard"
-                backLabel="Về tổng quan"
-                highlights={["Cảnh báo hệ thống", "Duyệt CLB", "Nhật ký hoạt động"]}
-              />
-            }
-          />
+          <Route path="/admin/notifications" element={<NotificationsPage scope="admin" />} />
           <Route
             path="/admin/account/settings"
             element={
@@ -293,6 +278,7 @@ export default function AppRoutes() {
           <Route path="/admin/rbac" element={<SuperAdminRBACPage />} />
           <Route path="/admin/logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/settings" element={<SuperAdminSettingsPage />} />
+          <Route path="/admin/profile" element={<RoleProfilePage scope="admin" />} />
         </Route>
       </Route>
 

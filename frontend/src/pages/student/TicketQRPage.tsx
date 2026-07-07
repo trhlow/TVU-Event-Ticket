@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calendar, ChevronLeft, Mail, MapPin, UserRound } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
+import Toast from "../../components/common/Toast";
 import { getCurrentUser } from "../../data/mockAuth";
 import { mockEvents } from "../../data/mockEvents";
 import { mockTickets } from "../../data/mockTickets";
@@ -11,6 +12,7 @@ import { formatDateTime } from "../../utils/formatDate";
 export default function TicketQRPage() {
   const { ticketId } = useParams<{ ticketId: string }>();
   const currentUser = getCurrentUser();
+  const [toastMsg, setToastMsg] = useState("");
   const ticket = mockTickets.find((item) => item.id === ticketId);
   const event = ticket ? mockEvents.find((item) => item.id === ticket.eventId) : null;
 
@@ -52,7 +54,7 @@ export default function TicketQRPage() {
         <QRDisplayCard
           ticket={ticket}
           event={event}
-          onDownload={() => window.alert("Đang chuẩn bị tải vé QR.")}
+          onDownload={() => setToastMsg("Đang chuẩn bị tải vé QR.")}
           onPrint={() => window.print()}
         />
 
@@ -90,6 +92,7 @@ export default function TicketQRPage() {
           </div>
         </section>
       </div>
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

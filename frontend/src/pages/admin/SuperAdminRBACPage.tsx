@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Check, Eye, KeyRound, Save, ShieldAlert, X } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
+import Toast from "../../components/common/Toast";
 
 interface PermissionRow {
   key: string;
@@ -24,6 +25,7 @@ const initialPermissions: PermissionRow[] = [
 export default function SuperAdminRBACPage() {
   const [permissions, setPermissions] = useState(initialPermissions);
   const [selectedPermission, setSelectedPermission] = useState<PermissionRow | null>(null);
+  const [toastMsg, setToastMsg] = useState("");
 
   const togglePermission = (index: number, role: "student" | "organizer" | "admin") => {
     setPermissions((current) => current.map((permission, idx) => (idx === index ? { ...permission, [role]: !permission[role] } : permission)));
@@ -44,7 +46,7 @@ export default function SuperAdminRBACPage() {
           </p>
         </div>
         <button
-          onClick={() => window.alert("Đã ghi nhận cấu hình phân quyền. Khi backend sẵn sàng, thao tác này sẽ gọi API RBAC.")}
+          onClick={() => setToastMsg("Đã ghi nhận cấu hình phân quyền. Khi backend sẵn sàng, thao tác này sẽ gọi API RBAC.")}
           className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700"
         >
           <Save className="h-4 w-4" />
@@ -144,6 +146,7 @@ export default function SuperAdminRBACPage() {
           </div>
         </div>
       )}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

@@ -1,37 +1,36 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Be Vietnam Pro", sans-serif;
-  --color-brand-50: #eef4ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-500: #2563eb;
-  --color-brand-600: #2170e4;
-  --color-brand-700: #1e40af;
-  --color-brand-800: #00288e;
-  --color-brand-900: #001453;
-  --color-accent-400: #22d3ee;
-  --color-accent-500: #06b6d4;
-  --color-accent-600: #00a896;
+  --font-sans: "Geist", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Be Vietnam Pro", "Geist", sans-serif;
+  --color-brand-50: #edf5f4;
+  --color-brand-100: #d8ebe8;
+  --color-brand-200: #add6cf;
+  --color-brand-300: #7bb9af;
+  --color-brand-500: #1f7a70;
+  --color-brand-600: #17685f;
+  --color-brand-700: #12544e;
+  --color-brand-800: #0c3f3b;
+  --color-brand-900: #082f2c;
+  --color-accent-400: #e7b65a;
+  --color-accent-500: #d49b2f;
+  --color-accent-600: #b9821f;
 }
 
 @layer base {
   html {
     color: #111827;
-    background: #f8fafc;
+    background: #f7f5ef;
     text-rendering: geometricPrecision;
+    overflow-x: hidden;
   }
 
   body {
     margin: 0;
     min-width: 320px;
-    background:
-      radial-gradient(circle at 16% -10%, rgba(37, 99, 235, 0.13), transparent 34rem),
-      radial-gradient(circle at 82% 8%, rgba(6, 182, 212, 0.12), transparent 32rem),
-      linear-gradient(135deg, #f8fafc 0%, #f5f7ff 48%, #fbf8ff 100%);
+    overflow-x: hidden;
+    background: linear-gradient(180deg, #f7f5ef 0%, #eef3f0 48%, #f8fafc 100%);
     color: #111827;
   }
 
@@ -55,23 +54,25 @@
 @layer components {
   .app-shell-surface {
     background:
-      linear-gradient(180deg, rgba(248, 250, 252, 0.92) 0%, rgba(245, 247, 255, 0.9) 50%, rgba(251, 248, 255, 0.94) 100%),
-      radial-gradient(circle at 10% 5%, rgba(37, 99, 235, 0.1), transparent 26rem);
+      linear-gradient(180deg, rgba(247, 245, 239, 0.96) 0%, rgba(239, 244, 241, 0.94) 48%, rgba(248, 250, 252, 0.98) 100%),
+      linear-gradient(90deg, rgba(12, 63, 59, 0.04) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(12, 63, 59, 0.035) 1px, transparent 1px);
+    background-size: auto, 42px 42px, 42px 42px;
   }
 
   .enterprise-card {
     border: 1px solid rgba(216, 222, 233, 0.92);
     background: rgba(255, 255, 255, 0.9);
-    border-radius: 18px;
-    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
-    backdrop-filter: blur(14px);
+    border-radius: 16px;
+    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+    backdrop-filter: blur(12px);
     transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
   }
 
   .enterprise-panel {
     border: 1px solid rgba(229, 231, 235, 0.95);
-    background: linear-gradient(135deg, rgba(238, 244, 255, 0.92), rgba(255, 255, 255, 0.88));
-    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(237, 245, 244, 0.92), rgba(255, 255, 255, 0.9));
+    border-radius: 16px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
   }
 
@@ -91,9 +92,9 @@
   }
 
   .tvu-input:focus {
-    border-color: #2563eb;
+    border-color: #1f7a70;
     background: #ffffff;
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.13), 0 10px 24px rgba(37, 99, 235, 0.08);
+    box-shadow: 0 0 0 4px rgba(31, 122, 112, 0.13), 0 10px 24px rgba(15, 23, 42, 0.06);
   }
 
   .tvu-page-title {
@@ -161,9 +162,10 @@
 
   .subtle-gradient-bg {
     background:
-      radial-gradient(circle at 12% 0%, rgba(37, 99, 235, 0.11), transparent 28rem),
-      radial-gradient(circle at 88% 12%, rgba(6, 182, 212, 0.1), transparent 28rem),
-      linear-gradient(135deg, #f8fafc 0%, #f5f7ff 52%, #fbf8ff 100%);
+      linear-gradient(90deg, rgba(12, 63, 59, 0.04) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(12, 63, 59, 0.035) 1px, transparent 1px),
+      linear-gradient(135deg, #f7f5ef 0%, #edf5f4 52%, #f8fafc 100%);
+    background-size: 46px 46px, 46px 46px, auto;
   }
 
   .hover-lift:hover {
@@ -189,12 +191,13 @@
   }
 
   .page-hero {
-    border: 1px solid rgba(191, 219, 254, 0.9);
+    border: 1px solid rgba(173, 214, 207, 0.9);
     background:
-      linear-gradient(135deg, rgba(30, 64, 175, 0.96), rgba(37, 99, 235, 0.9) 48%, rgba(6, 182, 212, 0.82)),
-      radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.3), transparent 18rem);
-    border-radius: 22px;
-    box-shadow: 0 24px 54px rgba(30, 64, 175, 0.22);
+      linear-gradient(135deg, rgba(8, 47, 44, 0.98), rgba(18, 84, 78, 0.94) 58%, rgba(31, 122, 112, 0.88)),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: auto, 34px 34px;
+    border-radius: 20px;
+    box-shadow: 0 24px 54px rgba(8, 47, 44, 0.2);
   }
 }
 

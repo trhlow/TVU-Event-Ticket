@@ -41,6 +41,8 @@ export const ticketService = {
         const tickets = getTickets();
         const index = tickets.findIndex((ticket) => ticket.ticketCode === ticketCode && (!eventId || ticket.eventId === eventId));
         if (index === -1) throw new Error('Ticket not found');
+        if (tickets[index].status !== 'VALID') throw new Error('Ticket is not valid');
+        if (tickets[index].checkInStatus === 'CHECKED_IN') throw new Error('Ticket already checked in');
         const checkedInAt = new Date().toISOString();
         const updated: Ticket = { ...tickets[index], checkInStatus: 'CHECKED_IN', checkedInAt, checkInAt: checkedInAt };
         tickets[index] = updated;

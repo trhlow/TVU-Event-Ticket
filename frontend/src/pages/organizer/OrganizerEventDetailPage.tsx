@@ -14,6 +14,7 @@ import { getTickets, saveTickets } from "../../data/mockTickets";
 import { saveEvents } from "../../data/mockEvents";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import StatusBadge from "../../components/common/StatusBadge";
+import Toast from "../../components/common/Toast";
 import { formatDateTime } from "../../utils/formatDate";
 import EventBanner from "../../components/events/EventBanner";
 
@@ -24,6 +25,9 @@ export default function OrganizerEventDetailPage() {
   const [reservations, setReservations] = useState(() =>
     getReservations().filter((r) => r.eventId === eventId),
   );
+  const [toastMsg, setToastMsg] = useState("");
+  const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   const tickets = getTickets().filter((t) => t.eventId === eventId);
 
@@ -38,14 +42,9 @@ export default function OrganizerEventDetailPage() {
   const handleApprove = (resId: string) => {
     if (!event) return;
     if (event.remainingTickets <= 0) {
-      alert("Không thể duyệt! Số lượng vé phát hành của sự kiện đã hết.");
+      setToastMsg("Không thể duyệt vì sự kiện đã hết vé.");
       return;
     }
-
-    const confirmApprove = window.confirm(
-      "Xác nhận duyệt đăng ký? Hệ thống sẽ giữ chỗ 01 vé sự kiện và tự động phát hành mã vé QR điện tử gửi tới sinh viên.",
-    );
-    if (!confirmApprove) return;
 
     // Update reservation
     const allReservations = getReservations();
@@ -56,19 +55,23 @@ export default function OrganizerEventDetailPage() {
     saveReservations(allReservations);
     setReservations(allReservations.filter((r) => r.eventId === eventId));
 
-    // Create ticket
     const allTickets = getTickets();
-    const newTicket = {
-      id: `tkt_new_${Date.now()}`,
-      eventId: event.id,
-      studentId: allReservations[resIndex].studentId,
-      ticketCode: `TVU-${event.id.replace("event_", "").toUpperCase()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
-      status: "VALID" as const,
-      checkInStatus: "PENDING" as const,
-      issuedAt: new Date().toISOString(),
-    };
-    allTickets.unshift(newTicket);
-    saveTickets(allTickets);
+    const existingTicket = allTickets.find((ticket) => ticket.reservationId === resId);
+    if (!existingTicket) {
+      const newTicket = {
+        id: `tkt_new_${Date.now()}`,
+        reservationId: resId,
+        eventId: event.id,
+        studentId: allReservations[resIndex].studentId,
+        ticketCode: `TVU-${event.id.replace("event_", "").toUpperCase()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        qrCodeValue: `TVU-${resId}`,
+        status: "VALID" as const,
+        checkInStatus: "PENDING" as const,
+        issuedAt: new Date().toISOString(),
+      };
+      allTickets.unshift(newTicket);
+      saveTickets(allTickets);
+    }
 
     // Decrement remaining tickets
     const allEvents = getEvents();
@@ -84,27 +87,28 @@ export default function OrganizerEventDetailPage() {
     }
     saveEvents(allEvents);
 
-    alert("Đã phê duyệt đăng ký thành công và cấp vé QR!");
+    setToastMsg("Đã phê duyệt đăng ký và cấp vé QR.");
   };
 
-  const handleReject = (resId: string) => {
-    const reason = window.prompt("Nhập lý do từ chối đăng ký tham gia sự kiện này:");
-    if (reason === null) return;
-    if (!reason.trim()) {
-      alert("Phải nhập lý do từ chối!");
+  const handleReject = () => {
+    if (!rejectTargetId) return;
+    if (!rejectReason.trim()) {
+      setToastMsg("Vui lòng nhập lý do từ chối.");
       return;
     }
 
     const allReservations = getReservations();
-    const resIndex = allReservations.findIndex((r) => r.id === resId);
+    const resIndex = allReservations.findIndex((r) => r.id === rejectTargetId);
     if (resIndex === -1) return;
 
     allReservations[resIndex].status = "REJECTED";
-    allReservations[resIndex].rejectReason = reason;
+    allReservations[resIndex].rejectReason = rejectReason.trim();
     saveReservations(allReservations);
     setReservations(allReservations.filter((r) => r.eventId === eventId));
+    setRejectTargetId(null);
+    setRejectReason("");
 
-    alert("Đã từ chối đăng ký.");
+    setToastMsg("Đã từ chối đăng ký và lưu lý do xử lý.");
   };
 
   if (!event) {
@@ -323,7 +327,10 @@ export default function OrganizerEventDetailPage() {
                                 Duyệt
                               </button>
                               <button
-                                onClick={() => handleReject(res.id)}
+                                onClick={() => {
+                                  setRejectReason("");
+                                  setRejectTargetId(res.id);
+                                }}
                                 className="px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-[10px] font-bold tracking-tight cursor-pointer"
                               >
                                 Từ chối
@@ -355,6 +362,24 @@ export default function OrganizerEventDetailPage() {
           </div>
         </div>
       </div>
+
+      {rejectTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setRejectTargetId(null)} aria-label="Đóng" />
+          <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h2 className="font-display text-lg font-extrabold text-slate-950">Từ chối đăng ký</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+              Nhập lý do để sinh viên có thể theo dõi và bổ sung thông tin ở lần đăng ký sau.
+            </p>
+            <textarea className="tvu-input mt-4 min-h-28 resize-none" value={rejectReason} onChange={(input) => setRejectReason(input.target.value)} placeholder="Nhập lý do từ chối" />
+            <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <button className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setRejectTargetId(null)}>Hủy bỏ</button>
+              <button className="min-h-10 rounded-xl bg-rose-600 px-4 text-sm font-extrabold text-white" onClick={handleReject}>Từ chối</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

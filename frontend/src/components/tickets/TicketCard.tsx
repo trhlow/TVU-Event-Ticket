@@ -14,6 +14,7 @@ interface TicketCardProps {
 
 export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps) {
   const isCheckedIn = ticket.checkInStatus === "CHECKED_IN";
+  const canShowQR = ticket.status === "VALID" && !isCheckedIn;
 
   return (
     <div className="enterprise-card hover-lift relative flex overflow-hidden text-left md:flex-row">
@@ -60,7 +61,7 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
             <span className="flex items-center gap-1 text-sm font-extrabold text-emerald-600">
               <ClipboardCheck className="h-4 w-4" /> Đã điểm danh
             </span>
-          ) : (
+          ) : canShowQR ? (
             <button
               onClick={() => onViewQR(ticket.id)}
               className="btn-press flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
@@ -68,6 +69,10 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
               <QrCode className="h-4 w-4" />
               Hiển thị QR vé
             </button>
+          ) : (
+            <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold text-slate-500">
+              Không còn hiệu lực
+            </span>
           )}
         </div>
       </div>

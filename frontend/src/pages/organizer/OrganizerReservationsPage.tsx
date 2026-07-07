@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { CheckCircle, Clock, Eye, ShieldCheck, Ticket, Users, X, XCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, Eye, ShieldCheck, Ticket, Users, X, XCircle } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import DataTable from "../../components/common/DataTable";
 import StatisticCard from "../../components/common/StatisticCard";
@@ -18,11 +18,16 @@ export default function OrganizerReservationsPage() {
   const clubEventIds = useMemo(() => events.map((event) => event.id), [events]);
   const [reservations, setReservations] = useState(() => getReservations().filter((reservation) => clubEventIds.includes(reservation.eventId)));
   const [selectedEventId, setSelectedEventId] = useState("ALL");
+  const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [pendingAction, setPendingAction] = useState<{ id: string; type: "APPROVE" | "REJECT" } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
-  const filteredReservations = selectedEventId === "ALL" ? reservations : reservations.filter((reservation) => reservation.eventId === selectedEventId);
+  const filteredReservations = reservations.filter((reservation) => {
+    const matchesEvent = selectedEventId === "ALL" || reservation.eventId === selectedEventId;
+    const matchesStatus = selectedStatus === "ALL" || reservation.status === selectedStatus;
+    return matchesEvent && matchesStatus;
+  });
   const remainingTickets =
     selectedEventId === "ALL"
       ? events.reduce((total, event) => total + event.remainingTickets, 0)
@@ -56,18 +61,24 @@ export default function OrganizerReservationsPage() {
       allEvents[eventIndex].remainingTickets = Math.max(allEvents[eventIndex].remainingTickets - 1, 0);
       if (allEvents[eventIndex].remainingTickets === 0) allEvents[eventIndex].status = "FULL";
 
-      saveTickets([
-        {
-          id: `tkt_${Date.now()}`,
-          eventId: allReservations[reservationIndex].eventId,
-          studentId: allReservations[reservationIndex].studentId,
-          ticketCode: `TVU-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
-          status: "VALID",
-          checkInStatus: "PENDING",
-          issuedAt: new Date().toISOString(),
-        },
-        ...getTickets(),
-      ]);
+      const existingTickets = getTickets();
+      const existingTicket = existingTickets.find((ticket) => ticket.reservationId === allReservations[reservationIndex].id);
+      if (!existingTicket) {
+        saveTickets([
+          {
+            id: `tkt_${Date.now()}`,
+            reservationId: allReservations[reservationIndex].id,
+            eventId: allReservations[reservationIndex].eventId,
+            studentId: allReservations[reservationIndex].studentId,
+            ticketCode: `TVU-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+            qrCodeValue: `TVU-${allReservations[reservationIndex].id}`,
+            status: "VALID",
+            checkInStatus: "PENDING",
+            issuedAt: new Date().toISOString(),
+          },
+          ...existingTickets,
+        ]);
+      }
       saveEvents(allEvents);
       setToastMsg("Đã duyệt đăng ký và phát hành vé QR điện tử cho sinh viên.");
     } else {
@@ -142,15 +153,31 @@ export default function OrganizerReservationsPage() {
           <h1 className="tvu-page-title text-2xl">Duyệt đăng ký sự kiện</h1>
           <p className="mt-2 text-sm font-semibold text-slate-500">Kiểm tra hồ sơ, duyệt hoặc từ chối đăng ký tham gia của sinh viên.</p>
         </div>
-        <div className="w-full sm:w-72">
-          <label className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</label>
-          <select value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)} className="tvu-input">
-            <option value="ALL">Tất cả sự kiện</option>
-            {events.map((event) => (
-              <option key={event.id} value={event.id}>{event.title}</option>
-            ))}
-          </select>
+        <div className="grid w-full gap-3 sm:w-auto sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
+            <select value={selectedEventId} onChange={(event) => setSelectedEventId(event.target.value)} className="tvu-input">
+              <option value="ALL">Tất cả sự kiện</option>
+              {events.map((event) => (
+                <option key={event.id} value={event.id}>{event.title}</option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Trạng thái</span>
+            <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)} className="tvu-input">
+              <option value="ALL">Tất cả trạng thái</option>
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="APPROVED">Đã duyệt</option>
+              <option value="REJECTED">Từ chối</option>
+            </select>
+          </label>
         </div>
+      </div>
+
+      <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+        <p>Vé QR chỉ được phát hành sau khi đăng ký được duyệt. Đăng ký ở trạng thái chờ duyệt không làm giảm số vé còn lại.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-5">

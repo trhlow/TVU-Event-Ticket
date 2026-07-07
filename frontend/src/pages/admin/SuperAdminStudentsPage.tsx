@@ -4,18 +4,21 @@ import { mockUsers } from '../../data/mockUsers';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
+import Toast from '../../components/common/Toast';
+import { User } from '../../types/user';
 
 export default function SuperAdminStudentsPage() {
   const [students, setStudents] = useState(() => 
     mockUsers.filter(u => u.role === 'SINH_VIEN')
   );
   const [search, setSearch] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
 
   const handleToggleStatus = (studentId: string) => {
     const updated = students.map(s => {
       if (s.id === studentId) {
         const newStatus = s.status === 'ACTIVE' ? 'LOCKED' as const : 'ACTIVE' as const;
-        alert(`Đã chuyển trạng thái tài khoản sinh viên ${s.fullName} sang ${newStatus === 'ACTIVE' ? 'Kích hoạt' : 'Khóa'}`);
+        setToastMsg(`Đã chuyển trạng thái tài khoản sinh viên ${s.fullName} sang ${newStatus === 'ACTIVE' ? 'kích hoạt' : 'khóa'}.`);
         return { ...s, status: newStatus };
       }
       return s;
@@ -35,7 +38,7 @@ export default function SuperAdminStudentsPage() {
   const columns = [
     {
       header: 'Họ và tên / Email',
-      accessor: (s: any) => (
+      accessor: (s: User) => (
         <div className="text-left font-semibold">
           <span className="font-bold text-gray-950 block">{s.fullName}</span>
           <span className="text-[10px] text-gray-400 block mt-0.5">{s.email}</span>
@@ -44,19 +47,19 @@ export default function SuperAdminStudentsPage() {
     },
     {
       header: 'MSSV',
-      accessor: (s: any) => (
+      accessor: (s: User) => (
         <span className="text-xs font-bold font-mono text-gray-800">{s.mssv || 'Chưa cập nhật'}</span>
       )
     },
     {
       header: 'Lớp học',
-      accessor: (s: any) => (
+      accessor: (s: User) => (
         <span className="text-xs font-bold text-gray-700">{s.className || 'Chưa cập nhật'}</span>
       )
     },
     {
       header: 'Hồ Sơ',
-      accessor: (s: any) => (
+      accessor: (s: User) => (
         <div className="flex items-center gap-1.5">
           {s.profileComplete ? (
             <span className="text-[10px] bg-emerald-50 text-emerald-700 font-extrabold px-2 py-0.5 rounded flex items-center gap-1 w-fit">
@@ -72,11 +75,11 @@ export default function SuperAdminStudentsPage() {
     },
     {
       header: 'Trạng Thái',
-      accessor: (s: any) => <StatusBadge type="user" status={s.status} />
+      accessor: (s: User) => <StatusBadge type="user" status={s.status} />
     },
     {
       header: 'Thao tác',
-      accessor: (s: any) => (
+      accessor: (s: User) => (
         <div className="flex gap-1 justify-end">
           <button
             onClick={() => handleToggleStatus(s.id)}
@@ -127,6 +130,7 @@ export default function SuperAdminStudentsPage() {
           searchField="fullName"
         />
       </div>
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
     </div>
   );
 }

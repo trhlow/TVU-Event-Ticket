@@ -21,7 +21,7 @@ export default function PublicLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col bg-transparent font-sans">
+    <main className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-transparent font-sans">
       <nav className="sticky top-0 z-50 border-b border-white/70 bg-white/82 px-4 shadow-sm shadow-slate-900/5 backdrop-blur-xl sm:px-6 lg:px-8">
         <div className="relative mx-auto grid h-18 max-w-[1180px] grid-cols-[1fr_auto_1fr] items-center">
           <Link to="/" className="justify-self-start font-display text-2xl font-extrabold tracking-tight text-brand-800">
@@ -82,13 +82,13 @@ export default function PublicLayout() {
         )}
       </nav>
 
-      <main className="flex w-full flex-1 flex-col">
+      <section className="flex w-full flex-1 flex-col">
         <Outlet />
-      </main>
+      </section>
 
       <footer className="border-t border-white/70 bg-white/70 px-6 py-6 text-center text-xs font-semibold text-slate-500">
         © 2026 Trường Đại học Trà Vinh. Tất cả quyền được bảo lưu.
       </footer>
-    </div>
+    </main>
   );
 }
