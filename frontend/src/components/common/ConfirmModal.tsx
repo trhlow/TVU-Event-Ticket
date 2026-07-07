@@ -42,21 +42,21 @@ export default function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={onCancel} aria-label="Đóng" />
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-left shadow-2xl">
+      <button className="absolute inset-0 animate-fade-in bg-slate-950/45 backdrop-blur-sm" onClick={onCancel} aria-label="Đóng" />
+      <div className="relative z-10 w-full max-w-md animate-fade-in rounded-3xl border border-white/80 bg-white p-6 text-left shadow-2xl shadow-slate-950/20">
         <button
           onClick={onCancel}
-          className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100"
+          className="btn-press absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-xl text-slate-400 hover:bg-slate-100"
           aria-label="Đóng hộp thoại"
         >
           <X className="h-4 w-4" />
         </button>
         <div className="flex gap-4">
-          <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${iconClass}`}>
+          <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border ${iconClass}`}>
             <Icon className="h-5 w-5" />
           </div>
           <div className="pr-8">
-            <h3 className="font-display text-base font-extrabold text-slate-950">{title}</h3>
+            <h3 className="font-display text-lg font-extrabold text-slate-950">{title}</h3>
             <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{description || message}</p>
           </div>
         </div>
@@ -64,14 +64,14 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 hover:bg-slate-50"
+            className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 hover:bg-slate-50"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`min-h-10 rounded-xl px-4 text-sm font-bold text-white shadow-sm ${buttonClass}`}
+            className={`btn-press min-h-10 rounded-xl px-4 text-sm font-bold text-white shadow-sm ${buttonClass}`}
           >
             {confirmText}
           </button>

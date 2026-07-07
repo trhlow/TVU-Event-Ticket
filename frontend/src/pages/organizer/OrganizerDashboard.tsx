@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, Ticket } from "lucide-react";
+import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, Sparkles, Ticket } from "lucide-react";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
@@ -37,18 +37,25 @@ export default function OrganizerDashboard() {
   ];
 
   return (
-    <div className="space-y-6 text-left">
-      <section className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-        <div>
-          <h1 className="font-display text-5xl font-extrabold text-[#1A1B22]">Tổng quan</h1>
-          <p className="mt-3 text-base font-medium text-[#444653]">Theo dõi hoạt động và tiến độ sự kiện của CLB.</p>
+    <div className="space-y-7 text-left">
+      <section className="page-hero relative overflow-hidden p-6 text-white md:p-8">
+        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
+              <Sparkles className="h-4 w-4" /> Organizer workspace
+            </p>
+            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Tổng quan CLB</h1>
+            <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-white/82">
+              Theo dõi sự kiện, duyệt đăng ký, phát hành vé QR và tiến độ check-in của {currentUser.clubName || "CLB"}.
+            </p>
+          </div>
+          <Link to="/organizer/events/create" className="btn-press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-extrabold text-brand-800 shadow-xl shadow-brand-950/10">
+            Tạo sự kiện <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-        <Link to="/organizer/events/create" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white">
-          Tạo sự kiện <ArrowRight className="h-4 w-4" />
-        </Link>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
         <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
         <StatisticCard label="Đăng ký chờ duyệt" value={pendingCount} icon={ClipboardList} color="warning" />
@@ -63,8 +70,8 @@ export default function OrganizerDashboard() {
             data={lineChartData}
             xAxisKey="name"
             dataKeys={[
-              { key: "Lượt đăng ký", name: "Lượt đăng ký", color: "#1677d2" },
-              { key: "Đã điểm danh", name: "Đã điểm danh", color: "#00a779" },
+              { key: "Lượt đăng ký", name: "Lượt đăng ký", color: "#2563eb" },
+              { key: "Đã điểm danh", name: "Đã điểm danh", color: "#00a896" },
             ]}
           />
         </div>
@@ -74,7 +81,7 @@ export default function OrganizerDashboard() {
       <section className="enterprise-card p-5">
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
-            <h2 className="font-display text-base font-extrabold text-slate-950">Sự kiện gần đây</h2>
+            <h2 className="section-heading">Sự kiện gần đây</h2>
             <p className="mt-1 text-sm font-semibold text-slate-500">Danh sách sự kiện mới nhất của CLB</p>
           </div>
           <Link to="/organizer/events" className="inline-flex items-center gap-1 text-sm font-extrabold text-brand-700">
@@ -93,7 +100,7 @@ export default function OrganizerDashboard() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {events.slice(0, 5).map((event) => (
-                <tr key={event.id}>
+                <tr key={event.id} className="transition hover:bg-brand-50/40">
                   <td className="py-4 font-extrabold text-slate-950">{event.title}</td>
                   <td className="py-4 font-semibold text-slate-500">{formatDateTime(event.startAt)}</td>
                   <td className="py-4 font-semibold text-slate-700">{event.remainingTickets}/{event.capacity}</td>

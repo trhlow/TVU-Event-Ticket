@@ -4,7 +4,7 @@ import Breadcrumb from '../../components/common/Breadcrumb';
 import EventForm from '../../components/events/EventForm';
 import Toast from '../../components/common/Toast';
 import { getCurrentUser } from '../../data/mockAuth';
-import { getEvents, saveEvents } from '../../data/mockEvents';
+import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
 export default function OrganizerCreateEventPage() {
@@ -12,8 +12,7 @@ export default function OrganizerCreateEventPage() {
   const currentUser = getCurrentUser();
   const [toastMsg, setToastMsg] = useState('');
 
-  const handleSubmit = (data: Partial<Event>) => {
-    const allEvents = getEvents();
+  const handleSubmit = async (data: Partial<Event>) => {
     const newEvent: Event = {
       id: `event_new_${Date.now()}`,
       clubId: currentUser.clubId || 'club_it',
@@ -34,7 +33,7 @@ export default function OrganizerCreateEventPage() {
       status: data.status || 'UPCOMING',
     };
 
-    saveEvents([newEvent, ...allEvents]);
+    await eventService.create(newEvent);
     setToastMsg(
       newEvent.status === 'OPEN'
         ? 'Đã công bố sự kiện. Bạn có thể tạo QR đăng ký cho sinh viên.'

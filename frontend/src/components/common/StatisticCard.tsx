@@ -14,10 +14,10 @@ interface StatisticCardProps {
 }
 
 const styles = {
-  primary: "bg-blue-50 text-brand-700 border-blue-100",
-  success: "bg-emerald-50 text-emerald-700 border-emerald-100",
-  warning: "bg-amber-50 text-amber-700 border-amber-100",
-  danger: "bg-rose-50 text-rose-700 border-rose-100",
+  primary: "bg-blue-50 text-brand-700 border-blue-100 shadow-blue-500/10",
+  success: "bg-emerald-50 text-emerald-700 border-emerald-100 shadow-emerald-500/10",
+  warning: "bg-amber-50 text-amber-700 border-amber-100 shadow-amber-500/10",
+  danger: "bg-rose-50 text-rose-700 border-rose-100 shadow-rose-500/10",
 };
 
 export default function StatisticCard({
@@ -29,13 +29,13 @@ export default function StatisticCard({
   color = "primary",
 }: StatisticCardProps) {
   return (
-    <div className="enterprise-card p-5">
+    <div className="enterprise-card hover-lift p-5">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500">{label}</p>
-          <p className="mt-2 font-display text-2xl font-extrabold text-slate-950">{value}</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-slate-500">{label}</p>
+          <p className="mt-2 font-display text-3xl font-extrabold tracking-tight text-slate-950">{value}</p>
         </div>
-        <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border ${styles[color]}`}>
+        <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl border shadow-lg ${styles[color]}`}>
           <Icon className="h-5 w-5" />
         </div>
       </div>

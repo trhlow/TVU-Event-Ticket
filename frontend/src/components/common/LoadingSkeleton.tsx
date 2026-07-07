@@ -11,7 +11,7 @@ export default function LoadingSkeleton({ type = 'card', count = 3 }: LoadingSke
     for (let i = 0; i < count; i++) {
       if (type === 'card') {
         items.push(
-          <div key={i} className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm animate-pulse space-y-4">
+          <div key={i} className="enterprise-card animate-pulse space-y-4 p-5">
             <div className="flex justify-between items-start">
               <div className="h-4 bg-gray-200 rounded w-1/3"></div>
               <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
@@ -35,8 +35,8 @@ export default function LoadingSkeleton({ type = 'card', count = 3 }: LoadingSke
         );
       } else {
         items.push(
-          <div key={i} className="flex gap-4 p-4 border border-gray-100 bg-white rounded-xl animate-pulse items-center">
-            <div className="w-12 h-12 bg-gray-200 rounded-xl"></div>
+          <div key={i} className="enterprise-card flex animate-pulse items-center gap-4 p-4">
+            <div className="w-12 h-12 bg-gray-200 rounded-2xl"></div>
             <div className="flex-1 space-y-2">
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               <div className="h-3 bg-gray-200 rounded w-1/4"></div>
@@ -49,12 +49,12 @@ export default function LoadingSkeleton({ type = 'card', count = 3 }: LoadingSke
   };
 
   if (type === 'banner') {
-    return <div className="w-full h-full bg-gray-100 animate-pulse" />;
+    return <div className="h-full w-full animate-pulse bg-gradient-to-r from-slate-100 via-brand-50 to-slate-100" />;
   }
 
   if (type === 'table') {
     return (
-      <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+      <div className="enterprise-card overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100">

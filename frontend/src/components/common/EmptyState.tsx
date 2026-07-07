@@ -17,16 +17,16 @@ export default function EmptyState({
   onAction,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center p-8 md:p-12 bg-white rounded-2xl border border-gray-200 shadow-sm text-center max-w-lg mx-auto">
-      <div className="w-14 h-14 bg-gray-50 border border-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-400">
-        <Icon className="w-6 h-6" />
+    <div className="enterprise-card mx-auto flex max-w-lg flex-col items-center justify-center p-8 text-center md:p-12">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl border border-brand-100 bg-brand-50 text-brand-700 shadow-sm">
+        <Icon className="h-7 w-7" />
       </div>
-      <h4 className="text-base font-bold text-gray-950 tracking-tight">{title}</h4>
-      <p className="text-xs text-gray-500 max-w-sm mt-1.5 leading-relaxed">{description}</p>
+      <h4 className="font-display text-lg font-extrabold tracking-tight text-gray-950">{title}</h4>
+      <p className="mt-2 max-w-sm text-sm font-medium leading-6 text-gray-500">{description}</p>
       {actionText && onAction && (
         <button
           onClick={onAction}
-          className="mt-5 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer"
+          className="btn-press mt-5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
         >
           {actionText}
         </button>

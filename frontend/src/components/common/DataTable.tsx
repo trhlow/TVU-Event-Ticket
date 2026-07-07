@@ -66,7 +66,7 @@ export default function DataTable<T>({
 
   return (
     <div className="enterprise-card overflow-hidden text-left" id={id}>
-      <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50/60 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 border-b border-slate-100 bg-gradient-to-r from-white to-brand-50/60 p-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -75,14 +75,20 @@ export default function DataTable<T>({
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             className="tvu-input pl-10"
+            aria-label={searchPlaceholder}
           />
         </div>
 
         {filterConfig && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-slate-400" />
             <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{filterConfig.label}</span>
-            <select value={filterValue} onChange={(event) => setFilterValue(event.target.value)} className="tvu-input w-auto py-2">
+            <select
+              value={filterValue}
+              onChange={(event) => setFilterValue(event.target.value)}
+              className="tvu-input w-auto py-2"
+              aria-label={filterConfig.label}
+            >
               <option value="ALL">Tất cả</option>
               {filterConfig.options.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -97,7 +103,7 @@ export default function DataTable<T>({
       <div className="hidden overflow-x-auto md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-100 bg-white">
+            <tr className="border-b border-slate-100 bg-slate-50/80">
               {columns.map((column) => (
                 <th
                   key={column.header}
@@ -111,7 +117,7 @@ export default function DataTable<T>({
           <tbody className="divide-y divide-slate-100">
             {paginatedData.length > 0 ? (
               paginatedData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="transition hover:bg-blue-50/30">
+                <tr key={rowIndex} className="transition duration-200 hover:bg-blue-50/45">
                   {columns.map((column) => (
                     <td key={column.header} className={`px-4 py-4 font-semibold text-slate-700 ${column.className || ""}`}>
                       {column.accessor(row)}
@@ -137,7 +143,7 @@ export default function DataTable<T>({
               {renderMobileCard ? (
                 renderMobileCard(row)
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                   {columns.map((column) => (
                     <div key={column.header} className="border-b border-slate-100 py-2 last:border-0">
                       <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{column.header}</p>
@@ -165,7 +171,7 @@ export default function DataTable<T>({
           <button
             onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
             disabled={currentPage === 1}
-            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 disabled:opacity-40"
+            className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40"
             aria-label="Trang trước"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -176,7 +182,7 @@ export default function DataTable<T>({
           <button
             onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
             disabled={currentPage === totalPages}
-            className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 disabled:opacity-40"
+            className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40"
             aria-label="Trang sau"
           >
             <ChevronRight className="h-4 w-4" />

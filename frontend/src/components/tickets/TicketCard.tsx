@@ -16,83 +16,56 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
   const isCheckedIn = ticket.checkInStatus === "CHECKED_IN";
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden hover:shadow-md hover:border-gray-300 transition-all duration-200 flex flex-col md:flex-row text-left">
-      {/* Decorative Stub Section */}
-      <div
-        className={`p-5 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-dashed border-gray-200 ${
-          isCheckedIn ? "bg-emerald-50/20" : "bg-brand-50/10"
-        } w-full md:w-44 flex-shrink-0`}
-      >
-        <div
-          className={`p-3 rounded-full mb-2 ${
-            isCheckedIn
-              ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-              : "bg-brand-50 text-brand-600 border border-brand-100"
-          }`}
-        >
-          <QrCode className="w-6 h-6" />
+    <div className="enterprise-card hover-lift relative flex overflow-hidden text-left md:flex-row">
+      <div className="absolute bottom-0 left-44 top-0 hidden w-px border-l border-dashed border-slate-200 md:block" />
+      <div className="flex w-full shrink-0 flex-col items-center justify-center border-b border-dashed border-slate-200 bg-gradient-to-br from-brand-50 to-white p-5 text-center md:w-44 md:border-b-0 md:border-r">
+        <div className={`mb-3 grid h-14 w-14 place-items-center rounded-3xl border shadow-sm ${isCheckedIn ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-brand-100 bg-white text-brand-700"}`}>
+          <QrCode className="h-7 w-7" />
         </div>
-        <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-widest block">
-          Mã vé của bạn
-        </span>
-        <span className="text-xs font-black text-gray-900 mt-1 block font-mono">
-          {ticket.ticketCode}
-        </span>
+        <span className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Mã vé</span>
+        <span className="mt-1 block break-all font-mono text-xs font-black text-slate-950">{ticket.ticketCode}</span>
         <div className="mt-3">
-          <StatusBadge
-            type="ticket"
-            status={ticket.status}
-            checkInStatus={ticket.checkInStatus}
-          />
+          <StatusBadge type="ticket" status={ticket.status} checkInStatus={ticket.checkInStatus} />
         </div>
       </div>
 
-      {/* Ticket Details Section */}
-      <div className="p-5 flex-1 flex flex-col justify-between">
-        <div className="space-y-2.5">
-          <div className="flex justify-between items-start gap-4">
-            <div>
-              <span className="text-[9px] text-brand-600 font-black uppercase tracking-wider block">
-                {event.clubName}
-              </span>
-              <h4 className="text-sm font-extrabold text-gray-950 tracking-tight mt-1 line-clamp-1 leading-snug">
-                {event.title}
-              </h4>
+      <div className="flex flex-1 flex-col justify-between p-5">
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-brand-700">{event.clubName}</span>
+              <h4 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-snug text-slate-950">{event.title}</h4>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] text-gray-500 font-semibold pt-1">
+          <div className="grid gap-2 text-sm font-semibold text-slate-500 md:grid-cols-2">
             <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+              <Calendar className="h-4 w-4 text-brand-600" />
               <span>{formatDateTime(event.startAt)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-gray-400" />
+              <MapPin className="h-4 w-4 text-brand-600" />
               <span className="truncate">{event.location}</span>
             </div>
           </div>
         </div>
 
-        <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
           <div className="text-left">
-            <span className="text-[9px] text-gray-400 font-bold uppercase leading-none block">
-              Cấp ngày
-            </span>
-            <span className="text-[10px] text-gray-600 font-bold block mt-1">
-              {formatDateTime(ticket.issuedAt)}
-            </span>
+            <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Cấp ngày</span>
+            <span className="mt-1 block text-xs font-bold text-slate-600">{formatDateTime(ticket.issuedAt)}</span>
           </div>
 
           {isCheckedIn ? (
-            <span className="text-[11px] text-emerald-600 font-extrabold flex items-center gap-1">
-              <ClipboardCheck className="w-4 h-4" /> Đã điểm danh
+            <span className="flex items-center gap-1 text-sm font-extrabold text-emerald-600">
+              <ClipboardCheck className="h-4 w-4" /> Đã điểm danh
             </span>
           ) : (
             <button
               onClick={() => onViewQR(ticket.id)}
-              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+              className="btn-press flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
             >
-              <QrCode className="w-3.5 h-3.5" />
+              <QrCode className="h-4 w-4" />
               Hiển thị QR vé
             </button>
           )}

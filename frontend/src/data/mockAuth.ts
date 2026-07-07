@@ -7,11 +7,11 @@ export const mockAuthAccounts: Record<string, User> = {
   SUPER_ADMIN: mockUsers.find(u => u.role === 'SUPER_ADMIN') || mockUsers[0],
 };
 
-let currentUser: User = mockAuthAccounts.SUPER_ADMIN;
-let authenticated = true;
+let currentUser: User | null = null;
+let authenticated = false;
 
 export function getCurrentUser(): User {
-  return currentUser;
+  return currentUser || mockAuthAccounts.SINH_VIEN;
 }
 
 export function isAuthenticated(): boolean {
@@ -25,5 +25,6 @@ export function setCurrentUser(user: User | null): void {
     return;
   }
 
+  currentUser = null;
   authenticated = false;
 }

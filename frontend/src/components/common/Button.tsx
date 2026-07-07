@@ -12,11 +12,11 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 border-brand-700',
-  secondary: 'bg-[#f4f2fc] text-brand-800 hover:bg-brand-50 border-[#c4c5d5]',
-  outline: 'bg-white text-[#1a1b22] hover:bg-[#f4f2fc] border-[#c4c5d5]',
-  danger: 'bg-rose-600 text-white hover:bg-rose-700 border-rose-600',
-  ghost: 'bg-transparent text-[#444653] hover:bg-[#f4f2fc] border-transparent',
+  primary: 'bg-gradient-to-r from-brand-800 to-brand-600 text-white hover:from-brand-700 hover:to-brand-500 border-brand-700 shadow-brand-700/18',
+  secondary: 'bg-brand-50 text-brand-800 hover:bg-brand-100 border-brand-100',
+  outline: 'bg-white text-slate-800 hover:bg-slate-50 border-slate-200',
+  danger: 'bg-rose-600 text-white hover:bg-rose-700 border-rose-600 shadow-rose-700/16',
+  ghost: 'bg-transparent text-slate-600 hover:bg-white/80 hover:text-brand-800 border-transparent',
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -39,7 +39,7 @@ export default function Button({
       {...props}
       disabled={disabled || loading}
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-lg border font-extrabold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50',
+        'btn-press inline-flex items-center justify-center gap-2 rounded-xl border font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50',
         variants[variant],
         sizes[size],
         className,

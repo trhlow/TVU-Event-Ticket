@@ -41,9 +41,9 @@ export default function QRScannerPanel({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm max-w-5xl mx-auto text-left space-y-6">
-      <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-        <div className="p-2 bg-brand-50 text-brand-600 rounded-xl">
+    <div className="enterprise-card mx-auto max-w-5xl space-y-6 p-6 text-left">
+      <div className="flex items-center gap-3 border-b border-gray-100 pb-4">
+        <div className="rounded-2xl bg-brand-50 p-3 text-brand-600 shadow-sm">
           <QrCode className="w-6 h-6 animate-pulse" />
         </div>
         <div>
@@ -59,7 +59,7 @@ export default function QRScannerPanel({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scanner panel */}
         <>
-          <div className="bg-gray-950 rounded-2xl p-4 flex flex-col items-center justify-center text-center relative border border-gray-800 h-60 overflow-hidden">
+          <div className="relative flex h-72 flex-col items-center justify-center overflow-hidden rounded-3xl border border-gray-800 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.22),transparent_16rem),#020617] p-4 text-center shadow-2xl shadow-slate-950/20">
             {cameraPermission === "idle" && (
               <div className="relative z-10 flex flex-col items-center gap-3 px-6">
                 <RefreshCw className="w-12 h-12 text-brand-300 animate-spin" />
@@ -82,10 +82,10 @@ export default function QRScannerPanel({
             {cameraPermission === "granted" && (
               <>
                 {/* Visual camera guides */}
-                <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-brand-500"></div>
-                <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-brand-500"></div>
-                <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-brand-500"></div>
-                <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-brand-500"></div>
+                <div className="absolute left-6 top-6 h-10 w-10 border-l-4 border-t-4 border-accent-400"></div>
+                <div className="absolute right-6 top-6 h-10 w-10 border-r-4 border-t-4 border-accent-400"></div>
+                <div className="absolute bottom-6 left-6 h-10 w-10 border-b-4 border-l-4 border-accent-400"></div>
+                <div className="absolute bottom-6 right-6 h-10 w-10 border-b-4 border-r-4 border-accent-400"></div>
 
                 <QrCode className="w-16 h-16 text-gray-700/80 mb-3" />
                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest block leading-none">
@@ -93,12 +93,12 @@ export default function QRScannerPanel({
                 </span>
 
                 {/* Scanning line animation */}
-                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 shadow-md shadow-brand-500/50 animate-scan-line top-1/2"></div>
+                <div className="animate-scan-line absolute left-6 right-6 top-1/2 h-0.5 bg-accent-400 shadow-md shadow-accent-400/50"></div>
               </>
             )}
           </div>
 
-          <div className="bg-brand-50/60 border border-brand-100 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="space-y-4 rounded-3xl border border-brand-100 bg-brand-50/70 p-5 shadow-sm">
             <div className="space-y-1">
               <label className="text-[11px] font-black text-brand-800 uppercase tracking-wider block">
                 Nhập mã vé thủ công
@@ -113,11 +113,11 @@ export default function QRScannerPanel({
                 placeholder="Ví dụ: TVU-IT1-93A8B"
                 value={ticketCode}
                 onChange={(e) => setTicketCode(e.target.value)}
-                className="min-h-12 flex-1 bg-white border border-brand-200 rounded-xl px-4 py-3 text-sm font-mono font-black text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                className="tvu-input min-h-12 flex-1 font-mono font-black"
               />
               <button
                 onClick={() => handleScanSubmit("")}
-                className="min-h-12 px-5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-extrabold shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+                className="btn-press flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700"
               >
                 <Search className="w-4 h-4" /> Check-in
               </button>
@@ -127,7 +127,7 @@ export default function QRScannerPanel({
 
         {/* Manual check-in helper panel */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 text-xs font-semibold text-amber-900 space-y-2">
+          <div className="space-y-2 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 text-xs font-semibold text-amber-900">
             <p className="font-extrabold flex items-center gap-1">
               <AlertCircle className="w-4 h-4 text-amber-600" /> Công cụ hỗ trợ nhập
               mã:
@@ -142,13 +142,13 @@ export default function QRScannerPanel({
             <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
               Danh sách vé chờ điểm danh ({pendingTickets.length})
             </span>
-            <div className="border border-gray-100 rounded-xl overflow-hidden max-h-44 overflow-y-auto divide-y divide-gray-100 bg-gray-50/20">
+            <div className="max-h-44 overflow-y-auto rounded-2xl border border-gray-100 bg-white/80 shadow-sm">
               {pendingTickets.length > 0 ? (
                 pendingTickets.map((t) => (
                   <button
                     key={t.id}
                     onClick={() => handleScanSubmit(t.ticketCode)}
-                    className="w-full text-left p-2.5 text-[11px] font-semibold hover:bg-brand-50/50 hover:text-brand-900 flex items-center justify-between cursor-pointer transition-colors"
+                    className="flex w-full cursor-pointer items-center justify-between border-b border-slate-100 p-3 text-left text-[11px] font-semibold transition-colors last:border-0 hover:bg-brand-50/70 hover:text-brand-900"
                   >
                     <div>
                       <span className="font-bold text-gray-900 font-mono block">
@@ -176,7 +176,7 @@ export default function QRScannerPanel({
       {/* Result feedback message */}
       {scanResult && (
         <div
-          className={`p-4 rounded-xl border flex items-start gap-3 animate-fade-in ${
+          className={`animate-fade-in flex items-start gap-3 rounded-2xl border p-4 shadow-sm ${
             scanResult.success
               ? "bg-emerald-50 border-emerald-200 text-emerald-900"
               : "bg-rose-50 border-rose-200 text-rose-900"

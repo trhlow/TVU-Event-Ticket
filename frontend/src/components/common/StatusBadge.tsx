@@ -1,4 +1,5 @@
 import React from "react";
+import { CheckCircle2, Clock3, DoorOpen, XCircle } from "lucide-react";
 import {
   formatEventStatus,
   formatReservationStatus,
@@ -13,6 +14,15 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ type, status, checkInStatus }: StatusBadgeProps) {
+  const Icon = (() => {
+    if (type === "reservation" && status === "PENDING") return Clock3;
+    if (type === "reservation" && status === "REJECTED") return XCircle;
+    if (type === "ticket" && checkInStatus === "CHECKED_IN") return DoorOpen;
+    if (status === "OPEN" || status === "APPROVED" || status === "VALID" || status === "ACTIVE") return CheckCircle2;
+    if (status === "FULL" || status === "EXPIRED" || status === "REJECTED") return XCircle;
+    return Clock3;
+  })();
+
   const styles = (() => {
     if (type === "event") {
       if (status === "OPEN") return "bg-emerald-50 text-emerald-700 border-emerald-200";
@@ -49,7 +59,8 @@ export default function StatusBadge({ type, status, checkInStatus }: StatusBadge
           : formatUserStatus(status);
 
   return (
-    <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-extrabold ${styles}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-extrabold shadow-sm ${styles}`}>
+      <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       {label}
     </span>
   );
