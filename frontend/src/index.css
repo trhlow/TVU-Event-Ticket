@@ -1,1 +1,123 @@
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Be Vietnam Pro", sans-serif;
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #dde1ff;
+  --color-brand-200: #c6d2ff;
+  --color-brand-300: #a8b8ff;
+  --color-brand-500: #2170e4;
+  --color-brand-600: #1e40af;
+  --color-brand-700: #00288e;
+  --color-brand-800: #001a60;
+  --color-brand-900: #001453;
+  --color-accent-500: #006874;
+}
+
+@layer base {
+  html {
+    color: #1a1b22;
+    background: #fbf8ff;
+    text-rendering: geometricPrecision;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: #fbf8ff;
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    outline: 3px solid rgba(33, 112, 228, 0.28);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .app-shell-surface {
+    background: #fbf8ff;
+  }
+
+  .enterprise-card {
+    border: 1px solid #c4c5d5;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(26, 27, 34, 0.05);
+  }
+
+  .enterprise-panel {
+    border: 1px solid #e3e1eb;
+    background: #f4f2fc;
+    border-radius: 12px;
+  }
+
+  .tvu-input {
+    min-height: 44px;
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid #c4c5d5;
+    background: #ffffff;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #1a1b22;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .tvu-input:focus {
+    border-color: #2170e4;
+    box-shadow: 0 0 0 4px rgba(168, 184, 255, 0.35);
+  }
+
+  .tvu-page-title {
+    font-family: var(--font-display);
+    color: #1a1b22;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+}
+
+@keyframes scanLine {
+  0% {
+    top: 5%;
+  }
+  50% {
+    top: 95%;
+  }
+  100% {
+    top: 5%;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-scan-line {
+  animation: scanLine 3s infinite linear;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
