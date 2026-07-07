@@ -1,68 +1,72 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 // Layouts
-import PublicLayout from "../layouts/PublicLayout";
-import StudentLayout from "../layouts/StudentLayout";
-import OrganizerLayout from "../layouts/OrganizerLayout";
-import SuperAdminLayout from "../layouts/SuperAdminLayout";
+const PublicLayout = lazy(() => import("../layouts/PublicLayout"));
+const StudentLayout = lazy(() => import("../layouts/StudentLayout"));
+const OrganizerLayout = lazy(() => import("../layouts/OrganizerLayout"));
+const SuperAdminLayout = lazy(() => import("../layouts/SuperAdminLayout"));
 
 // Guard
 import ProtectedRoute from "./ProtectedRoute";
 
 // Public Pages
-import LandingPage from "../pages/public/LandingPage";
-import LoginPage from "../pages/public/LoginPage";
-import ForbiddenPage from "../pages/public/ForbiddenPage";
-import ServerErrorPage from "../pages/public/ServerErrorPage";
-import FeaturePlaceholderPage from "../pages/common/FeaturePlaceholderPage";
-import NotFound404Page from "../pages/common/NotFound404Page";
+const LandingPage = lazy(() => import("../pages/public/LandingPage"));
+const LoginPage = lazy(() => import("../pages/public/LoginPage"));
+const ForbiddenPage = lazy(() => import("../pages/public/ForbiddenPage"));
+const ServerErrorPage = lazy(() => import("../pages/public/ServerErrorPage"));
+const FeaturePlaceholderPage = lazy(() => import("../pages/common/FeaturePlaceholderPage"));
+const NotFound404Page = lazy(() => import("../pages/common/NotFound404Page"));
 
 // Student Pages
-import StudentHomePage from "../pages/student/StudentHomePage";
-import CompleteProfilePage from "../pages/student/CompleteProfilePage";
-import StudentEventListPage from "../pages/student/StudentEventListPage";
-import StudentEventDetailPage from "../pages/student/StudentEventDetailPage";
-import EventRegistrationConfirmPage from "../pages/student/EventRegistrationConfirmPage";
-import EventRegistrationResultPage from "../pages/student/EventRegistrationResultPage";
-import MyRegistrationsPage from "../pages/student/MyRegistrationsPage";
-import MyTicketsPage from "../pages/student/MyTicketsPage";
-import StudentProfilePage from "../pages/student/StudentProfilePage";
-import TicketQRPage from "../pages/student/TicketQRPage";
-import StudentHistoryPage from "../pages/student/StudentHistoryPage";
+const StudentHomePage = lazy(() => import("../pages/student/StudentHomePage"));
+const CompleteProfilePage = lazy(() => import("../pages/student/CompleteProfilePage"));
+const StudentEventListPage = lazy(() => import("../pages/student/StudentEventListPage"));
+const StudentEventDetailPage = lazy(() => import("../pages/student/StudentEventDetailPage"));
+const EventRegistrationConfirmPage = lazy(() => import("../pages/student/EventRegistrationConfirmPage"));
+const EventRegistrationResultPage = lazy(() => import("../pages/student/EventRegistrationResultPage"));
+const MyRegistrationsPage = lazy(() => import("../pages/student/MyRegistrationsPage"));
+const MyTicketsPage = lazy(() => import("../pages/student/MyTicketsPage"));
+const StudentProfilePage = lazy(() => import("../pages/student/StudentProfilePage"));
+const TicketQRPage = lazy(() => import("../pages/student/TicketQRPage"));
+const StudentHistoryPage = lazy(() => import("../pages/student/StudentHistoryPage"));
 
 // Organizer Pages
-import OrganizerDashboard from "../pages/organizer/OrganizerDashboard";
-import OrganizerEventsPage from "../pages/organizer/OrganizerEventsPage";
-import OrganizerReservationsPage from "../pages/organizer/OrganizerReservationsPage";
-import OrganizerScanPage from "../pages/organizer/OrganizerScanPage";
-import OrganizerEventDetailPage from "../pages/organizer/OrganizerEventDetailPage";
-import OrganizerTicketsPage from "../pages/organizer/OrganizerTicketsPage";
-import AttendeesPage from "../pages/organizer/AttendeesPage";
-import ClubReportPage from "../pages/organizer/ClubReportPage";
-import OrganizerCreateEventPage from "../pages/organizer/OrganizerCreateEventPage";
-import OrganizerRegistrationQRPage from "../pages/organizer/OrganizerRegistrationQRPage";
-import OrganizerEventStatsPage from "../pages/organizer/OrganizerEventStatsPage";
+const OrganizerDashboard = lazy(() => import("../pages/organizer/OrganizerDashboard"));
+const OrganizerEventsPage = lazy(() => import("../pages/organizer/OrganizerEventsPage"));
+const OrganizerReservationsPage = lazy(() => import("../pages/organizer/OrganizerReservationsPage"));
+const OrganizerScanPage = lazy(() => import("../pages/organizer/OrganizerScanPage"));
+const OrganizerEventDetailPage = lazy(() => import("../pages/organizer/OrganizerEventDetailPage"));
+const OrganizerTicketsPage = lazy(() => import("../pages/organizer/OrganizerTicketsPage"));
+const AttendeesPage = lazy(() => import("../pages/organizer/AttendeesPage"));
+const ClubReportPage = lazy(() => import("../pages/organizer/ClubReportPage"));
+const OrganizerCreateEventPage = lazy(() => import("../pages/organizer/OrganizerCreateEventPage"));
+const OrganizerRegistrationQRPage = lazy(() => import("../pages/organizer/OrganizerRegistrationQRPage"));
+const OrganizerEventStatsPage = lazy(() => import("../pages/organizer/OrganizerEventStatsPage"));
 
 // Admin Pages
-import SuperAdminDashboard from "../pages/admin/SuperAdminDashboard";
-import SuperAdminClubsPage from "../pages/admin/SuperAdminClubsPage";
-import SuperAdminUsersPage from "../pages/admin/SuperAdminUsersPage";
-import SuperAdminLogsPage from "../pages/admin/SuperAdminLogsPage";
-import SuperAdminOrganizersPage from "../pages/admin/SuperAdminOrganizersPage";
-import SuperAdminStudentsPage from "../pages/admin/SuperAdminStudentsPage";
-import SuperAdminRBACPage from "../pages/admin/SuperAdminRBACPage";
-import SuperAdminStatsPage from "../pages/admin/SuperAdminStatsPage";
-import SuperAdminSettingsPage from "../pages/admin/SuperAdminSettingsPage";
-import SuperAdminEventsPage from "../pages/admin/SuperAdminEventsPage";
-import SuperAdminClubDetailPage from "../pages/admin/SuperAdminClubDetailPage";
+const SuperAdminDashboard = lazy(() => import("../pages/admin/SuperAdminDashboard"));
+const SuperAdminClubsPage = lazy(() => import("../pages/admin/SuperAdminClubsPage"));
+const SuperAdminUsersPage = lazy(() => import("../pages/admin/SuperAdminUsersPage"));
+const SuperAdminLogsPage = lazy(() => import("../pages/admin/SuperAdminLogsPage"));
+const SuperAdminOrganizersPage = lazy(() => import("../pages/admin/SuperAdminOrganizersPage"));
+const SuperAdminStudentsPage = lazy(() => import("../pages/admin/SuperAdminStudentsPage"));
+const SuperAdminRBACPage = lazy(() => import("../pages/admin/SuperAdminRBACPage"));
+const SuperAdminStatsPage = lazy(() => import("../pages/admin/SuperAdminStatsPage"));
+const SuperAdminSettingsPage = lazy(() => import("../pages/admin/SuperAdminSettingsPage"));
+const SuperAdminEventsPage = lazy(() => import("../pages/admin/SuperAdminEventsPage"));
+const SuperAdminClubDetailPage = lazy(() => import("../pages/admin/SuperAdminClubDetailPage"));
+
+function routeElement(element: React.ReactNode) {
+  return <Suspense fallback={null}>{element}</Suspense>;
+}
 
 // Auth checker
 export default function AppRoutes() {
   return (
     <Routes>
       {/* Public Routes */}
-      <Route element={<PublicLayout />}>
+      <Route element={routeElement(<PublicLayout />)}>
         <Route
           path="/"
           element={<LandingPage />}
@@ -123,7 +127,7 @@ export default function AppRoutes() {
 
       {/* Student Protected Routes */}
       <Route element={<ProtectedRoute allowedRoles={["SINH_VIEN"]} />}>
-        <Route element={<StudentLayout />}>
+        <Route element={routeElement(<StudentLayout />)}>
           <Route
             path="/student"
             element={
@@ -186,7 +190,7 @@ export default function AppRoutes() {
 
       {/* Organizer Protected Routes */}
       <Route element={<ProtectedRoute allowedRoles={["ORGANIZER"]} />}>
-        <Route element={<OrganizerLayout />}>
+        <Route element={routeElement(<OrganizerLayout />)}>
           <Route
             path="/organizer"
             element={
@@ -317,7 +321,7 @@ export default function AppRoutes() {
 
       {/* Super Admin Protected Routes */}
       <Route element={<ProtectedRoute allowedRoles={["SUPER_ADMIN"]} />}>
-        <Route element={<SuperAdminLayout />}>
+        <Route element={routeElement(<SuperAdminLayout />)}>
           <Route
             path="/admin"
             element={
@@ -461,7 +465,7 @@ export default function AppRoutes() {
       {/* Catch-all redirect */}
       <Route
         path="*"
-        element={<NotFound404Page />}
+        element={routeElement(<NotFound404Page />)}
       />
     </Routes>
   );
