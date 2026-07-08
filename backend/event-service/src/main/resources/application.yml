@@ -20,7 +20,7 @@ spring:
       resourceserver:
         jwt:
           # Internal JWT issued by the auth flow after Microsoft Entra ID login (§6.8)
-          issuer-uri: ${JWT_ISSUER_URI:http://localhost:9000}
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8084}
 
 management:
   endpoints:
