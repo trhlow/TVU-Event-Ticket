@@ -20,9 +20,9 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const sizes: Record<ButtonSize, string> = {
-  sm: 'min-h-9 px-3 text-xs',
-  md: 'min-h-11 px-4 text-sm',
-  lg: 'min-h-12 px-5 text-sm',
+  sm: 'h-9 px-3 text-sm',
+  md: 'h-10 px-4 text-sm',
+  lg: 'h-11 px-5 text-sm',
 };
 
 export default function Button({
@@ -39,7 +39,7 @@ export default function Button({
       {...props}
       disabled={disabled || loading}
       className={clsx(
-        'btn-press inline-flex items-center justify-center gap-2 rounded-xl border font-bold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50',
+        'btn-press inline-flex items-center justify-center gap-2 rounded-xl border font-medium shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50',
         variants[variant],
         sizes[size],
         className,

@@ -82,7 +82,7 @@ export default function DataTable<T>({
         {filterConfig && (
           <div className="flex flex-wrap items-center gap-2">
             <Filter className="h-4 w-4 text-slate-400" />
-            <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">{filterConfig.label}</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{filterConfig.label}</span>
             <select
               value={filterValue}
               onChange={(event) => setFilterValue(event.target.value)}
@@ -107,7 +107,7 @@ export default function DataTable<T>({
               {columns.map((column) => (
                 <th
                   key={column.header}
-                  className={`px-4 py-3 text-left text-[11px] font-extrabold uppercase tracking-wider text-slate-500 ${column.className || ""}`}
+                  className={`px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 ${column.className || ""}`}
                 >
                   {column.header}
                 </th>
@@ -117,9 +117,9 @@ export default function DataTable<T>({
           <tbody className="divide-y divide-slate-100">
             {paginatedData.length > 0 ? (
               paginatedData.map((row, rowIndex) => (
-                <tr key={rowIndex} className="transition duration-200 hover:bg-blue-50/45">
+                <tr key={rowIndex} className="transition duration-200 hover:bg-slate-50">
                   {columns.map((column) => (
-                    <td key={column.header} className={`px-4 py-4 font-semibold text-slate-700 ${column.className || ""}`}>
+                    <td key={column.header} className={`px-4 py-3 text-sm font-normal text-slate-700 ${column.className || ""}`}>
                       {column.accessor(row)}
                     </td>
                   ))}
@@ -127,7 +127,7 @@ export default function DataTable<T>({
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-10 text-center text-sm font-bold text-slate-400">
+                <td colSpan={columns.length} className="px-4 py-8 text-center text-sm font-medium text-slate-400">
                   Không tìm thấy kết quả phù hợp
                 </td>
               </tr>
@@ -146,8 +146,8 @@ export default function DataTable<T>({
                 <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                   {columns.map((column) => (
                     <div key={column.header} className="border-b border-slate-100 py-2 last:border-0">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">{column.header}</p>
-                      <div className="mt-1 text-sm font-semibold text-slate-700">{column.accessor(row)}</div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">{column.header}</p>
+                      <div className="mt-1 text-sm font-normal text-slate-700">{column.accessor(row)}</div>
                     </div>
                   ))}
                 </div>
@@ -155,13 +155,13 @@ export default function DataTable<T>({
             </React.Fragment>
           ))
         ) : (
-          <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm font-bold text-slate-400">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 text-center text-sm font-medium text-slate-400">
             Không tìm thấy kết quả phù hợp
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-slate-100 bg-white p-4 text-xs font-bold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t border-slate-100 bg-white p-4 text-xs font-medium text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span>
           Hiển thị {filteredData.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} đến{" "}
           {Math.min(currentPage * pageSize, filteredData.length)} trong tổng số{" "}

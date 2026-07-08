@@ -108,18 +108,18 @@ export default function NotificationsPage({ scope }: NotificationsPageProps) {
 
   return (
     <div className="space-y-6 text-left">
-      <section className="page-hero p-6 text-white md:p-8">
+      <section className="page-hero p-5 text-white md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
+            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/80">
               <Bell className="h-4 w-4" /> Trung tâm thông báo
             </p>
-            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">{page.title}</h1>
+            <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-3xl">{page.title}</h1>
             <p className="mt-3 max-w-3xl text-base font-medium leading-7 text-white/82">{page.description}</p>
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/12 px-5 py-4 backdrop-blur">
             <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">Người nhận</p>
-            <p className="mt-1 max-w-56 truncate text-lg font-black text-white">{user.fullName}</p>
+            <p className="mt-1 max-w-56 truncate text-base font-semibold text-white">{user.fullName}</p>
           </div>
         </div>
       </section>
@@ -136,11 +136,11 @@ export default function NotificationsPage({ scope }: NotificationsPageProps) {
                 const Icon = item.icon;
                 return (
                   <article key={item.title} className="grid gap-4 p-5 transition hover:bg-brand-50/40 sm:grid-cols-[48px_1fr_auto] sm:items-start">
-                    <div className={`grid h-12 w-12 place-items-center rounded-2xl border ${toneClass[item.tone as keyof typeof toneClass]}`}>
+                    <div className={`grid h-10 w-10 place-items-center rounded-xl border ${toneClass[item.tone as keyof typeof toneClass]}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-display text-base font-extrabold text-slate-950">{item.title}</h3>
+                      <h3 className="font-display text-base font-semibold text-slate-950">{item.title}</h3>
                       <p className="mt-1 text-sm font-medium leading-6 text-slate-600">{item.description}</p>
                     </div>
                     <p className="text-xs font-bold text-slate-400 sm:text-right">{item.time}</p>
@@ -160,7 +160,7 @@ export default function NotificationsPage({ scope }: NotificationsPageProps) {
           </p>
           <Button className="mt-5 w-full">{page.primaryAction}</Button>
           <div className="mt-5 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-            <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Nguyên tắc nghiệp vụ</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Nguyên tắc nghiệp vụ</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
               Vé QR chỉ được phát hành sau khi đăng ký được duyệt. Check-in hợp lệ chỉ ghi nhận một lần cho mỗi vé.
             </p>

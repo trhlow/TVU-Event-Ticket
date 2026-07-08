@@ -20,11 +20,11 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
     <div className="enterprise-card hover-lift relative flex overflow-hidden text-left md:flex-row">
       <div className="absolute bottom-0 left-44 top-0 hidden w-px border-l border-dashed border-slate-200 md:block" />
       <div className="flex w-full shrink-0 flex-col items-center justify-center border-b border-dashed border-slate-200 bg-gradient-to-br from-brand-50 to-white p-5 text-center md:w-44 md:border-b-0 md:border-r">
-        <div className={`mb-3 grid h-14 w-14 place-items-center rounded-3xl border shadow-sm ${isCheckedIn ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-brand-100 bg-white text-brand-700"}`}>
+        <div className={`mb-3 grid h-11 w-11 place-items-center rounded-2xl border shadow-sm ${isCheckedIn ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-brand-100 bg-white text-brand-700"}`}>
           <QrCode className="h-7 w-7" />
         </div>
-        <span className="block text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Mã vé</span>
-        <span className="mt-1 block break-all font-mono text-xs font-black text-slate-950">{ticket.ticketCode}</span>
+        <span className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400">Mã vé</span>
+        <span className="mt-1 block break-all font-mono text-xs font-semibold text-slate-950">{ticket.ticketCode}</span>
         <div className="mt-3">
           <StatusBadge type="ticket" status={ticket.status} checkInStatus={ticket.checkInStatus} />
         </div>
@@ -34,8 +34,8 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
         <div className="space-y-3">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-brand-700">{event.clubName}</span>
-              <h4 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-snug text-slate-950">{event.title}</h4>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-700">{event.clubName}</span>
+              <h4 className="mt-1 line-clamp-2 font-display text-base font-semibold leading-snug text-slate-950">{event.title}</h4>
             </div>
           </div>
 
@@ -58,19 +58,19 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
           </div>
 
           {isCheckedIn ? (
-            <span className="flex items-center gap-1 text-sm font-extrabold text-emerald-600">
+            <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
               <ClipboardCheck className="h-4 w-4" /> Đã điểm danh
             </span>
           ) : canShowQR ? (
             <button
               onClick={() => onViewQR(ticket.id)}
-              className="btn-press flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-brand-700"
+              className="btn-press flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
             >
               <QrCode className="h-4 w-4" />
               Hiển thị QR vé
             </button>
           ) : (
-            <span className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-extrabold text-slate-500">
+            <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
               Không còn hiệu lực
             </span>
           )}

@@ -22,13 +22,13 @@ import {
 } from "lucide-react";
 import { getCurrentUser } from "../../data/mockAuth";
 import { authService } from "../../services/authService";
-import { getRoleLabel } from "../../utils/roleHelpers";
 
 interface SidebarProps {
   onClose?: () => void;
+  collapsed?: boolean;
 }
 
-export default function Sidebar({ onClose }: SidebarProps) {
+export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
   const currentUser = getCurrentUser();
   const navigate = useNavigate();
 
@@ -77,56 +77,61 @@ export default function Sidebar({ onClose }: SidebarProps) {
         : "/admin/profile";
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[258px] flex-col border-r border-white/70 bg-[#eef2ff]/88 text-slate-600 shadow-[12px_0_35px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-      <div className="flex h-[96px] items-center gap-3 px-6">
-        <img
-          src="/src/assets/images/tvu_logo_1783065060265.jpg"
-          alt="TVU Logo"
-          className="h-11 w-11 rounded-2xl bg-white object-contain p-1.5 shadow-sm"
-        />
-        <div>
-          <p className="font-display text-2xl font-extrabold leading-none text-brand-800">TVU Event</p>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Ticketing Platform</p>
+    <aside className="flex h-screen w-full flex-col overflow-hidden border-r border-slate-200 bg-white text-slate-600 shadow-[8px_0_24px_rgba(15,23,42,0.05)] transition-all duration-300">
+      <div className={`flex h-16 shrink-0 items-center border-b border-slate-100 bg-white transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-5"}`}>
+        <div className={`flex min-w-0 items-center transition-all duration-200 ${collapsed ? "w-full justify-center gap-0" : "gap-2.5"}`}>
+          <img
+            src="/src/assets/images/tvu_logo_1783065060265.jpg"
+            alt="TVU Logo"
+            className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1.5 shadow-sm ring-1 ring-slate-100"
+          />
+          <div className={`min-w-0 transition-all duration-200 ${collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"}`}>
+            <p className="truncate font-display text-lg font-semibold leading-none text-brand-800">TVU Event</p>
+            <p className="mt-1 truncate text-xs font-medium text-slate-500">Ticketing Platform</p>
+          </div>
         </div>
       </div>
 
       {currentUser.role === "ORGANIZER" && (
-        <div className="px-[18px] pb-6">
+        <div className={`px-4 py-3 transition-all duration-300 ${collapsed ? "flex justify-center px-0" : ""}`}>
           <NavLink
             to="/organizer/events/create"
             onClick={onClose}
-            className="btn-press flex min-h-[52px] items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 text-base font-extrabold text-white shadow-lg shadow-brand-700/20 transition hover:shadow-xl hover:shadow-brand-700/25"
+            title="Tạo sự kiện"
+            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-brand-800 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 ${
+              collapsed ? "w-10 px-0" : "w-full gap-2.5 px-3"
+            }`}
           >
-            <Plus className="h-5 w-5" />
-            Tạo sự kiện
+            <Plus className="h-4 w-4 shrink-0" />
+            {!collapsed && <span className="truncate text-sm font-medium leading-none">Tạo sự kiện</span>}
           </NavLink>
         </div>
       )}
 
-      <nav className="flex-1 overflow-y-auto px-[18px] pb-3" aria-label="Điều hướng chính">
-        <div className="space-y-2">
+      <nav className={`flex-1 overflow-y-auto py-3 transition-all duration-300 ${collapsed ? "px-5" : "px-4"}`} aria-label="Điều hướng chính">
+        <div className="space-y-1">
           {navLinks.map((link) => {
             const Icon = link.icon;
             return (
               <React.Fragment key={link.to + link.label}>
-                {"section" in link && link.section && (
-                  <p className="px-4 pt-4 text-xs font-black uppercase tracking-wider text-slate-400">{link.section}</p>
+                {"section" in link && link.section && !collapsed && (
+                  <p className="px-3 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{link.section}</p>
                 )}
                 <NavLink
                   to={link.to}
                   end={link.end}
                   onClick={onClose}
+                  title={collapsed ? link.label : undefined}
                   className={({ isActive }) =>
                     [
-                      "group flex min-h-[44px] items-center gap-3 rounded-2xl px-4 text-sm font-bold transition-all duration-200",
-                      isActive
-                        ? "bg-brand-700 text-white shadow-lg shadow-brand-700/18"
-                        : "text-slate-600 hover:bg-white/86 hover:text-brand-800 hover:shadow-sm",
+                      "group flex h-11 items-center rounded-xl text-sm font-medium transition-all duration-200",
+                      collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3",
+                      isActive ? "bg-brand-50 text-brand-800 ring-1 ring-brand-100" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
                     ].join(" ")
                   }
                 >
-                  <Icon className="h-5 w-5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5" />
-                  <span className="truncate">{link.label}</span>
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {!collapsed && <span className="truncate text-sm font-medium leading-none">{link.label}</span>}
                 </NavLink>
               </React.Fragment>
             );
@@ -134,28 +139,26 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </div>
       </nav>
 
-      <div className="border-t border-white/70 p-[18px]">
-        <div className="mb-3 rounded-2xl border border-white/70 bg-white/70 p-3">
-          <p className="truncate text-xs font-extrabold text-slate-950">{currentUser.fullName}</p>
-          <p className="mt-0.5 text-[11px] font-bold text-slate-500">{getRoleLabel(currentUser.role)}</p>
-        </div>
+      <div className={`border-t border-slate-100 p-4 transition-all duration-300 ${collapsed ? "px-5" : ""}`}>
         <NavLink
           to={settingsPath}
           onClick={onClose}
-          className="btn-press flex min-h-[42px] items-center gap-3 rounded-2xl px-4 text-sm font-bold text-slate-600 hover:bg-white hover:text-brand-800"
+          title={collapsed ? "Cài đặt" : undefined}
+          className={`btn-press flex h-11 items-center rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-brand-800 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
         >
-          <Settings className="h-5 w-5" />
-          Cài đặt
+          <Settings className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="truncate text-sm font-medium leading-none">Cài đặt</span>}
         </NavLink>
         <button
           onClick={() => {
             void authService.logout();
             navigate("/login");
           }}
-          className="btn-press mt-2 flex min-h-[42px] w-full items-center gap-3 rounded-2xl px-4 text-left text-sm font-bold text-slate-600 hover:bg-rose-50 hover:text-rose-700"
+          title={collapsed ? "Đăng xuất" : undefined}
+          className={`btn-press mt-1.5 flex h-11 w-full items-center rounded-xl text-left text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
         >
-          <LogOut className="h-5 w-5" />
-          Đăng xuất
+          <LogOut className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="truncate text-sm font-medium leading-none">Đăng xuất</span>}
         </button>
       </div>
     </aside>

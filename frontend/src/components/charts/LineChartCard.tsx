@@ -17,10 +17,10 @@ export default function LineChartCard({
   return (
     <div className="enterprise-card hover-lift flex flex-col justify-between p-5 text-left">
       <div className="mb-4">
-        <h4 className="font-display text-base font-extrabold text-slate-950">{title}</h4>
+        <h4 className="font-display text-base font-semibold text-slate-950">{title}</h4>
         <p className="mt-1 text-xs font-semibold text-slate-500">Theo dõi xu hướng vận hành theo thời gian</p>
       </div>
-      <div className="w-full h-64 text-[10px] font-bold">
+      <div className="h-60 w-full text-[10px] font-medium">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -32,11 +32,11 @@ export default function LineChartCard({
                 border: '1px solid #e5e7eb',
                 borderRadius: '14px',
                 fontSize: '12px',
-                fontWeight: 'bold',
+                fontWeight: '500',
                 fontFamily: 'sans-serif'
               }} 
             />
-            <Legend wrapperStyle={{ fontSize: '12px', fontWeight: '700' }} />
+            <Legend wrapperStyle={{ fontSize: '12px', fontWeight: '500' }} />
             {dataKeys.map((item, idx) => (
               <Line
                 key={idx}

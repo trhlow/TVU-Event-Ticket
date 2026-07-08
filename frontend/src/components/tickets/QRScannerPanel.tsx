@@ -59,10 +59,10 @@ export default function QRScannerPanel({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scanner panel */}
         <>
-          <div className="relative flex h-72 flex-col items-center justify-center overflow-hidden rounded-3xl border border-gray-800 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.22),transparent_16rem),#020617] p-4 text-center shadow-2xl shadow-slate-950/20">
+          <div className="relative flex h-60 flex-col items-center justify-center overflow-hidden rounded-2xl border border-gray-800 bg-[radial-gradient(circle_at_center,rgba(37,99,235,0.22),transparent_16rem),#020617] p-4 text-center shadow-xl shadow-slate-950/15">
             {cameraPermission === "idle" && (
               <div className="relative z-10 flex flex-col items-center gap-3 px-6">
-                <RefreshCw className="w-12 h-12 text-brand-300 animate-spin" />
+                <RefreshCw className="h-10 w-10 animate-spin text-brand-300" />
                 <span className="text-[10px] text-brand-100 font-bold uppercase tracking-widest block leading-none">
                   Đang xin quyền camera
                 </span>
@@ -71,7 +71,7 @@ export default function QRScannerPanel({
 
             {cameraPermission === "denied" && (
               <div className="relative z-10 flex flex-col items-center gap-3 px-6">
-                <AlertCircle className="w-12 h-12 text-amber-400" />
+                <AlertCircle className="h-10 w-10 text-amber-400" />
                 <p className="text-xs text-gray-100 font-bold leading-relaxed max-w-sm">
                   Không thể truy cập camera. Vui lòng nhập mã vé thủ công bên dưới
                   hoặc cấp quyền camera trong cài đặt trình duyệt.
@@ -98,9 +98,9 @@ export default function QRScannerPanel({
             )}
           </div>
 
-          <div className="space-y-4 rounded-3xl border border-brand-100 bg-brand-50/70 p-5 shadow-sm">
+          <div className="space-y-3 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 shadow-sm">
             <div className="space-y-1">
-              <label className="text-[11px] font-black text-brand-800 uppercase tracking-wider block">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-brand-800">
                 Nhập mã vé thủ công
               </label>
               <p className="text-[11px] text-gray-500 font-semibold">
@@ -113,11 +113,11 @@ export default function QRScannerPanel({
                 placeholder="Ví dụ: TVU-IT1-93A8B"
                 value={ticketCode}
                 onChange={(e) => setTicketCode(e.target.value)}
-                className="tvu-input min-h-12 flex-1 font-mono font-black"
+                className="tvu-input flex-1 font-mono font-semibold"
               />
               <button
                 onClick={() => handleScanSubmit("")}
-                className="btn-press flex min-h-12 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-5 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700"
+                className="btn-press flex h-10 items-center justify-center gap-1.5 rounded-xl bg-brand-600 px-4 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
               >
                 <Search className="w-4 h-4" /> Check-in
               </button>
@@ -128,7 +128,7 @@ export default function QRScannerPanel({
         {/* Manual check-in helper panel */}
         <div className="lg:col-span-2 space-y-4">
           <div className="space-y-2 rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 text-xs font-semibold text-amber-900">
-            <p className="font-extrabold flex items-center gap-1">
+            <p className="flex items-center gap-1 font-semibold">
               <AlertCircle className="w-4 h-4 text-amber-600" /> Công cụ hỗ trợ nhập
               mã:
             </p>
@@ -188,7 +188,7 @@ export default function QRScannerPanel({
             <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
           )}
           <div className="text-left space-y-1">
-            <h5 className="text-xs font-black uppercase tracking-wider">
+            <h5 className="text-xs font-semibold uppercase tracking-wider">
               {scanResult.success
                 ? "Hợp lệ - Điểm danh thành công!"
                 : "Lỗi - Quét thất bại"}

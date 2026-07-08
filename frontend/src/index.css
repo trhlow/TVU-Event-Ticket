@@ -1,9 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Geist:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Geist", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Be Vietnam Pro", "Geist", sans-serif;
+  --font-sans: "TVUFont", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "TVUFont", ui-sans-serif, system-ui, sans-serif;
   --color-brand-50: #edf5f4;
   --color-brand-100: #d8ebe8;
   --color-brand-200: #add6cf;
@@ -18,8 +17,13 @@
   --color-accent-600: #b9821f;
 }
 
+:root {
+  font-family: "TVUFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
 @layer base {
   html {
+    font-size: 15px;
     color: #111827;
     background: #f7f5ef;
     text-rendering: geometricPrecision;
@@ -32,6 +36,7 @@
     overflow-x: hidden;
     background: linear-gradient(180deg, #f7f5ef 0%, #eef3f0 48%, #f8fafc 100%);
     color: #111827;
+    font-family: "TVUFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
   button,
@@ -64,7 +69,7 @@
     border: 1px solid rgba(216, 222, 233, 0.92);
     background: rgba(255, 255, 255, 0.9);
     border-radius: 16px;
-    box-shadow: 0 14px 32px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.04);
     backdrop-filter: blur(12px);
     transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
   }
@@ -77,14 +82,14 @@
   }
 
   .tvu-input {
-    min-height: 46px;
+    min-height: 40px;
     width: 100%;
     border-radius: 12px;
     border: 1px solid #d8dee9;
     background: rgba(255, 255, 255, 0.94);
-    padding: 0.6875rem 0.9375rem;
+    padding: 0.55rem 0.75rem;
     font-size: 0.875rem;
-    font-weight: 600;
+    font-weight: 500;
     color: #111827;
     outline: none;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
@@ -143,8 +148,8 @@
   }
 
   .card-hover-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 22px 48px rgba(15, 23, 42, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
     border-color: rgba(37, 99, 235, 0.24);
   }
 
@@ -157,7 +162,7 @@
   }
 
   .soft-glow {
-    box-shadow: 0 22px 60px rgba(37, 99, 235, 0.18);
+    box-shadow: 0 14px 36px rgba(37, 99, 235, 0.14);
   }
 
   .subtle-gradient-bg {
@@ -169,8 +174,8 @@
   }
 
   .hover-lift:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 20px 44px rgba(15, 23, 42, 0.1), 0 4px 10px rgba(37, 99, 235, 0.06);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09), 0 3px 8px rgba(37, 99, 235, 0.05);
     border-color: rgba(37, 99, 235, 0.22);
   }
 
@@ -184,9 +189,9 @@
 
   .section-heading {
     font-family: var(--font-display);
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     line-height: 1.3;
-    font-weight: 800;
+    font-weight: 600;
     color: #111827;
   }
 
@@ -196,8 +201,8 @@
       linear-gradient(135deg, rgba(8, 47, 44, 0.98), rgba(18, 84, 78, 0.94) 58%, rgba(31, 122, 112, 0.88)),
       linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
     background-size: auto, 34px 34px;
-    border-radius: 20px;
-    box-shadow: 0 24px 54px rgba(8, 47, 44, 0.2);
+    border-radius: 18px;
+    box-shadow: 0 16px 36px rgba(8, 47, 44, 0.16);
   }
 }
 

@@ -1,48 +1,97 @@
-import React, { useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Bolt, CheckCircle2, ClipboardCheck, GraduationCap, QrCode, ShieldCheck, Ticket, Users } from "lucide-react";
+import { useRef } from "react";
+import { Link } from "react-router-dom";
+import {
+  ArrowRight,
+  CalendarDays,
+  ClipboardCheck,
+  FileClock,
+  GraduationCap,
+  MapPin,
+  ShieldCheck,
+  Ticket,
+} from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
+import CursorGlow from "../../components/common/CursorGlow";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
-import EventCard from "../../components/events/EventCard";
-import { mockEvents } from "../../data/mockEvents";
+import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const featuredEvents = [
+  {
+    title: "Ngày hội Công nghệ sinh viên",
+    club: "CLB Công nghệ thông tin",
+    time: "20/07/2026",
+    location: "Hội trường D5",
+    status: "Đang mở đăng ký",
+    tone: "emerald",
+  },
+  {
+    title: "Workshop Kỹ năng CV & Phỏng vấn",
+    club: "Đoàn khoa Kỹ thuật Công nghệ",
+    time: "22/07/2026",
+    location: "Phòng Lab 2",
+    status: "Sắp diễn ra",
+    tone: "brand",
+  },
+  {
+    title: "Tập huấn Ban tổ chức sự kiện",
+    club: "Phòng Công tác Sinh viên",
+    time: "25/07/2026",
+    location: "Hội trường Trung tâm",
+    status: "Nội bộ",
+    tone: "amber",
+  },
+];
+
+const guideItems = [
+  {
+    icon: GraduationCap,
+    title: "Sinh viên",
+    steps: ["Đăng nhập tài khoản trường", "Xem sự kiện phù hợp", "Gửi đăng ký và chờ duyệt", "Nhận vé QR để check-in"],
+    description:
+      "Sinh viên theo dõi trạng thái đăng ký, xem vé QR sau khi được duyệt và sử dụng vé để check-in một lần tại sự kiện.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Ban tổ chức / CLB",
+    steps: ["Tạo sự kiện", "Duyệt hoặc từ chối đăng ký", "Phát vé QR", "Quét check-in và xem thống kê"],
+    description:
+      "Ban tổ chức vận hành sự kiện trong phạm vi CLB, quản lý danh sách đăng ký, vé đã cấp và lịch sử check-in minh bạch.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Quản trị viên",
+    steps: ["Quản lý CLB", "Quản lý tài khoản BTC", "Theo dõi toàn trường", "Kiểm tra nhật ký hệ thống"],
+    description:
+      "Quản trị viên giám sát hoạt động toàn hệ thống, kiểm tra số liệu và audit logs để hỗ trợ vận hành cấp trường.",
+  },
+];
+
 export default function LandingPage() {
-  const navigate = useNavigate();
-  const featuredEvents = mockEvents.slice(0, 3);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   useGSAP(
     () => {
       gsap.from(".landing-hero-copy > *", {
-        y: 28,
+        y: 24,
         opacity: 0,
-        duration: 0.8,
+        duration: 0.72,
         stagger: 0.08,
         ease: "power3.out",
       });
 
-      gsap.from(".landing-system-card", {
-        y: 34,
+      gsap.from(".landing-guide-card", {
+        y: 28,
         opacity: 0,
-        scale: 0.96,
-        duration: 0.9,
-        ease: "power3.out",
-        delay: 0.15,
-      });
-
-      gsap.from(".process-step", {
-        y: 36,
-        opacity: 0,
-        stagger: 0.12,
+        stagger: 0.1,
         ease: "power2.out",
         scrollTrigger: {
-          trigger: ".process-section",
+          trigger: "#guide",
           start: "top 72%",
-          end: "bottom 48%",
+          end: "bottom 52%",
           scrub: 0.7,
         },
       });
@@ -51,169 +100,153 @@ export default function LandingPage() {
   );
 
   return (
-    <main ref={rootRef} className="subtle-gradient-bg w-full max-w-full overflow-x-hidden text-left">
-      <section className="relative px-5 py-16 md:px-8 md:py-24">
-        <div className="mx-auto grid max-w-[1180px] items-center gap-12 lg:grid-cols-[1fr_520px]">
-          <div className="landing-hero-copy">
-            <p className="animate-slide-right inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/80 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-brand-800 shadow-sm">
-              <ShieldCheck className="h-4 w-4" /> TVU Event & Ticketing Platform
-            </p>
-            <h1 className="animate-slide-up mt-5 font-display text-5xl font-extrabold leading-tight text-slate-950 md:text-[58px]">
-              Quản lý sự kiện và vé QR cho CLB TVU.
-            </h1>
-            <p className="animate-slide-up mt-6 max-w-[620px] text-lg font-medium leading-8 text-slate-600" style={{ animationDelay: "120ms" }}>
-              Sinh viên đăng ký nhanh, Ban tổ chức duyệt minh bạch, Super Admin giám sát toàn trường trong một nền tảng thống nhất.
-            </p>
-            <div className="animate-slide-up mt-8 flex flex-col gap-3 sm:flex-row" style={{ animationDelay: "220ms" }}>
-              <Link to="/login" className="btn-press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-brand-700 px-6 text-sm font-bold text-white shadow-lg shadow-brand-700/20 hover:bg-brand-800">
-                Đăng nhập hệ thống <ArrowRight className="h-4 w-4" />
-              </Link>
-              <a href="#events" className="btn-press inline-flex min-h-12 items-center justify-center rounded-2xl border border-brand-200 bg-white px-6 text-sm font-bold text-brand-800 hover:bg-brand-50">
-                Xem sự kiện
-              </a>
-            </div>
-          </div>
+    <main ref={rootRef} className="subtle-gradient-bg relative isolate w-full max-w-full overflow-x-hidden text-left">
+      <CursorGlow />
+      <div className="relative z-10">
+      <section id="home" className="relative scroll-mt-16 overflow-hidden px-5 py-16 md:px-8 md:py-24">
+        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(8,47,44,0.1),transparent_46%,rgba(231,182,90,0.14))]" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-0 h-px bg-white/80" aria-hidden="true" />
 
-          <div className="landing-system-card animate-scale-in enterprise-card hover-lift soft-glow p-4" style={{ animationDelay: "180ms" }}>
-            <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-white to-brand-50 p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <img src="/src/assets/images/tvu_logo_1783065060265.jpg" alt="TVU" className="h-10 w-10 rounded-2xl bg-white object-contain p-1 shadow-sm" />
-                  <div>
-                    <p className="font-display text-lg font-extrabold text-brand-800">TVU Event</p>
-                    <p className="text-xs font-semibold text-slate-500">Bảng vận hành sự kiện</p>
-                  </div>
-                </div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700">Đang hoạt động</span>
+        <div className="landing-hero-copy relative mx-auto flex max-w-6xl flex-col items-center text-center">
+          <p className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-800 shadow-sm">
+            <ShieldCheck className="h-4 w-4" /> TVU Event Ticketing Platform
+          </p>
+          <h1 className="mt-7 max-w-4xl font-display text-4xl font-semibold leading-tight text-slate-950 md:text-5xl">
+            Quản lý sự kiện và vé QR cho CLB Đại học Trà Vinh
+          </h1>
+          <p className="mt-5 max-w-3xl text-base font-normal leading-7 text-slate-600 md:text-lg">
+            Nền tảng hỗ trợ tạo sự kiện, duyệt đăng ký, phát vé điện tử và check-in QR một lần cho sinh viên, ban tổ chức và quản trị viên.
+          </p>
+          <Link
+            to="/login"
+            className="btn-press mt-8 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-800 px-6 text-sm font-semibold text-white shadow-lg shadow-brand-800/18 hover:bg-brand-700"
+          >
+            Đăng nhập hệ thống <ArrowRight className="h-4 w-4" />
+          </Link>
+
+          <div className="mt-12 grid w-full grid-flow-dense gap-3 md:grid-cols-3">
+            {[
+              ["Đăng ký chờ duyệt", "Sinh viên gửi đăng ký, Ban tổ chức xác nhận trước khi phát vé."],
+              ["Vé QR một lần", "Vé hợp lệ được kiểm tra trạng thái và chặn check-in trùng."],
+              ["Quản trị toàn trường", "Super Admin theo dõi CLB, tài khoản BTC và nhật ký hệ thống."],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-2xl border border-white/80 bg-white/72 p-5 text-left shadow-sm backdrop-blur">
+                <p className="font-display text-base font-semibold text-slate-950">{title}</p>
+                <p className="mt-2 text-sm font-normal leading-6 text-slate-600">{text}</p>
               </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                {[
-                  ["Sự kiện", "24"],
-                  ["Đăng ký", "1.2k"],
-                  ["Check-in", "86%"],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-2xl border border-white bg-white/80 p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                    <p className="text-[11px] font-bold uppercase text-slate-400">{label}</p>
-                    <p className="mt-1 font-display text-2xl font-extrabold text-slate-950">{value}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-5 rounded-3xl bg-slate-950 p-5 text-white">
-                <QrCode className="h-14 w-14 text-accent-400" />
-                <p className="mt-4 font-display text-2xl font-extrabold">Vé QR điện tử</p>
-                <p className="mt-2 text-sm font-medium text-white/70">Mỗi vé có mã định danh duy nhất, hỗ trợ điểm danh một lần.</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <RevealOnScroll as="section" id="features" className="px-5 py-12 md:px-8">
+      <RevealOnScroll as="section" id="events" className="scroll-mt-16 px-5 py-14 md:px-8">
         <div className="mx-auto max-w-[1180px]">
-          <div className="text-center">
-            <h2 className="font-display text-3xl font-extrabold text-slate-950">Một nền tảng cho ba vai trò</h2>
-            <p className="mt-3 text-base font-medium text-slate-600">Đăng ký, phê duyệt, phát hành vé và quản trị hệ thống trong cùng một luồng dữ liệu.</p>
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Sự kiện</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-slate-950">Sự kiện nổi bật</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Theo dõi các hoạt động học thuật, CLB, hội thảo và chương trình sinh viên đang mở đăng ký trên hệ thống.
+            </p>
           </div>
+
           <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {[
-              { icon: Bolt, title: "Sinh viên đăng ký nhanh", desc: "Tìm sự kiện, gửi đăng ký và theo dõi trạng thái xét duyệt." },
-              { icon: ClipboardCheck, title: "Organizer vận hành gọn", desc: "Tạo sự kiện, duyệt đăng ký, chia sẻ QR đăng ký và quét vé." },
-              { icon: CheckCircle2, title: "Admin giám sát rõ", desc: "Theo dõi CLB, tài khoản Ban tổ chức, phân quyền và audit log." },
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <RevealOnScroll key={item.title} delay={index * 90} className="enterprise-card card-hover-lift p-6">
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-brand-50 text-brand-700 transition group-hover:scale-105">
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-5 font-display text-xl font-extrabold text-slate-950">{item.title}</h3>
-                  <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{item.desc}</p>
-                </RevealOnScroll>
-              );
-            })}
-          </div>
-        </div>
-      </RevealOnScroll>
-
-      <RevealOnScroll as="section" className="px-5 py-12 md:px-8">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="grid grid-flow-dense gap-5 md:grid-cols-3">
-            {[
-              { icon: GraduationCap, title: "Sinh viên", text: "Xem sự kiện, gửi đăng ký, nhận vé QR sau khi được duyệt." },
-              { icon: Users, title: "Ban tổ chức", text: "Quản lý sự kiện CLB, duyệt đăng ký và điểm danh bằng QR." },
-              { icon: ShieldCheck, title: "Nhà trường", text: "Theo dõi hoạt động toàn trường, tài khoản, phân quyền và audit log." },
-            ].map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <RevealOnScroll key={item.title} delay={index * 100} className="rounded-3xl border border-white/80 bg-white/72 p-6 shadow-sm backdrop-blur transition hover:-translate-y-1 hover:shadow-xl">
-                  <Icon className="h-8 w-8 text-brand-700" />
-                  <h3 className="mt-4 font-display text-xl font-extrabold text-slate-950">{item.title}</h3>
-                  <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{item.text}</p>
-                </RevealOnScroll>
-              );
-            })}
-          </div>
-        </div>
-      </RevealOnScroll>
-
-      <RevealOnScroll as="section" className="process-section px-5 py-12 md:px-8">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="enterprise-card p-6 md:p-8">
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700">Quy trình sử dụng</p>
-                <h2 className="section-heading mt-2">Từ đăng ký đến điểm danh trong 4 bước</h2>
-              </div>
-              <Link to="/login" className="btn-press inline-flex min-h-11 items-center justify-center rounded-2xl bg-brand-700 px-5 text-sm font-bold text-white hover:bg-brand-800">
-                Bắt đầu
-              </Link>
-            </div>
-            <div className="mt-7 grid gap-4 md:grid-cols-4">
-              {[
-                ["01", "Sinh viên xem sự kiện"],
-                ["02", "Gửi đăng ký tham gia"],
-                ["03", "Organizer duyệt và phát vé"],
-                ["04", "Quét QR để điểm danh"],
-              ].map(([step, label], index) => (
-                <RevealOnScroll key={step} delay={index * 80} className="process-step rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
-                  <p className="font-display text-2xl font-extrabold text-brand-700">{step}</p>
-                  <p className="mt-2 text-sm font-bold text-slate-700">{label}</p>
-                </RevealOnScroll>
-              ))}
-            </div>
-          </div>
-        </div>
-      </RevealOnScroll>
-
-      <RevealOnScroll as="section" id="events" className="border-t border-white/70 px-5 py-14 md:px-8">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700">Đang mở đăng ký</p>
-              <h2 className="section-heading mt-1">Sự kiện nổi bật</h2>
-            </div>
-            <Link to="/login" className="text-sm font-extrabold text-brand-700">Xem tất cả</Link>
-          </div>
-          <div className="mt-6 grid gap-6 md:grid-cols-3">
             {featuredEvents.map((event, index) => (
-              <RevealOnScroll key={event.id} delay={index * 100}>
-                <EventCard event={event} onViewDetails={() => navigate("/login")} onRegister={() => navigate("/login")} />
+              <RevealOnScroll key={event.title} delay={index * 90} className="enterprise-card card-hover-lift flex h-full flex-col p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+                    <CalendarDays className="h-5 w-5" />
+                  </div>
+                  <span
+                    className={[
+                      "rounded-full border px-2.5 py-1 text-xs font-medium",
+                      event.tone === "emerald"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : event.tone === "amber"
+                          ? "border-amber-200 bg-amber-50 text-amber-700"
+                          : "border-brand-200 bg-brand-50 text-brand-700",
+                    ].join(" ")}
+                  >
+                    {event.status}
+                  </span>
+                </div>
+                <h3 className="mt-4 font-display text-base font-semibold leading-snug text-slate-950">{event.title}</h3>
+                <p className="mt-1 text-sm font-medium text-brand-700">{event.club}</p>
+                <div className="mt-4 space-y-2 text-sm text-slate-600">
+                  <p className="flex items-center gap-2">
+                    <FileClock className="h-4 w-4 text-slate-400" />
+                    {event.time}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-slate-400" />
+                    {event.location}
+                  </p>
+                </div>
+                <Link
+                  to="/login"
+                  className="btn-press mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-brand-200 bg-white px-4 text-sm font-medium text-brand-800 hover:bg-brand-50"
+                >
+                  Đăng nhập để đăng ký
+                </Link>
               </RevealOnScroll>
             ))}
           </div>
         </div>
       </RevealOnScroll>
 
-      <RevealOnScroll as="section" className="px-5 pb-16 pt-4 md:px-8">
-        <div className="mx-auto max-w-[1180px] rounded-[28px] bg-gradient-to-r from-brand-800 to-brand-600 p-7 text-center text-white shadow-2xl shadow-brand-900/18 md:p-10">
-          <Ticket className="mx-auto h-10 w-10 text-white/90" />
-          <h2 className="mt-4 font-display text-3xl font-extrabold">Sẵn sàng quản lý sự kiện CLB chuyên nghiệp hơn?</h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm font-medium leading-6 text-white/78">Đăng nhập bằng tài khoản TVU để tiếp tục với đúng vai trò của bạn trong hệ thống.</p>
-          <Link to="/login" className="btn-press mt-6 inline-flex min-h-12 items-center justify-center rounded-2xl bg-white px-6 text-sm font-extrabold text-brand-800">
-            Đăng nhập ngay
+      <RevealOnScroll as="section" id="guide" className="scroll-mt-16 px-5 py-14 md:px-8">
+        <div className="mx-auto max-w-[1180px]">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Hướng dẫn</p>
+            <h2 className="mt-2 font-display text-2xl font-semibold text-slate-950">Hướng dẫn sử dụng</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">
+              Ba nhóm người dùng dùng chung một quy trình dữ liệu: đăng ký, duyệt, phát vé QR và ghi nhận check-in.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-5 lg:grid-cols-3">
+            {guideItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <article key={item.title} className="landing-guide-card enterprise-card p-5">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 font-display text-base font-semibold text-slate-950">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
+                  <div className="mt-5 space-y-2">
+                    {item.steps.map((step, index) => (
+                      <div key={step} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-xs font-semibold text-brand-700 ring-1 ring-slate-200">
+                          {index + 1}
+                        </span>
+                        <span className="text-sm font-medium text-slate-700">{step}</span>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </RevealOnScroll>
+
+      <RevealOnScroll as="section" className="px-5 pb-16 pt-6 md:px-8">
+        <div className="mx-auto max-w-[1180px] rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-7 text-center text-white shadow-xl shadow-brand-900/16 md:p-8">
+          <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white/12 text-white ring-1 ring-white/18">
+            <Ticket className="h-5 w-5" />
+          </div>
+          <h2 className="mt-4 font-display text-2xl font-semibold">Sẵn sàng quản lý sự kiện CLB chuyên nghiệp hơn?</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm font-normal leading-6 text-white/78">
+            Đăng nhập bằng tài khoản TVU để tiếp tục với đúng vai trò của bạn trong hệ thống.
+          </p>
+          <Link to="/login" className="btn-press mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-white px-5 text-sm font-semibold text-brand-800">
+            Đăng nhập hệ thống
           </Link>
         </div>
       </RevealOnScroll>
+      </div>
+
+      <ScrollToTopButton />
     </main>
   );
 }

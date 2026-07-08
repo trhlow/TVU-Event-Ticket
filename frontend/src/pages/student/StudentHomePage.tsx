@@ -21,36 +21,36 @@ export default function StudentHomePage() {
 
   return (
     <div className="space-y-7 text-left">
-      <section className="page-hero p-6 text-white md:p-8">
+      <section className="page-hero p-5 text-white md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
               <Sparkles className="h-4 w-4" /> Cổng sinh viên
             </p>
-            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Xin chào, {currentUser.fullName}</h1>
-            <p className="mt-3 max-w-3xl text-base font-medium leading-7 text-white/82">
+            <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-3xl">Tổng quan sự kiện cá nhân</h1>
+            <p className="mt-3 max-w-3xl text-sm font-normal leading-6 text-white/82">
               Khám phá sự kiện CLB, gửi đăng ký tham gia và quản lý vé QR điện tử của bạn tại Trường Đại học Trà Vinh.
             </p>
           </div>
           <div className="rounded-2xl border border-white/20 bg-white/12 px-5 py-4 backdrop-blur">
             <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">MSSV</p>
-            <p className="mt-1 font-mono text-2xl font-black text-white">{currentUser.mssv || "Chưa cập nhật"}</p>
+            <p className="mt-1 font-mono text-xl font-semibold text-white">{currentUser.mssv || "Chưa cập nhật"}</p>
           </div>
         </div>
       </section>
 
       {!currentUser.profileComplete && (
-        <div className="flex flex-col gap-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
             <div>
-              <h2 className="text-sm font-extrabold text-amber-950">Yêu cầu hoàn tất hồ sơ</h2>
+              <h2 className="text-sm font-semibold text-amber-950">Yêu cầu hoàn tất hồ sơ</h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-amber-800">
                 Cập nhật MSSV và lớp học để đủ điều kiện đăng ký tham gia sự kiện.
               </p>
             </div>
           </div>
-          <Link to="/student/profile/complete" className="btn-press inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-bold text-white">
+          <Link to="/student/profile/complete" className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-medium text-white">
             Cập nhật ngay <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -65,7 +65,7 @@ export default function StudentHomePage() {
       <section className="enterprise-card p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700">Tìm kiếm sự kiện</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Tìm kiếm sự kiện</p>
             <h2 className="section-heading mt-1">Sự kiện đang mở đăng ký</h2>
           </div>
           <div className="grid gap-2 sm:grid-cols-[1fr_auto] md:w-[520px]">
@@ -86,10 +86,10 @@ export default function StudentHomePage() {
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700">Đề xuất cho bạn</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Đề xuất cho bạn</p>
             <h2 className="section-heading mt-1">Sự kiện nổi bật</h2>
           </div>
-          <Link to="/student/events" className="inline-flex items-center gap-1 text-sm font-extrabold text-brand-700">
+          <Link to="/student/events" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
             Xem tất cả <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default function StudentHomePage() {
               return (
                 <div key={reservation.id} className="flex items-center justify-between gap-4 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-slate-950">{event?.title || "Sự kiện"}</p>
+                    <p className="truncate text-sm font-semibold text-slate-950">{event?.title || "Sự kiện"}</p>
                     <p className="mt-1 text-xs font-semibold text-slate-500">{formatDateTime(reservation.createdAt)}</p>
                   </div>
                   <StatusBadge type="reservation" status={reservation.status} />
@@ -132,10 +132,10 @@ export default function StudentHomePage() {
               return (
                 <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-extrabold text-slate-950">{event?.title || "Sự kiện"}</p>
+                    <p className="truncate text-sm font-semibold text-slate-950">{event?.title || "Sự kiện"}</p>
                     <p className="mt-1 font-mono text-xs font-bold text-slate-500">Mã vé: {ticket.ticketCode}</p>
                   </div>
-                  <Link to={`/student/tickets/${ticket.id}`} className="btn-press rounded-xl bg-brand-600 px-3 py-2 text-xs font-extrabold text-white">
+                  <Link to={`/student/tickets/${ticket.id}`} className="btn-press inline-flex h-9 items-center rounded-lg bg-brand-600 px-3 text-xs font-medium text-white">
                     Mở vé
                   </Link>
                 </div>
