@@ -64,6 +64,16 @@ public class OutboxMessage {
         return new OutboxMessage(aggregateType, aggregateId, routingKey, payload);
     }
 
+    public void markPublished() {
+        this.status = OutboxStatus.PUBLISHED;
+        this.publishedAt = Instant.now();
+    }
+
+    public void markFailed() {
+        this.status = OutboxStatus.FAILED;
+        this.attempts++;
+    }
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {
