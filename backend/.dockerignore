@@ -1,0 +1,6 @@
+.git
+.claude
+.vscode
+**/target
+**/.mvn
+*.log

@@ -37,6 +37,12 @@ Create the second one once:
 docker exec -it infra-postgres-1 psql -U tvu -d tvu_event -c "CREATE DATABASE tvu_ticket;"
 ```
 
+Run the full backend stack in containers:
+
+```bash
+docker compose -f infra/docker-compose.app.yml up --build
+```
+
 ## Build / run / test
 
 Run all commands from this `backend/` directory.
