@@ -24,11 +24,11 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
       routes:
-        # auth-service owns login/profile (/api/auth/**) and admin management (/api/admin/**).
+        # auth-service owns login/profile, admin management, and JWKS/OIDC discovery.
         - id: auth-service
           uri: ${AUTH_SERVICE_URI:http://localhost:8084}
           predicates:
-            - Path=/api/auth/**, /api/admin/**
+            - Path=/api/auth/**, /api/admin/**, /.well-known/**
           filters:
             - name: RequestRateLimiter
               args:
