@@ -14,3 +14,8 @@ spring:
 logging:
   level:
     vn.edu.tvu: DEBUG
+
+management:
+  health:
+    mail:
+      enabled: false

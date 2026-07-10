@@ -15,6 +15,11 @@
     <description>Consumes RabbitMQ, generates signed QR, sends ticket email.</description>
 
     <dependencies>
+        <!-- Lightweight HTTP surface for actuator health checks in Docker/uptime monitoring. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
         <!-- RabbitMQ consumer + Dead Letter Queue (§6.4) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
