@@ -1,6 +1,9 @@
 # Backend — TVU Event & Ticket
 
-Maven multi-module project. Java 21, Spring Boot 3.3.x. Base package `vn.edu.tvu`.
+Maven multi-module project. Java 25, Spring Boot 4.0.x. Base package `vn.edu.tvu`.
+
+Frontend integration status is summarized in
+[../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
 
 ## Conventions
 
@@ -11,36 +14,41 @@ Maven multi-module project. Java 21, Spring Boot 3.3.x. Base package `vn.edu.tvu
   Migration files are immutable once applied — add a new version, never edit a shipped one.
 - **Profiles**: `application.yml` holds common config (default profile `dev`); `application-dev.yml` uses
   localhost, `application-prod.yml` reads everything from env vars with no fallback defaults.
-- **DTOs** are generated from the OpenAPI spec on the frontend — do not hand-write shared types (§6.7).
+- **Shared frontend types** should eventually be generated from the OpenAPI spec (§6.7). Until that pipeline
+  is wired, keep frontend handwritten types aligned with [../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
 
 ## Modules
 
 | Module                 | Port | Responsibility |
 |------------------------|------|----------------|
 | `api-gateway`          | 8080 | Single entry point: CORS, JWT auth, RBAC, rate limiting, routing |
-| `event-service`        | 8081 | Events and clubs (JPA / PostgreSQL) |
-| `ticket-service`       | 8082 | Reservations, tickets, check-in; atomic reservation via Redis (§6.3) |
-| `notification-service` | 8083 | Consumes RabbitMQ → generates signed QR → emails ticket (§6.4, §6.6) |
+| `auth-service`         | 8084 | Dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies |
+| `event-service`        | 8081 | Scaffolded service for future event APIs; security/error handling are present |
+| `ticket-service`       | 8082 | Reservations and ticket inventory; atomic reservation via Redis (§6.3) |
+| `notification-service` | 8083 | Scaffolded service for future QR/email delivery |
 
 ## Prerequisites
 
-Start local dependencies (Postgres, Redis, RabbitMQ):
+Start local dependencies only (Postgres, Redis, RabbitMQ):
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-`event-service` and `ticket-service` use separate logical DBs (`tvu_event`, `tvu_ticket`).
-Create the second one once:
-
-```bash
-docker exec -it infra-postgres-1 psql -U tvu -d tvu_event -c "CREATE DATABASE tvu_ticket;"
-```
+The compose init script creates `tvu_auth`, `tvu_event`, and `tvu_ticket`.
 
 Run the full backend stack in containers:
 
 ```bash
 docker compose -f infra/docker-compose.app.yml up --build
+```
+
+Frontend dev server should call the gateway:
+
+```bash
+VITE_API_BASE_URL=http://localhost:8080/api
+VITE_USE_DEMO_DATA=false
+VITE_ENABLE_MOCK_FALLBACK=false
 ```
 
 ## Build / run / test
@@ -66,6 +74,8 @@ mvn -pl ticket-service test -Dtest=TicketReservationServiceTest
 
 ## Notes
 
-- DTOs are generated from the OpenAPI spec — do not hand-write shared types (§6.7).
+- OpenAPI-based TypeScript generation is planned; frontend types are currently handwritten.
 - The atomic ticket deduction happens at **organizer approval time**, not at student submit (§6.3, §6.11).
-- See [CLAUDE.md](CLAUDE.md) for the full set of design invariants.
+- Current implemented live APIs: auth/profile/admin, reservation workflow, and ticket inventory initialization.
+- Current gaps: event CRUD, QR check-in, and notification/email delivery are not implemented yet.
+- See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full set of design invariants.
