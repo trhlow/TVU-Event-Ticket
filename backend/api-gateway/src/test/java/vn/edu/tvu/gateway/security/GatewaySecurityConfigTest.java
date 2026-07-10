@@ -56,4 +56,25 @@ class GatewaySecurityConfigTest {
                 .extracting("authority")
                 .containsExactly("ROLE_ORGANIZER");
     }
+
+    @Test
+    void clientKeyResolverUsesForwardedForForAnonymousLoginRequests() {
+        var resolver = config.clientKeyResolver();
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/auth/login")
+                .header("X-Forwarded-For", "203.0.113.10, 10.0.0.1"));
+
+        var key = resolver.resolve(exchange).block();
+
+        assertThat(key).isEqualTo("ip:203.0.113.10");
+    }
+
+    @Test
+    void clientKeyResolverFallsBackWhenNoClientAddressExists() {
+        var resolver = config.clientKeyResolver();
+        var exchange = MockServerWebExchange.from(MockServerHttpRequest.post("/api/auth/login"));
+
+        var key = resolver.resolve(exchange).block();
+
+        assertThat(key).isEqualTo("anonymous");
+    }
 }

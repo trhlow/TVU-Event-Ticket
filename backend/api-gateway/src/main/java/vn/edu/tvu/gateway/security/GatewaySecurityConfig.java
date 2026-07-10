@@ -2,6 +2,9 @@ package vn.edu.tvu.gateway.security;
 
 import reactor.core.publisher.Mono;
 
+import java.security.Principal;
+
+import org.springframework.cloud.gateway.filter.ratelimit.KeyResolver;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +21,7 @@ import org.springframework.security.oauth2.server.resource.web.server.authentica
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.ServerAuthenticationConverter;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ServerWebExchange;
 
 import org.springframework.core.convert.converter.Converter;
 
@@ -34,6 +38,7 @@ public class GatewaySecurityConfig {
         http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(auth -> auth
+                        .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .pathMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .pathMatchers("/.well-known/**", "/actuator/health").permitAll()
                         .pathMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
@@ -75,5 +80,36 @@ public class GatewaySecurityConfig {
         authenticationConverter.setJwtGrantedAuthoritiesConverter(
                 new ReactiveJwtGrantedAuthoritiesConverterAdapter(authoritiesConverter));
         return authenticationConverter;
+    }
+
+    @Bean
+    KeyResolver clientKeyResolver() {
+        return exchange -> exchange.getPrincipal()
+                .map(Principal::getName)
+                .filter(StringUtils::hasText)
+                .map(name -> "principal:" + name)
+                .switchIfEmpty(Mono.fromSupplier(() -> clientAddressKey(exchange)));
+    }
+
+    private String clientAddressKey(ServerWebExchange exchange) {
+        var forwardedFor = exchange.getRequest().getHeaders().getFirst("X-Forwarded-For");
+        if (StringUtils.hasText(forwardedFor)) {
+            var clientIp = forwardedFor.split(",", 2)[0].trim();
+            if (StringUtils.hasText(clientIp)) {
+                return "ip:" + clientIp;
+            }
+        }
+
+        var remoteAddress = exchange.getRequest().getRemoteAddress();
+        if (remoteAddress == null) {
+            return "anonymous";
+        }
+        if (remoteAddress.getAddress() != null) {
+            return "ip:" + remoteAddress.getAddress().getHostAddress();
+        }
+        if (StringUtils.hasText(remoteAddress.getHostString())) {
+            return "ip:" + remoteAddress.getHostString();
+        }
+        return "anonymous";
     }
 }
