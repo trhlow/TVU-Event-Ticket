@@ -14,45 +14,47 @@ spring:
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8084}
   cloud:
     gateway:
-      # Centralized CORS (§6.2): explicit origins, never "*" when credentials are allowed
-      globalcors:
-        add-to-simple-url-handler-mapping: true
-        cors-configurations:
-          '[/**]':
-            allowedOrigins: ${FRONTEND_ORIGIN:http://localhost:5173}
-            allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
-            allowedHeaders: "*"
-            allowCredentials: true
-      routes:
-        # auth-service owns login/profile, admin management, and JWKS/OIDC discovery.
-        - id: auth-service
-          uri: ${AUTH_SERVICE_URI:http://localhost:8084}
-          predicates:
-            - Path=/api/auth/**, /api/admin/**, /.well-known/**
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-        - id: event-service
-          uri: ${EVENT_SERVICE_URI:http://localhost:8081}
-          predicates:
-            - Path=/api/events/**
-          filters:
-            # Redis-backed rate limiter = spam/bot protection only, NOT identity (§6.3)
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
-        - id: ticket-service
-          uri: ${TICKET_SERVICE_URI:http://localhost:8082}
-          predicates:
-            - Path=/api/tickets/**, /api/reservations/**
-          filters:
-            - name: RequestRateLimiter
-              args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
+      server:
+        webflux:
+          # Centralized CORS (§6.2): explicit origins, never "*" when credentials are allowed
+          globalcors:
+            add-to-simple-url-handler-mapping: true
+            cors-configurations:
+              '[/**]':
+                allowedOrigins: ${FRONTEND_ORIGIN:http://localhost:5173}
+                allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+                allowedHeaders: "*"
+                allowCredentials: true
+          routes:
+            # auth-service owns login/profile, admin management, and JWKS/OIDC discovery.
+            - id: auth-service
+              uri: ${AUTH_SERVICE_URI:http://localhost:8084}
+              predicates:
+                - Path=/api/auth/**, /api/admin/**, /.well-known/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+            - id: event-service
+              uri: ${EVENT_SERVICE_URI:http://localhost:8081}
+              predicates:
+                - Path=/api/events/**
+              filters:
+                # Redis-backed rate limiter = spam/bot protection only, NOT identity (§6.3)
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
+            - id: ticket-service
+              uri: ${TICKET_SERVICE_URI:http://localhost:8082}
+              predicates:
+                - Path=/api/tickets/**, /api/reservations/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    redis-rate-limiter.replenishRate: 10
+                    redis-rate-limiter.burstCapacity: 20
 
 management:
   endpoints:

@@ -2,7 +2,7 @@
 # Cloud deployment uses managed free-tier equivalents (Neon, CloudAMQP, Upstash) — see proposal §7.
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18.4-alpine
     environment:
       POSTGRES_USER: tvu
       POSTGRES_PASSWORD: tvu
@@ -12,7 +12,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql
       - ./init-db:/docker-entrypoint-initdb.d
 
   redis:

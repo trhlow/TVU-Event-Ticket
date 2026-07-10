@@ -18,7 +18,7 @@
         <!-- Lightweight HTTP surface for actuator health checks in Docker/uptime monitoring. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <!-- RabbitMQ consumer + Dead Letter Queue (§6.4) -->
         <dependency>
@@ -48,7 +48,7 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Testcontainers: real RabbitMQ for integration tests (versions from Spring Boot BOM) -->

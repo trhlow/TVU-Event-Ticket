@@ -1,12 +1,13 @@
+# syntax=docker/dockerfile:1.7
 ARG MODULE
 
-FROM maven:3.9.9-eclipse-temurin-21 AS build
+FROM maven:3.9.16-eclipse-temurin-25 AS build
 ARG MODULE
 WORKDIR /workspace
 COPY . .
-RUN mvn -B -pl ${MODULE} -am -DskipTests package
+RUN --mount=type=cache,target=/root/.m2 mvn -B -pl ${MODULE} -am -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 ARG MODULE
 ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -Xss256k -XX:MaxRAMPercentage=70.0"
 ENV SPRING_MAIN_LAZY_INITIALIZATION=true
