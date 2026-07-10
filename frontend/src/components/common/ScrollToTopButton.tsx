@@ -1,0 +1,47 @@
+import { useEffect, useState } from "react";
+import { ChevronUp } from "lucide-react";
+
+interface ScrollToTopButtonProps {
+  scrollContainerId?: string;
+}
+
+export default function ScrollToTopButton({ scrollContainerId }: ScrollToTopButtonProps) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const scrollTarget = scrollContainerId ? document.getElementById(scrollContainerId) : window;
+    if (!scrollTarget) return undefined;
+
+    const getScrollTop = () => (scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop);
+    const handleScroll = () => setVisible(getScrollTop() > 300);
+
+    handleScroll();
+    scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => scrollTarget.removeEventListener("scroll", handleScroll);
+  }, [scrollContainerId]);
+
+  if (!visible) return null;
+
+  const handleClick = () => {
+    const scrollTarget = scrollContainerId ? document.getElementById(scrollContainerId) : window;
+
+    if (scrollTarget instanceof Window) {
+      scrollTarget.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
+    scrollTarget?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  return (
+    <button
+      type="button"
+      aria-label="Quay lên đầu trang"
+      onClick={handleClick}
+      className="fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-300 sm:bottom-8 sm:right-8 sm:h-12 sm:w-12"
+    >
+      <ChevronUp className="h-5 w-5" />
+    </button>
+  );
+}
