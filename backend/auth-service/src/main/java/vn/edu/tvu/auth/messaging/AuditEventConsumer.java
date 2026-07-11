@@ -8,8 +8,10 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Lazy;
 
 @Component
+@Lazy(false)
 public class AuditEventConsumer {
 
     private final AuditLogService auditLogService;

@@ -20,7 +20,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
+                                "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/mine").hasRole("ORGANIZER")
                         .requestMatchers(HttpMethod.GET, "/api/events", "/api/events/*").permitAll()
                         .requestMatchers("/api/events/**").hasRole("ORGANIZER")
