@@ -1,191 +1,149 @@
-import React, { useState } from 'react';
-import { Search, Plus, Lock, Unlock, X } from 'lucide-react';
-import { mockUsers } from '../../data/mockUsers';
-import { mockClubs } from '../../data/mockClubs';
-import Breadcrumb from '../../components/common/Breadcrumb';
-import DataTable from '../../components/common/DataTable';
-import StatusBadge from '../../components/common/StatusBadge';
-import Toast from '../../components/common/Toast';
-import { User } from '../../types/user';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Lock, Plus, Search, X } from "lucide-react";
+import { mockClubs } from "../../data/mockClubs";
+import Breadcrumb from "../../components/common/Breadcrumb";
+import DataTable from "../../components/common/DataTable";
+import StatusBadge from "../../components/common/StatusBadge";
+import Toast from "../../components/common/Toast";
+import { User } from "../../types/user";
+import { userService } from "../../services/userService";
+import { clubService } from "../../services/clubService";
+import { Club } from "../../types/club";
 
 export default function SuperAdminOrganizersPage() {
-  const [users, setUsers] = useState(() => 
-    mockUsers.filter(u => u.role === 'ORGANIZER')
-  );
-  const [search, setSearch] = useState('');
+  const [users, setUsers] = useState<User[]>([]);
+  const [clubs, setClubs] = useState<Club[]>(mockClubs);
+  const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  const [form, setForm] = useState({ fullName: '', email: '', clubId: mockClubs[0]?.id || '' });
+  const [toastMsg, setToastMsg] = useState("");
+  const [form, setForm] = useState({ fullName: "", email: "", clubId: mockClubs[0]?.id || "" });
 
-  const handleToggleStatus = (userId: string) => {
-    const updated = users.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.status === 'ACTIVE' ? 'LOCKED' as const : 'ACTIVE' as const;
-        setToastMsg(`Đã chuyển trạng thái tài khoản ${u.fullName} sang ${newStatus === 'ACTIVE' ? 'kích hoạt' : 'khóa'}.`);
-        return { ...u, status: newStatus };
-      }
-      return u;
-    });
-    setUsers(updated);
+  const loadData = useCallback(async () => {
+    try {
+      const [organizers, clubItems] = await Promise.all([userService.listOrganizersRemote(), clubService.listRemote()]);
+      setUsers(organizers);
+      setClubs(clubItems);
+      if (!form.clubId && clubItems[0]) setForm((value) => ({ ...value, clubId: clubItems[0].id }));
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the tai tai khoan organizer.");
+    }
+  }, [form.clubId]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
+
+  const handleLock = async (userId: string) => {
+    try {
+      await userService.lockOrganizer(userId);
+      setToastMsg("Da khoa tai khoan organizer.");
+      await loadData();
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the khoa tai khoan.");
+    }
   };
 
-  const handleCreateOrganizer = (event: React.FormEvent) => {
+  const handleCreateOrganizer = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.fullName.trim() || !form.email.trim() || !form.clubId) return;
-
-    const club = mockClubs.find((item) => item.id === form.clubId);
-    const newUser: User = {
-      id: `user_org_new_${Date.now()}`,
-      fullName: form.fullName.trim(),
-      email: form.email.trim(),
-      role: 'ORGANIZER' as const,
-      clubId: form.clubId,
-      clubName: club?.name,
-      profileComplete: true,
-      status: 'ACTIVE' as const
-    };
-
-    setUsers([newUser, ...users]);
-    setToastMsg('Đã cấp tài khoản Ban tổ chức mới.');
-    setCreateOpen(false);
-    setForm({ fullName: '', email: '', clubId: mockClubs[0]?.id || '' });
+    try {
+      await userService.createOrganizer({ email: form.email.trim(), displayName: form.fullName.trim(), clubId: form.clubId });
+      setToastMsg("Da cap tai khoan Ban to chuc moi.");
+      setCreateOpen(false);
+      setForm({ fullName: "", email: "", clubId: clubs[0]?.id || "" });
+      await loadData();
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the tao organizer.");
+    }
   };
 
-  const filteredUsers = users.filter(u => {
-    const club = mockClubs.find(c => c.id === u.clubId);
-    const clubName = club ? club.name : 'Chưa phân CLB';
-    return (
-      u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      clubName.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  const filteredUsers = useMemo(() => users.filter((user) => {
+    const club = clubs.find((item) => item.id === user.clubId);
+    const clubName = club ? club.name : "Chua phan CLB";
+    return `${user.fullName} ${user.email} ${clubName}`.toLowerCase().includes(search.toLowerCase());
+  }), [users, clubs, search]);
 
   const columns = [
     {
-      header: 'Họ và tên / Email',
-      accessor: (u: User) => (
+      header: "Ho va ten / Email",
+      accessor: (user: User) => (
         <div className="text-left font-semibold">
-          <span className="font-bold text-gray-950 block">{u.fullName}</span>
-          <span className="text-[10px] text-gray-400 block mt-0.5">{u.email}</span>
+          <span className="block font-bold text-gray-950">{user.fullName}</span>
+          <span className="mt-0.5 block text-[10px] text-gray-400">{user.email}</span>
         </div>
-      )
+      ),
     },
     {
-      header: 'Câu Lạc Bộ Quản Lý',
-      accessor: (u: User) => {
-        const club = mockClubs.find(c => c.id === u.clubId);
-        return (
-          <span className="text-xs font-bold text-gray-700">
-            {club ? club.name : 'Chưa phân câu lạc bộ'}
-          </span>
-        );
-      }
+      header: "CLB quan ly",
+      accessor: (user: User) => <span className="text-xs font-bold text-gray-700">{clubs.find((club) => club.id === user.clubId)?.name || "Chua phan CLB"}</span>,
     },
+    { header: "Trang thai", accessor: (user: User) => <StatusBadge type="user" status={user.status} /> },
     {
-      header: 'Trạng Thái',
-      accessor: (u: User) => <StatusBadge type="user" status={u.status} />
-    },
-    {
-      header: 'Thao tác',
-      accessor: (u: User) => (
-        <div className="flex gap-1 justify-end">
-          <button
-            onClick={() => handleToggleStatus(u.id)}
-            className={`p-1.5 border border-gray-100 rounded-lg transition-colors cursor-pointer ${
-              u.status === 'ACTIVE' 
-                ? 'text-rose-600 hover:bg-rose-50 hover:border-rose-200' 
-                : 'text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200'
-            }`}
-            title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
-          >
-            {u.status === 'ACTIVE' ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-          </button>
+      header: "Thao tac",
+      accessor: (user: User) => (
+        <div className="flex justify-end gap-1">
+          {user.status === "ACTIVE" && (
+            <button onClick={() => handleLock(user.id)} className="cursor-pointer rounded-lg border border-gray-100 p-1.5 text-rose-600 transition-colors hover:border-rose-200 hover:bg-rose-50" title="Khoa tai khoan">
+              <Lock className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý Ban tổ chức' }]} />
+      <Breadcrumb items={[{ label: "Quan tri he thong", path: "/admin" }, { label: "Quan ly Ban to chuc" }]} />
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-gray-950 tracking-tight">Quản Lý Tài Khoản Ban Tổ Chức</h2>
-          <p className="text-xs text-gray-500 font-semibold font-sans">Quản lý phân công tài khoản đại diện Ban chủ nhiệm các Câu lạc bộ Đại học Trà Vinh</p>
+          <h2 className="text-xl font-black tracking-tight text-gray-950">Quan ly tai khoan Ban to chuc</h2>
+          <p className="text-xs font-semibold text-gray-500">Tao va khoa organizer qua backend Auth/Admin service.</p>
         </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold tracking-tight transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-brand-600/10"
-        >
-          <Plus className="w-4 h-4" /> Cấp tài khoản mới
+        <button onClick={() => setCreateOpen(true)} className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold tracking-tight text-white shadow-md shadow-brand-600/10 transition-all hover:bg-brand-700">
+          <Plus className="h-4 w-4" /> Cap tai khoan moi
         </button>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 bg-white border border-gray-200 p-4 rounded-2xl shadow-sm">
-        <div className="space-y-1">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Tìm kiếm tài khoản Ban tổ chức</label>
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+        <label className="space-y-1">
+          <span className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Tim kiem</span>
           <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-            <input 
-              type="text" 
-              placeholder="Tên, email, hoặc câu lạc bộ..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full max-w-md pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-hidden focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
-            />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} className="w-full max-w-md rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-xs font-semibold focus:border-brand-500 focus:outline-hidden focus:ring-1 focus:ring-brand-500" />
           </div>
-        </div>
+        </label>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden p-1">
-        <DataTable 
-          data={filteredUsers}
-          columns={columns}
-          searchPlaceholder="Lọc nhanh danh sách..."
-          searchField="fullName"
-        />
+      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
+        <DataTable data={filteredUsers} columns={columns} searchPlaceholder="Loc nhanh danh sach..." searchField="fullName" />
       </div>
 
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setCreateOpen(false)} aria-label="Đóng" />
+          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setCreateOpen(false)} aria-label="Dong" />
           <form onSubmit={handleCreateOrganizer} className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
             <button type="button" className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100" onClick={() => setCreateOpen(false)}>
               <X className="h-4 w-4" />
             </button>
-            <h2 className="font-display text-lg font-extrabold text-slate-950">Cấp tài khoản Ban tổ chức</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-              Tạo tài khoản đại diện CLB. Tài khoản này chỉ được thao tác với sự kiện, đăng ký và vé QR thuộc CLB được gán.
-            </p>
+            <h2 className="font-display text-lg font-extrabold text-slate-950">Cap tai khoan Ban to chuc</h2>
             <div className="mt-5 grid gap-4">
-              <label className="space-y-1.5">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Họ và tên</span>
-                <input className="tvu-input" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} placeholder="Ví dụ: Nguyễn Văn Bình" />
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Email nội bộ</span>
-                <input className="tvu-input" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="organizer@tvu.edu.vn" />
-              </label>
-              <label className="space-y-1.5">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500">Câu lạc bộ phụ trách</span>
-                <select className="tvu-input" value={form.clubId} onChange={(event) => setForm({ ...form, clubId: event.target.value })}>
-                  {mockClubs.map((club) => (
-                    <option key={club.id} value={club.id}>{club.name}</option>
-                  ))}
-                </select>
-              </label>
+              <input className="tvu-input" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} placeholder="Ho va ten" />
+              <input className="tvu-input" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="organizer@tvu.edu.vn" />
+              <select className="tvu-input" value={form.clubId} onChange={(event) => setForm({ ...form, clubId: event.target.value })}>
+                {clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
+              </select>
             </div>
             <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button type="button" className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setCreateOpen(false)}>Hủy bỏ</button>
-              <button type="submit" className="min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">Cấp tài khoản</button>
+              <button type="button" className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setCreateOpen(false)}>Huy</button>
+              <button type="submit" className="min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">Cap tai khoan</button>
             </div>
           </form>
         </div>
       )}
 
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

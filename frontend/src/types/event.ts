@@ -13,5 +13,5 @@ export interface Event {
   registrationCloseAt: string;
   capacity: number;
   remainingTickets: number;
-  status: 'OPEN' | 'UPCOMING' | 'CLOSED' | 'FULL' | 'ENDED';
+  status: 'DRAFT' | 'OPEN' | 'UPCOMING' | 'CLOSED' | 'FULL' | 'ENDED';
 }

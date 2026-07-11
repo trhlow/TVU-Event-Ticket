@@ -1,11 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
-import { mockEvents } from '../../data/mockEvents';
 import { mockClubs } from '../../data/mockClubs';
 import EventCard from '../../components/events/EventCard';
 import EventFilter from '../../components/events/EventFilter';
 import Breadcrumb from '../../components/common/Breadcrumb';
+import { eventService } from '../../services/eventService';
+import { Event } from '../../types/event';
 
 export default function StudentEventListPage() {
   const navigate = useNavigate();
@@ -15,21 +16,45 @@ export default function StudentEventListPage() {
   const [selectedClubId, setSelectedClubId] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const categories = useMemo(() => {
-    const list = mockEvents.map(e => e.category);
-    return Array.from(new Set(list));
+  useEffect(() => {
+    let mounted = true;
+    async function loadEvents() {
+      setIsLoading(true);
+      setErrorMsg('');
+      try {
+        const data = await eventService.listRemote();
+        if (mounted) setEvents(data);
+      } catch (error) {
+        if (mounted) setErrorMsg(error instanceof Error ? error.message : 'Không thể tải danh sách sự kiện.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadEvents();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
+  const categories = useMemo(() => {
+    const list = events.map(e => e.category);
+    return Array.from(new Set(list));
+  }, [events]);
+
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((evt) => {
+    return events.filter((evt) => {
       const matchSearch = evt.title.toLowerCase().includes(searchValue.toLowerCase().trim());
       const matchClub = selectedClubId === 'ALL' || evt.clubId === selectedClubId;
       const matchCategory = selectedCategory === 'ALL' || evt.category === selectedCategory;
       const matchStatus = selectedStatus === 'ALL' || evt.status === selectedStatus;
       return matchSearch && matchClub && matchCategory && matchStatus;
     });
-  }, [searchValue, selectedClubId, selectedCategory, selectedStatus]);
+  }, [events, searchValue, selectedClubId, selectedCategory, selectedStatus]);
 
   const handleResetFilters = () => {
     setSearchValue('');
@@ -63,7 +88,15 @@ export default function StudentEventListPage() {
       />
 
       {/* Events list */}
-      {filteredEvents.length > 0 ? (
+      {isLoading ? (
+        <div className="py-16 text-center text-sm font-bold text-gray-500">Đang tải danh sách sự kiện...</div>
+      ) : errorMsg ? (
+        <div className="py-16 text-center bg-white border border-rose-100 rounded-2xl p-8 max-w-lg mx-auto shadow-sm space-y-3">
+          <Calendar className="w-12 h-12 text-rose-300 mx-auto" />
+          <h4 className="text-sm font-bold text-gray-950">Không thể tải sự kiện</h4>
+          <p className="text-xs text-gray-500 font-semibold max-w-sm mx-auto leading-relaxed">{errorMsg}</p>
+        </div>
+      ) : filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {filteredEvents.map((evt) => (
             <EventCard

@@ -1,93 +1,95 @@
-import React, { useState } from 'react';
-import { Ticket, Info } from 'lucide-react';
-import { getTickets } from '../../data/mockTickets';
-import { mockEvents } from '../../data/mockEvents';
-import { getCurrentUser } from '../../data/mockAuth';
-import TicketCard from '../../components/tickets/TicketCard';
-import QRDisplayCard from '../../components/tickets/QRDisplayCard';
-import DetailDrawer from '../../components/common/DetailDrawer';
-import Breadcrumb from '../../components/common/Breadcrumb';
-import Toast from '../../components/common/Toast';
+import React, { useEffect, useMemo, useState } from "react";
+import { Info, Ticket as TicketIcon } from "lucide-react";
+import { mockEvents } from "../../data/mockEvents";
+import TicketCard from "../../components/tickets/TicketCard";
+import QRDisplayCard from "../../components/tickets/QRDisplayCard";
+import DetailDrawer from "../../components/common/DetailDrawer";
+import Breadcrumb from "../../components/common/Breadcrumb";
+import Toast from "../../components/common/Toast";
+import { ticketService } from "../../services/ticketService";
+import { Ticket } from "../../types/ticket";
+import { Event } from "../../types/event";
+
+function eventFor(ticket: Ticket): Event {
+  return mockEvents.find((event) => event.id === ticket.eventId) || {
+    id: ticket.eventId,
+    clubId: "",
+    clubName: "CLB phu trach",
+    title: ticket.eventId,
+    description: "",
+    category: "Su kien",
+    bannerUrl: "",
+    location: "Dia diem su kien",
+    startAt: ticket.issuedAt,
+    endAt: ticket.issuedAt,
+    registrationOpenAt: ticket.issuedAt,
+    registrationCloseAt: ticket.issuedAt,
+    capacity: 0,
+    remainingTickets: 0,
+    status: "OPEN",
+  };
+}
 
 export default function MyTicketsPage() {
-  const currentUser = getCurrentUser();
-  const [tickets] = useState(() => 
-    getTickets().filter(t => t.studentId === currentUser.id)
-  );
-
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState("");
 
-  const activeTicket = tickets.find(t => t.id === selectedTicketId);
-  const activeEvent = activeTicket ? mockEvents.find(e => e.id === activeTicket.eventId) : null;
+  useEffect(() => {
+    let mounted = true;
+    ticketService.listRemote()
+      .then((items) => {
+        if (mounted) setTickets(items);
+      })
+      .catch((error) => {
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai vi ve.");
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  const handleViewQR = (id: string) => {
-    setSelectedTicketId(id);
-  };
+  const activeTicket = tickets.find((ticket) => ticket.id === selectedTicketId);
+  const activeEvent = useMemo(() => (activeTicket ? eventFor(activeTicket) : null), [activeTicket]);
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Sinh viên', path: '/student' }, { label: 'Ví vé QR của tôi' }]} />
+      <Breadcrumb items={[{ label: "Sinh vien", path: "/student" }, { label: "Vi ve QR cua toi" }]} />
 
       <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">Ví Vé QR Điện Tử Cá Nhân</h2>
-        <p className="text-xs text-gray-500 font-semibold">Tất cả vé tham dự của bạn. Vui lòng xuất trình mã QR tương ứng để điểm danh tại sự kiện</p>
+        <h2 className="text-xl font-black tracking-tight text-gray-950">Vi ve dien tu ca nhan</h2>
+        <p className="text-xs font-semibold text-gray-500">Ve xuat hien sau khi organizer approve reservation va backend tra ticketId.</p>
       </div>
 
       {tickets.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {tickets.map((tkt) => {
-            const event = mockEvents.find(e => e.id === tkt.eventId);
-            if (!event) return null;
-
-            return (
-              <TicketCard
-                key={tkt.id}
-                ticket={tkt}
-                event={event}
-                onViewQR={handleViewQR}
-              />
-            );
-          })}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {tickets.map((ticket) => (
+            <TicketCard key={ticket.id} ticket={ticket} event={eventFor(ticket)} onViewQR={setSelectedTicketId} />
+          ))}
         </div>
       ) : (
-        <div className="py-16 text-center bg-white border border-gray-200 rounded-2xl p-8 max-w-md mx-auto shadow-sm space-y-3">
-          <Ticket className="w-12 h-12 text-gray-300 mx-auto" />
-          <h4 className="text-sm font-bold text-gray-950">Ví vé của bạn đang trống</h4>
-          <p className="text-xs text-gray-500 font-semibold leading-relaxed">
-            Bạn chưa có vé sự kiện hợp lệ nào được cấp. Sau khi đăng ký và được Ban tổ chức phê duyệt, vé QR sẽ xuất hiện tại đây ngay lập tức.
-          </p>
+        <div className="mx-auto max-w-md space-y-3 rounded-2xl border border-gray-200 bg-white p-8 py-16 text-center shadow-sm">
+          <TicketIcon className="mx-auto h-12 w-12 text-gray-300" />
+          <h4 className="text-sm font-bold text-gray-950">Vi ve cua ban dang trong</h4>
+          <p className="text-xs font-semibold leading-relaxed text-gray-500">Chua co reservation APPROVED kem ticketId.</p>
         </div>
       )}
 
-      {/* Guidelines alert */}
-      <div className="p-4 bg-brand-50/50 border border-brand-100 rounded-xl flex gap-3 text-left">
-        <Info className="w-5 h-5 text-brand-600 flex-shrink-0" />
-        <div className="space-y-1">
-          <p className="text-xs font-extrabold text-brand-900 leading-none">Chính sách bảo mật vé QR</p>
-          <p className="text-[10px] text-brand-800 leading-relaxed font-semibold">
-            Không chụp màn hình mã QR gửi cho người khác sử dụng. Máy quét điểm danh tại cửa chỉ chấp nhận duy nhất một lượt quét cho mỗi mã vé định danh. Trường hợp trùng lặp vé sẽ không thể check-in vào sự kiện.
-          </p>
-        </div>
+      <div className="flex gap-3 rounded-xl border border-brand-100 bg-brand-50/50 p-4 text-left">
+        <Info className="h-5 w-5 shrink-0 text-brand-600" />
+        <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
+          Backend hien chua co API tra QR payload cho sinh vien; khong tao QR signed gia o frontend.
+        </p>
       </div>
 
-      {/* Detail Drawer for QR Display */}
       {activeTicket && activeEvent && (
-        <DetailDrawer
-          isOpen={!!selectedTicketId}
-          onClose={() => setSelectedTicketId(null)}
-          title="Mã QR Vé Vào Cửa"
-        >
+        <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thong tin ve">
           <div className="p-1">
-            <QRDisplayCard
-              ticket={activeTicket}
-              event={activeEvent}
-              onDownload={() => setToastMsg('Đang chuẩn bị tải vé điện tử của bạn.')}
-            />
+            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => setToastMsg("Backend chua cung cap file ve QR.")} />
           </div>
         </DetailDrawer>
       )}
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

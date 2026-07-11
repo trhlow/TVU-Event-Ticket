@@ -15,16 +15,21 @@ export default function PublicEventDetailPage() {
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | undefined>();
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     let mounted = true;
     async function loadEvent() {
       if (!eventId) return;
       setIsLoading(true);
-      const data = await eventService.getPublicEventById(eventId);
-      if (mounted) {
-        setEvent(data);
-        setIsLoading(false);
+      setError("");
+      try {
+        const data = await eventService.getPublicEventById(eventId);
+        if (mounted) setEvent(data);
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : "Không thể tải chi tiết sự kiện.");
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     }
 
@@ -46,7 +51,7 @@ export default function PublicEventDetailPage() {
     );
   }
 
-  if (!event) {
+  if (error || !event) {
     return (
       <div className="subtle-gradient-bg px-5 py-16 md:px-8">
         <EmptyState

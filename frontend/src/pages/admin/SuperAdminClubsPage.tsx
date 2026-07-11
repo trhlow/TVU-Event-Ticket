@@ -1,107 +1,83 @@
-import React, { useState } from "react";
-import { Edit3, Lock, Plus, Unlock } from "lucide-react";
-import { Link } from "react-router-dom";
-import { mockClubs } from "../../data/mockClubs";
+import React, { useEffect, useState } from "react";
+import { Lock, Plus } from "lucide-react";
 import DataTable from "../../components/common/DataTable";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import Toast from "../../components/common/Toast";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import { Club } from "../../types/club";
+import { clubService } from "../../services/clubService";
 
 export default function SuperAdminClubsPage() {
-  const [clubs, setClubs] = useState<Club[]>(mockClubs);
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [targetClub, setTargetClub] = useState<Club | null>(null);
   const [toastMsg, setToastMsg] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", description: "" });
 
-  const handleToggleStatus = (club: Club) => {
-    setTargetClub(club);
+  const loadClubs = async () => {
+    try {
+      setClubs(await clubService.listRemote());
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the tai danh sach CLB.");
+    }
   };
 
-  const handleConfirmToggle = () => {
+  useEffect(() => {
+    void loadClubs();
+  }, []);
+
+  const handleConfirmDeactivate = async () => {
     if (!targetClub) return;
+    try {
+      await clubService.deactivate(targetClub.id);
+      setToastMsg(`Da khoa CLB: ${targetClub.name}`);
+      setTargetClub(null);
+      await loadClubs();
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the khoa CLB.");
+    }
+  };
 
-    const updated = clubs.map((c) => {
-      if (c.id === targetClub.id) {
-        const nextStatus: Club["status"] =
-          c.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-        return {
-          ...c,
-          status: nextStatus,
-        };
-      }
-      return c;
-    });
-
-    setClubs(updated);
-    setToastMsg(
-      targetClub.status === "ACTIVE"
-        ? `Đã khóa tài khoản CLB: ${targetClub.name}`
-        : `Đã mở khóa tài khoản CLB: ${targetClub.name}`,
-    );
-    setTargetClub(null);
+  const handleCreate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.name.trim()) return;
+    try {
+      await clubService.create({ name: form.name.trim(), description: form.description.trim() || undefined });
+      setCreateOpen(false);
+      setForm({ name: "", description: "" });
+      setToastMsg("Da tao CLB moi.");
+      await loadClubs();
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the tao CLB.");
+    }
   };
 
   const columns = [
+    { header: "Ma", accessor: (club: Club) => <span className="block font-mono font-black text-gray-950">{club.code}</span> },
     {
-      header: "Mã CLB / Viết tắt",
-      accessor: (club: Club) => (
-        <span className="font-mono font-black text-gray-950 block">{club.code}</span>
-      ),
-    },
-    {
-      header: "Tên Câu Lạc Bộ / Đơn Vị",
+      header: "Ten CLB",
       accessor: (club: Club) => (
         <div className="text-left font-semibold">
-          <span className="font-bold text-gray-950 block">{club.name}</span>
-          <span className="text-[10px] text-gray-400 font-semibold block mt-1 line-clamp-1 max-w-sm">
-            {club.description}
-          </span>
+          <span className="block font-bold text-gray-950">{club.name}</span>
+          <span className="mt-1 block max-w-sm line-clamp-1 text-[10px] font-semibold text-gray-400">{club.description}</span>
         </div>
       ),
     },
     {
-      header: "Trưởng CLB (Quản lý)",
+      header: "Trang thai",
       accessor: (club: Club) => (
-        <span className="font-bold text-gray-900 block">{club.managerName}</span>
-      ),
-    },
-    {
-      header: "Trạng Thái",
-      accessor: (club: Club) => (
-        <span
-          className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${
-            club.status === "ACTIVE"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-              : "bg-rose-50 border-rose-200 text-rose-700"
-          }`}
-        >
-          {club.status === "ACTIVE" ? "Hoạt động" : "Đã khóa"}
+        <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${club.status === "ACTIVE" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"}`}>
+          {club.status}
         </span>
       ),
     },
     {
-      header: "Phê duyệt",
+      header: "Thao tac",
       accessor: (club: Club) => (
-        <div className="flex gap-1.5 justify-end">
-          <Link
-            to={`/admin/clubs/${club.id}/edit`}
-            className="px-2.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <Edit3 className="w-3.5 h-3.5" /> Sửa
-          </Link>
-          {club.status === "ACTIVE" ? (
-            <button
-              onClick={() => handleToggleStatus(club)}
-              className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200/60 rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Lock className="w-3.5 h-3.5" /> Khóa CLB
-            </button>
-          ) : (
-            <button
-              onClick={() => handleToggleStatus(club)}
-              className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200/60 rounded-xl text-[10px] font-black transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Unlock className="w-3.5 h-3.5" /> Kích hoạt
+        <div className="flex justify-end gap-1.5">
+          {club.status === "ACTIVE" && (
+            <button onClick={() => setTargetClub(club)} className="flex cursor-pointer items-center gap-1 rounded-xl border border-rose-200/60 bg-rose-50 px-2.5 py-1.5 text-[10px] font-black text-rose-700 transition-colors hover:bg-rose-100">
+              <Lock className="h-3.5 w-3.5" /> Khoa CLB
             </button>
           )}
         </div>
@@ -111,69 +87,44 @@ export default function SuperAdminClubsPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb
-        items={[
-          { label: "Quản trị hệ thống", path: "/admin" },
-          { label: "Quản lý câu lạc bộ" },
-        ]}
-      />
+      <Breadcrumb items={[{ label: "Quan tri he thong", path: "/admin" }, { label: "Quan ly cau lac bo" }]} />
 
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div className="space-y-1">
-          <h2 className="text-xl font-black text-gray-950 tracking-tight">
-            Danh Sách Câu Lạc Bộ Đoàn Trường
-          </h2>
-          <p className="text-xs text-gray-500 font-semibold">
-            Giám sát các đơn vị, khóa tạm thời hoặc kích hoạt tài khoản tổ chức sự kiện
-          </p>
+          <h2 className="text-xl font-black tracking-tight text-gray-950">Danh sach cau lac bo</h2>
+          <p className="text-xs font-semibold text-gray-500">Quan ly CLB qua backend Auth/Admin service.</p>
         </div>
-        <Link
-          to="/admin/clubs/create"
-          className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800"
-        >
-          <Plus className="h-4 w-4" /> Thêm CLB
-        </Link>
+        <button onClick={() => setCreateOpen(true)} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">
+          <Plus className="h-4 w-4" /> Them CLB
+        </button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-        <DataTable
-          data={clubs}
-          columns={columns}
-          searchPlaceholder="Tìm kiếm tên câu lạc bộ..."
-          searchField="name"
-        />
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <DataTable data={clubs} columns={columns} searchPlaceholder="Tim kiem ten cau lac bo..." searchField="name" />
       </div>
 
-      {/* Toggle Status Modal */}
+      {createOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setCreateOpen(false)} aria-label="Dong" />
+          <form onSubmit={handleCreate} className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <h2 className="font-display text-lg font-extrabold text-slate-950">Tao CLB</h2>
+            <div className="mt-5 grid gap-4">
+              <input className="tvu-input" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ten CLB" />
+              <textarea className="tvu-input min-h-24" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Mo ta" />
+            </div>
+            <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
+              <button type="button" className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setCreateOpen(false)}>Huy</button>
+              <button type="submit" className="min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">Tao CLB</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {targetClub && (
-        <ConfirmModal
-          isOpen={!!targetClub}
-          title={
-            targetClub.status === "ACTIVE"
-              ? "Xác Nhận Khóa CLB"
-              : "Kích Hoạt Tài Khoản CLB"
-          }
-          message={
-            targetClub.status === "ACTIVE"
-              ? `Bạn có chắc muốn tạm khóa câu lạc bộ "${targetClub.name}"? Khi bị khóa, ban điều hành CLB sẽ không thể đăng nhập tạo sự kiện hay duyệt vé.`
-              : `Kích hoạt lại tài khoản cho câu lạc bộ "${targetClub.name}". Cán bộ quản trị sẽ có thể tiếp tục tổ chức sự kiện Đoàn Hội.`
-          }
-          onConfirm={handleConfirmToggle}
-          onCancel={() => setTargetClub(null)}
-          confirmText={
-            targetClub.status === "ACTIVE" ? "Có, Tạm Khóa" : "Kích Hoạt Ngay"
-          }
-          cancelText="Hủy bỏ"
-          type={targetClub.status === "ACTIVE" ? "danger" : "success"}
-        />
+        <ConfirmModal isOpen={!!targetClub} title="Xac nhan khoa CLB" message={`Khoa CLB "${targetClub.name}"? Backend hien ho tro deactivate, chua co API mo khoa.`} onConfirm={handleConfirmDeactivate} onCancel={() => setTargetClub(null)} confirmText="Khoa CLB" cancelText="Huy" type="danger" />
       )}
 
-      {toastMsg && (
-        <Toast
-          message={toastMsg}
-          onClose={() => setToastMsg("")}
-        />
-      )}
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }
