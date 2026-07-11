@@ -180,6 +180,21 @@ Inventory request:
 - OpenAPI-based TypeScript generation is planned, but frontend currently still has handwritten service/types.
 - Internal password is not validated in dev auth; `credential` is the source of identity in the dev profile.
 
+## EPIC delivery progress
+
+| EPIC | Progress | Status |
+| --- | ---: | --- |
+| EPIC 0 - Platform and auth scaffold | 100% | Complete on `main`. |
+| EPIC 1 - Identity, JWT, users, clubs and RBAC | 100% | Complete on `main`. |
+| EPIC 2 - Gateway security and routing | 100% | Complete on `main`. |
+| EPIC 3 - Event service | 100% | PR #3 passed CI; ready to merge. |
+| EPIC 4 - Ticket service core | Plan 100%; implementation baseline about 35% | Complete plan is in [`backend/.claude/plans/epic-4-ticket-service.md`](backend/.claude/plans/epic-4-ticket-service.md). Existing ticket code is an early baseline and must pass the plan's correctness gates before completion. |
+| EPIC 5-8 | Not started as complete EPICs | Some infrastructure/documentation pieces exist, but none should be marked complete yet. |
+
+EPIC 4 baseline percentage reflects implemented code, not acceptance completion. Missing headline guarantees include
+safe Redis recovery, same-reservation concurrency locking, leased multi-instance outbox, availability APIs,
+signed QR check-in, attendee export, and the full correctness suite.
+
 ## Last verification
 
 The integrated main branch was verified with:
