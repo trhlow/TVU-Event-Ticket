@@ -6,7 +6,7 @@ import { Event } from "../../types/event";
 interface QRScannerPanelProps {
   tickets: Ticket[];
   events: Event[];
-  onCheckIn: (ticketCode: string) => { success: boolean; message: string };
+  onCheckIn: (ticketCode: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
   cameraPermission: "idle" | "granted" | "denied";
 }
 
@@ -27,11 +27,11 @@ export default function QRScannerPanel({
     (t) => t.status === "VALID" && t.checkInStatus === "PENDING",
   );
 
-  const handleScanSubmit = (codeToScan: string) => {
+  const handleScanSubmit = async (codeToScan: string) => {
     const code = codeToScan || ticketCode;
     if (!code.trim()) return;
 
-    const result = onCheckIn(code.trim());
+    const result = await onCheckIn(code.trim());
     setScanResult(result);
     setTicketCode("");
   };

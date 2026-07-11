@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Calendar, MapPin, CheckSquare, Square, ArrowLeft, Send } from 'lucide-react';
-import { mockEvents } from '../../data/mockEvents';
-import { getReservations, saveReservations } from '../../data/mockReservations';
 import { getCurrentUser } from '../../data/mockAuth';
 import { formatDateTime } from '../../utils/formatDate';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import Toast from '../../components/common/Toast';
+import { eventService } from '../../services/eventService';
+import { registrationService } from '../../services/registrationService';
+import { Event } from '../../types/event';
 
 export default function EventRegistrationConfirmPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -16,8 +17,33 @@ export default function EventRegistrationConfirmPage() {
   const [committed, setCommitted] = useState(false);
   const [note, setNote] = useState('');
   const [toastMsg, setToastMsg] = useState('');
+  const [event, setEvent] = useState<Event | undefined>();
+  const [isLoading, setIsLoading] = useState(true);
 
-  const event = mockEvents.find(e => e.id === eventId);
+  useEffect(() => {
+    let mounted = true;
+    async function loadEvent() {
+      if (!eventId) return;
+      setIsLoading(true);
+      try {
+        const data = await eventService.getByIdRemote(eventId);
+        if (mounted) setEvent(data);
+      } catch (error) {
+        if (mounted) setToastMsg(error instanceof Error ? error.message : 'Không thể tải sự kiện.');
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadEvent();
+    return () => {
+      mounted = false;
+    };
+  }, [eventId]);
+
+  if (isLoading) {
+    return <div className="py-12 text-center text-sm font-bold text-gray-500">Đang tải thông tin sự kiện...</div>;
+  }
 
   if (!event) {
     return (
@@ -28,7 +54,7 @@ export default function EventRegistrationConfirmPage() {
     );
   }
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!committed) return;
 
@@ -47,9 +73,8 @@ export default function EventRegistrationConfirmPage() {
       return;
     }
 
-    const currentReservations = getReservations();
-
-    // Check if duplicate
+    try {
+    const currentReservations = await registrationService.listByStudentRemote(currentUser.id);
     const duplicated = currentReservations.find(
       r => r.eventId === event.id && r.studentId === currentUser.id
     );
@@ -72,16 +97,19 @@ export default function EventRegistrationConfirmPage() {
       className: currentUser.className || '',
       email: currentUser.email,
       status: 'PENDING' as const,
+      rejectReason: note.trim() || undefined,
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [newReservation, ...currentReservations];
-    saveReservations(updated);
+    const createdReservation = await registrationService.submit(newReservation);
 
     setToastMsg('Gửi yêu cầu đăng ký vé thành công!');
     setTimeout(() => {
-      navigate(`/student/registrations/success/${newResId}`);
+      navigate(`/student/registrations/success/${createdReservation.id}`);
     }, 1200);
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : 'Không thể gửi đăng ký. Vui lòng thử lại.');
+    }
   };
 
   return (

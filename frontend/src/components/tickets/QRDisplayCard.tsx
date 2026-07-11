@@ -26,6 +26,8 @@ function FakeQRCode() {
 }
 
 export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QRDisplayCardProps) {
+  const hasQrPayload = Boolean(ticket.qrCodeValue);
+
   return (
     <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-xl shadow-brand-900/10">
       <div className="relative overflow-hidden bg-gradient-to-br from-brand-800 via-brand-600 to-accent-500 p-5 text-left text-white">
@@ -39,8 +41,14 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
       </div>
 
       <div className="p-5 text-center">
-        <div className="mx-auto h-56 w-56 rounded-2xl border border-slate-200 bg-white p-3 shadow-inner">
-          <FakeQRCode />
+        <div className="mx-auto grid h-56 w-56 place-items-center rounded-2xl border border-slate-200 bg-white p-3 shadow-inner">
+          {hasQrPayload ? (
+            <FakeQRCode />
+          ) : (
+            <div className="px-4 text-center text-xs font-bold leading-5 text-slate-500">
+              Backend chua cung cap QR payload cho ve nay.
+            </div>
+          )}
         </div>
         <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Mã vé</p>

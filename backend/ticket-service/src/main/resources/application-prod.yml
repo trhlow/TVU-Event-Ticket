@@ -25,3 +25,8 @@ logging:
   level:
     root: INFO
     vn.edu.tvu: INFO
+
+tvu:
+  ticket:
+    qr:
+      secret: ${QR_SIGNING_SECRET}

@@ -1,8 +1,6 @@
 package vn.edu.tvu.ticket.messaging;
 
 import vn.edu.tvu.ticket.domain.OutboxMessage;
-import vn.edu.tvu.ticket.domain.OutboxStatus;
-import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +26,7 @@ import static org.mockito.Mockito.when;
 class OutboxRelayServiceTest {
 
     @Mock
-    private OutboxMessageRepository outboxRepository;
+    private OutboxClaimService claimService;
 
     @Mock
     private RabbitTemplate rabbitTemplate;
@@ -37,15 +35,14 @@ class OutboxRelayServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new OutboxRelayService(outboxRepository, rabbitTemplate);
+        service = new OutboxRelayService(claimService, rabbitTemplate);
     }
 
     @Test
     void relayPendingMessages_publishesWithMessageIdAndMarksPublished() throws Exception {
         var message = persisted(OutboxMessage.pending("reservation", UUID.randomUUID(),
                 "reservation.approved", "{\"reservationId\":\"r1\"}"));
-        when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc(OutboxStatus.PENDING))
-                .thenReturn(List.of(message));
+        when(claimService.claim(org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of(message));
 
         service.relayPendingMessages();
 
@@ -54,24 +51,21 @@ class OutboxRelayServiceTest {
                 eq(message.getPayload()), processorCaptor.capture());
         var processed = processorCaptor.getValue().postProcessMessage(new Message(new byte[0]));
         assertThat(processed.getMessageProperties().getMessageId()).isEqualTo(message.getMessageId().toString());
-        assertThat(message.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
-        assertThat(message.getPublishedAt()).isNotNull();
+        verify(claimService).markSent(message.getId());
     }
 
     @Test
     void relayPendingMessages_marksFailedWhenPublishFails() {
         var message = persisted(OutboxMessage.pending("audit", UUID.randomUUID(),
                 "audit.ticket.approve", "{}"));
-        when(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc(OutboxStatus.PENDING))
-                .thenReturn(List.of(message));
+        when(claimService.claim(org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of(message));
         doThrow(new IllegalStateException("broker down")).when(rabbitTemplate)
                 .convertAndSend(eq(TicketRabbitConfig.EXCHANGE), eq("audit.ticket.approve"),
                         eq(message.getPayload()), org.mockito.ArgumentMatchers.any(MessagePostProcessor.class));
 
         service.relayPendingMessages();
 
-        assertThat(message.getStatus()).isEqualTo(OutboxStatus.FAILED);
-        assertThat(message.getAttempts()).isEqualTo(1);
+        verify(claimService).markRetryable(eq(message.getId()), eq("broker down"));
     }
 
     private static OutboxMessage persisted(OutboxMessage message) {

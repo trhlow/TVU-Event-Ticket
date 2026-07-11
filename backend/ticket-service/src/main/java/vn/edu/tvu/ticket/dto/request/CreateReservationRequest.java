@@ -5,6 +5,9 @@ import jakarta.validation.constraints.NotNull;
 import java.util.UUID;
 
 public record CreateReservationRequest(
-        @NotNull UUID eventId,
-        @NotNull UUID clubId) {
+        @NotNull UUID eventId) {
+
+    public CreateReservationRequest(UUID eventId, UUID ignoredClientClubId) {
+        this(eventId);
+    }
 }

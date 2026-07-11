@@ -49,7 +49,7 @@ spring:
             - id: ticket-service
               uri: ${TICKET_SERVICE_URI:http://localhost:8082}
               predicates:
-                - Path=/api/tickets/**, /api/reservations/**
+                - Path=/api/tickets/**, /api/reservations/**, /api/ticketing/**
               filters:
                 - name: RequestRateLimiter
                   args:

@@ -6,6 +6,8 @@ import vn.edu.tvu.ticket.domain.ReservationStatus;
 import vn.edu.tvu.ticket.domain.Ticket;
 import vn.edu.tvu.ticket.domain.TicketInventory;
 import vn.edu.tvu.ticket.domain.TicketStatus;
+import vn.edu.tvu.ticket.client.EventClient;
+import vn.edu.tvu.ticket.client.EventSnapshot;
 import vn.edu.tvu.ticket.dto.request.CreateReservationRequest;
 import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
 import vn.edu.tvu.ticket.repository.ReservationRepository;
@@ -13,8 +15,10 @@ import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.security.UserRole;
+import vn.edu.tvu.ticket.mapper.ReservationMapper;
+import vn.edu.tvu.ticket.mapper.TicketInventoryMapper;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -55,6 +59,9 @@ class TicketReservationServiceTest {
     @Mock
     private TicketCounterService ticketCounterService;
 
+    @Mock
+    private EventClient eventClient;
+
     private TicketReservationService service;
 
     @BeforeEach
@@ -65,6 +72,9 @@ class TicketReservationServiceTest {
                 inventoryRepository,
                 outboxRepository,
                 ticketCounterService,
+                eventClient,
+                new ReservationMapper(),
+                new TicketInventoryMapper(),
                 new ObjectMapper());
     }
 
@@ -74,10 +84,11 @@ class TicketReservationServiceTest {
         var eventId = UUID.randomUUID();
         var clubId = UUID.randomUUID();
         var inventory = persistedInventory(eventId, clubId, 2);
-        when(reservationRepository.findByStudentIdAndIdempotencyKey(student.userId(), "idem-1"))
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(eventId, student.userId(), "idem-1"))
                 .thenReturn(Optional.empty());
         when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
         when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.of(inventory));
+        when(eventClient.getOpenEvent(eventId)).thenReturn(event(eventId, clubId, 2));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation ->
                 persistedReservation(invocation.getArgument(0), UUID.randomUUID()));
 
@@ -100,7 +111,7 @@ class TicketReservationServiceTest {
                 student.email(),
                 student.mssv(),
                 "idem-1"), UUID.randomUUID());
-        when(reservationRepository.findByStudentIdAndIdempotencyKey(student.userId(), "idem-1"))
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(eventId, student.userId(), "idem-1"))
                 .thenReturn(Optional.of(existing));
 
         var response = service.submit(student, new CreateReservationRequest(eventId, clubId), "idem-1");
@@ -121,9 +132,9 @@ class TicketReservationServiceTest {
                 "110122001",
                 "idem-1"), UUID.randomUUID());
         var inventory = persistedInventory(eventId, organizer.clubId(), 1);
-        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+        when(reservationRepository.findLockedById(reservation.getId())).thenReturn(Optional.of(reservation));
         when(ticketCounterService.tryReserve(eventId)).thenReturn(true);
-        when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.of(inventory));
+        when(inventoryRepository.findLockedByEventId(eventId)).thenReturn(Optional.of(inventory));
         when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation ->
                 persistedTicket(invocation.getArgument(0), UUID.randomUUID()));
 
@@ -149,7 +160,9 @@ class TicketReservationServiceTest {
                 "student@example.com",
                 "110122001",
                 "idem-1"), UUID.randomUUID());
-        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+        when(reservationRepository.findLockedById(reservation.getId())).thenReturn(Optional.of(reservation));
+        when(inventoryRepository.findLockedByEventId(reservation.getEventId()))
+                .thenReturn(Optional.of(persistedInventory(reservation.getEventId(), organizer.clubId(), 1)));
         when(ticketCounterService.tryReserve(reservation.getEventId())).thenReturn(false);
 
         assertThatThrownBy(() -> service.approve(organizer, reservation.getId()))
@@ -170,7 +183,7 @@ class TicketReservationServiceTest {
                 "student@example.com",
                 "110122001",
                 "idem-1"), UUID.randomUUID());
-        when(reservationRepository.findById(reservation.getId())).thenReturn(Optional.of(reservation));
+        when(reservationRepository.findLockedById(reservation.getId())).thenReturn(Optional.of(reservation));
 
         assertThatThrownBy(() -> service.approve(organizer(UUID.randomUUID()), reservation.getId()))
                 .isInstanceOf(ResponseStatusException.class)
@@ -184,6 +197,13 @@ class TicketReservationServiceTest {
                 UserRole.SINH_VIEN,
                 null,
                 "110122001");
+    }
+
+    private static EventSnapshot event(UUID eventId, UUID clubId, int capacity) {
+        var now = Instant.now();
+        return new EventSnapshot(eventId, clubId, "Demo event", "Description", capacity,
+                now.minusSeconds(60), now.plusSeconds(3600), now.plusSeconds(7200), now.plusSeconds(10800),
+                "TVU Hall", "OPEN", UUID.randomUUID(), now.minusSeconds(3600), now);
     }
 
     private static CurrentUser organizer(UUID clubId) {

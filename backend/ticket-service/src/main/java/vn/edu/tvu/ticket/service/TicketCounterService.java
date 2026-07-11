@@ -4,9 +4,11 @@ import java.util.UUID;
 
 public interface TicketCounterService {
 
-    void initialize(UUID eventId, int remainingTickets);
+    void seedIfMissing(UUID eventId, int remainingTickets);
 
     boolean tryReserve(UUID eventId);
 
     void release(UUID eventId);
+
+    int remaining(UUID eventId);
 }

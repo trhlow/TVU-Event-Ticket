@@ -1,16 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { useParams } from "react-router-dom";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import Toast from "../../components/common/Toast";
 import QRScannerPanel from "../../components/tickets/QRScannerPanel";
 import { getEvents } from "../../data/mockEvents";
-import { getTickets, saveTickets } from "../../data/mockTickets";
-import { mockUsers } from "../../data/mockUsers";
+import { ticketService } from "../../services/ticketService";
+import { Ticket } from "../../types/ticket";
 
 export default function OrganizerScanPage() {
-  const { eventId } = useParams<{ eventId: string }>();
-  const [tickets, setTickets] = useState(() => getTickets());
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [cameraPermission, setCameraPermission] = useState<"idle" | "granted" | "denied">("idle");
   const [toastMsg, setToastMsg] = useState("");
   const [scanHistory, setScanHistory] = useState<Array<{ code: string; message: string; success: boolean; time: string }>>([]);
@@ -37,39 +35,14 @@ export default function OrganizerScanPage() {
     };
   }, []);
 
-  const handleCheckIn = (ticketCode: string) => {
-    const allTickets = getTickets();
-    const targetTicketIndex = allTickets.findIndex((ticket) => ticket.ticketCode.trim().toLowerCase() === ticketCode.trim().toLowerCase());
-
-    if (targetTicketIndex === -1) {
-      return pushScanHistory(ticketCode, false, "QR không hợp lệ. Mã vé này không tồn tại trong hệ thống.");
+  const handleCheckIn = async (qrPayload: string) => {
+    try {
+      const ticket = await ticketService.checkIn(qrPayload);
+      setTickets((items) => [ticket, ...items.filter((item) => item.id !== ticket.id)]);
+      return pushScanHistory(qrPayload, true, "Diem danh thanh cong.");
+    } catch (error) {
+      return pushScanHistory(qrPayload, false, error instanceof Error ? error.message : "QR khong hop le hoac ve da check-in.");
     }
-
-    const ticket = allTickets[targetTicketIndex];
-    if (eventId && ticket.eventId !== eventId) {
-      return pushScanHistory(ticketCode, false, "QR không thuộc sự kiện này. Vui lòng kiểm tra đúng cổng điểm danh.");
-    }
-
-    if (ticket.status !== "VALID") {
-      return pushScanHistory(ticketCode, false, "QR không hợp lệ. Vé đã bị hủy hoặc không còn giá trị sử dụng.");
-    }
-
-    if (ticket.checkInStatus === "CHECKED_IN") {
-      return pushScanHistory(
-        ticketCode,
-        false,
-        `Vé đã được điểm danh trước đó lúc ${ticket.checkInAt ? new Date(ticket.checkInAt).toLocaleTimeString("vi-VN") : "không xác định"}.`,
-      );
-    }
-
-    allTickets[targetTicketIndex].checkInStatus = "CHECKED_IN";
-    allTickets[targetTicketIndex].checkInAt = new Date().toISOString();
-    saveTickets(allTickets);
-    setTickets(allTickets);
-
-    const student = mockUsers.find((user) => user.id === ticket.studentId);
-    const studentNameLabel = student ? `${student.fullName} (${student.mssv})` : "Sinh viên";
-    return pushScanHistory(ticketCode, true, `Điểm danh thành công cho ${studentNameLabel}.`);
   };
 
   const pushScanHistory = (code: string, success: boolean, message: string) => {
@@ -83,18 +56,16 @@ export default function OrganizerScanPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quét QR điểm danh" }]} />
+      <Breadcrumb items={[{ label: "Ban to chuc", path: "/organizer" }, { label: "Quet QR diem danh" }]} />
       <div>
-        <h1 className="tvu-page-title text-2xl">Quét QR điểm danh</h1>
-        <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-          Cổng này chỉ quét QR vé điện tử cá nhân của sinh viên. QR đăng ký sự kiện không dùng để điểm danh.
-        </p>
+        <h1 className="tvu-page-title text-2xl">Quet QR diem danh</h1>
+        <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-slate-500">Nhap QR payload signed do backend/notification cap. Frontend khong tu ky QR.</p>
       </div>
       <QRScannerPanel tickets={tickets} events={events} onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
       <section className="enterprise-card p-5">
         <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
-          <h2 className="section-heading">Lịch sử check-in gần đây</h2>
-          <p className="text-sm font-semibold text-slate-500">Ghi nhận nhanh kết quả quét trong phiên thao tác hiện tại.</p>
+          <h2 className="section-heading">Lich su check-in gan day</h2>
+          <p className="text-sm font-semibold text-slate-500">Ghi nhan ket qua quet trong phien hien tai.</p>
         </div>
         <div className="mt-4 space-y-3">
           {scanHistory.length > 0 ? (
@@ -109,9 +80,7 @@ export default function OrganizerScanPage() {
               </div>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">
-              Chưa có lượt quét nào trong phiên hiện tại.
-            </div>
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">Chua co luot quet nao.</div>
           )}
         </div>
       </section>

@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import vn.edu.tvu.ticket.domain.ReservationStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -55,6 +57,18 @@ public class ReservationController {
     @GetMapping("/pending")
     @Operation(summary = "List pending reservations for organizer club")
     public List<ReservationResponse> pending(@AuthenticationPrincipal Jwt jwt) {
+        return service.listPendingForOrganizer(CurrentUser.from(jwt));
+    }
+
+    @GetMapping
+    @Operation(summary = "List club reservations by status")
+    public List<ReservationResponse> byStatus(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(defaultValue = "PENDING") ReservationStatus status) {
+        if (status != ReservationStatus.PENDING) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Only PENDING organizer listing is currently supported");
+        }
         return service.listPendingForOrganizer(CurrentUser.from(jwt));
     }
 

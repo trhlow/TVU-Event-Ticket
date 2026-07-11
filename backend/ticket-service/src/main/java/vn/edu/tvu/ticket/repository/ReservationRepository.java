@@ -8,14 +8,23 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
 
-    Optional<Reservation> findByStudentIdAndIdempotencyKey(UUID studentId, String idempotencyKey);
+    Optional<Reservation> findByEventIdAndStudentIdAndIdempotencyKey(
+            UUID eventId, UUID studentId, String idempotencyKey);
 
     boolean existsByEventIdAndStudentId(UUID eventId, UUID studentId);
 
     List<Reservation> findByStudentIdOrderByRequestedAtDesc(UUID studentId);
 
     List<Reservation> findByClubIdAndStatusOrderByRequestedAtDesc(UUID clubId, ReservationStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reservation r where r.id = :id")
+    Optional<Reservation> findLockedById(@Param("id") UUID id);
 }

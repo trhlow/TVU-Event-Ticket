@@ -36,6 +36,18 @@ public class Reservation {
     @Column(name = "student_mssv", nullable = false, length = 30)
     private String studentMssv;
 
+    @Column(name = "event_title", nullable = false, length = 255)
+    private String eventTitle;
+
+    @Column(name = "event_start_at", nullable = false)
+    private Instant eventStartAt;
+
+    @Column(name = "event_end_at", nullable = false)
+    private Instant eventEndAt;
+
+    @Column(name = "event_location", nullable = false, length = 255)
+    private String eventLocation;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReservationStatus status = ReservationStatus.PENDING;
@@ -61,12 +73,20 @@ public class Reservation {
             UUID studentId,
             String studentEmail,
             String studentMssv,
+            String eventTitle,
+            Instant eventStartAt,
+            Instant eventEndAt,
+            String eventLocation,
             String idempotencyKey) {
         this.eventId = eventId;
         this.clubId = clubId;
         this.studentId = studentId;
         this.studentEmail = studentEmail;
         this.studentMssv = studentMssv;
+        this.eventTitle = eventTitle;
+        this.eventStartAt = eventStartAt;
+        this.eventEndAt = eventEndAt;
+        this.eventLocation = eventLocation;
         this.idempotencyKey = idempotencyKey;
     }
 
@@ -76,8 +96,25 @@ public class Reservation {
             UUID studentId,
             String studentEmail,
             String studentMssv,
+            String eventTitle,
+            Instant eventStartAt,
+            Instant eventEndAt,
+            String eventLocation,
             String idempotencyKey) {
-        return new Reservation(eventId, clubId, studentId, studentEmail, studentMssv, idempotencyKey);
+        return new Reservation(eventId, clubId, studentId, studentEmail, studentMssv, eventTitle,
+                eventStartAt, eventEndAt, eventLocation, idempotencyKey);
+    }
+
+    public static Reservation pending(
+            UUID eventId,
+            UUID clubId,
+            UUID studentId,
+            String studentEmail,
+            String studentMssv,
+            String idempotencyKey) {
+        var start = Instant.parse("2026-07-02T09:00:00Z");
+        return pending(eventId, clubId, studentId, studentEmail, studentMssv, "Demo event", start,
+                start.plusSeconds(7200), "TVU Hall", idempotencyKey);
     }
 
     public void approve(UUID reviewerId) {
@@ -124,6 +161,22 @@ public class Reservation {
 
     public String getStudentMssv() {
         return studentMssv;
+    }
+
+    public String getEventTitle() {
+        return eventTitle;
+    }
+
+    public Instant getEventStartAt() {
+        return eventStartAt;
+    }
+
+    public Instant getEventEndAt() {
+        return eventEndAt;
+    }
+
+    public String getEventLocation() {
+        return eventLocation;
     }
 
     public ReservationStatus getStatus() {
