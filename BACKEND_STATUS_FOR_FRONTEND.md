@@ -175,7 +175,7 @@ Inventory request:
 
 ## Known gaps for frontend
 
-- QR ticket display/check-in APIs are not available yet.
+- Ticket availability, organizer QR check-in, attendee JSON and CSV APIs are available under `/api/ticketing/**`.
 - Notification/email delivery is not available yet.
 - OpenAPI-based TypeScript generation is planned, but frontend currently still has handwritten service/types.
 - Internal password is not validated in dev auth; `credential` is the source of identity in the dev profile.
@@ -187,13 +187,14 @@ Inventory request:
 | EPIC 0 - Platform and auth scaffold | 100% | Complete on `main`. |
 | EPIC 1 - Identity, JWT, users, clubs and RBAC | 100% | Complete on `main`. |
 | EPIC 2 - Gateway security and routing | 100% | Complete on `main`. |
-| EPIC 3 - Event service | 100% | PR #3 passed CI; ready to merge. |
-| EPIC 4 - Ticket service core | Plan 100%; implementation baseline about 35% | Complete plan is in [`backend/.claude/plans/epic-4-ticket-service.md`](backend/.claude/plans/epic-4-ticket-service.md). Existing ticket code is an early baseline and must pass the plan's correctness gates before completion. |
+| EPIC 3 - Event service | 100% | Complete on `main`. |
+| EPIC 4 - Ticket service core | Implementation about 90% | Core implementation and local correctness gates are complete on `feat/epic4-ticket-service`; Docker gateway smoke, PR and CI remain before merge. |
 | EPIC 5-8 | Not started as complete EPICs | Some infrastructure/documentation pieces exist, but none should be marked complete yet. |
 
-EPIC 4 baseline percentage reflects implemented code, not acceptance completion. Missing headline guarantees include
-safe Redis recovery, same-reservation concurrency locking, leased multi-instance outbox, availability APIs,
-signed QR check-in, attendee export, and the full correctness suite.
+EPIC 4 now includes event-authoritative reservation snapshots, safe Redis Lua capacity, row-locked concurrent
+approval, leased outbox delivery, availability APIs, signed single-use QR check-in, scoped attendee JSON/CSV,
+and PostgreSQL/Redis concurrency tests. Remaining acceptance work is the full Docker gateway smoke flow and
+green PR CI before merging to `main`.
 
 ## Last verification
 

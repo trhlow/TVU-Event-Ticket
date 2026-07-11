@@ -1,5 +1,7 @@
 package vn.edu.tvu.ticket.service;
 
+import vn.edu.tvu.ticket.client.EventClient;
+import vn.edu.tvu.ticket.client.EventSnapshot;
 import vn.edu.tvu.ticket.domain.OutboxMessage;
 import vn.edu.tvu.ticket.domain.Reservation;
 import vn.edu.tvu.ticket.domain.ReservationStatus;
@@ -11,6 +13,8 @@ import vn.edu.tvu.ticket.dto.response.ReservationResponse;
 import vn.edu.tvu.ticket.dto.response.TicketInventoryResponse;
 import vn.edu.tvu.ticket.messaging.AuditEventMessage;
 import vn.edu.tvu.ticket.messaging.ReservationApprovedMessage;
+import vn.edu.tvu.ticket.mapper.ReservationMapper;
+import vn.edu.tvu.ticket.mapper.TicketInventoryMapper;
 import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
 import vn.edu.tvu.ticket.repository.ReservationRepository;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
@@ -18,8 +22,8 @@ import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.security.UserRole;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.List;
@@ -30,6 +34,8 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -40,6 +46,9 @@ public class TicketReservationService {
     private final TicketInventoryRepository inventoryRepository;
     private final OutboxMessageRepository outboxRepository;
     private final TicketCounterService ticketCounterService;
+    private final EventClient eventClient;
+    private final ReservationMapper reservationMapper;
+    private final TicketInventoryMapper inventoryMapper;
     private final ObjectMapper objectMapper;
 
     public TicketReservationService(
@@ -48,66 +57,72 @@ public class TicketReservationService {
             TicketInventoryRepository inventoryRepository,
             OutboxMessageRepository outboxRepository,
             TicketCounterService ticketCounterService,
+            EventClient eventClient,
+            ReservationMapper reservationMapper,
+            TicketInventoryMapper inventoryMapper,
             ObjectMapper objectMapper) {
         this.reservationRepository = reservationRepository;
         this.ticketRepository = ticketRepository;
         this.inventoryRepository = inventoryRepository;
         this.outboxRepository = outboxRepository;
         this.ticketCounterService = ticketCounterService;
+        this.eventClient = eventClient;
+        this.reservationMapper = reservationMapper;
+        this.inventoryMapper = inventoryMapper;
         this.objectMapper = objectMapper;
     }
 
     @Transactional
     public TicketInventoryResponse initializeInventory(CurrentUser actor, InitializeTicketInventoryRequest request) {
         requireOrganizerOrAdmin(actor);
-        requireClubScope(actor, request.clubId(), "Inventory is outside organizer club scope");
+        var event = eventClient.getOpenEvent(request.eventId());
+        requireClubScope(actor, event.clubId(), "Inventory is outside organizer club scope");
         if (inventoryRepository.existsByEventId(request.eventId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ticket inventory already exists");
         }
-        if (!request.eventStartAt().isBefore(request.eventEndAt())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event start must be before event end");
-        }
 
         var inventory = TicketInventory.create(
-                request.eventId(),
-                request.clubId(),
-                request.totalCapacity(),
-                request.eventTitle().trim(),
-                request.eventStartAt(),
-                request.eventEndAt(),
-                request.eventLocation().trim());
+                event.id(), event.clubId(), event.capacity(), event.title(), event.startAt(), event.endAt(),
+                event.location());
         var saved = inventoryRepository.save(inventory);
-        ticketCounterService.initialize(saved.getEventId(), saved.getTotalCapacity());
-        return inventoryResponse(saved);
+        ticketCounterService.seedIfMissing(saved.getEventId(), saved.getTotalCapacity());
+        return inventoryMapper.toResponse(saved);
     }
 
     @Transactional
     public ReservationResponse submit(CurrentUser actor, CreateReservationRequest request, String idempotencyKey) {
         requireRole(actor, UserRole.SINH_VIEN);
         if (actor.mssv() == null || actor.mssv().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student profile must be completed");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Student profile must be completed");
         }
         var normalizedKey = normalizeIdempotencyKey(idempotencyKey);
-        var existing = reservationRepository.findByStudentIdAndIdempotencyKey(actor.userId(), normalizedKey);
+        var existing = reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(
+                request.eventId(), actor.userId(), normalizedKey);
         if (existing.isPresent()) {
-            return responseForMatchingIdempotencyPayload(existing.get(), request);
+            return reservationResponse(existing.get(), findTicketId(existing.get().getId()).orElse(null));
         }
         if (reservationRepository.existsByEventIdAndStudentId(request.eventId(), actor.userId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Reservation already exists for event");
         }
 
-        var inventory = inventoryRepository.findByEventId(request.eventId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket inventory not found"));
-        if (!inventory.getClubId().equals(request.clubId())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Event does not belong to requested club");
-        }
+        var event = eventClient.getOpenEvent(request.eventId());
+        validateRegistrationWindow(event);
+        var inventory = inventoryRepository.findByEventId(event.id())
+                .orElseGet(() -> inventoryRepository.save(TicketInventory.create(
+                        event.id(), event.clubId(), event.capacity(), event.title(), event.startAt(),
+                        event.endAt(), event.location())));
+        ticketCounterService.seedIfMissing(event.id(), inventory.getTotalCapacity() - inventory.getApprovedCount());
 
         var reservation = Reservation.pending(
-                request.eventId(),
-                request.clubId(),
+                event.id(),
+                event.clubId(),
                 actor.userId(),
                 actor.email(),
                 actor.mssv(),
+                event.title(),
+                event.startAt(),
+                event.endAt(),
+                event.location(),
                 normalizedKey);
         return reservationResponse(reservationRepository.save(reservation), null);
     }
@@ -115,53 +130,45 @@ public class TicketReservationService {
     @Transactional
     public ReservationResponse approve(CurrentUser actor, UUID reservationId) {
         requireOrganizerOrAdmin(actor);
-        var reservation = reservation(reservationId);
+        var reservation = lockedReservation(reservationId);
         requireClubScope(actor, reservation.getClubId(), "Reservation is outside organizer club scope");
         if (reservation.getStatus() == ReservationStatus.APPROVED) {
             return reservationResponse(reservation, findTicketId(reservation.getId()).orElse(null));
         }
         if (reservation.getStatus() == ReservationStatus.REJECTED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rejected reservation cannot be approved");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Rejected reservation cannot be approved");
         }
+        var inventory = inventoryRepository.findLockedByEventId(reservation.getEventId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket inventory not found"));
+        if (!inventory.getClubId().equals(reservation.getClubId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ticket inventory club mismatch");
+        }
+        ticketCounterService.seedIfMissing(reservation.getEventId(),
+                inventory.getTotalCapacity() - inventory.getApprovedCount());
         if (!ticketCounterService.tryReserve(reservation.getEventId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Tickets are sold out");
         }
-
-        var releaseCounter = true;
-        try {
-            var inventory = inventoryRepository.findByEventId(reservation.getEventId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Ticket inventory not found"));
-            if (!inventory.getClubId().equals(reservation.getClubId())) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Ticket inventory club mismatch");
-            }
-            if (!inventory.reserveApprovedSlot()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Tickets are sold out");
-            }
-            inventoryRepository.saveAndFlush(inventory);
-
-            reservation.approve(actor.userId());
-            var ticket = ticketRepository.save(Ticket.issue(reservation));
-            recordReservationApproved(reservation, ticket, inventory);
-            recordAudit(actor.userId(), "audit.ticket.approve", "reservation", reservation.getId(),
-                    "{\"ticketId\":\"" + ticket.getId() + "\"}");
-            releaseCounter = false;
-            return reservationResponse(reservation, ticket.getId());
-        } catch (RuntimeException ex) {
-            if (releaseCounter) {
-                ticketCounterService.release(reservation.getEventId());
-            }
-            throw ex;
+        compensateCounterOnRollback(reservation.getEventId());
+        if (!inventory.reserveApprovedSlot()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Tickets are sold out");
         }
+        inventoryRepository.saveAndFlush(inventory);
+
+        reservation.approve(actor.userId());
+        var ticket = ticketRepository.save(Ticket.issue(reservation));
+        recordReservationApproved(reservation, ticket);
+        recordAudit(actor.userId(), "audit.ticket.approve", "reservation", reservation.getId(),
+                "{\"ticketId\":\"" + ticket.getId() + "\"}");
+        return reservationResponse(reservation, ticket.getId());
     }
 
     @Transactional
     public ReservationResponse reject(CurrentUser actor, UUID reservationId) {
         requireOrganizerOrAdmin(actor);
-        var reservation = reservation(reservationId);
+        var reservation = lockedReservation(reservationId);
         requireClubScope(actor, reservation.getClubId(), "Reservation is outside organizer club scope");
         if (reservation.getStatus() == ReservationStatus.APPROVED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Approved reservation cannot be rejected");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Approved reservation cannot be rejected");
         }
         if (reservation.getStatus() == ReservationStatus.PENDING) {
             reservation.reject(actor.userId());
@@ -190,22 +197,17 @@ public class TicketReservationService {
                 .toList();
     }
 
-    private ReservationResponse responseForMatchingIdempotencyPayload(
-            Reservation reservation,
-            CreateReservationRequest request) {
-        if (!reservation.getEventId().equals(request.eventId()) || !reservation.getClubId().equals(request.clubId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Idempotency key was already used with another payload");
-        }
-        return reservationResponse(reservation, findTicketId(reservation.getId()).orElse(null));
-    }
-
     private Reservation reservation(UUID reservationId) {
         return reservationRepository.findById(reservationId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
     }
 
-    private void recordReservationApproved(Reservation reservation, Ticket ticket, TicketInventory inventory) {
+    private Reservation lockedReservation(UUID reservationId) {
+        return reservationRepository.findLockedById(reservationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
+    }
+
+    private void recordReservationApproved(Reservation reservation, Ticket ticket) {
         var message = new ReservationApprovedMessage(
                 reservation.getId(),
                 ticket.getId(),
@@ -213,10 +215,10 @@ public class TicketReservationService {
                 reservation.getStudentId(),
                 reservation.getStudentEmail(),
                 reservation.getStudentMssv(),
-                inventory.getEventTitle(),
-                inventory.getEventStartAt().toString(),
-                inventory.getEventEndAt().toString(),
-                inventory.getEventLocation());
+                reservation.getEventTitle(),
+                reservation.getEventStartAt().toString(),
+                reservation.getEventEndAt().toString(),
+                reservation.getEventLocation());
         outboxRepository.save(OutboxMessage.pending(
                 "reservation",
                 reservation.getId(),
@@ -230,32 +232,7 @@ public class TicketReservationService {
     }
 
     private ReservationResponse reservationResponse(Reservation reservation, UUID ticketId) {
-        return new ReservationResponse(
-                reservation.getId(),
-                reservation.getEventId(),
-                reservation.getClubId(),
-                reservation.getStudentId(),
-                reservation.getStudentEmail(),
-                reservation.getStudentMssv(),
-                reservation.getStatus(),
-                reservation.getRequestedAt(),
-                reservation.getReviewedAt(),
-                reservation.getReviewedBy(),
-                ticketId);
-    }
-
-    private TicketInventoryResponse inventoryResponse(TicketInventory inventory) {
-        return new TicketInventoryResponse(
-                inventory.getId(),
-                inventory.getEventId(),
-                inventory.getClubId(),
-                inventory.getTotalCapacity(),
-                inventory.getApprovedCount(),
-                inventory.getTotalCapacity() - inventory.getApprovedCount(),
-                inventory.getEventTitle(),
-                inventory.getEventStartAt(),
-                inventory.getEventEndAt(),
-                inventory.getEventLocation());
+        return reservationMapper.toResponse(reservation, ticketId);
     }
 
     private Optional<UUID> findTicketId(UUID reservationId) {
@@ -264,6 +241,28 @@ public class TicketReservationService {
             return Optional.empty();
         }
         return ticket.map(Ticket::getId);
+    }
+
+    private void validateRegistrationWindow(EventSnapshot event) {
+        var now = Instant.now();
+        if (!"OPEN".equals(event.status()) || now.isBefore(event.registrationOpenAt())
+                || now.isAfter(event.registrationCloseAt())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Event is not open for registration");
+        }
+    }
+
+    private void compensateCounterOnRollback(UUID eventId) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status == STATUS_ROLLED_BACK) {
+                    ticketCounterService.release(eventId);
+                }
+            }
+        });
     }
 
     private String normalizeIdempotencyKey(String idempotencyKey) {
@@ -298,7 +297,7 @@ public class TicketReservationService {
     private String json(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException ex) {
+        } catch (JacksonException ex) {
             throw new IllegalStateException("Failed to serialize outbox payload", ex);
         }
     }

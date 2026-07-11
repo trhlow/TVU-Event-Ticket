@@ -9,6 +9,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @EnableWebSecurity
@@ -21,7 +22,15 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
+                                "/swagger-ui.html").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/ticketing/events/*/availability",
+                                "/api/ticketing/events/availability").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/reservations").hasRole("SINH_VIEN")
+                        .requestMatchers(HttpMethod.GET, "/api/reservations/me").hasRole("SINH_VIEN")
+                        .requestMatchers("/api/reservations/**", "/api/ticketing/check-in",
+                                "/api/tickets/check-in", "/api/ticketing/events/*/attendees",
+                                "/api/ticketing/events/*/attendees.csv").hasRole("ORGANIZER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

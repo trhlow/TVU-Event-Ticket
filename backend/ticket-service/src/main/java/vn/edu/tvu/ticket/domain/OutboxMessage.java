@@ -9,6 +9,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -33,12 +35,13 @@ public class OutboxMessage {
     @Column(name = "routing_key", nullable = false, length = 120)
     private String routingKey;
 
-    @Column(nullable = false, columnDefinition = "text")
+    @Column(nullable = false, columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String payload;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private OutboxStatus status = OutboxStatus.PENDING;
+    private OutboxStatus status = OutboxStatus.NEW;
 
     @Column(nullable = false)
     private int attempts;
@@ -46,8 +49,20 @@ public class OutboxMessage {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(name = "published_at")
-    private Instant publishedAt;
+    @Column(name = "last_error")
+    private String lastError;
+
+    @Column(name = "locked_at")
+    private Instant lockedAt;
+
+    @Column(name = "locked_by", length = 120)
+    private String lockedBy;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
+
+    @Column(name = "sent_at")
+    private Instant sentAt;
 
     protected OutboxMessage() {
     }
@@ -64,14 +79,31 @@ public class OutboxMessage {
         return new OutboxMessage(aggregateType, aggregateId, routingKey, payload);
     }
 
-    public void markPublished() {
-        this.status = OutboxStatus.PUBLISHED;
-        this.publishedAt = Instant.now();
+    public void markProcessing(String workerId, Instant now, Instant leaseUntil) {
+        this.status = OutboxStatus.PROCESSING;
+        this.lockedBy = workerId;
+        this.lockedAt = now;
+        this.lockedUntil = leaseUntil;
+        this.lastError = null;
     }
 
-    public void markFailed() {
-        this.status = OutboxStatus.FAILED;
+    public void markSent() {
+        this.status = OutboxStatus.SENT;
+        this.sentAt = Instant.now();
+        clearLease();
+    }
+
+    public void markRetryable(String error) {
+        this.status = OutboxStatus.NEW;
         this.attempts++;
+        this.lastError = error;
+        clearLease();
+    }
+
+    private void clearLease() {
+        this.lockedAt = null;
+        this.lockedBy = null;
+        this.lockedUntil = null;
     }
 
     @PrePersist
@@ -80,7 +112,7 @@ public class OutboxMessage {
             createdAt = Instant.now();
         }
         if (status == null) {
-            status = OutboxStatus.PENDING;
+            status = OutboxStatus.NEW;
         }
     }
 
@@ -120,7 +152,23 @@ public class OutboxMessage {
         return createdAt;
     }
 
-    public Instant getPublishedAt() {
-        return publishedAt;
+    public String getLastError() {
+        return lastError;
+    }
+
+    public Instant getLockedAt() {
+        return lockedAt;
+    }
+
+    public String getLockedBy() {
+        return lockedBy;
+    }
+
+    public Instant getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public Instant getSentAt() {
+        return sentAt;
     }
 }

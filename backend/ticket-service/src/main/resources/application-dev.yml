@@ -21,3 +21,8 @@ spring:
 logging:
   level:
     vn.edu.tvu: DEBUG
+
+tvu:
+  ticket:
+    qr:
+      secret: ${QR_SIGNING_SECRET:dev-qr-signing-secret-change-me-1234567890}

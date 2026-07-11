@@ -66,13 +66,14 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    void reservationsRejectDuplicateStudentIdempotencyKey() {
+    void reservationsAllowSameStudentIdempotencyKeyForDifferentEvents() {
         var studentId = UUID.randomUUID();
+        var before = reservationRepository.count();
         reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), UUID.randomUUID(), studentId, "idem-1"));
 
-        assertThatThrownBy(() -> reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
-                UUID.randomUUID(), studentId, "idem-1")))
-                .isInstanceOf(DataIntegrityViolationException.class);
+        reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), UUID.randomUUID(), studentId, "idem-1"));
+
+        assertThat(reservationRepository.count()).isEqualTo(before + 2);
     }
 
     @Test
@@ -95,7 +96,7 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         var second = outboxRepository.saveAndFlush(OutboxMessage.pending("audit", UUID.randomUUID(),
                 "audit.ticket.approve", "{}"));
 
-        assertThat(outboxRepository.findTop50ByStatusOrderByCreatedAtAsc(OutboxStatus.PENDING))
+        assertThat(outboxRepository.findClaimable(Instant.now().plusSeconds(1)))
                 .extracting(OutboxMessage::getId)
                 .containsExactly(first.getId(), second.getId());
     }
