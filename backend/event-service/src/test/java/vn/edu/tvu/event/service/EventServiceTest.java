@@ -10,6 +10,7 @@ import vn.edu.tvu.event.domain.EventStatus;
 import vn.edu.tvu.event.dto.request.EventRequest;
 import vn.edu.tvu.event.dto.response.EventResponse;
 import vn.edu.tvu.event.exception.EventConflictException;
+import vn.edu.tvu.event.exception.EventAccessDeniedException;
 import vn.edu.tvu.event.exception.EventNotFoundException;
 import vn.edu.tvu.event.exception.EventValidationException;
 import vn.edu.tvu.event.mapper.EventMapper;
@@ -63,7 +64,7 @@ class EventServiceTest {
     void preventsCapacityChangeAfterOpen() {
         Event event = event(100);
         event.open();
-        when(repository.findByIdAndClubId(event.getId(), clubId)).thenReturn(Optional.of(event));
+        when(repository.findById(event.getId())).thenReturn(Optional.of(event));
         assertThatThrownBy(() -> service.update(organizer, event.getId(), request(101)))
                 .isInstanceOf(EventConflictException.class);
     }
@@ -72,7 +73,7 @@ class EventServiceTest {
     void onlyAllowsDraftToOpenAndOpenToClosed() {
         mapResponses();
         Event event = event(100);
-        when(repository.findByIdAndClubId(event.getId(), clubId)).thenReturn(Optional.of(event));
+        when(repository.findById(event.getId())).thenReturn(Optional.of(event));
         assertThat(service.changeStatus(organizer, event.getId(), EventStatus.OPEN).status())
                 .isEqualTo(EventStatus.OPEN);
         assertThat(service.changeStatus(organizer, event.getId(), EventStatus.CLOSED).status())
@@ -84,22 +85,25 @@ class EventServiceTest {
     @Test
     void hidesEventsOwnedByAnotherClub() {
         UUID eventId = UUID.randomUUID();
-        when(repository.findByIdAndClubId(eventId, clubId)).thenReturn(Optional.empty());
+        Event foreignEvent = Event.draft(UUID.randomUUID(), UUID.randomUUID(), "Foreign", null, 10,
+                Instant.parse("2026-08-01T00:00:00Z"), Instant.parse("2026-08-02T00:00:00Z"),
+                Instant.parse("2026-08-03T00:00:00Z"), Instant.parse("2026-08-04T00:00:00Z"), "TVU");
+        when(repository.findById(eventId)).thenReturn(Optional.of(foreignEvent));
         assertThatThrownBy(() -> service.update(organizer, eventId, request(100)))
-                .isInstanceOf(EventNotFoundException.class);
+                .isInstanceOf(EventAccessDeniedException.class);
     }
 
     @Test
     void deletesOnlyDraftEvents() {
         Event draft = event(100);
-        when(repository.findByIdAndClubId(draft.getId(), clubId)).thenReturn(Optional.of(draft));
+        when(repository.findById(draft.getId())).thenReturn(Optional.of(draft));
         service.delete(organizer, draft.getId());
         verify(repository).delete(draft);
         verify(auditPublisher).publish(organizer.id(), draft.getId(), "DELETED", draft.getTitle());
 
         Event open = event(100);
         open.open();
-        when(repository.findByIdAndClubId(open.getId(), clubId)).thenReturn(Optional.of(open));
+        when(repository.findById(open.getId())).thenReturn(Optional.of(open));
         assertThatThrownBy(() -> service.delete(organizer, open.getId()))
                 .isInstanceOf(EventConflictException.class);
     }

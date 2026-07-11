@@ -99,7 +99,9 @@ public class EventService {
 
     private Event ownedEvent(CurrentUser user, UUID id) {
         requireClub(user);
-        return repository.findByIdAndClubId(id, user.clubId()).orElseThrow(EventNotFoundException::new);
+        Event event = repository.findById(id).orElseThrow(EventNotFoundException::new);
+        if (!event.getClubId().equals(user.clubId())) throw new EventAccessDeniedException();
+        return event;
     }
 
     private void requireClub(CurrentUser user) {

@@ -23,6 +23,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", ex.getMessage(), request, null);
     }
 
+    @ExceptionHandler(EventAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(EventAccessDeniedException ex,
+                                                             HttpServletRequest request) {
+        return build(HttpStatus.FORBIDDEN, "EVENT_ACCESS_DENIED", ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(EventConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflict(EventConflictException ex, HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, "EVENT_CONFLICT", ex.getMessage(), request, null);
