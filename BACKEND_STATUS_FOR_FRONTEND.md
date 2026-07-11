@@ -1,6 +1,6 @@
 # Backend status for frontend integration
 
-Last updated: 2026-07-10
+Last updated: 2026-07-11
 
 This page is the quick frontend-facing view of the backend. Use it before wiring UI screens to live APIs.
 
@@ -114,6 +114,21 @@ Requires role `SUPER_ADMIN`.
 | `POST` | `/admin/organizers/{organizerId}/reset` | Ready | Reset organizer external identity binding. |
 | `DELETE` | `/admin/organizers/{organizerId}` | Ready | Delete organizer. |
 
+### Events
+
+| Method | Path | Status | Role | Notes |
+| --- | --- | --- | --- | --- |
+| `GET` | `/events` | Ready | Public | Lists OPEN events whose registration window includes the current time. |
+| `GET` | `/events/{eventId}` | Ready | Public | Returns details for an OPEN event. |
+| `GET` | `/events/mine` | Ready | `ORGANIZER` | Lists all events owned by the organizer's club. |
+| `POST` | `/events` | Ready | `ORGANIZER` | Creates a DRAFT event; `clubId` comes from JWT. |
+| `PUT` | `/events/{eventId}` | Ready | `ORGANIZER` | Updates an event in the same club. Capacity cannot change after OPEN. |
+| `PATCH` | `/events/{eventId}/status` | Ready | `ORGANIZER` | Supports DRAFT -> OPEN -> CLOSED. |
+| `DELETE` | `/events/{eventId}` | Ready | `ORGANIZER` | Deletes DRAFT events only. |
+
+Event responses intentionally do not include `remainingTickets`; use ticket availability APIs when they are exposed.
+The current frontend adapter supplies display-only defaults for legacy fields such as category and club name.
+
 ### Reservations and ticket inventory
 
 | Method | Path | Status | Role | Notes |
@@ -155,12 +170,11 @@ Inventory request:
 | `api-gateway` | Ready for auth, CORS, JWT cookie auth, RBAC, rate limiting, routing. | Frontend can call gateway directly with credentials. |
 | `auth-service` | Ready for dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies. | Login/profile/admin screens can start live integration. |
 | `ticket-service` | Ready for reservation submit/list/approve/reject and inventory initialization. | Student registration and organizer approval flows can start live integration once event IDs exist. |
-| `event-service` | Scaffold only: security and error handling exist, but event CRUD controllers are not implemented yet. | Event list/detail/create/edit screens should keep mock data or wait for event APIs. |
+| `event-service` | Event schema, public discovery, organizer CRUD/lifecycle, club scoping, OpenAPI and audit publishing are ready. | Public and organizer event screens can use live APIs. |
 | `notification-service` | App scaffold only. QR generation/email consumer endpoints are not implemented yet. | Ticket QR/email notification UI should stay mock or be feature-flagged. |
 
 ## Known gaps for frontend
 
-- Event CRUD APIs are not available yet.
 - QR ticket display/check-in APIs are not available yet.
 - Notification/email delivery is not available yet.
 - OpenAPI-based TypeScript generation is planned, but frontend currently still has handwritten service/types.
