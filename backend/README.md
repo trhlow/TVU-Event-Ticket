@@ -23,7 +23,7 @@ Frontend integration status is summarized in
 |------------------------|------|----------------|
 | `api-gateway`          | 8080 | Single entry point: CORS, JWT auth, RBAC, rate limiting, routing |
 | `auth-service`         | 8084 | Dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies |
-| `event-service`        | 8081 | Scaffolded service for future event APIs; security/error handling are present |
+| `event-service`        | 8081 | Public event discovery and club-scoped organizer CRUD/lifecycle APIs |
 | `ticket-service`       | 8082 | Reservations and ticket inventory; atomic reservation via Redis (§6.3) |
 | `notification-service` | 8083 | Scaffolded service for future QR/email delivery |
 
@@ -76,6 +76,6 @@ mvn -pl ticket-service test -Dtest=TicketReservationServiceTest
 
 - OpenAPI-based TypeScript generation is planned; frontend types are currently handwritten.
 - The atomic ticket deduction happens at **organizer approval time**, not at student submit (§6.3, §6.11).
-- Current implemented live APIs: auth/profile/admin, reservation workflow, and ticket inventory initialization.
-- Current gaps: event CRUD, QR check-in, and notification/email delivery are not implemented yet.
+- Current implemented live APIs: auth/profile/admin, event CRUD/lifecycle, reservation workflow, and ticket inventory initialization.
+- Current gaps: QR check-in and notification/email delivery are not implemented yet.
 - See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full set of design invariants.

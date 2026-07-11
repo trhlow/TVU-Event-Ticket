@@ -21,6 +21,11 @@ spring:
         jwt:
           # Internal JWT issued by the auth flow after Microsoft Entra ID login (§6.8)
           issuer-uri: ${JWT_ISSUER_URI:http://localhost:8084}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
 
 management:
   endpoints:
