@@ -101,6 +101,7 @@ services:
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
       JWT_ISSUER_URI: http://auth-service:8084
+      EVENT_SERVICE_URI: http://event-service:8081
     depends_on:
       - postgres
       - redis

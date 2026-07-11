@@ -139,13 +139,17 @@ The current frontend adapter supplies display-only defaults for legacy fields su
 | `PATCH` | `/reservations/{reservationId}/approve` | Ready | `ORGANIZER` | Approves and atomically reserves a ticket. |
 | `PATCH` | `/reservations/{reservationId}/reject` | Ready | `ORGANIZER` | Rejects pending reservation. |
 | `POST` | `/tickets/inventories` | Ready | `ORGANIZER` or `SUPER_ADMIN` | Initializes ticket inventory for an event. |
+| `GET` | `/ticketing/events/{eventId}/availability` | Ready | Public | Returns total, approved and remaining capacity. |
+| `GET` | `/ticketing/events/availability?ids=...` | Ready | Public | Batch availability for up to 100 events. |
+| `POST` | `/ticketing/check-in` | Ready | `ORGANIZER` | Verifies the signed QR and atomically checks in once. |
+| `GET` | `/ticketing/events/{eventId}/attendees` | Ready | `ORGANIZER` | Club-scoped attendee JSON. |
+| `GET` | `/ticketing/events/{eventId}/attendees.csv` | Ready | `ORGANIZER` | Club-scoped UTF-8 CSV export. |
 
 Reservation submit request:
 
 ```json
 {
-  "eventId": "uuid",
-  "clubId": "uuid"
+  "eventId": "uuid"
 }
 ```
 
@@ -153,13 +157,7 @@ Inventory request:
 
 ```json
 {
-  "eventId": "uuid",
-  "clubId": "uuid",
-  "totalCapacity": 150,
-  "eventTitle": "Hoi thao cong nghe",
-  "eventStartAt": "2026-07-20T08:00:00Z",
-  "eventEndAt": "2026-07-20T11:00:00Z",
-  "eventLocation": "Hoi truong D5"
+  "eventId": "uuid"
 }
 ```
 
@@ -169,7 +167,7 @@ Inventory request:
 | --- | --- | --- |
 | `api-gateway` | Ready for auth, CORS, JWT cookie auth, RBAC, rate limiting, routing. | Frontend can call gateway directly with credentials. |
 | `auth-service` | Ready for dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies. | Login/profile/admin screens can start live integration. |
-| `ticket-service` | Ready for reservation submit/list/approve/reject and inventory initialization. | Student registration and organizer approval flows can start live integration once event IDs exist. |
+| `ticket-service` | Ready for validated reservation, atomic approval, availability, QR check-in and attendee export. | Student registration and organizer ticket workflows can use live APIs. |
 | `event-service` | Event schema, public discovery, organizer CRUD/lifecycle, club scoping, OpenAPI and audit publishing are ready. | Public and organizer event screens can use live APIs. |
 | `notification-service` | App scaffold only. QR generation/email consumer endpoints are not implemented yet. | Ticket QR/email notification UI should stay mock or be feature-flagged. |
 
@@ -188,13 +186,13 @@ Inventory request:
 | EPIC 1 - Identity, JWT, users, clubs and RBAC | 100% | Complete on `main`. |
 | EPIC 2 - Gateway security and routing | 100% | Complete on `main`. |
 | EPIC 3 - Event service | 100% | Complete on `main`. |
-| EPIC 4 - Ticket service core | Implementation about 90% | Core implementation and local correctness gates are complete on `feat/epic4-ticket-service`; Docker gateway smoke, PR and CI remain before merge. |
+| EPIC 4 - Ticket service core | Implementation and local acceptance 100%; delivery 95% | Core implementation, correctness suite and Docker gateway smoke pass on `feat/epic4-ticket-service`; PR CI and merge remain. |
 | EPIC 5-8 | Not started as complete EPICs | Some infrastructure/documentation pieces exist, but none should be marked complete yet. |
 
 EPIC 4 now includes event-authoritative reservation snapshots, safe Redis Lua capacity, row-locked concurrent
 approval, leased outbox delivery, availability APIs, signed single-use QR check-in, scoped attendee JSON/CSV,
-and PostgreSQL/Redis concurrency tests. Remaining acceptance work is the full Docker gateway smoke flow and
-green PR CI before merging to `main`.
+and PostgreSQL/Redis concurrency tests. The Docker gateway smoke flow also passes; green PR CI remains before
+merging to `main`.
 
 ## Last verification
 
