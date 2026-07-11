@@ -4,6 +4,16 @@ import { apiConfig, apiRequest } from './apiClient';
 
 type EventPayload = Partial<Event>;
 
+function normalizeRemoteEvent(event: Event): Event {
+  return {
+    ...event,
+    clubName: event.clubName ?? 'Câu lạc bộ TVU',
+    category: event.category ?? 'Sự kiện',
+    bannerUrl: event.bannerUrl ?? '',
+    remainingTickets: event.remainingTickets ?? event.capacity,
+  };
+}
+
 async function withEventFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
   try {
     return await request();
@@ -18,10 +28,16 @@ export const eventService = {
     return getEvents();
   },
   async listRemote(): Promise<Event[]> {
-    return withEventFallback(() => apiRequest<Event[]>('/events'), () => getEvents());
+    return withEventFallback(
+      async () => (await apiRequest<Event[]>('/events')).map(normalizeRemoteEvent),
+      () => getEvents(),
+    );
   },
   async getPublicEvents(): Promise<Event[]> {
-    return withEventFallback(() => apiRequest<Event[]>('/events'), () => getEvents());
+    return withEventFallback(
+      async () => (await apiRequest<Event[]>('/events')).map(normalizeRemoteEvent),
+      () => getEvents(),
+    );
   },
   async getFeaturedEvents(limit = 6): Promise<Event[]> {
     return withEventFallback(
@@ -45,7 +61,10 @@ export const eventService = {
     return withEventFallback(() => apiRequest<Event>(`/events/${eventId}`), () => getEvents().find((event) => event.id === eventId));
   },
   async getPublicEventById(eventId: string): Promise<Event | undefined> {
-    return withEventFallback(() => apiRequest<Event>(`/events/${eventId}`), () => getEvents().find((event) => event.id === eventId));
+    return withEventFallback(
+      async () => normalizeRemoteEvent(await apiRequest<Event>(`/events/${eventId}`)),
+      () => getEvents().find((event) => event.id === eventId),
+    );
   },
   async create(data: Event): Promise<Event> {
     return withEventFallback(
