@@ -18,6 +18,22 @@ import java.util.List;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    @ExceptionHandler(EventNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(EventNotFoundException ex, HttpServletRequest request) {
+        return build(HttpStatus.NOT_FOUND, "EVENT_NOT_FOUND", ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(EventConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(EventConflictException ex, HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "EVENT_CONFLICT", ex.getMessage(), request, null);
+    }
+
+    @ExceptionHandler(EventValidationException.class)
+    public ResponseEntity<ErrorResponse> handleDomainValidation(EventValidationException ex,
+                                                                 HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "EVENT_VALIDATION_ERROR", ex.getMessage(), request, null);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidation(MethodArgumentNotValidException ex,
                                                            HttpServletRequest request) {
