@@ -72,9 +72,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/tvu_event
       SPRING_DATASOURCE_USERNAME: tvu
       SPRING_DATASOURCE_PASSWORD: tvu
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
       JWT_ISSUER_URI: http://auth-service:8084
     depends_on:
       - postgres
+      - rabbitmq
     ports:
       - "8081:8081"
 

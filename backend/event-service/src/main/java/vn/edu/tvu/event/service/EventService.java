@@ -23,11 +23,7 @@ public class EventService {
     private final EventAuditPublisher auditPublisher;
     private final Clock clock;
 
-    public EventService(EventRepository repository, EventMapper mapper, EventAuditPublisher auditPublisher) {
-        this(repository, mapper, auditPublisher, Clock.systemUTC());
-    }
-
-    EventService(EventRepository repository, EventMapper mapper, EventAuditPublisher auditPublisher, Clock clock) {
+    public EventService(EventRepository repository, EventMapper mapper, EventAuditPublisher auditPublisher, Clock clock) {
         this.repository = repository;
         this.mapper = mapper;
         this.auditPublisher = auditPublisher;

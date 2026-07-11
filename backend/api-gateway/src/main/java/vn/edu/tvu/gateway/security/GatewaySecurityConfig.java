@@ -50,7 +50,8 @@ public class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.POST, "/api/tickets/inventories")
                         .hasAnyRole("ORGANIZER", "SUPER_ADMIN")
                         .pathMatchers("/api/tickets/**", "/api/reservations/**").authenticated()
-                        .pathMatchers("/api/events/**").authenticated()
+                        .pathMatchers(HttpMethod.GET, "/api/events/**").permitAll()
+                        .pathMatchers("/api/events/**").hasRole("ORGANIZER")
                         .anyExchange().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenConverter(bearerTokenConverter)
