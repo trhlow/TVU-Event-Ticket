@@ -186,13 +186,13 @@ Inventory request:
 | EPIC 1 - Identity, JWT, users, clubs and RBAC | 100% | Complete on `main`. |
 | EPIC 2 - Gateway security and routing | 100% | Complete on `main`. |
 | EPIC 3 - Event service | 100% | Complete on `main`. |
-| EPIC 4 - Ticket service core | Implementation and local acceptance 100%; delivery 95% | Core implementation, correctness suite and Docker gateway smoke pass on `feat/epic4-ticket-service`; PR CI and merge remain. |
+| EPIC 4 - Ticket service core | Implementation and acceptance 100%; delivery pending merge | Core implementation, correctness suite, Docker gateway smoke and PR #4 CI pass on `feat/epic4-ticket-service`; ready to merge. |
 | EPIC 5-8 | Not started as complete EPICs | Some infrastructure/documentation pieces exist, but none should be marked complete yet. |
 
 EPIC 4 now includes event-authoritative reservation snapshots, safe Redis Lua capacity, row-locked concurrent
 approval, leased outbox delivery, availability APIs, signed single-use QR check-in, scoped attendee JSON/CSV,
-and PostgreSQL/Redis concurrency tests. The Docker gateway smoke flow also passes; green PR CI remains before
-merging to `main`.
+and PostgreSQL/Redis concurrency tests. The Docker gateway smoke flow and PR #4 CI pass; merge to `main` is
+the remaining delivery step.
 
 ## Last verification
 
