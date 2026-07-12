@@ -16,12 +16,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import vn.edu.tvu.ticket.domain.ReservationStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -72,13 +72,13 @@ public class ReservationController {
         return service.listPendingForOrganizer(CurrentUser.from(jwt));
     }
 
-    @PatchMapping("/{reservationId}/approve")
+    @RequestMapping(path = "/{reservationId}/approve", method = {RequestMethod.POST, RequestMethod.PATCH})
     @Operation(summary = "Approve a reservation and atomically reserve a ticket")
     public ReservationResponse approve(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reservationId) {
         return service.approve(CurrentUser.from(jwt), reservationId);
     }
 
-    @PatchMapping("/{reservationId}/reject")
+    @RequestMapping(path = "/{reservationId}/reject", method = {RequestMethod.POST, RequestMethod.PATCH})
     @Operation(summary = "Reject a pending reservation")
     public ReservationResponse reject(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID reservationId) {
         return service.reject(CurrentUser.from(jwt), reservationId);

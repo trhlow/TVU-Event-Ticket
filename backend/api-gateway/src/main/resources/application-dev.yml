@@ -9,3 +9,8 @@ logging:
   level:
     vn.edu.tvu: DEBUG
     org.springframework.cloud.gateway: DEBUG
+
+tvu:
+  gateway:
+    csrf:
+      signing-secret: ${CSRF_SIGNING_SECRET:dev-csrf-signing-secret-change-me}

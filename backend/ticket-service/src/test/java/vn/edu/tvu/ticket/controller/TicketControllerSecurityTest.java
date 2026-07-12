@@ -83,6 +83,19 @@ class TicketControllerSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void approvePostCompatibilityRouteRequiresOrganizer() throws Exception {
+        var reservationId = UUID.randomUUID();
+        mockMvc.perform(post("/api/reservations/{reservationId}/approve", reservationId)
+                        .with(studentJwt()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(post("/api/reservations/{reservationId}/approve", reservationId)
+                        .with(organizerJwt()))
+                .andExpect(status().isOk());
+        verify(reservationService).approve(any(), any());
+    }
+
     private org.springframework.test.web.servlet.request.RequestPostProcessor studentJwt() {
         return jwt().jwt(builder -> builder.subject(UUID.randomUUID().toString())
                 .claim("email", "student@example.com")

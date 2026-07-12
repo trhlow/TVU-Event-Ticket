@@ -146,6 +146,34 @@ class ApprovalConcurrencyIntegrationTest {
     }
 
     @Test
+    void concurrentCheckInAcceptsExactlyOneRequestAndWritesOneAudit() throws Exception {
+        var clubId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        createInventory(eventId, clubId, 1);
+        var reservation = createReservation(eventId, clubId, "concurrent-check-in");
+        service.approve(organizer(clubId), reservation.getId());
+        var ticket = ticketRepository.findByReservationId(reservation.getId()).orElseThrow();
+        var qr = signedQr(ticket.getId(), eventId, Instant.now().plusSeconds(3600));
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var tasks = java.util.List.<java.util.concurrent.Callable<Boolean>>of(
+                    () -> tryCheckIn(clubId, qr),
+                    () -> tryCheckIn(clubId, qr));
+            var successes = 0L;
+            for (var future : executor.invokeAll(tasks)) {
+                if (future.get()) {
+                    successes++;
+                }
+            }
+            assertThat(successes).isOne();
+        }
+
+        assertThat(outboxRepository.findAll().stream()
+                .filter(message -> "audit.ticket.check-in".equals(message.getRoutingKey())))
+                .hasSize(1);
+    }
+
+    @Test
     void twoOutboxWorkersNeverClaimTheSameMessage() throws Exception {
         var message = outboxRepository.saveAndFlush(OutboxMessage.pending(
                 "audit", UUID.randomUUID(), "audit.ticket.test", "{}"));
@@ -178,6 +206,15 @@ class ApprovalConcurrencyIntegrationTest {
 
     private CurrentUser organizer(UUID clubId) {
         return new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+    }
+
+    private boolean tryCheckIn(UUID clubId, String qr) {
+        try {
+            ticketingService.checkIn(organizer(clubId), qr);
+            return true;
+        } catch (ResponseStatusException ex) {
+            return false;
+        }
     }
 
     private String signedQr(UUID ticketId, UUID eventId, Instant expiresAt) throws Exception {
