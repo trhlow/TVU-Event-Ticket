@@ -85,6 +85,11 @@ public class TicketingService {
     @Transactional(readOnly = true)
     public List<AttendeeResponse> attendees(CurrentUser actor, UUID eventId) {
         requireOrganizer(actor);
+        var inventory = inventoryRepository.findByEventId(eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event ticketing not found"));
+        if (!inventory.getClubId().equals(actor.clubId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is outside organizer club scope");
+        }
         return ticketRepository.findAttendees(eventId, actor.clubId()).stream()
                 .map(row -> new AttendeeResponse(row.getTicketId(), row.getEventId(), row.getStudentId(),
                         row.getStudentEmail(), row.getStudentMssv(), row.getStatus(), row.getIssuedAt(),
