@@ -87,25 +87,6 @@ public class OutboxMessage {
         this.lastError = null;
     }
 
-    public void markSent() {
-        this.status = OutboxStatus.SENT;
-        this.sentAt = Instant.now();
-        clearLease();
-    }
-
-    public void markRetryable(String error) {
-        this.status = OutboxStatus.NEW;
-        this.attempts++;
-        this.lastError = error;
-        clearLease();
-    }
-
-    private void clearLease() {
-        this.lockedAt = null;
-        this.lockedBy = null;
-        this.lockedUntil = null;
-    }
-
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

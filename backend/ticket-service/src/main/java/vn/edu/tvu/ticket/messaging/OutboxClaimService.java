@@ -30,12 +30,12 @@ public class OutboxClaimService {
     }
 
     @Transactional
-    public void markSent(UUID id) {
-        repository.findById(id).ifPresent(OutboxMessage::markSent);
+    public boolean markSent(UUID id, String workerId) {
+        return repository.markSentIfOwned(id, workerId, Instant.now()) == 1;
     }
 
     @Transactional
-    public void markRetryable(UUID id, String error) {
-        repository.findById(id).ifPresent(message -> message.markRetryable(error));
+    public boolean markRetryable(UUID id, String workerId, String error) {
+        return repository.markRetryableIfOwned(id, workerId, error) == 1;
     }
 }

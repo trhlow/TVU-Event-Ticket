@@ -7,6 +7,8 @@ import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
 import vn.edu.tvu.ticket.repository.ReservationRepository;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
+import vn.edu.tvu.ticket.domain.OutboxMessage;
+import vn.edu.tvu.ticket.messaging.OutboxClaimService;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.security.UserRole;
 
@@ -59,6 +61,7 @@ class ApprovalConcurrencyIntegrationTest {
     @Autowired OutboxMessageRepository outboxRepository;
     @Autowired TicketCounterService counterService;
     @Autowired TicketingService ticketingService;
+    @Autowired OutboxClaimService outboxClaimService;
 
     @BeforeEach
     void clean() {
@@ -136,7 +139,28 @@ class ApprovalConcurrencyIntegrationTest {
         assertThat(ticketingService.attendees(organizer(clubId), eventId)).hasSize(1);
         assertThat(ticketingService.attendeesCsv(organizer(clubId), eventId))
                 .contains("student_email", "student@example.com", "CHECKED_IN");
-        assertThat(ticketingService.attendees(organizer(UUID.randomUUID()), eventId)).isEmpty();
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> ticketingService.attendees(organizer(UUID.randomUUID()), eventId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("outside organizer club scope");
+    }
+
+    @Test
+    void twoOutboxWorkersNeverClaimTheSameMessage() throws Exception {
+        var message = outboxRepository.saveAndFlush(OutboxMessage.pending(
+                "audit", UUID.randomUUID(), "audit.ticket.test", "{}"));
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            java.util.List<java.util.concurrent.Callable<java.util.List<OutboxMessage>>> tasks = java.util.List.of(
+                    () -> outboxClaimService.claim("worker-a"),
+                    () -> outboxClaimService.claim("worker-b"));
+            var futures = executor.invokeAll(tasks);
+            var claimedIds = new ArrayList<UUID>();
+            for (var future : futures) {
+                future.get().forEach(claimed -> claimedIds.add(claimed.getId()));
+            }
+            assertThat(claimedIds).containsExactly(message.getId());
+        }
     }
 
     private void createInventory(UUID eventId, UUID clubId, int capacity) {

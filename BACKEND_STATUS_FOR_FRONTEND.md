@@ -213,3 +213,8 @@ Additional smoke checks passed:
 - Gateway health returned `UP`.
 - `POST /api/auth/login` through gateway returned `200` and auth cookies.
 - Frontend login page submitted to the live gateway and rendered `/student/home`.
+- EPIC 4 hardening suite passes 33 ticket-service tests, including EventClient failures/timeouts, PostgreSQL
+  optimistic locking, Redis flush/reseed, approval rollback compensation, two-worker outbox claiming, publisher
+  confirms, QR signature/expiry, HTTP RBAC, OpenAPI coverage, and cross-club attendee isolation.
+- Docker EPIC 4 flow produced `APPROVED`, remaining capacity `0`, single-use `CHECKED_IN`, cross-club attendee
+  HTTP `403`, and all approval/check-in outbox rows reached `SENT` after RabbitMQ confirms.

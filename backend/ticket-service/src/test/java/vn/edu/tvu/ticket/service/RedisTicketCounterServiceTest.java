@@ -23,12 +23,13 @@ class RedisTicketCounterServiceTest {
 
     private static LettuceConnectionFactory connectionFactory;
     private static RedisTicketCounterService service;
+    private static StringRedisTemplate template;
 
     @BeforeAll
     static void setUp() {
         connectionFactory = new LettuceConnectionFactory(REDIS.getHost(), REDIS.getMappedPort(6379));
         connectionFactory.afterPropertiesSet();
-        var template = new StringRedisTemplate(connectionFactory);
+        template = new StringRedisTemplate(connectionFactory);
         template.afterPropertiesSet();
         service = new RedisTicketCounterService(template);
     }
@@ -64,6 +65,19 @@ class RedisTicketCounterServiceTest {
         var eventId = UUID.randomUUID();
         service.seedIfMissing(eventId, 3);
         service.seedIfMissing(eventId, 99);
+        assertThat(service.remaining(eventId)).isEqualTo(3);
+    }
+
+    @Test
+    void flushedCounterReseedsFromDatabaseProjectionWithoutGoingNegative() {
+        var eventId = UUID.randomUUID();
+        service.seedIfMissing(eventId, 5);
+        assertThat(service.tryReserve(eventId)).isTrue();
+        assertThat(service.tryReserve(eventId)).isTrue();
+        template.getConnectionFactory().getConnection().serverCommands().flushAll();
+
+        service.seedIfMissing(eventId, 3);
+
         assertThat(service.remaining(eventId)).isEqualTo(3);
     }
 }

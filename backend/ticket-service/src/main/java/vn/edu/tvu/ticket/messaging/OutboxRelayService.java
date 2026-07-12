@@ -5,9 +5,6 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.UUID;
 
-import org.springframework.amqp.core.MessageDeliveryMode;
-import org.springframework.amqp.core.MessageProperties;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +12,12 @@ import org.springframework.stereotype.Service;
 public class OutboxRelayService {
 
     private final OutboxClaimService claimService;
-    private final RabbitTemplate rabbitTemplate;
+    private final ConfirmedRabbitPublisher publisher;
     private final String workerId;
 
-    public OutboxRelayService(OutboxClaimService claimService, RabbitTemplate rabbitTemplate) {
+    public OutboxRelayService(OutboxClaimService claimService, ConfirmedRabbitPublisher publisher) {
         this.claimService = claimService;
-        this.rabbitTemplate = rabbitTemplate;
+        this.publisher = publisher;
         this.workerId = workerId();
     }
 
@@ -31,20 +28,10 @@ public class OutboxRelayService {
 
     private void publish(OutboxMessage message) {
         try {
-            rabbitTemplate.convertAndSend(
-                    TicketRabbitConfig.EXCHANGE,
-                    message.getRoutingKey(),
-                    message.getPayload(),
-                    amqpMessage -> {
-                        var properties = amqpMessage.getMessageProperties();
-                        properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
-                        properties.setMessageId(message.getMessageId().toString());
-                        properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
-                        return amqpMessage;
-                    });
-            claimService.markSent(message.getId());
+            publisher.publish(message);
+            claimService.markSent(message.getId(), workerId);
         } catch (RuntimeException ex) {
-            claimService.markRetryable(message.getId(), ex.getMessage());
+            claimService.markRetryable(message.getId(), workerId, ex.getMessage());
         }
     }
 
