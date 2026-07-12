@@ -75,6 +75,17 @@ class EventClientTest {
                         .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
     }
 
+    @Test
+    void getOpenEventMapsMalformedResponseToServiceUnavailable() throws Exception {
+        var eventId = UUID.randomUUID();
+        start(exchange -> respond(exchange, 200, "{not-json"));
+
+        assertThatThrownBy(() -> client(Duration.ofSeconds(1)).getOpenEvent(eventId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode())
+                        .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE));
+    }
+
     private EventClient client(Duration timeout) {
         return new EventClient(new EventClientProperties("http://localhost:" + server.getAddress().getPort(), timeout));
     }

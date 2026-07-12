@@ -12,3 +12,8 @@ logging:
   level:
     root: INFO
     vn.edu.tvu: INFO
+
+tvu:
+  gateway:
+    csrf:
+      signing-secret: ${CSRF_SIGNING_SECRET}
