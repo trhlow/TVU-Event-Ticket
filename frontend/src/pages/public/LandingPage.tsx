@@ -1,527 +1,690 @@
-import { useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
-  BarChart3,
-  Bell,
+  BookOpenCheck,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
-  FileClock,
   GraduationCap,
-  HelpCircle,
-  LockKeyhole,
+  Mail,
   MapPin,
+  Phone,
   QrCode,
   ScanLine,
   ShieldCheck,
-  Star,
+  Share2,
+  Sparkles,
   Ticket,
   Users,
+  UserCheck,
+  Zap,
 } from "lucide-react";
 import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
-import CursorGlow from "../../components/common/CursorGlow";
+import EmptyState from "../../components/common/EmptyState";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
-import ScrollToTopButton from "../../components/common/ScrollToTopButton";
+import { eventService } from "../../services/eventService";
+import { Event } from "../../types/event";
+import { formatDateTime } from "../../utils/formatDate";
 
-const trustSignals = [
-  { value: "3", label: "vai tro chinh", text: "Sinh vien, Ban to chuc va Super Admin" },
-  { value: "QR", label: "ve dien tu", text: "Check-in mot lan bang payload signed" },
-  { value: "CSRF", label: "cookie bao mat", text: "Dang nhap bang cookie HTTP-only qua gateway" },
-];
+gsap.registerPlugin(ScrollTrigger);
 
-const featuredEvents = [
+const features = [
   {
-    title: "Ngay hoi Cong nghe sinh vien",
-    club: "CLB Cong nghe thong tin",
-    time: "20/07/2026",
-    location: "Hoi truong D5",
-    status: "Dang mo dang ky",
-    tone: "emerald",
-  },
-  {
-    title: "Workshop Ky nang CV va Phong van",
-    club: "Doan khoa Ky thuat Cong nghe",
-    time: "22/07/2026",
-    location: "Phong Lab 2",
-    status: "Sap dien ra",
-    tone: "brand",
-  },
-  {
-    title: "Tap huan Ban to chuc su kien",
-    club: "Phong Cong tac Sinh vien",
-    time: "25/07/2026",
-    location: "Hoi truong Trung tam",
-    status: "Noi bo",
-    tone: "amber",
-  },
-];
-
-const benefits = [
-  {
-    icon: CalendarDays,
-    title: "Quan ly vong doi su kien",
-    text: "CLB tao ban nhap, cap nhat thong tin, mo dang ky va dong su kien theo trang thai backend.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Duyet dang ky co kiem soat",
-    text: "Reservation bat dau o trang thai PENDING, chi cap ve khi Ban to chuc approve thanh cong.",
+    icon: Zap,
+    title: "Đăng ký nhanh chóng",
+    description: "Giao diện tối giản giúp sinh viên tìm kiếm và đặt vé sự kiện chỉ trong vài cú nhấp chuột.",
+    tone: "text-blue-700 bg-blue-50",
   },
   {
     icon: QrCode,
-    title: "Ve QR dien tu dung nghiep vu",
-    text: "Frontend khong tu ky QR. Payload signed duoc backend/notification cap va ticket-service xac minh khi check-in.",
+    title: "Vé QR Code",
+    description: "Mỗi vé phát hành đi kèm một mã QR duy nhất, đảm bảo tính bảo mật và dễ dàng truy xuất từ điện thoại.",
+    tone: "text-indigo-700 bg-indigo-50",
   },
   {
     icon: ScanLine,
-    title: "Check-in mot lan",
-    text: "Nhan dien ve hop le, chan diem danh trung va cap nhat trang thai CHECKED_IN cho Ban to chuc.",
-  },
-  {
-    icon: BarChart3,
-    title: "Theo doi dashboard CLB",
-    text: "BTC xem su kien, dang ky cho duyet, ve da cap va tien do check-in trong mot khong gian lam viec.",
-  },
-  {
-    icon: LockKeyhole,
-    title: "Phan quyen theo vai tro",
-    text: "ProtectedRoute va role-based routes tach rieng Sinh vien, Organizer va Super Admin.",
-  },
-];
-
-const guideItems = [
-  {
-    icon: GraduationCap,
-    title: "Sinh vien",
-    steps: ["Dang nhap tai khoan", "Xem su kien phu hop", "Gui dang ky va cho duyet", "Nhan ve QR de check-in"],
-    description:
-      "Sinh vien theo doi trang thai dang ky, xem ve sau khi duoc duyet va su dung QR hop le tai diem danh.",
-  },
-  {
-    icon: ClipboardCheck,
-    title: "Ban to chuc / CLB",
-    steps: ["Tao su kien", "Duyet hoac tu choi", "Phat hanh ve", "Quet QR va xem danh sach tham du"],
-    description:
-      "Ban to chuc van hanh su kien trong pham vi CLB, khong tu can thiep sai vao capacity hay QR signed.",
+    title: "Check-in tiện lợi",
+    description: "Ban tổ chức dễ dàng quét mã QR tại cổng sự kiện để xác nhận tham gia nhanh chóng và chính xác.",
+    tone: "text-sky-700 bg-sky-50",
   },
   {
     icon: ShieldCheck,
-    title: "Super Admin",
-    steps: ["Quan ly CLB", "Quan ly Organizer", "Theo doi toan truong", "Kiem tra audit va thong ke"],
-    description:
-      "Quan tri vien giam sat cac cau lac bo, tai khoan Ban to chuc va du lieu tong quan cua he thong.",
+    title: "Chống vé ảo",
+    description: "Hệ thống đồng bộ dữ liệu sinh viên trực tiếp, ngăn chặn tình trạng đầu cơ hoặc đăng ký ảo.",
+    tone: "text-rose-700 bg-rose-50",
   },
 ];
 
-const testimonials = [
+const guideSteps = [
   {
-    name: "Dai dien sinh vien",
-    role: "Nguoi dung thu nghiem",
-    quote: "Quy trinh dang ky ro rang hon: em biet minh dang cho duyet, da duoc duyet hay can lien he BTC.",
+    icon: GraduationCap,
+    title: "Dành cho sinh viên",
+    description: "Tìm sự kiện phù hợp, đăng nhập bằng tài khoản TVU và gửi đăng ký tham dự trong vài bước rõ ràng.",
+    steps: ["Xem danh sách sự kiện", "Đăng nhập tài khoản TVU", "Gửi đăng ký", "Theo dõi trạng thái duyệt"],
   },
   {
-    name: "Ban to chuc CLB",
-    role: "Nhom van hanh su kien",
-    quote: "Danh sach pending va attendee tach bach giup viec duyet, phat ve va diem danh de kiem soat hon.",
+    icon: ClipboardCheck,
+    title: "Dành cho Ban tổ chức",
+    description: "Quản lý sự kiện, kiểm tra danh sách đăng ký, duyệt người tham dự và theo dõi số lượng vé còn lại.",
+    steps: ["Tạo hoặc cập nhật sự kiện", "Kiểm tra đăng ký", "Duyệt người tham dự", "Theo dõi vé và check-in"],
   },
   {
-    name: "Giang vien huong dan",
-    role: "Goc nhin do an",
-    quote: "He thong the hien duoc kien truc phan tan: gateway, auth, event, ticket va notification service.",
-  },
-  {
-    name: "Quan tri he thong",
-    role: "Goc nhin van hanh",
-    quote: "Cookie auth, CSRF signed token va role-based route giup frontend ton trong ranh gioi bao mat backend.",
+    icon: UserCheck,
+    title: "Check-in bằng QR",
+    description: "Mỗi vé điện tử có mã QR riêng, giúp xác nhận tham dự nhanh chóng và hạn chế vé không hợp lệ.",
+    steps: ["Mở vé điện tử", "Quét mã QR tại cổng", "Xác nhận hợp lệ", "Ghi nhận tham dự"],
   },
 ];
 
-const faqs = [
-  {
-    question: "Day co phai trang ban ve thuong mai khong?",
-    answer: "Khong. Day la landing page gioi thieu he thong do an quan ly su kien va ve dien tu cho CLB tai Truong Dai hoc Tra Vinh.",
-  },
-  {
-    question: "Sinh vien co nhan QR ngay sau khi dang ky khong?",
-    answer: "Khong. Dang ky tao reservation PENDING. Ve QR chi xuat hien sau khi Ban to chuc approve thanh cong.",
-  },
-  {
-    question: "Frontend co tu tao QR signed khong?",
-    answer: "Khong. QR ticket/check-in phai do backend va notification flow cap. Frontend chi hien thi hoac gui payload dung contract.",
-  },
-  {
-    question: "Ban to chuc check-in bang cach nao?",
-    answer: "Organizer nhap hoac quet QR payload, frontend gui den /ticketing/check-in de backend xac minh chu ky va trang thai ve.",
-  },
-  {
-    question: "He thong bao ve phien dang nhap ra sao?",
-    answer: "Frontend dung cookie auth qua gateway va gui X-XSRF-TOKEN cho request thay doi du lieu. JWT khong duoc luu vao localStorage.",
-  },
-  {
-    question: "Notification service co man hinh rieng khong?",
-    answer: "Hien khong co endpoint frontend. Email/QR notification xu ly bat dong bo sau khi reservation duoc approve.",
-  },
-];
-
-export default function LandingPage() {
-  const rootRef = useRef<HTMLDivElement | null>(null);
+function useReducedMotion() {
+  const [reduced, setReduced] = useState(false);
 
   useEffect(() => {
-    document.title = "TVU Event & Ticketing Platform | Quan ly su kien va ve QR";
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReduced(media.matches);
+
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
   }, []);
+
+  return reduced;
+}
+
+function useFinePointer() {
+  const [isFinePointer, setIsFinePointer] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const update = () => setIsFinePointer(media.matches);
+
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
+  return isFinePointer;
+}
+
+interface PointerMotionOptions {
+  enabled: boolean;
+  tilt?: boolean;
+  maxTilt?: number;
+  magnetic?: boolean;
+  maxMagnet?: number;
+}
+
+function usePointerMotion<T extends HTMLElement>({
+  enabled,
+  tilt = false,
+  maxTilt = 3,
+  magnetic = false,
+  maxMagnet = 4,
+}: PointerMotionOptions) {
+  const ref = useRef<T | null>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || !enabled) return undefined;
+
+    let raf = 0;
+
+    const reset = () => {
+      node.style.setProperty("--tilt-x", "0deg");
+      node.style.setProperty("--tilt-y", "0deg");
+      node.style.setProperty("--magnet-x", "0px");
+      node.style.setProperty("--magnet-y", "0px");
+      node.classList.remove("is-pointer-active");
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerType === "touch") return;
+
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const rect = node.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const normalizedX = x / rect.width - 0.5;
+        const normalizedY = y / rect.height - 0.5;
+
+        node.classList.add("is-pointer-active");
+        node.style.setProperty("--mouse-x", `${x}px`);
+        node.style.setProperty("--mouse-y", `${y}px`);
+
+        if (tilt) {
+          node.style.setProperty("--tilt-x", `${normalizedY * -maxTilt}deg`);
+          node.style.setProperty("--tilt-y", `${normalizedX * maxTilt}deg`);
+        }
+
+        if (magnetic) {
+          node.style.setProperty("--magnet-x", `${normalizedX * maxMagnet}px`);
+          node.style.setProperty("--magnet-y", `${normalizedY * maxMagnet}px`);
+        }
+      });
+    };
+
+    const handlePointerLeave = () => reset();
+
+    node.addEventListener("pointermove", handlePointerMove, { passive: true });
+    node.addEventListener("pointerleave", handlePointerLeave);
+    node.addEventListener("blur", handlePointerLeave, true);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      node.removeEventListener("pointermove", handlePointerMove);
+      node.removeEventListener("pointerleave", handlePointerLeave);
+      node.removeEventListener("blur", handlePointerLeave, true);
+    };
+  }, [enabled, magnetic, maxMagnet, maxTilt, tilt]);
+
+  return ref;
+}
+
+function eventStatusLabel(status: Event["status"]) {
+  switch (status) {
+    case "OPEN":
+      return "Đang mở đăng ký";
+    case "UPCOMING":
+      return "Sắp diễn ra";
+    case "CLOSED":
+      return "Đã đóng đăng ký";
+    case "FULL":
+      return "Hết vé";
+    case "ENDED":
+      return "Đã kết thúc";
+    default:
+      return "Bản nháp";
+  }
+}
+
+function eventStatusClass(status: Event["status"]) {
+  if (status === "OPEN") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "UPCOMING") return "border-blue-200 bg-blue-50 text-blue-700";
+  if (status === "FULL") return "border-amber-200 bg-amber-50 text-amber-700";
+  if (status === "ENDED") return "border-slate-200 bg-slate-100 text-slate-600";
+  return "border-slate-200 bg-white text-slate-600";
+}
+
+function sortFeatured(events: Event[]) {
+  const rank: Record<Event["status"], number> = { OPEN: 0, UPCOMING: 1, FULL: 2, CLOSED: 3, ENDED: 4, DRAFT: 5 };
+  return [...events]
+    .filter((event) => event.status !== "DRAFT")
+    .sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.startAt).getTime() - new Date(b.startAt).getTime())
+    .slice(0, 8);
+}
+
+export default function LandingPage() {
+  const navigate = useNavigate();
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const reducedMotion = useReducedMotion();
+  const finePointer = useFinePointer();
+  const visibleEvents = useMemo(() => sortFeatured(events), [events]);
+
+  useEffect(() => {
+    document.title = "TVU Ticket | Hệ thống quản lý vé sự kiện";
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadEvents() {
+      setIsLoading(true);
+      setError("");
+      try {
+        const data = await eventService.getFeaturedEvents(8);
+        if (mounted) setEvents(data);
+      } catch {
+        if (mounted) setError("Không thể tải danh sách sự kiện nổi bật. Vui lòng thử lại sau.");
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadEvents();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero || reducedMotion || !finePointer) return undefined;
+
+    let raf = 0;
+    const handlePointerMove = (event: PointerEvent) => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const rect = hero.getBoundingClientRect();
+        const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
+        const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
+        hero.style.setProperty("--hero-x", `${x * 12}px`);
+        hero.style.setProperty("--hero-y", `${y * 10}px`);
+        hero.style.setProperty("--mouse-x", `${event.clientX - rect.left}px`);
+        hero.style.setProperty("--mouse-y", `${event.clientY - rect.top}px`);
+        hero.classList.add("is-pointer-active");
+      });
+    };
+
+    const handlePointerLeave = () => {
+      hero.style.setProperty("--hero-x", "0px");
+      hero.style.setProperty("--hero-y", "0px");
+      hero.classList.remove("is-pointer-active");
+    };
+
+    hero.addEventListener("pointermove", handlePointerMove, { passive: true });
+    hero.addEventListener("pointerleave", handlePointerLeave);
+
+    return () => {
+      window.cancelAnimationFrame(raf);
+      hero.removeEventListener("pointermove", handlePointerMove);
+      hero.removeEventListener("pointerleave", handlePointerLeave);
+    };
+  }, [finePointer, reducedMotion]);
 
   useGSAP(
     () => {
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      if (reducedMotion) return;
 
-      gsap.from(".landing-hero-copy > *", {
+      gsap.from(".landing-hero-word", {
         y: 24,
         opacity: 0,
         duration: 0.72,
-        stagger: 0.08,
+        stagger: 0.055,
         ease: "power3.out",
       });
 
-      gsap.from(".landing-benefit-card", {
+      gsap.from(".landing-hero-copy .landing-fade-up", {
+        y: 18,
+        opacity: 0,
+        duration: 0.65,
+        stagger: 0.12,
+        delay: 0.28,
+        ease: "power2.out",
+      });
+
+      gsap.to(".landing-hero-bg", {
+        yPercent: 9,
+        ease: "none",
+        scrollTrigger: {
+          trigger: ".landing-hero",
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
+
+      gsap.from(".landing-section-heading", {
         y: 18,
         opacity: 0,
         duration: 0.58,
         stagger: 0.08,
-        delay: 0.42,
         ease: "power2.out",
+        scrollTrigger: {
+          trigger: "#features",
+          start: "top 75%",
+        },
       });
     },
-    { scope: rootRef },
+    { scope: rootRef, dependencies: [reducedMotion] },
   );
 
   return (
-    <main ref={rootRef} className="subtle-gradient-bg relative isolate w-full max-w-full overflow-x-hidden text-left">
-      <CursorGlow />
-      <div className="relative z-10">
-        <section
-          id="home"
-          className="relative scroll-mt-16 overflow-hidden px-5 py-16 text-white md:px-8 md:py-24"
-          style={{
-            backgroundImage:
-              "linear-gradient(105deg, rgba(7, 38, 35, 0.94), rgba(8, 75, 67, 0.82), rgba(12, 84, 72, 0.68)), url('/tvu_logo_1783065060265.jpg')",
-            backgroundPosition: "center",
-            backgroundSize: "cover",
-          }}
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(255,255,255,0.16),transparent_36%)]" aria-hidden="true" />
-          <div className="landing-hero-copy relative mx-auto flex max-w-6xl flex-col items-center text-center">
-            <p className="landing-hero-kicker inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/12 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white shadow-sm backdrop-blur">
-              <ShieldCheck className="h-4 w-4 landing-icon-pulse" /> TVU Event & Ticketing Platform
-            </p>
-            <h1 className="landing-title mt-7 max-w-4xl font-display text-4xl font-semibold leading-tight text-white md:text-5xl">
-              Quan ly su kien CLB va ve QR dien tu cho Truong Dai hoc Tra Vinh
-            </h1>
-            <p className="mt-5 max-w-3xl text-base font-normal leading-7 text-white/82 md:text-lg">
-              He thong ho tro sinh vien dang ky su kien, Ban to chuc duyet ho so, phat hanh ve QR va check-in mot lan, dong thoi giup quan tri vien theo doi hoat dong toan truong.
-            </p>
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Link
-                to="/login"
-                className="btn-press inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-brand-800 shadow-lg shadow-brand-950/20 hover:bg-brand-50"
-              >
-                Dang nhap he thong <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                to="/events"
-                className="btn-press inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/24 bg-white/10 px-6 text-sm font-semibold text-white backdrop-blur hover:bg-white/16"
-              >
-                Xem su kien cong khai
-              </Link>
-            </div>
+    <div ref={rootRef} className="landing-page relative w-full max-w-full overflow-x-hidden bg-slate-50 text-left text-slate-900">
+      <section
+        id="home"
+        ref={heroRef}
+        className="landing-hero relative isolate min-h-[calc(100vh-4rem)] scroll-mt-16 overflow-hidden"
+      >
+        <img
+          src="/DJI_0431.jpg"
+          alt="Khuôn viên Trường Đại học Trà Vinh nhìn từ trên cao"
+          className="landing-hero-bg absolute inset-0 h-[112%] w-full object-cover"
+          fetchPriority="high"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-white/68 via-white/38 to-white/84" aria-hidden="true" />
+        <div className="landing-hero-spotlight absolute inset-0" aria-hidden="true" />
+        <div className="landing-depth absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(37,99,235,0.16),transparent_34%)]" aria-hidden="true" />
 
-            <div className="mt-10 grid w-full gap-3 md:grid-cols-3">
-              {trustSignals.map((item) => (
-                <div key={item.label} className="rounded-xl border border-white/18 bg-white/12 p-4 text-left backdrop-blur">
-                  <p className="font-display text-2xl font-semibold text-white">{item.value}</p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wider text-white/70">{item.label}</p>
-                  <p className="mt-2 text-sm leading-6 text-white/74">{item.text}</p>
-                </div>
-              ))}
-            </div>
+        <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1180px] flex-col items-center justify-center px-5 py-20 text-center md:px-8">
+          <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/72 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
+            <Sparkles className="h-4 w-4" /> TVU Ticket
+          </p>
+          <h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
+            {"Hệ thống quản lý vé sự kiện chuyên nghiệp".split(" ").map((word, index) => (
+              <span key={`${word}-${index}`} className="landing-hero-word inline-block px-1">
+                {word}
+              </span>
+            ))}
+          </h1>
+          <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
+            Trải nghiệm đăng ký, check-in và quản lý sự kiện liền mạch, minh bạch dành cho sinh viên và các câu lạc bộ TVU.
+          </p>
+          <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/events"
+              className="btn-press magnetic-button group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-xl shadow-blue-900/20 hover:bg-blue-700"
+            >
+              <MagneticContent enabled={finePointer && !reducedMotion}>
+                Xem sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              </MagneticContent>
+            </Link>
+            <Link
+              to="/login"
+              className="btn-press magnetic-button inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-md shadow-blue-950/8 backdrop-blur hover:bg-white"
+            >
+              <MagneticContent enabled={finePointer && !reducedMotion}>Đăng nhập</MagneticContent>
+            </Link>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <RevealOnScroll as="section" className="px-5 py-14 md:px-8">
-          <div className="mx-auto grid max-w-[1180px] gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-            <div>
-              <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Demo UI</p>
-              <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Mot luong nghiep vu, ba khong gian lam viec</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                Landing page khong thay the ung dung chinh. No gioi thieu nhanh cach he thong ket noi public discovery, student reservation, organizer ticketing va admin management.
-              </p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                {["Public", "Student", "Organizer"].map((label) => (
-                  <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <p className="text-xs font-extrabold uppercase tracking-wider text-slate-400">{label}</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                      {label === "Public" ? "Xem su kien mo" : label === "Student" ? "Gui dang ky va xem ve" : "Duyet, cap ve va check-in"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-950 shadow-xl shadow-slate-900/15">
-              <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-                <span className="h-2.5 w-2.5 rounded-full bg-rose-400" />
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-300" />
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                <span className="ml-2 text-xs font-semibold text-white/50">tvu-event-ticket.app</span>
-              </div>
-              <div className="grid gap-4 p-5">
-                <div className="rounded-xl bg-white p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-brand-700">Organizer dashboard</p>
-                      <p className="mt-1 text-sm font-black text-slate-950">Ngay hoi Cong nghe sinh vien</p>
-                    </div>
-                    <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">OPEN</span>
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2">
-                    {[
-                      ["Cho duyet", "24"],
-                      ["Ve da cap", "168"],
-                      ["Da check-in", "96"],
-                    ].map(([label, value]) => (
-                      <div key={label} className="rounded-lg bg-slate-50 p-3">
-                        <p className="text-lg font-black text-slate-950">{value}</p>
-                        <p className="mt-1 text-[10px] font-bold text-slate-500">{label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <div className="rounded-xl border border-white/10 bg-white/8 p-4 text-white">
-                    <p className="text-xs font-bold text-white/60">QR payload</p>
-                    <p className="mt-2 break-all font-mono text-xs text-white/86">ticketId.eventId.exp.signature</p>
-                  </div>
-                  <div className="grid h-28 w-28 grid-cols-7 gap-1 rounded-xl bg-white p-3">
-                    {Array.from({ length: 49 }, (_, index) => (
-                      <span key={index} className={(index % 2 === 0 || [3, 10, 18, 24, 31, 40].includes(index)) ? "rounded-sm bg-slate-950" : "rounded-sm bg-slate-100"} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
+      <RevealOnScroll as="section" id="features" className="scroll-mt-20 bg-slate-50 px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-[1180px]">
+          <div className="landing-section-heading mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
+              Giải pháp toàn diện cho mọi nhu cầu tổ chức sự kiện của bạn.
+            </p>
           </div>
-        </RevealOnScroll>
 
-        <RevealOnScroll as="section" id="events" className="scroll-mt-16 px-5 py-14 md:px-8">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Su kien</p>
-              <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Su kien noi bat</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Cac su kien mau duoc trinh bay de mo ta trai nghiem public landing. Du lieu van hanh that nam trong ung dung sau dang nhap va cac API backend.
-              </p>
-            </div>
-
-            <div className="mt-8 grid gap-5 md:grid-cols-3">
-              {featuredEvents.map((event, index) => (
-                <RevealOnScroll key={event.title} delay={index * 90} className="landing-event-card enterprise-card card-hover-lift flex h-full flex-col p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="landing-card-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
-                      <CalendarDays className="h-5 w-5" />
-                    </div>
-                    <span
-                      className={[
-                        "rounded-full border px-2.5 py-1 text-xs font-medium",
-                        event.tone === "emerald"
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                          : event.tone === "amber"
-                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                            : "border-brand-200 bg-brand-50 text-brand-700",
-                      ].join(" ")}
-                    >
-                      {event.status}
-                    </span>
-                  </div>
-                  <h3 className="mt-4 font-display text-base font-semibold leading-snug text-slate-950">{event.title}</h3>
-                  <p className="mt-1 text-sm font-medium text-brand-700">{event.club}</p>
-                  <div className="mt-4 space-y-2 text-sm text-slate-600">
-                    <p className="flex items-center gap-2">
-                      <FileClock className="h-4 w-4 text-slate-400" />
-                      {event.time}
-                    </p>
-                    <p className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-slate-400" />
-                      {event.location}
-                    </p>
-                  </div>
-                  <Link
-                    to="/login"
-                    className="btn-press mt-5 inline-flex h-10 items-center justify-center rounded-xl border border-brand-200 bg-white px-4 text-sm font-medium text-brand-800 hover:bg-brand-50"
-                  >
-                    Dang nhap de dang ky
-                  </Link>
+          <div className="mt-10 grid auto-rows-fr gap-5 md:grid-cols-2">
+            {features.map((feature, index) => {
+              return (
+                <RevealOnScroll key={feature.title} delay={index * 80} className={index === 0 || index === 3 ? "lg:col-span-1" : ""}>
+                  <FeatureCard feature={feature} motionEnabled={finePointer && !reducedMotion} />
                 </RevealOnScroll>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        </RevealOnScroll>
+        </div>
+      </RevealOnScroll>
 
-        <RevealOnScroll as="section" className="px-5 py-14 md:px-8">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Loi ich chinh</p>
-              <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Thiet ke dung nghiep vu phan tan</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Cac tinh nang tap trung vao bai toan thuc te cua CLB: cong bo su kien, duyet dang ky, phat ve QR, check-in va quan tri.
-              </p>
-            </div>
-            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {benefits.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <article key={item.title} className="landing-benefit-card enterprise-card card-hover-lift p-5">
-                    <div className="landing-card-icon grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-4 font-display text-base font-semibold text-slate-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.text}</p>
-                  </article>
-                );
-              })}
-            </div>
-          </div>
-        </RevealOnScroll>
+      <section id="events" className="scroll-mt-20 border-y border-slate-200 bg-white px-0 py-16">
+        <div className="mx-auto max-w-[1180px] px-5 text-center md:px-8">
+          <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Sự kiện nổi bật</h2>
+          <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
+            Khám phá các hoạt động hấp dẫn sắp diễn ra.
+          </p>
+        </div>
 
-        <RevealOnScroll as="section" id="guide" className="scroll-mt-16 px-5 py-14 md:px-8">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Huong dan</p>
-              <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Moi vai tro co mot hanh trinh ro rang</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Ba nhom nguoi dung dung chung mot dong du lieu: dang ky, duyet, cap ve QR va ghi nhan check-in.
-              </p>
+        <div className="mt-10">
+          {isLoading ? (
+            <div className="mx-auto max-w-[1180px] px-5 md:px-8">
+              <LoadingSkeleton type="card" count={3} />
             </div>
+          ) : error ? (
+            <div className="mx-auto max-w-[1180px] px-5 md:px-8">
+              <EmptyState title="Chưa tải được sự kiện" description={error} icon={CalendarDays} />
+            </div>
+          ) : visibleEvents.length > 0 ? (
+            <EventMarquee events={visibleEvents} reducedMotion={reducedMotion} motionEnabled={finePointer && !reducedMotion} onOpen={(eventId) => navigate(`/events/${eventId}`)} />
+          ) : (
+            <div className="mx-auto max-w-[1180px] px-5 md:px-8">
+              <EmptyState
+                title="Chưa có sự kiện nổi bật"
+                description="Hiện chưa có sự kiện đang mở đăng ký hoặc sắp diễn ra. Vui lòng quay lại sau."
+                icon={CalendarDays}
+              />
+            </div>
+          )}
+        </div>
+      </section>
 
-            <div className="mt-8 grid gap-5 lg:grid-cols-3">
-              {guideItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <article key={item.title} className="landing-guide-card enterprise-card card-hover-lift p-5">
-                    <div className="landing-card-icon grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="mt-4 font-display text-base font-semibold text-slate-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
-                    <div className="mt-5 space-y-2">
-                      {item.steps.map((step, index) => (
-                        <div key={step} className="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-3 py-2">
-                          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-xs font-semibold text-brand-700 ring-1 ring-slate-200">
-                            {index + 1}
-                          </span>
-                          <span className="text-sm font-medium text-slate-700">{step}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                );
-              })}
+      <RevealOnScroll as="section" id="guide" className="scroll-mt-20 bg-slate-50 px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-[1180px]">
+          <div className="mx-auto max-w-2xl text-center">
+            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-blue-100 bg-white text-blue-800 shadow-sm">
+              <BookOpenCheck className="h-6 w-6" aria-hidden="true" />
             </div>
-          </div>
-        </RevealOnScroll>
-
-        <RevealOnScroll as="section" className="px-5 py-14 md:px-8">
-          <div className="mx-auto max-w-[1180px]">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Phan hoi theo ngu canh do an</p>
-              <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Goc nhin tu cac nhom su dung</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Cac nhan xet minh hoa duoc viet theo boi canh hoc thuat, khong phai review thuong mai hay du lieu khao sat chinh thuc.
-              </p>
-            </div>
-            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-              {testimonials.map((item) => (
-                <article key={item.name} className="enterprise-card card-hover-lift p-5">
-                  <div className="flex gap-1 text-amber-400">
-                    {Array.from({ length: 5 }, (_, index) => <Star key={index} className="h-4 w-4 fill-current" />)}
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">"{item.quote}"</p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
-                      <Users className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-950">{item.name}</p>
-                      <p className="text-xs font-medium text-slate-500">{item.role}</p>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </RevealOnScroll>
-
-        <RevealOnScroll as="section" className="px-5 py-14 md:px-8">
-          <div className="mx-auto max-w-[980px]">
-            <div className="mx-auto max-w-2xl text-center">
-              <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">FAQ</p>
-              <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Cau hoi thuong gap</h2>
-            </div>
-            <div className="mt-8 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              {faqs.map((item) => (
-                <details key={item.question} className="group p-5">
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-slate-950">
-                    <span>{item.question}</span>
-                    <HelpCircle className="h-5 w-5 shrink-0 text-brand-600 transition group-open:rotate-45" />
-                  </summary>
-                  <p className="mt-3 text-sm leading-6 text-slate-600">{item.answer}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </RevealOnScroll>
-
-        <RevealOnScroll as="section" className="px-5 pb-16 pt-6 md:px-8">
-          <div className="landing-cta-panel mx-auto max-w-[1180px] rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-7 text-center text-white shadow-xl shadow-brand-900/16 md:p-8">
-            <div className="landing-floating-badge mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white/12 text-white ring-1 ring-white/18">
-              <Ticket className="h-5 w-5" />
-            </div>
-            <h2 className="mt-4 font-display text-2xl font-semibold">San sang quan ly su kien CLB chuyen nghiep hon?</h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm font-normal leading-6 text-white/78">
-              Dang nhap bang tai khoan TVU de tiep tuc voi dung vai tro cua ban trong he thong. Neu ban la khach, hay xem danh sach su kien cong khai truoc.
+            <h2 className="mt-5 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Hướng dẫn sử dụng</h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
+              Nắm nhanh quy trình đăng ký, quản lý và check-in sự kiện trên TVU Ticket.
             </p>
-            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link to="/login" className="btn-press inline-flex h-11 items-center justify-center rounded-xl bg-white px-5 text-sm font-semibold text-brand-800">
-                Dang nhap he thong
-              </Link>
-              <Link to="/events" className="btn-press inline-flex h-11 items-center justify-center rounded-xl border border-white/22 bg-white/10 px-5 text-sm font-semibold text-white">
-                Xem su kien
-              </Link>
-            </div>
           </div>
-        </RevealOnScroll>
 
-        <RevealOnScroll as="section" className="px-5 pb-16 md:px-8">
-          <div className="mx-auto grid max-w-[1180px] gap-4 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600 shadow-sm md:grid-cols-3">
-            <div>
-              <p className="font-display text-base font-semibold text-slate-950">TVU Event & Ticketing Platform</p>
-              <p className="mt-2 leading-6">De tai: Xay dung he thong phan tan quan ly su kien va ve dien tu cho cac CLB tai Truong Dai hoc Tra Vinh.</p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-950">Lien he hoc thuat</p>
-              <p className="mt-2 leading-6">Truong Dai hoc Tra Vinh</p>
-              <p className="leading-6">Phong Cong tac Sinh vien / cac CLB phu trach su kien</p>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-950">Thong tin nen tang</p>
-              <p className="mt-2 flex items-center gap-2 leading-6"><Bell className="h-4 w-4 text-brand-600" /> Notification service gui email/QR bat dong bo.</p>
-              <p className="flex items-center gap-2 leading-6"><CheckCircle2 className="h-4 w-4 text-brand-600" /> Public URL: /, /events, /login.</p>
-            </div>
+          <div className="mt-10 grid gap-5 lg:grid-cols-3">
+            {guideSteps.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <RevealOnScroll key={item.title} delay={index * 90}>
+                  <article className="landing-guide-card h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/4">
+                    <div className="flex items-start gap-4">
+                      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800">
+                        <Icon className="h-6 w-6" aria-hidden="true" />
+                      </div>
+                      <div>
+                        <h3 className="font-display text-lg font-extrabold text-slate-900">{item.title}</h3>
+                        <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{item.description}</p>
+                      </div>
+                    </div>
+
+                    <ol className="mt-6 space-y-3">
+                      {item.steps.map((step, stepIndex) => (
+                        <li key={step} className="landing-guide-step flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-blue-800 shadow-sm ring-1 ring-blue-100">
+                            {stepIndex + 1}
+                          </span>
+                          <span className="text-sm font-semibold text-slate-700">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </article>
+                </RevealOnScroll>
+              );
+            })}
           </div>
-        </RevealOnScroll>
+        </div>
+      </RevealOnScroll>
+
+      <LandingFooter />
+    </div>
+  );
+}
+
+interface EventMarqueeProps {
+  events: Event[];
+  reducedMotion: boolean;
+  motionEnabled: boolean;
+  onOpen: (eventId: string) => void;
+}
+
+type FeatureItem = (typeof features)[number];
+
+function MagneticContent({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  const ref = usePointerMotion<HTMLSpanElement>({ enabled, magnetic: true, maxMagnet: 5 });
+
+  return (
+    <span ref={ref} className="magnetic-button-content">
+      {children}
+    </span>
+  );
+}
+
+function FeatureCard({ feature, motionEnabled }: { feature: FeatureItem; motionEnabled: boolean }) {
+  const Icon = feature.icon;
+  const cardRef = usePointerMotion<HTMLElement>({ enabled: motionEnabled, tilt: true, maxTilt: 3 });
+
+  return (
+    <article ref={cardRef} className="landing-feature-card group h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/4">
+      <div className={`landing-feature-icon grid h-12 w-12 place-items-center rounded-xl ${feature.tone}`}>
+        <Icon className="h-6 w-6 transition duration-300 group-hover:scale-110" />
+      </div>
+      <h3 className="mt-5 font-display text-xl font-extrabold text-slate-900">{feature.title}</h3>
+      <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
+      <span className="landing-card-light" aria-hidden="true" />
+    </article>
+  );
+}
+
+function EventMarquee({ events, reducedMotion, motionEnabled, onOpen }: EventMarqueeProps) {
+  const [paused, setPaused] = useState(false);
+  const resumeTimer = useRef<number | null>(null);
+  const repeated = useMemo(() => [...events, ...events], [events]);
+
+  useEffect(() => () => {
+    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
+  }, []);
+
+  const pause = () => {
+    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
+    setPaused(true);
+  };
+
+  const resumeSoon = () => {
+    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => setPaused(false), 420);
+  };
+
+  return (
+    <div
+      className={["landing-marquee", reducedMotion ? "landing-marquee-reduced" : "", paused ? "is-paused" : ""].join(" ")}
+      onMouseEnter={pause}
+      onMouseLeave={resumeSoon}
+      onPointerDown={pause}
+      onPointerUp={resumeSoon}
+      onPointerCancel={resumeSoon}
+      onFocusCapture={pause}
+      onBlurCapture={resumeSoon}
+    >
+      <div className="landing-marquee-track" aria-live="off">
+        {repeated.map((event, index) => (
+          <LandingEventCard
+            key={`${event.id}-${index < events.length ? "primary" : "clone"}`}
+            event={event}
+            ariaHidden={index >= events.length}
+            motionEnabled={motionEnabled}
+            onOpen={onOpen}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface LandingEventCardProps {
+  event: Event;
+  ariaHidden?: boolean;
+  motionEnabled: boolean;
+  onOpen: (eventId: string) => void;
+}
+
+function LandingEventCard({ event, ariaHidden = false, motionEnabled, onOpen }: LandingEventCardProps) {
+  const isEnded = event.status === "ENDED" || event.status === "CLOSED";
+  const isAvailable = event.status === "OPEN" && event.remainingTickets > 0;
+  const cardRef = usePointerMotion<HTMLElement>({ enabled: motionEnabled, tilt: true, maxTilt: 2.6 });
+
+  return (
+    <article
+      ref={cardRef}
+      className="landing-event-card group"
+      aria-hidden={ariaHidden}
+    >
+      <div className="relative aspect-[16/10] overflow-hidden bg-blue-950">
+        {event.bannerUrl ? (
+          <img
+            src={event.bannerUrl}
+            alt={event.title}
+            className="h-full w-full object-cover"
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-900 via-blue-700 to-sky-500 text-white">
+            <Ticket className="h-12 w-12" aria-hidden="true" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/58 via-slate-950/4 to-transparent" aria-hidden="true" />
+        <span className={`absolute right-3 top-3 rounded-full border px-3 py-1 text-xs font-bold shadow-sm backdrop-blur ${eventStatusClass(event.status)}`}>
+          {eventStatusLabel(event.status)}
+        </span>
       </div>
 
-      <ScrollToTopButton />
-    </main>
+      <div className="flex min-h-[230px] flex-col p-5">
+        <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">{event.clubName || "TVU"}</p>
+        <h3 className="mt-2 line-clamp-2 font-display text-lg font-extrabold leading-snug text-slate-900">{event.title}</h3>
+        <div className="mt-4 space-y-2 text-sm font-medium text-slate-600">
+          <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-blue-700" /> {formatDateTime(event.startAt)}</p>
+          <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-blue-700" /> <span className="line-clamp-1">{event.location}</span></p>
+          <p className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-blue-700" />
+            {event.remainingTickets > 0 ? `Còn ${event.remainingTickets}/${event.capacity} vé` : "Không còn vé khả dụng"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onOpen(event.id)}
+          tabIndex={ariaHidden ? -1 : 0}
+          className={[
+            "btn-press magnetic-button group/btn mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold",
+            isAvailable
+              ? "bg-blue-800 text-white shadow-md shadow-blue-900/16 hover:bg-blue-700"
+              : "border border-blue-200 bg-white text-blue-800 hover:bg-blue-50",
+          ].join(" ")}
+        >
+          <MagneticContent enabled={motionEnabled && !ariaHidden}>
+            {isAvailable ? "Đăng ký ngay" : isEnded ? "Xem chi tiết" : "Xem chi tiết"}
+            <ArrowRight className="h-4 w-4 transition group-hover/btn:translate-x-1" />
+          </MagneticContent>
+        </button>
+      </div>
+      <span className="landing-card-light" aria-hidden="true" />
+    </article>
+  );
+}
+
+function LandingFooter() {
+  return (
+    <footer className="bg-slate-50 px-5 py-12 md:px-8">
+      <div className="mx-auto grid max-w-[1180px] gap-8 border-t border-slate-200 pt-10 md:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.9fr_1fr]">
+        <div>
+          <div className="flex items-center gap-3">
+            <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-10 w-10 rounded-full object-contain ring-1 ring-blue-100" />
+            <p className="font-display text-xl font-extrabold text-blue-800">TVU Ticket</p>
+          </div>
+          <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-600">
+            Hệ thống quản lý và phân phối vé sự kiện chính thức dành cho sinh viên và các Câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
+          </p>
+          <div className="mt-5 flex gap-3 text-blue-800">
+            <a href="/" aria-label="Kênh thông tin TVU Ticket" className="landing-social-link"><Share2 className="h-4 w-4" /></a>
+            <a href="/" aria-label="Cộng đồng sinh viên TVU" className="landing-social-link"><Users className="h-4 w-4" /></a>
+          </div>
+        </div>
+        <FooterColumn title="Khám phá" links={[["Trang chủ", "/"], ["Sự kiện", "/events"], ["Hướng dẫn", "/#guide"], ["Tin tức", "/"]]} />
+        <FooterColumn title="Chính sách" links={[["Điều khoản sử dụng", "/"], ["Chính sách bảo mật", "/"], ["Quy định check-in", "/#guide"]]} />
+        <div>
+          <h2 className="text-sm font-extrabold text-slate-900">Liên hệ</h2>
+          <div className="mt-4 space-y-3 text-sm font-medium text-slate-600">
+            <p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
+            <p className="flex gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> support@tvu.edu.vn</p>
+            <p className="flex gap-2"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 0294 3855 246</p>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+function FooterColumn({ title, links }: { title: string; links: Array<[string, string]> }) {
+  return (
+    <div>
+      <h2 className="text-sm font-extrabold text-slate-900">{title}</h2>
+      <nav className="mt-4 grid gap-3 text-sm font-medium text-slate-600" aria-label={title}>
+        {links.map(([label, to]) => (
+          <Link key={label} to={to} className="w-fit hover:text-blue-800 hover:underline">
+            {label}
+          </Link>
+        ))}
+      </nav>
+    </div>
   );
 }

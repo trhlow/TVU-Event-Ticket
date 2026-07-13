@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Mail, MapPin, Menu, Phone, Share2, Users, X } from "lucide-react";
 
 const navItems = [
   { label: "Trang chủ", id: "home" },
@@ -12,9 +12,34 @@ export default function PublicLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [previewSection, setPreviewSection] = useState<string | null>(null);
+  const [navIndicator, setNavIndicator] = useState({ left: 0, width: 0, visible: false });
+  const desktopNavRef = useRef<HTMLDivElement | null>(null);
+  const navButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const location = useLocation();
   const navigate = useNavigate();
   const isLanding = location.pathname === "/" || location.pathname === "/home";
+
+  const getCurrentNavId = useCallback(() => {
+    if (isLanding) return activeSection;
+    if (location.pathname.includes("events")) return "events";
+    if (location.pathname.includes("guide")) return "guide";
+    return "home";
+  }, [activeSection, isLanding, location.pathname]);
+
+  const moveNavIndicator = useCallback((id: string) => {
+    const nav = desktopNavRef.current;
+    const button = navButtonRefs.current[id];
+    if (!nav || !button) return;
+
+    const navRect = nav.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    setNavIndicator({
+      left: buttonRect.left - navRect.left,
+      width: buttonRect.width,
+      visible: true,
+    });
+  }, []);
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -24,10 +49,13 @@ export default function PublicLayout() {
 
   const handleNavClick = (id: string) => {
     setMobileOpen(false);
+    setPreviewSection(id);
+    setActiveSection(id);
+    moveNavIndicator(id);
 
     if (!isLanding) {
       navigate("/", { replace: false });
-      window.setTimeout(() => scrollToSection(id), 80);
+      window.setTimeout(() => scrollToSection(id), 100);
       return;
     }
 
@@ -51,7 +79,7 @@ export default function PublicLayout() {
 
         if (visible?.target.id) setActiveSection(visible.target.id);
       },
-      { rootMargin: "-35% 0px -55% 0px", threshold: [0.1, 0.25, 0.5] },
+      { rootMargin: "-38% 0px -52% 0px", threshold: [0.12, 0.35, 0.6] },
     );
 
     sections.forEach((section) => observer.observe(section));
@@ -59,7 +87,7 @@ export default function PublicLayout() {
   }, [isLanding, location.pathname]);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 12);
+    const handleScroll = () => setIsScrolled(window.scrollY > 14);
 
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -67,42 +95,84 @@ export default function PublicLayout() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const target = getCurrentNavId();
+    const update = () => moveNavIndicator(target);
+
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [getCurrentNavId, moveNavIndicator]);
+
   return (
-    <main className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-transparent font-sans">
+    <main className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-slate-50 font-sans">
       <nav
         className={[
-          "fixed inset-x-0 top-0 z-50 border-b px-4 backdrop-blur-xl transition-all duration-300 sm:px-5 lg:px-8",
-          isScrolled ? "border-slate-200/70 bg-white/94 shadow-md shadow-slate-900/10" : "border-white/60 bg-white/82",
+          "fixed inset-x-0 top-0 z-50 border-b px-4 transition-all duration-300 sm:px-5 lg:px-8",
+          isScrolled
+            ? "border-blue-100/80 bg-white/92 shadow-lg shadow-blue-950/8 backdrop-blur-xl"
+            : "border-white/70 bg-white/78 backdrop-blur-sm",
         ].join(" ")}
       >
-        <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between gap-4">
+        <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between gap-4">
           <button type="button" onClick={() => handleNavClick("home")} className="public-logo-link flex min-w-0 items-center gap-3 text-left">
             <img
-              src="/src/assets/images/tvu_logo_1783065060265.jpg"
-              alt="TVU Event"
-              className="h-8 w-8 shrink-0 rounded-lg bg-white object-contain p-1 shadow-sm ring-1 ring-slate-100"
+              src="/tvu_logo_1783065060265.jpg"
+              alt="Logo Trường Đại học Trà Vinh"
+              className="h-9 w-9 shrink-0 rounded-full bg-white object-contain p-1 shadow-sm ring-1 ring-blue-100"
             />
             <span className="min-w-0">
-              <span className="block truncate font-display text-sm font-semibold leading-5 text-brand-800">TVU Event</span>
-              <span className="block truncate text-xs font-medium leading-4 text-slate-500">Ticketing Platform</span>
+              <span className="block truncate font-display text-lg font-extrabold leading-5 text-blue-800">TVU Ticket</span>
             </span>
           </button>
 
-          <div className="hidden h-full items-center gap-7 md:flex">
+          <div
+            ref={desktopNavRef}
+            className="public-nav-group relative hidden h-full items-center gap-8 md:flex"
+            onMouseLeave={() => {
+              setPreviewSection(null);
+              moveNavIndicator(getCurrentNavId());
+            }}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setPreviewSection(null);
+                moveNavIndicator(getCurrentNavId());
+              }
+            }}
+          >
+            <span
+              className={["public-nav-active-indicator", navIndicator.visible ? "opacity-100" : "opacity-0"].join(" ")}
+              style={{
+                width: `${navIndicator.width}px`,
+                transform: `translate3d(${navIndicator.left}px, 0, 0)`,
+              }}
+              aria-hidden="true"
+            />
             {navItems.map((item) => {
               const active = isLanding && activeSection === item.id;
+              const highlighted = previewSection ? previewSection === item.id : active || getCurrentNavId() === item.id;
               return (
                 <button
                   key={item.id}
+                  ref={(node) => {
+                    navButtonRefs.current[item.id] = node;
+                  }}
                   type="button"
                   onClick={() => handleNavClick(item.id)}
+                  onMouseEnter={() => {
+                    setPreviewSection(item.id);
+                    moveNavIndicator(item.id);
+                  }}
+                  onFocus={() => {
+                    setPreviewSection(item.id);
+                    moveNavIndicator(item.id);
+                  }}
                   className={[
-                    "public-nav-link relative flex h-full items-center text-sm font-medium transition-colors",
-                    active ? "text-brand-800" : "text-slate-600 hover:text-brand-800",
+                    "public-nav-link relative flex h-full items-center text-sm font-semibold transition-colors",
+                    highlighted ? "text-blue-800" : "text-slate-600 hover:text-blue-800",
                   ].join(" ")}
                 >
                   {item.label}
-                  <span className={["public-nav-underline absolute bottom-3.5 left-0 h-0.5 w-full rounded-full bg-brand-600", active ? "scale-x-100" : "scale-x-0"].join(" ")} />
                 </button>
               );
             })}
@@ -111,7 +181,7 @@ export default function PublicLayout() {
           <div className="hidden items-center justify-end gap-3 md:flex">
             <Link
               to="/login"
-              className="btn-press inline-flex h-9 items-center justify-center rounded-xl bg-brand-700 px-4 text-sm font-medium text-white shadow-sm shadow-brand-700/14 hover:bg-brand-800"
+              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-5 text-sm font-bold text-white shadow-md shadow-blue-900/18 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-900/20"
             >
               Đăng nhập
             </Link>
@@ -120,7 +190,7 @@ export default function PublicLayout() {
           <button
             type="button"
             onClick={() => setMobileOpen((value) => !value)}
-            className="btn-press grid h-8 w-8 place-items-center justify-self-end rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm md:hidden"
+            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-xl border border-blue-100 bg-white text-blue-800 shadow-sm md:hidden"
             aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
             aria-expanded={mobileOpen}
             aria-controls="public-mobile-menu"
@@ -130,7 +200,7 @@ export default function PublicLayout() {
         </div>
 
         {mobileOpen && (
-          <div id="public-mobile-menu" className="public-mobile-menu animate-fade-in mx-auto max-w-[1180px] border-t border-slate-100 py-3 md:hidden">
+          <div id="public-mobile-menu" className="public-mobile-menu mx-auto max-w-[1180px] border-t border-blue-50 py-3 md:hidden">
             <div className="grid gap-2">
               {navItems.map((item) => (
                 <button
@@ -138,10 +208,10 @@ export default function PublicLayout() {
                   type="button"
                   onClick={() => handleNavClick(item.id)}
                   className={[
-                    "rounded-xl px-3 py-2.5 text-left text-sm font-medium",
+                    "rounded-xl px-3 py-2.5 text-left text-sm font-semibold",
                     isLanding && activeSection === item.id
-                      ? "bg-brand-50 text-brand-800"
-                      : "text-slate-700 hover:bg-brand-50 hover:text-brand-800",
+                      ? "bg-blue-50 text-blue-800"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-800",
                   ].join(" ")}
                 >
                   {item.label}
@@ -150,7 +220,7 @@ export default function PublicLayout() {
               <Link
                 to="/login"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-xl bg-brand-700 px-4 py-2.5 text-center text-sm font-medium text-white"
+                className="rounded-xl bg-blue-800 px-4 py-2.5 text-center text-sm font-bold text-white"
               >
                 Đăng nhập
               </Link>
@@ -159,34 +229,43 @@ export default function PublicLayout() {
         )}
       </nav>
 
-      <section className="flex w-full flex-1 flex-col pt-14">
+      <section className="flex w-full flex-1 flex-col pt-16">
         <Outlet />
       </section>
 
-      <footer className="border-t border-white/70 bg-white/78 px-6 py-8 text-xs font-semibold text-slate-500">
-        <div className="mx-auto grid max-w-[1180px] gap-5 text-left md:grid-cols-[1.4fr_1fr_1fr]">
-          <div>
-            <p className="font-display text-sm font-semibold text-brand-800">TVU Event & Ticketing Platform</p>
-            <p className="mt-2 max-w-xl leading-6">
-              He thong do an quan ly su kien va ve dien tu cho cac cau lac bo tai Truong Dai hoc Tra Vinh.
-            </p>
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">Lien he</p>
-            <p className="mt-2 leading-6">Truong Dai hoc Tra Vinh</p>
-            <p className="leading-6">Phong Cong tac Sinh vien va cac CLB phu trach</p>
-          </div>
-          <div>
-            <p className="font-semibold text-slate-900">Thong tin</p>
-            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
-              <Link to="/guide" className="hover:text-brand-700">Huong dan</Link>
-              <Link to="/events" className="hover:text-brand-700">Su kien</Link>
-              <Link to="/login" className="hover:text-brand-700">Dang nhap</Link>
+      {!isLanding && (
+        <footer className="border-t border-blue-100 bg-white px-6 py-8 text-sm text-slate-600">
+          <div className="mx-auto grid max-w-[1180px] gap-6 md:grid-cols-[1.3fr_1fr_1fr]">
+            <div>
+              <div className="flex items-center gap-3">
+                <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-9 w-9 rounded-full object-contain ring-1 ring-blue-100" />
+                <p className="font-display text-lg font-extrabold text-blue-800">TVU Ticket</p>
+              </div>
+              <p className="mt-3 max-w-xl leading-6">
+                Hệ thống quản lý và phân phối vé sự kiện chính thức dành cho sinh viên và các Câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
+              </p>
             </div>
-            <p className="mt-3 leading-6">© 2026 Truong Dai hoc Tra Vinh.</p>
+            <div>
+              <p className="font-bold text-slate-900">Liên hệ</p>
+              <p className="mt-3 flex items-center gap-2 leading-6"><MapPin className="h-4 w-4 text-blue-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
+              <p className="flex items-center gap-2 leading-6"><Mail className="h-4 w-4 text-blue-700" /> support@tvu.edu.vn</p>
+              <p className="flex items-center gap-2 leading-6"><Phone className="h-4 w-4 text-blue-700" /> 0294 3855 246</p>
+            </div>
+            <div>
+              <p className="font-bold text-slate-900">Khám phá</p>
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                <Link to="/" className="hover:text-blue-800 hover:underline">Trang chủ</Link>
+                <Link to="/events" className="hover:text-blue-800 hover:underline">Sự kiện</Link>
+                <Link to="/#guide" className="hover:text-blue-800 hover:underline">Hướng dẫn</Link>
+              </div>
+              <div className="mt-4 flex gap-2 text-blue-800">
+                <Share2 className="h-4 w-4" aria-hidden="true" />
+                <Users className="h-4 w-4" aria-hidden="true" />
+              </div>
+            </div>
           </div>
-        </div>
-      </footer>
+        </footer>
+      )}
     </main>
   );
 }
