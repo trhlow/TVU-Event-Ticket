@@ -1,6 +1,12 @@
 # Production: CloudAMQP (RabbitMQ) + SMTP provider.
 # All values required from env — no fallback defaults.
 spring:
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT}
+      ssl:
+        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:true}
   rabbitmq:
     host: ${RABBITMQ_HOST}
     port: ${RABBITMQ_PORT}
@@ -15,6 +21,14 @@ spring:
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
+
+tvu:
+  notification:
+    mail:
+      from-address: ${MAIL_FROM_ADDRESS}
+      from-name: ${MAIL_FROM_NAME}
+    qr:
+      signing-secret: ${QR_SIGNING_SECRET}
 
 logging:
   level:

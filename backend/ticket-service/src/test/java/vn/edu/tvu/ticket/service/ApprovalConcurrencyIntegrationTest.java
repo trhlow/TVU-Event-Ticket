@@ -7,6 +7,8 @@ import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
 import vn.edu.tvu.ticket.repository.ReservationRepository;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
+import vn.edu.tvu.ticket.domain.OutboxMessage;
+import vn.edu.tvu.ticket.messaging.OutboxClaimService;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.security.UserRole;
 
@@ -59,6 +61,7 @@ class ApprovalConcurrencyIntegrationTest {
     @Autowired OutboxMessageRepository outboxRepository;
     @Autowired TicketCounterService counterService;
     @Autowired TicketingService ticketingService;
+    @Autowired OutboxClaimService outboxClaimService;
 
     @BeforeEach
     void clean() {
@@ -136,7 +139,56 @@ class ApprovalConcurrencyIntegrationTest {
         assertThat(ticketingService.attendees(organizer(clubId), eventId)).hasSize(1);
         assertThat(ticketingService.attendeesCsv(organizer(clubId), eventId))
                 .contains("student_email", "student@example.com", "CHECKED_IN");
-        assertThat(ticketingService.attendees(organizer(UUID.randomUUID()), eventId)).isEmpty();
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> ticketingService.attendees(organizer(UUID.randomUUID()), eventId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("outside organizer club scope");
+    }
+
+    @Test
+    void concurrentCheckInAcceptsExactlyOneRequestAndWritesOneAudit() throws Exception {
+        var clubId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        createInventory(eventId, clubId, 1);
+        var reservation = createReservation(eventId, clubId, "concurrent-check-in");
+        service.approve(organizer(clubId), reservation.getId());
+        var ticket = ticketRepository.findByReservationId(reservation.getId()).orElseThrow();
+        var qr = signedQr(ticket.getId(), eventId, Instant.now().plusSeconds(3600));
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var tasks = java.util.List.<java.util.concurrent.Callable<Boolean>>of(
+                    () -> tryCheckIn(clubId, qr),
+                    () -> tryCheckIn(clubId, qr));
+            var successes = 0L;
+            for (var future : executor.invokeAll(tasks)) {
+                if (future.get()) {
+                    successes++;
+                }
+            }
+            assertThat(successes).isOne();
+        }
+
+        assertThat(outboxRepository.findAll().stream()
+                .filter(message -> "audit.ticket.check-in".equals(message.getRoutingKey())))
+                .hasSize(1);
+    }
+
+    @Test
+    void twoOutboxWorkersNeverClaimTheSameMessage() throws Exception {
+        var message = outboxRepository.saveAndFlush(OutboxMessage.pending(
+                "audit", UUID.randomUUID(), "audit.ticket.test", "{}"));
+
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            java.util.List<java.util.concurrent.Callable<java.util.List<OutboxMessage>>> tasks = java.util.List.of(
+                    () -> outboxClaimService.claim("worker-a"),
+                    () -> outboxClaimService.claim("worker-b"));
+            var futures = executor.invokeAll(tasks);
+            var claimedIds = new ArrayList<UUID>();
+            for (var future : futures) {
+                future.get().forEach(claimed -> claimedIds.add(claimed.getId()));
+            }
+            assertThat(claimedIds).containsExactly(message.getId());
+        }
     }
 
     private void createInventory(UUID eventId, UUID clubId, int capacity) {
@@ -154,6 +206,15 @@ class ApprovalConcurrencyIntegrationTest {
 
     private CurrentUser organizer(UUID clubId) {
         return new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+    }
+
+    private boolean tryCheckIn(UUID clubId, String qr) {
+        try {
+            ticketingService.checkIn(organizer(clubId), qr);
+            return true;
+        } catch (ResponseStatusException ex) {
+            return false;
+        }
     }
 
     private String signedQr(UUID ticketId, UUID eventId, Instant expiresAt) throws Exception {

@@ -32,6 +32,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -121,6 +123,64 @@ class TicketReservationServiceTest {
     }
 
     @Test
+    void submit_rejectsIncompleteStudentProfileBeforeCallingDependencies() {
+        var incomplete = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN,
+                null, null);
+
+        assertThatThrownBy(() -> service.submit(incomplete,
+                new CreateReservationRequest(UUID.randomUUID()), "idem"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("profile must be completed");
+
+        verify(eventClient, never()).getOpenEvent(any());
+    }
+
+    @Test
+    void submit_rejectsClosedAndOutOfWindowEvents() {
+        var student = student();
+        var closedId = UUID.randomUUID();
+        var outsideId = UUID.randomUUID();
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(closedId, student.userId(), "closed"))
+                .thenReturn(Optional.empty());
+        when(reservationRepository.existsByEventIdAndStudentId(closedId, student.userId())).thenReturn(false);
+        when(eventClient.getOpenEvent(closedId)).thenReturn(event(closedId, UUID.randomUUID(), 2, "CLOSED",
+                Instant.now().minusSeconds(60), Instant.now().plusSeconds(60)));
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(outsideId, student.userId(), "outside"))
+                .thenReturn(Optional.empty());
+        when(reservationRepository.existsByEventIdAndStudentId(outsideId, student.userId())).thenReturn(false);
+        when(eventClient.getOpenEvent(outsideId)).thenReturn(event(outsideId, UUID.randomUUID(), 2, "OPEN",
+                Instant.now().plusSeconds(3600), Instant.now().plusSeconds(7200)));
+
+        assertThatThrownBy(() -> service.submit(student, new CreateReservationRequest(closedId), "closed"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("not open for registration");
+        assertThatThrownBy(() -> service.submit(student, new CreateReservationRequest(outsideId), "outside"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("not open for registration");
+        verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    void submit_usesAuthoritativeEventClubAndIgnoresClientClub() {
+        var student = student();
+        var eventId = UUID.randomUUID();
+        var authoritativeClub = UUID.randomUUID();
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(eventId, student.userId(), "spoof"))
+                .thenReturn(Optional.empty());
+        when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
+        when(eventClient.getOpenEvent(eventId)).thenReturn(event(eventId, authoritativeClub, 2));
+        when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.empty());
+        when(inventoryRepository.save(any(TicketInventory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation ->
+                persistedReservation(invocation.getArgument(0), UUID.randomUUID()));
+
+        var response = service.submit(student,
+                new CreateReservationRequest(eventId, UUID.randomUUID()), "spoof");
+
+        assertThat(response.clubId()).isEqualTo(authoritativeClub);
+    }
+
+    @Test
     void approve_decrementsRedisCreatesTicketAndOutboxMessages() {
         var organizer = organizer(UUID.randomUUID());
         var eventId = UUID.randomUUID();
@@ -172,6 +232,33 @@ class TicketReservationServiceTest {
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
         verify(ticketRepository, never()).save(any());
         verify(outboxRepository, never()).save(any());
+        verify(ticketCounterService, never()).release(any());
+    }
+
+    @Test
+    void approve_compensatesRedisExactlyOnceAfterTransactionRollback() {
+        var organizer = organizer(UUID.randomUUID());
+        var eventId = UUID.randomUUID();
+        var reservation = persistedReservation(Reservation.pending(eventId, organizer.clubId(), UUID.randomUUID(),
+                "student@example.com", "110122001", "idem-rollback"), UUID.randomUUID());
+        var inventory = persistedInventory(eventId, organizer.clubId(), 1);
+        when(reservationRepository.findLockedById(reservation.getId())).thenReturn(Optional.of(reservation));
+        when(inventoryRepository.findLockedByEventId(eventId)).thenReturn(Optional.of(inventory));
+        when(ticketCounterService.tryReserve(eventId)).thenReturn(true);
+        when(ticketRepository.save(any(Ticket.class))).thenAnswer(invocation ->
+                persistedTicket(invocation.getArgument(0), UUID.randomUUID()));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            service.approve(organizer, reservation.getId());
+            verify(ticketCounterService, never()).release(eventId);
+            var synchronizations = TransactionSynchronizationManager.getSynchronizations();
+            assertThat(synchronizations).hasSize(1);
+            synchronizations.getFirst().afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            verify(ticketCounterService, times(1)).release(eventId);
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     @Test
@@ -201,9 +288,16 @@ class TicketReservationServiceTest {
 
     private static EventSnapshot event(UUID eventId, UUID clubId, int capacity) {
         var now = Instant.now();
+        return event(eventId, clubId, capacity, "OPEN", now.minusSeconds(60), now.plusSeconds(3600));
+    }
+
+    private static EventSnapshot event(UUID eventId, UUID clubId, int capacity, String status,
+            Instant registrationOpenAt, Instant registrationCloseAt) {
+        var now = Instant.now();
         return new EventSnapshot(eventId, clubId, "Demo event", "Description", capacity,
-                now.minusSeconds(60), now.plusSeconds(3600), now.plusSeconds(7200), now.plusSeconds(10800),
-                "TVU Hall", "OPEN", UUID.randomUUID(), now.minusSeconds(3600), now);
+                registrationOpenAt, registrationCloseAt, registrationCloseAt.plusSeconds(3600),
+                registrationCloseAt.plusSeconds(7200),
+                "TVU Hall", status, UUID.randomUUID(), now.minusSeconds(3600), now);
     }
 
     private static CurrentUser organizer(UUID clubId) {

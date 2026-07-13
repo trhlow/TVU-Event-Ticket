@@ -96,11 +96,11 @@ export const registrationService = {
     return withReservationFallback(
       async () => {
         if (status === "APPROVED") {
-          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/approve`, { method: "PATCH" }));
+          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/approve`, { method: "POST" }));
         }
         if (status === "REJECTED") {
           void rejectReason;
-          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/reject`, { method: "PATCH" }));
+          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/reject`, { method: "POST" }));
         }
         throw new Error("Backend chi ho tro duyet hoac tu choi dang ky.");
       },

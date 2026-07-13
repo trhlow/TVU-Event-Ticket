@@ -27,7 +27,7 @@ import org.springframework.core.convert.converter.Converter;
 
 @Configuration
 @EnableWebFluxSecurity
-@EnableConfigurationProperties(GatewayAuthProperties.class)
+@EnableConfigurationProperties({GatewayAuthProperties.class, GatewayCsrfProperties.class})
 public class GatewaySecurityConfig {
 
     @Bean
@@ -48,6 +48,8 @@ public class GatewaySecurityConfig {
                         .pathMatchers(HttpMethod.GET, "/api/reservations").hasRole("ORGANIZER")
                         .pathMatchers(HttpMethod.PATCH, "/api/reservations/*/approve").hasRole("ORGANIZER")
                         .pathMatchers(HttpMethod.PATCH, "/api/reservations/*/reject").hasRole("ORGANIZER")
+                        .pathMatchers(HttpMethod.POST, "/api/reservations/*/approve").hasRole("ORGANIZER")
+                        .pathMatchers(HttpMethod.POST, "/api/reservations/*/reject").hasRole("ORGANIZER")
                         .pathMatchers(HttpMethod.POST, "/api/tickets/inventories")
                         .hasAnyRole("ORGANIZER", "SUPER_ADMIN")
                         .pathMatchers(HttpMethod.GET, "/api/ticketing/events/*/availability",

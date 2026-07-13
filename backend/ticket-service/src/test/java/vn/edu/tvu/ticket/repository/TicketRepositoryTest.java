@@ -18,6 +18,8 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -37,6 +39,9 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private OutboxMessageRepository outboxRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     void inventoryRepositoryPersistsEventSnapshotAndVersionColumn() {
@@ -99,6 +104,45 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         assertThat(outboxRepository.findClaimable(Instant.now().plusSeconds(1)))
                 .extracting(OutboxMessage::getId)
                 .containsExactly(first.getId(), second.getId());
+    }
+
+    @Test
+    void staleInventoryUpdateIsRejectedByOptimisticLock() {
+        var inventory = inventoryRepository.saveAndFlush(inventory(UUID.randomUUID(), UUID.randomUUID(), 2));
+        entityManager.detach(inventory);
+        var stale = inventoryRepository.findById(inventory.getId()).orElseThrow();
+        entityManager.createNativeQuery("update ticket_inventories set version = version + 1 where id = :id")
+                .setParameter("id", inventory.getId())
+                .executeUpdate();
+        stale.reserveApprovedSlot();
+
+        assertThatThrownBy(() -> inventoryRepository.saveAndFlush(stale))
+                .isInstanceOf(ObjectOptimisticLockingFailureException.class);
+    }
+
+    @Test
+    void outboxStateCanOnlyBeUpdatedByLeaseOwner() {
+        var now = Instant.now();
+        var message = OutboxMessage.pending("audit", UUID.randomUUID(), "audit.ticket.approve", "{}");
+        message.markProcessing("worker-a", now, now.plusSeconds(60));
+        message = outboxRepository.saveAndFlush(message);
+
+        assertThat(outboxRepository.markSentIfOwned(message.getId(), "worker-b", now)).isZero();
+        assertThat(outboxRepository.markSentIfOwned(message.getId(), "worker-a", now)).isOne();
+        assertThat(outboxRepository.findById(message.getId()).orElseThrow().getStatus())
+                .isEqualTo(OutboxStatus.SENT);
+    }
+
+    @Test
+    void expiredProcessingLeaseIsClaimableAgain() {
+        var now = Instant.now();
+        var message = OutboxMessage.pending("audit", UUID.randomUUID(), "audit.ticket.approve", "{}");
+        message.markProcessing("dead-worker", now.minusSeconds(120), now.minusSeconds(60));
+        message = outboxRepository.saveAndFlush(message);
+
+        assertThat(outboxRepository.findClaimable(now))
+                .extracting(OutboxMessage::getId)
+                .contains(message.getId());
     }
 
     private static TicketInventory inventory(UUID eventId, UUID clubId, int capacity) {

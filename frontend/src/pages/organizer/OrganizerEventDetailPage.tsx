@@ -1,353 +1,234 @@
-import React, { useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import {
-  ChevronLeft,
-  Calendar,
-  MapPin,
-  Ticket,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
-import { getEvents } from "../../data/mockEvents";
-import { getReservations, saveReservations } from "../../data/mockReservations";
-import { getTickets, saveTickets } from "../../data/mockTickets";
-import { saveEvents } from "../../data/mockEvents";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { Calendar, CheckCircle2, ChevronLeft, MapPin, Ticket, XCircle } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
 import { formatDateTime } from "../../utils/formatDate";
 import EventBanner from "../../components/events/EventBanner";
+import { eventService } from "../../services/eventService";
+import { registrationService } from "../../services/registrationService";
+import { ticketService } from "../../services/ticketService";
+import { getCurrentUser } from "../../data/mockAuth";
+import { Event } from "../../types/event";
+import { Reservation } from "../../types/reservation";
+import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const event = getEvents().find((e) => e.id === eventId);
-
-  const [reservations, setReservations] = useState(() =>
-    getReservations().filter((r) => r.eventId === eventId),
-  );
+  const currentUser = getCurrentUser();
+  const [event, setEvent] = useState<Event | null>(null);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [tickets, setTickets] = useState<IssuedTicket[]>([]);
   const [toastMsg, setToastMsg] = useState("");
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [actionId, setActionId] = useState<string | null>(null);
 
-  const tickets = getTickets().filter((t) => t.eventId === eventId);
+  const loadEventData = useCallback(async () => {
+    if (!eventId) return;
+    setIsLoading(true);
+    try {
+      const [events, pendingReservations, issuedTickets] = await Promise.all([
+        eventService.listByClubRemote(currentUser.clubId || ""),
+        registrationService.listPendingForOrganizer(),
+        ticketService.listAttendees(eventId).catch(() => [] as IssuedTicket[]),
+      ]);
+      setEvent(events.find((item) => item.id === eventId) || null);
+      setReservations(pendingReservations.filter((item) => item.eventId === eventId));
+      setTickets(issuedTickets);
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the tai chi tiet su kien.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser.clubId, eventId]);
 
-  const stats = {
-    total: reservations.length,
-    approved: reservations.filter((r) => r.status === "APPROVED").length,
-    pending: reservations.filter((r) => r.status === "PENDING").length,
-    rejected: reservations.filter((r) => r.status === "REJECTED").length,
-    checkedIn: tickets.filter((t) => t.checkInStatus === "CHECKED_IN").length,
+  useEffect(() => {
+    void loadEventData();
+  }, [loadEventData]);
+
+  const stats = useMemo(() => ({
+    pending: reservations.filter((item) => item.status === "PENDING").length,
+    approved: tickets.length,
+    checkedIn: tickets.filter((item) => item.checkInStatus === "CHECKED_IN").length,
+    total: reservations.length + tickets.length,
+  }), [reservations, tickets]);
+
+  const handleApprove = async (reservationId: string) => {
+    setActionId(reservationId);
+    try {
+      await registrationService.updateStatus(reservationId, "APPROVED");
+      setToastMsg("Da duyet dang ky. Backend se cap ve va gui email QR bat dong bo neu cau hinh notification san sang.");
+      await loadEventData();
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the duyet dang ky.");
+    } finally {
+      setActionId(null);
+    }
   };
 
-  const handleApprove = (resId: string) => {
-    if (!event) return;
-    if (event.remainingTickets <= 0) {
-      setToastMsg("Không thể duyệt vì sự kiện đã hết vé.");
-      return;
-    }
-
-    // Update reservation
-    const allReservations = getReservations();
-    const resIndex = allReservations.findIndex((r) => r.id === resId);
-    if (resIndex === -1) return;
-
-    allReservations[resIndex].status = "APPROVED";
-    saveReservations(allReservations);
-    setReservations(allReservations.filter((r) => r.eventId === eventId));
-
-    const allTickets = getTickets();
-    const existingTicket = allTickets.find((ticket) => ticket.reservationId === resId);
-    if (!existingTicket) {
-      const newTicket = {
-        id: `tkt_new_${Date.now()}`,
-        reservationId: resId,
-        eventId: event.id,
-        studentId: allReservations[resIndex].studentId,
-        ticketCode: `TVU-${event.id.replace("event_", "").toUpperCase()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
-        qrCodeValue: `TVU-${resId}`,
-        status: "VALID" as const,
-        checkInStatus: "PENDING" as const,
-        issuedAt: new Date().toISOString(),
-      };
-      allTickets.unshift(newTicket);
-      saveTickets(allTickets);
-    }
-
-    // Decrement remaining tickets
-    const allEvents = getEvents();
-    const evtIndex = allEvents.findIndex((e) => e.id === event.id);
-    if (evtIndex !== -1) {
-      allEvents[evtIndex].remainingTickets = Math.max(
-        0,
-        allEvents[evtIndex].remainingTickets - 1,
-      );
-      if (allEvents[evtIndex].remainingTickets === 0) {
-        allEvents[evtIndex].status = "FULL";
-      }
-    }
-    saveEvents(allEvents);
-
-    setToastMsg("Đã phê duyệt đăng ký và cấp vé QR.");
-  };
-
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!rejectTargetId) return;
-    if (!rejectReason.trim()) {
-      setToastMsg("Vui lòng nhập lý do từ chối.");
-      return;
+    setActionId(rejectTargetId);
+    try {
+      await registrationService.updateStatus(rejectTargetId, "REJECTED");
+      setToastMsg("Da tu choi dang ky.");
+      setRejectTargetId(null);
+      await loadEventData();
+    } catch (error) {
+      setToastMsg(error instanceof Error ? error.message : "Khong the tu choi dang ky.");
+    } finally {
+      setActionId(null);
     }
-
-    const allReservations = getReservations();
-    const resIndex = allReservations.findIndex((r) => r.id === rejectTargetId);
-    if (resIndex === -1) return;
-
-    allReservations[resIndex].status = "REJECTED";
-    allReservations[resIndex].rejectReason = rejectReason.trim();
-    saveReservations(allReservations);
-    setReservations(allReservations.filter((r) => r.eventId === eventId));
-    setRejectTargetId(null);
-    setRejectReason("");
-
-    setToastMsg("Đã từ chối đăng ký và lưu lý do xử lý.");
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 text-left">
+        <Breadcrumb items={[{ label: "Ban to chuc", path: "/organizer" }, { label: "Quan ly su kien", path: "/organizer/events" }, { label: "Chi tiet su kien" }]} />
+        <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center text-sm font-bold text-gray-500">Dang tai chi tiet su kien...</div>
+      </div>
+    );
+  }
 
   if (!event) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb
-          items={[
-            { label: "Ban tổ chức", path: "/organizer" },
-            { label: "Quản lý sự kiện", path: "/organizer/events" },
-            { label: "Chi tiết sự kiện" },
-          ]}
-        />
-        <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center max-w-md mx-auto space-y-3">
-          <p className="text-sm font-bold text-gray-950">
-            Sự kiện không tồn tại hoặc đã bị xóa
-          </p>
-          <Link
-            to="/organizer/events"
-            className="inline-block text-xs font-bold text-brand-600 hover:underline"
-          >
-            Quay lại danh sách sự kiện
+        <Breadcrumb items={[{ label: "Ban to chuc", path: "/organizer" }, { label: "Quan ly su kien", path: "/organizer/events" }, { label: "Chi tiet su kien" }]} />
+        <div className="mx-auto max-w-md rounded-2xl border border-gray-200 bg-white p-8 text-center">
+          <p className="text-sm font-bold text-gray-950">Khong tim thay su kien trong club cua tai khoan hien tai.</p>
+          <Link to="/organizer/events" className="mt-3 inline-block text-xs font-bold text-brand-600 hover:underline">
+            Quay lai danh sach su kien
           </Link>
         </div>
+        {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
   }
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      <Breadcrumb
-        items={[
-          { label: "Ban tổ chức", path: "/organizer" },
-          { label: "Quản lý sự kiện", path: "/organizer/events" },
-          { label: event.title },
-        ]}
-      />
+      <Breadcrumb items={[{ label: "Ban to chuc", path: "/organizer" }, { label: "Quan ly su kien", path: "/organizer/events" }, { label: event.title }]} />
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-2">
-          <Link
-            to="/organizer/events"
-            className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition-all"
-          >
-            <ChevronLeft className="w-5 h-5" />
+          <Link to="/organizer/events" className="rounded-lg p-1.5 text-gray-500 transition-all hover:bg-gray-100">
+            <ChevronLeft className="h-5 w-5" />
           </Link>
           <div className="space-y-0.5">
-            <h2 className="text-xl font-black text-gray-950 tracking-tight">
-              {event.title}
-            </h2>
-            <p className="text-xs text-gray-500 font-semibold">
-              {event.clubName} • Thể loại: {event.category}
-            </p>
+            <h2 className="text-xl font-black tracking-tight text-gray-950">{event.title}</h2>
+            <p className="text-xs font-semibold text-gray-500">{event.clubName} - {event.category}</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <StatusBadge
-            type="event"
-            status={event.status}
-          />
+        <StatusBadge type="event" status={event.status} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm">
+          <span className="block text-[10px] font-extrabold uppercase tracking-wider text-gray-400">Tong hien thi</span>
+          <span className="mt-1 block text-xl font-black text-gray-900">{stats.total}</span>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm">
+          <span className="block text-[10px] font-extrabold uppercase tracking-wider text-amber-500">Cho duyet</span>
+          <span className="mt-1 block text-xl font-black text-amber-500">{stats.pending}</span>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm">
+          <span className="block text-[10px] font-extrabold uppercase tracking-wider text-emerald-600">Ve da cap</span>
+          <span className="mt-1 block text-xl font-black text-emerald-600">{stats.approved}</span>
+        </div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm">
+          <span className="block text-[10px] font-extrabold uppercase tracking-wider text-brand-600">Da check-in</span>
+          <span className="mt-1 block text-xl font-black text-brand-600">{stats.checkedIn}</span>
         </div>
       </div>
 
-      {/* Stats Summary Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm text-left">
-          <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">
-            Tổng Đăng Ký
-          </span>
-          <span className="text-xl font-black text-gray-900 block mt-1">
-            {stats.total}
-          </span>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm text-left">
-          <span className="text-[10px] text-emerald-600 font-extrabold uppercase tracking-wider block">
-            Đã Duyệt
-          </span>
-          <span className="text-xl font-black text-emerald-600 block mt-1">
-            {stats.approved}
-          </span>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm text-left">
-          <span className="text-[10px] text-amber-500 font-extrabold uppercase tracking-wider block">
-            Chờ Duyệt
-          </span>
-          <span className="text-xl font-black text-amber-500 block mt-1">
-            {stats.pending}
-          </span>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm text-left">
-          <span className="text-[10px] text-rose-500 font-extrabold uppercase tracking-wider block">
-            Đã Từ Chối
-          </span>
-          <span className="text-xl font-black text-rose-500 block mt-1">
-            {stats.rejected}
-          </span>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm text-left col-span-2 md:col-span-1">
-          <span className="text-[10px] text-brand-600 font-extrabold uppercase tracking-wider block">
-            Đã Check-in
-          </span>
-          <span className="text-xl font-black text-brand-600 block mt-1">
-            {stats.checkedIn}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Event Info Cards */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-            <EventBanner
-              src={event.bannerUrl}
-              alt={event.title}
-              category={event.category}
-              className="h-44 w-full"
-            />
-            <div className="p-5 space-y-4">
-              <h3 className="font-extrabold text-gray-900 text-sm">
-                Thông tin cơ bản
-              </h3>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-1">
+          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-44 w-full" />
+            <div className="space-y-4 p-5">
+              <h3 className="text-sm font-extrabold text-gray-900">Thong tin co ban</h3>
               <div className="space-y-3">
-                <div className="flex gap-2.5 text-xs text-gray-600 font-semibold">
-                  <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex gap-2.5 text-xs font-semibold text-gray-600">
+                  <Calendar className="h-4 w-4 shrink-0 text-gray-400" />
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      Thời gian
-                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Thoi gian</p>
                     <p className="mt-0.5">{formatDateTime(event.startAt)}</p>
                   </div>
                 </div>
-                <div className="flex gap-2.5 text-xs text-gray-600 font-semibold">
-                  <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex gap-2.5 text-xs font-semibold text-gray-600">
+                  <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      Địa điểm
-                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Dia diem</p>
                     <p className="mt-0.5">{event.location}</p>
                   </div>
                 </div>
-                <div className="flex gap-2.5 text-xs text-gray-600 font-semibold">
-                  <Ticket className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                <div className="flex gap-2.5 text-xs font-semibold text-gray-600">
+                  <Ticket className="h-4 w-4 shrink-0 text-gray-400" />
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      Số lượng vé
-                    </p>
-                    <p className="mt-0.5">
-                      Đã cấp {event.capacity - event.remainingTickets} /{" "}
-                      {event.capacity} vé ({event.remainingTickets} vé trống)
-                    </p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Suc chua</p>
+                    <p className="mt-0.5">Con {event.remainingTickets} / {event.capacity} ve theo availability backend.</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-3">
-            <h3 className="font-extrabold text-gray-900 text-sm">Mô tả sự kiện</h3>
-            <p className="text-xs text-gray-600 font-semibold leading-relaxed">
-              {event.description}
-            </p>
+          <div className="space-y-3 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-extrabold text-gray-900">Mo ta su kien</h3>
+            <p className="text-xs font-semibold leading-relaxed text-gray-600">{event.description || "Chua co mo ta."}</p>
           </div>
         </div>
 
-        {/* List of Registrations for this specific event */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <h3 className="font-extrabold text-gray-900 text-sm">
-              Danh sách đăng ký sự kiện này
-            </h3>
+        <div className="space-y-4 lg:col-span-2">
+          <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div>
+              <h3 className="text-sm font-extrabold text-gray-900">Dang ky cho duyet</h3>
+              <p className="mt-1 text-xs font-semibold text-gray-500">Backend hien expose danh sach pending theo club; ve da duyet xem trong attendee/ticket list.</p>
+            </div>
+
             {reservations.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-xs text-left text-gray-600 font-semibold">
+                <table className="w-full text-left text-xs font-semibold text-gray-600">
                   <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 font-bold text-[10px] uppercase tracking-wider">
-                      <th className="py-2.5">Học Viên</th>
-                      <th className="py-2.5">MSSV / Lớp</th>
-                      <th className="py-2.5">Trạng Thái</th>
-                      <th className="py-2.5 text-right">Duyệt nhanh</th>
+                    <tr className="border-b border-gray-100 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <th className="py-2.5">Sinh vien</th>
+                      <th className="py-2.5">MSSV</th>
+                      <th className="py-2.5">Trang thai</th>
+                      <th className="py-2.5 text-right">Xu ly</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {reservations.map((res) => (
-                      <tr
-                        key={res.id}
-                        className="border-b border-gray-50 hover:bg-gray-50/50"
-                      >
+                    {reservations.map((reservation) => (
+                      <tr key={reservation.id} className="border-b border-gray-50 hover:bg-gray-50/50">
                         <td className="py-3">
-                          <p className="font-bold text-gray-950">
-                            {res.studentName}
-                          </p>
-                          <p className="text-[10px] text-gray-400 font-semibold">
-                            {res.email}
-                          </p>
+                          <p className="font-bold text-gray-950">{reservation.studentName || reservation.email}</p>
+                          <p className="text-[10px] font-semibold text-gray-400">{reservation.email}</p>
                         </td>
                         <td className="py-3">
-                          <p className="font-bold text-gray-800 font-mono">
-                            {res.mssv}
-                          </p>
-                          <p className="text-[10px] text-gray-500">
-                            {res.className}
-                          </p>
+                          <p className="font-mono font-bold text-gray-800">{reservation.mssv || "N/A"}</p>
                         </td>
                         <td className="py-3">
-                          <StatusBadge
-                            type="reservation"
-                            status={res.status}
-                          />
+                          <StatusBadge type="reservation" status={reservation.status} />
                         </td>
                         <td className="py-3 text-right">
-                          {res.status === "PENDING" ? (
-                            <div className="flex gap-1 justify-end">
-                              <button
-                                onClick={() => handleApprove(res.id)}
-                                className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[10px] font-bold tracking-tight cursor-pointer"
-                              >
-                                Duyệt
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setRejectReason("");
-                                  setRejectTargetId(res.id);
-                                }}
-                                className="px-2 py-1 bg-rose-500 hover:bg-rose-600 text-white rounded-lg text-[10px] font-bold tracking-tight cursor-pointer"
-                              >
-                                Từ chối
-                              </button>
-                            </div>
-                          ) : res.status === "APPROVED" ? (
-                            <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 justify-end">
-                              <CheckCircle2 className="w-3.5 h-3.5" /> Đã duyệt
-                            </span>
-                          ) : (
-                            <span
-                              className="text-[10px] text-rose-600 font-bold flex items-center gap-1 justify-end"
-                              title={res.rejectReason}
+                          <div className="flex justify-end gap-1">
+                            <button
+                              disabled={actionId === reservation.id}
+                              onClick={() => handleApprove(reservation.id)}
+                              className="cursor-pointer rounded-lg bg-emerald-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-emerald-600 disabled:cursor-wait disabled:opacity-60"
                             >
-                              <XCircle className="w-3.5 h-3.5" /> Bị từ chối
-                            </span>
-                          )}
+                              <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" /> Duyet
+                            </button>
+                            <button
+                              disabled={actionId === reservation.id}
+                              onClick={() => setRejectTargetId(reservation.id)}
+                              className="cursor-pointer rounded-lg bg-rose-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-rose-600 disabled:cursor-wait disabled:opacity-60"
+                            >
+                              <XCircle className="mr-1 inline h-3.5 w-3.5" /> Tu choi
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -355,9 +236,7 @@ export default function OrganizerEventDetailPage() {
                 </table>
               </div>
             ) : (
-              <div className="py-12 text-center text-gray-400 font-bold">
-                Chưa có sinh viên nào đăng ký tham dự sự kiện này.
-              </div>
+              <div className="py-12 text-center text-sm font-bold text-gray-400">Khong co dang ky pending cho su kien nay.</div>
             )}
           </div>
         </div>
@@ -365,20 +244,18 @@ export default function OrganizerEventDetailPage() {
 
       {rejectTargetId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setRejectTargetId(null)} aria-label="Đóng" />
+          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setRejectTargetId(null)} aria-label="Dong" />
           <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <h2 className="font-display text-lg font-extrabold text-slate-950">Từ chối đăng ký</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-              Nhập lý do để sinh viên có thể theo dõi và bổ sung thông tin ở lần đăng ký sau.
-            </p>
-            <textarea className="tvu-input mt-4 min-h-28 resize-none" value={rejectReason} onChange={(input) => setRejectReason(input.target.value)} placeholder="Nhập lý do từ chối" />
+            <h2 className="font-display text-lg font-extrabold text-slate-950">Tu choi dang ky</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">Backend hien chi nhan thao tac reject, khong co DTO luu ly do tu choi.</p>
             <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setRejectTargetId(null)}>Hủy bỏ</button>
-              <button className="min-h-10 rounded-xl bg-rose-600 px-4 text-sm font-extrabold text-white" onClick={handleReject}>Từ chối</button>
+              <button className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setRejectTargetId(null)}>Huy</button>
+              <button className="min-h-10 rounded-xl bg-rose-600 px-4 text-sm font-extrabold text-white disabled:cursor-wait disabled:opacity-60" disabled={actionId === rejectTargetId} onClick={handleReject}>Tu choi</button>
             </div>
           </div>
         </div>
       )}
+
       {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );

@@ -23,7 +23,7 @@ spring:
               '[/**]':
                 allowedOrigins: ${FRONTEND_ORIGIN:http://localhost:5173}
                 allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
-                allowedHeaders: "*"
+                allowedHeaders: [Authorization, Content-Type, X-XSRF-TOKEN, Idempotency-Key, Accept]
                 allowCredentials: true
           routes:
             # auth-service owns login/profile, admin management, and JWKS/OIDC discovery.

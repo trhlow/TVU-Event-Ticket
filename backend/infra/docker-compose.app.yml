@@ -16,6 +16,12 @@ services:
       file: docker-compose.yml
       service: rabbitmq
 
+  mailpit:
+    image: axllent/mailpit:v1.26
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   api-gateway:
     build:
       context: ..
@@ -121,8 +127,17 @@ services:
       SPRING_RABBITMQ_PORT: 5672
       SPRING_RABBITMQ_USERNAME: guest
       SPRING_RABBITMQ_PASSWORD: guest
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_MAIL_HOST: mailpit
+      SPRING_MAIL_PORT: 1025
+      MAIL_FROM_ADDRESS: no-reply@tvu.edu.vn
+      MAIL_FROM_NAME: TVU Events
+      QR_SIGNING_SECRET: dev-qr-signing-secret-change-me-1234567890
     depends_on:
       - rabbitmq
+      - redis
+      - mailpit
     ports:
       - "8083:8083"
 
