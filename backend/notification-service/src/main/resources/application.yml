@@ -13,10 +13,22 @@ spring:
         # Failed deliveries go to the Dead Letter Queue rather than being requeued forever (§6.4)
         default-requeue-rejected: false
 
-# Secret used to HMAC-sign QR payloads (§6.6). Must be set per environment.
-app:
-  qr:
-    signing-secret: ${QR_SIGNING_SECRET:change-me-in-env}
+tvu:
+  notification:
+    idempotency:
+      done-ttl: P30D
+      lock-ttl: PT2M
+    mail:
+      from-address: ${MAIL_FROM_ADDRESS:no-reply@tvu.edu.vn}
+      from-name: ${MAIL_FROM_NAME:TVU Events}
+    qr:
+      signing-secret: ${QR_SIGNING_SECRET:dev-qr-signing-secret-change-me-1234567890}
+    rabbit:
+      exchange: tvu.events
+      queue: notification.reservation-approved
+      routing-key: reservation.approved
+      dead-letter-exchange: tvu.events.notification.dlx
+      dead-letter-queue: notification.reservation-approved.dlq
 
 management:
   endpoints:
