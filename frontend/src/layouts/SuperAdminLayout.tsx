@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import Header from "../components/common/Header";
-import PageGreeting from "../components/common/PageGreeting";
 import Sidebar from "../components/common/Sidebar";
 import { getCurrentUser } from "../data/mockAuth";
 
@@ -32,9 +31,9 @@ export default function SuperAdminLayout() {
           onToggleCollapse={() => setCollapsed((value) => !value)}
           collapsed={collapsed}
           title="Tổng quan toàn trường"
+          showWorkspaceTitle={false}
         />
         <section className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <PageGreeting name={user.fullName} />
           <div className="page-enter mx-auto w-full max-w-[1280px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
             <Outlet />
           </div>

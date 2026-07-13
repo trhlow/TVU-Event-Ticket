@@ -6,6 +6,7 @@ import {
   formatTicketStatus,
   formatUserStatus,
 } from "../../utils/formatStatus";
+import { Badge } from "../ui/badge";
 
 interface StatusBadgeProps {
   type: "event" | "reservation" | "ticket" | "user";
@@ -59,9 +60,9 @@ export default function StatusBadge({ type, status, checkInStatus }: StatusBadge
           : formatUserStatus(status);
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shadow-sm ${styles}`}>
+    <Badge className={`gap-1.5 shadow-sm ${styles}`}>
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
       {label}
-    </span>
+    </Badge>
   );
 }

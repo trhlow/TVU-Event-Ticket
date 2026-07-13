@@ -26,6 +26,7 @@ import { useGSAP } from "@gsap/react";
 import EmptyState from "../../components/common/EmptyState";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
+import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
 import { formatDateTime } from "../../utils/formatDate";
@@ -486,6 +487,7 @@ export default function LandingPage() {
       </RevealOnScroll>
 
       <LandingFooter />
+      <ScrollToTopButton />
     </div>
   );
 }

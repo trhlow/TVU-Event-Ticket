@@ -24,25 +24,25 @@ export default function EventCard({
 
   return (
     <article className="enterprise-card hover-lift group flex h-full flex-col overflow-hidden text-left">
-      <div className="relative h-40 bg-slate-100">
-        <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-40 w-full transition duration-300 group-hover:scale-[1.03]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-slate-950/5 to-transparent" />
+      <div className="relative h-44 bg-slate-100">
+        <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-44 w-full transition duration-500 group-hover:scale-[1.04]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/72 via-slate-950/18 to-transparent" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold text-brand-800 shadow-sm backdrop-blur">
+          <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-bold text-brand-800 shadow-sm backdrop-blur">
             {event.category}
           </span>
           <StatusBadge type="event" status={event.status} />
         </div>
         <div className="absolute bottom-3 left-3 right-3">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/80">{event.clubName}</p>
-          <h3 className="mt-1 line-clamp-2 font-display text-base font-semibold leading-snug text-white">
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">{event.clubName}</p>
+          <h3 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-snug text-white">
             {event.title}
           </h3>
         </div>
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        <div className="space-y-2 text-sm font-normal text-slate-600">
+        <div className="space-y-2 text-sm font-semibold text-slate-600">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-brand-600" />
             <span className="truncate">{formatDateTime(event.startAt)}</span>
@@ -57,20 +57,20 @@ export default function EventCard({
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
-          <div className="flex items-center justify-between text-[11px] font-medium text-slate-500">
+        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/55 p-3">
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
             <span>Tỷ lệ đăng ký</span>
             <span className={isSoldOut ? "text-orange-600" : "text-brand-700"}>{fillRate}%</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
-            <div className={`h-full rounded-full ${isSoldOut ? "bg-orange-500" : "bg-gradient-to-r from-brand-600 to-accent-500"}`} style={{ width: `${fillRate}%` }} />
+            <div className={`h-full rounded-full ${isSoldOut ? "bg-orange-500" : "bg-gradient-to-r from-brand-600 via-indigo-500 to-accent-500"}`} style={{ width: `${fillRate}%` }} />
           </div>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-blue-50 pt-3">
           <div>
             <p className="text-[10px] font-bold uppercase text-slate-400">Trạng thái vé</p>
-            <p className={`mt-1 text-sm font-semibold ${isSoldOut ? "text-orange-600" : "text-emerald-600"}`}>
+            <p className={`mt-1 text-sm font-bold ${isSoldOut ? "text-orange-600" : "text-emerald-600"}`}>
               {isSoldOut ? "Hết vé" : `${event.remainingTickets} vé còn lại`}
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function EventCard({
             {onViewDetails && (
               <button
                 onClick={() => onViewDetails(event.id)}
-                className="btn-press h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="btn-press h-9 rounded-lg border border-blue-100 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-blue-50"
               >
                 {actionText}
               </button>
@@ -86,7 +86,7 @@ export default function EventCard({
             {onRegister && event.status === "OPEN" && !isSoldOut && (
               <button
                 onClick={() => onRegister(event.id)}
-                className="btn-press inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
+                className="btn-press inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
               >
                 <Ticket className="h-4 w-4" />
                 Đăng ký

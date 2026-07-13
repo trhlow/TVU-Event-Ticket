@@ -39,9 +39,9 @@ export default function ScrollToTopButton({ scrollContainerId }: ScrollToTopButt
       type="button"
       aria-label="Quay lên đầu trang"
       onClick={handleClick}
-      className="fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 transition duration-200 hover:-translate-y-0.5 hover:bg-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-300 sm:bottom-8 sm:right-8 sm:h-12 sm:w-12"
+      className="btn-press fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-700 text-white shadow-lg shadow-blue-900/20 transition duration-200 hover:-translate-y-0.5 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-blue-300 sm:bottom-8 sm:right-8 sm:h-12 sm:w-12"
     >
-      <ChevronUp className="h-5 w-5" />
+      <ChevronUp className="h-5 w-5" aria-hidden="true" />
     </button>
   );
 }

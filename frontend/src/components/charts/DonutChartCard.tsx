@@ -15,16 +15,13 @@ export default function DonutChartCard({
   return (
     <div className="enterprise-card hover-lift flex flex-col justify-between p-5 text-left">
       <div className="mb-4">
-        <h4 className="font-display text-base font-semibold text-slate-950">
+        <h4 className="font-display text-base font-extrabold text-slate-950">
           {title}
         </h4>
         <p className="mt-1 text-xs font-semibold text-slate-500">Tỷ trọng trạng thái hiện tại</p>
       </div>
       <div className="relative flex h-60 w-full items-center justify-center text-[10px] font-medium">
-        <ResponsiveContainer
-          width="100%"
-          height="100%"
-        >
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
@@ -45,14 +42,15 @@ export default function DonutChartCard({
             <Tooltip
               contentStyle={{
                 backgroundColor: "#ffffff",
-                border: "1px solid #e5e7eb",
-                borderRadius: "14px",
+                border: "1px solid #bfdbfe",
+                borderRadius: "12px",
+                boxShadow: "0 14px 30px rgba(15, 23, 42, 0.1)",
                 fontSize: "12px",
-                fontWeight: "500",
+                fontWeight: "600",
                 fontFamily: "sans-serif",
               }}
             />
-            <Legend wrapperStyle={{ fontSize: "12px", fontWeight: "500" }} />
+            <Legend wrapperStyle={{ fontSize: "12px", fontWeight: "600" }} />
           </PieChart>
         </ResponsiveContainer>
       </div>

@@ -19,6 +19,7 @@ export default function PublicLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const isLanding = location.pathname === "/" || location.pathname === "/home";
+  const isLoginPage = location.pathname === "/login";
 
   const getCurrentNavId = useCallback(() => {
     if (isLanding) return activeSection;
@@ -104,14 +105,18 @@ export default function PublicLayout() {
     return () => window.removeEventListener("resize", update);
   }, [getCurrentNavId, moveNavIndicator]);
 
+  if (isLoginPage) {
+    return <Outlet />;
+  }
+
   return (
     <main className="flex min-h-screen w-full max-w-full flex-col overflow-x-hidden bg-slate-50 font-sans">
       <nav
         className={[
           "fixed inset-x-0 top-0 z-50 border-b px-4 transition-all duration-300 sm:px-5 lg:px-8",
           isScrolled
-            ? "border-blue-100/80 bg-white/92 shadow-lg shadow-blue-950/8 backdrop-blur-xl"
-            : "border-white/70 bg-white/78 backdrop-blur-sm",
+            ? "border-blue-100/80 bg-white/94 shadow-lg shadow-blue-950/8 backdrop-blur-xl"
+            : "border-white/70 bg-white/82 backdrop-blur-md",
         ].join(" ")}
       >
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between gap-4">
@@ -122,7 +127,7 @@ export default function PublicLayout() {
               className="h-9 w-9 shrink-0 rounded-full bg-white object-contain p-1 shadow-sm ring-1 ring-blue-100"
             />
             <span className="min-w-0">
-              <span className="block truncate font-display text-lg font-extrabold leading-5 text-blue-800">TVU Ticket</span>
+              <span className="block truncate font-display text-lg font-extrabold leading-5 text-brand-800">TVU Ticket</span>
             </span>
           </button>
 
@@ -168,8 +173,8 @@ export default function PublicLayout() {
                     moveNavIndicator(item.id);
                   }}
                   className={[
-                    "public-nav-link relative flex h-full items-center text-sm font-semibold transition-colors",
-                    highlighted ? "text-blue-800" : "text-slate-600 hover:text-blue-800",
+                    "public-nav-link relative flex h-full items-center text-sm font-bold transition-colors",
+                    highlighted ? "text-brand-800" : "text-slate-600 hover:text-brand-800",
                   ].join(" ")}
                 >
                   {item.label}
@@ -181,7 +186,7 @@ export default function PublicLayout() {
           <div className="hidden items-center justify-end gap-3 md:flex">
             <Link
               to="/login"
-              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-5 text-sm font-bold text-white shadow-md shadow-blue-900/18 hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-900/20"
+              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-md shadow-blue-900/18 hover:bg-brand-600 hover:shadow-lg hover:shadow-blue-900/20"
             >
               Đăng nhập
             </Link>
@@ -190,7 +195,7 @@ export default function PublicLayout() {
           <button
             type="button"
             onClick={() => setMobileOpen((value) => !value)}
-            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-xl border border-blue-100 bg-white text-blue-800 shadow-sm md:hidden"
+            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-xl border border-blue-100 bg-white text-brand-800 shadow-sm md:hidden"
             aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
             aria-expanded={mobileOpen}
             aria-controls="public-mobile-menu"
@@ -208,10 +213,10 @@ export default function PublicLayout() {
                   type="button"
                   onClick={() => handleNavClick(item.id)}
                   className={[
-                    "rounded-xl px-3 py-2.5 text-left text-sm font-semibold",
+                    "rounded-xl px-3 py-2.5 text-left text-sm font-bold",
                     isLanding && activeSection === item.id
-                      ? "bg-blue-50 text-blue-800"
-                      : "text-slate-700 hover:bg-blue-50 hover:text-blue-800",
+                      ? "bg-blue-50 text-brand-800"
+                      : "text-slate-700 hover:bg-blue-50 hover:text-brand-800",
                   ].join(" ")}
                 >
                   {item.label}
@@ -220,7 +225,7 @@ export default function PublicLayout() {
               <Link
                 to="/login"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-xl bg-blue-800 px-4 py-2.5 text-center text-sm font-bold text-white"
+                className="rounded-xl bg-brand-700 px-4 py-2.5 text-center text-sm font-bold text-white"
               >
                 Đăng nhập
               </Link>
@@ -239,7 +244,7 @@ export default function PublicLayout() {
             <div>
               <div className="flex items-center gap-3">
                 <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-9 w-9 rounded-full object-contain ring-1 ring-blue-100" />
-                <p className="font-display text-lg font-extrabold text-blue-800">TVU Ticket</p>
+                <p className="font-display text-lg font-extrabold text-brand-800">TVU Ticket</p>
               </div>
               <p className="mt-3 max-w-xl leading-6">
                 Hệ thống quản lý và phân phối vé sự kiện chính thức dành cho sinh viên và các Câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
@@ -247,18 +252,18 @@ export default function PublicLayout() {
             </div>
             <div>
               <p className="font-bold text-slate-900">Liên hệ</p>
-              <p className="mt-3 flex items-center gap-2 leading-6"><MapPin className="h-4 w-4 text-blue-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
-              <p className="flex items-center gap-2 leading-6"><Mail className="h-4 w-4 text-blue-700" /> support@tvu.edu.vn</p>
-              <p className="flex items-center gap-2 leading-6"><Phone className="h-4 w-4 text-blue-700" /> 0294 3855 246</p>
+              <p className="mt-3 flex items-center gap-2 leading-6"><MapPin className="h-4 w-4 text-brand-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
+              <p className="flex items-center gap-2 leading-6"><Mail className="h-4 w-4 text-brand-700" /> support@tvu.edu.vn</p>
+              <p className="flex items-center gap-2 leading-6"><Phone className="h-4 w-4 text-brand-700" /> 0294 3855 246</p>
             </div>
             <div>
               <p className="font-bold text-slate-900">Khám phá</p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-                <Link to="/" className="hover:text-blue-800 hover:underline">Trang chủ</Link>
-                <Link to="/events" className="hover:text-blue-800 hover:underline">Sự kiện</Link>
-                <Link to="/#guide" className="hover:text-blue-800 hover:underline">Hướng dẫn</Link>
+                <Link to="/" className="hover:text-brand-800 hover:underline">Trang chủ</Link>
+                <Link to="/events" className="hover:text-brand-800 hover:underline">Sự kiện</Link>
+                <Link to="/#guide" className="hover:text-brand-800 hover:underline">Hướng dẫn</Link>
               </div>
-              <div className="mt-4 flex gap-2 text-blue-800">
+              <div className="mt-4 flex gap-2 text-brand-800">
                 <Share2 className="h-4 w-4" aria-hidden="true" />
                 <Users className="h-4 w-4" aria-hidden="true" />
               </div>

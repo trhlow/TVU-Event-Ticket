@@ -1,5 +1,5 @@
-import React from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import React from "react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 
 interface LineChartCardProps {
   title: string;
@@ -17,26 +17,27 @@ export default function LineChartCard({
   return (
     <div className="enterprise-card hover-lift flex flex-col justify-between p-5 text-left">
       <div className="mb-4">
-        <h4 className="font-display text-base font-semibold text-slate-950">{title}</h4>
+        <h4 className="font-display text-base font-extrabold text-slate-950">{title}</h4>
         <p className="mt-1 text-xs font-semibold text-slate-500">Theo dõi xu hướng vận hành theo thời gian</p>
       </div>
       <div className="h-60 w-full text-[10px] font-medium">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey={xAxisKey} stroke="#6b7280" strokeWidth={1} tickLine={false} />
-            <YAxis stroke="#6b7280" strokeWidth={1} tickLine={false} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#ffffff', 
-                border: '1px solid #e5e7eb',
-                borderRadius: '14px',
-                fontSize: '12px',
-                fontWeight: '500',
-                fontFamily: 'sans-serif'
-              }} 
+            <CartesianGrid strokeDasharray="3 3" stroke="#dbeafe" />
+            <XAxis dataKey={xAxisKey} stroke="#64748b" strokeWidth={1} tickLine={false} />
+            <YAxis stroke="#64748b" strokeWidth={1} tickLine={false} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#ffffff",
+                border: "1px solid #bfdbfe",
+                borderRadius: "12px",
+                boxShadow: "0 14px 30px rgba(15, 23, 42, 0.1)",
+                fontSize: "12px",
+                fontWeight: "600",
+                fontFamily: "sans-serif",
+              }}
             />
-            <Legend wrapperStyle={{ fontSize: '12px', fontWeight: '500' }} />
+            <Legend wrapperStyle={{ fontSize: "12px", fontWeight: "600" }} />
             {dataKeys.map((item, idx) => (
               <Line
                 key={idx}

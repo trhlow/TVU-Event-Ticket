@@ -77,17 +77,17 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
         : "/admin/profile";
 
   return (
-    <aside className="flex h-screen w-full flex-col overflow-hidden border-r border-slate-200 bg-white text-slate-600 shadow-[8px_0_24px_rgba(15,23,42,0.05)] transition-all duration-300">
-      <div className={`flex h-16 shrink-0 items-center border-b border-slate-100 bg-white transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-5"}`}>
+    <aside className="flex h-screen w-full flex-col overflow-hidden border-r border-blue-100 bg-white/94 text-slate-600 shadow-[10px_0_32px_rgba(30,64,175,0.08)] backdrop-blur-xl transition-all duration-300">
+      <div className={`flex h-16 shrink-0 items-center border-b border-blue-50 bg-white/96 transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-5"}`}>
         <div className={`flex min-w-0 items-center transition-all duration-200 ${collapsed ? "w-full justify-center gap-0" : "gap-2.5"}`}>
           <img
             src="/src/assets/images/tvu_logo_1783065060265.jpg"
             alt="TVU Logo"
-            className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1.5 shadow-sm ring-1 ring-slate-100"
+            className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1.5 shadow-sm shadow-blue-950/[0.04] ring-1 ring-blue-100"
           />
           <div className={`min-w-0 transition-all duration-200 ${collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"}`}>
-            <p className="truncate font-display text-lg font-semibold leading-none text-brand-800">TVU Event</p>
-            <p className="mt-1 truncate text-xs font-medium text-slate-500">Ticketing Platform</p>
+            <p className="truncate font-display text-lg font-extrabold leading-none text-brand-800">TVU Event</p>
+            <p className="mt-1 truncate text-xs font-semibold text-slate-500">Ticketing Platform</p>
           </div>
         </div>
       </div>
@@ -98,12 +98,12 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             to="/organizer/events/create"
             onClick={onClose}
             title="Tạo sự kiện"
-            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-brand-800 text-sm font-medium text-white shadow-sm transition hover:bg-brand-700 ${
+            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-accent-600 text-sm font-bold text-white shadow-md shadow-blue-700/20 transition hover:from-brand-600 hover:to-accent-500 ${
               collapsed ? "w-10 px-0" : "w-full gap-2.5 px-3"
             }`}
           >
             <Plus className="h-4 w-4 shrink-0" />
-            {!collapsed && <span className="truncate text-sm font-medium leading-none">Tạo sự kiện</span>}
+            {!collapsed && <span className="truncate text-sm font-bold leading-none">Tạo sự kiện</span>}
           </NavLink>
         </div>
       )}
@@ -115,7 +115,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             return (
               <React.Fragment key={link.to + link.label}>
                 {"section" in link && link.section && !collapsed && (
-                  <p className="px-3 pt-3 text-[10px] font-semibold uppercase tracking-wider text-slate-400">{link.section}</p>
+                  <p className="px-3 pt-3 text-[10px] font-bold uppercase tracking-wider text-blue-400">{link.section}</p>
                 )}
                 <NavLink
                   to={link.to}
@@ -124,14 +124,16 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
                   title={collapsed ? link.label : undefined}
                   className={({ isActive }) =>
                     [
-                      "group flex h-11 items-center rounded-xl text-sm font-medium transition-all duration-200",
+                      "group relative flex h-11 items-center rounded-xl text-sm font-semibold transition-all duration-200",
                       collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3",
-                      isActive ? "bg-brand-50 text-brand-800 ring-1 ring-brand-100" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                      isActive
+                        ? "bg-blue-50 text-brand-800 ring-1 ring-blue-100 shadow-sm shadow-blue-950/[0.03]"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-950",
                     ].join(" ")
                   }
                 >
-                  <Icon className="h-5 w-5 shrink-0" />
-                  {!collapsed && <span className="truncate text-sm font-medium leading-none">{link.label}</span>}
+                  <Icon className="h-5 w-5 shrink-0 transition group-hover:scale-105" />
+                  {!collapsed && <span className="truncate text-sm font-semibold leading-none">{link.label}</span>}
                 </NavLink>
               </React.Fragment>
             );
@@ -139,15 +141,15 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
         </div>
       </nav>
 
-      <div className={`border-t border-slate-100 p-4 transition-all duration-300 ${collapsed ? "px-5" : ""}`}>
+      <div className={`border-t border-blue-50 p-4 transition-all duration-300 ${collapsed ? "px-5" : ""}`}>
         <NavLink
           to={settingsPath}
           onClick={onClose}
           title={collapsed ? "Cài đặt" : undefined}
-          className={`btn-press flex h-11 items-center rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-brand-800 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
+          className={`btn-press flex h-11 items-center rounded-xl text-sm font-semibold text-slate-600 hover:bg-blue-50 hover:text-brand-800 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
         >
           <Settings className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="truncate text-sm font-medium leading-none">Cài đặt</span>}
+          {!collapsed && <span className="truncate text-sm font-semibold leading-none">Cài đặt</span>}
         </NavLink>
         <button
           onClick={async () => {
@@ -155,10 +157,10 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             navigate("/login", { replace: true });
           }}
           title={collapsed ? "Đăng xuất" : undefined}
-          className={`btn-press mt-1.5 flex h-11 w-full items-center rounded-xl text-left text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
+          className={`btn-press mt-1.5 flex h-11 w-full items-center rounded-xl text-left text-sm font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
         >
           <LogOut className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="truncate text-sm font-medium leading-none">Đăng xuất</span>}
+          {!collapsed && <span className="truncate text-sm font-semibold leading-none">Đăng xuất</span>}
         </button>
       </div>
     </aside>
