@@ -1,17 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Info, Ticket as TicketIcon } from "lucide-react";
-import { mockEvents } from "../../data/mockEvents";
 import TicketCard from "../../components/tickets/TicketCard";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import DetailDrawer from "../../components/common/DetailDrawer";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import Toast from "../../components/common/Toast";
 import { ticketService } from "../../services/ticketService";
+import { eventService } from "../../services/eventService";
 import { Ticket } from "../../types/ticket";
 import { Event } from "../../types/event";
 
-function eventFor(ticket: Ticket): Event {
-  return mockEvents.find((event) => event.id === ticket.eventId) || {
+function fallbackEvent(ticket: Ticket): Event {
+  return {
     id: ticket.eventId,
     clubId: "",
     clubName: "CLB phu trach",
@@ -32,6 +32,7 @@ function eventFor(ticket: Ticket): Event {
 
 export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [eventsById, setEventsById] = useState<Record<string, Event>>({});
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [toastMsg, setToastMsg] = useState("");
 
@@ -40,6 +41,11 @@ export default function MyTicketsPage() {
     ticketService.listRemote()
       .then((items) => {
         if (mounted) setTickets(items);
+        return Promise.all(items.map((ticket) => eventService.getByIdRemote(ticket.eventId).catch(() => undefined)));
+      })
+      .then((events) => {
+        if (!mounted || !events) return;
+        setEventsById(Object.fromEntries(events.filter((event): event is Event => Boolean(event)).map((event) => [event.id, event])));
       })
       .catch((error) => {
         if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai vi ve.");
@@ -49,8 +55,9 @@ export default function MyTicketsPage() {
     };
   }, []);
 
+  const eventFor = (ticket: Ticket) => eventsById[ticket.eventId] || fallbackEvent(ticket);
   const activeTicket = tickets.find((ticket) => ticket.id === selectedTicketId);
-  const activeEvent = useMemo(() => (activeTicket ? eventFor(activeTicket) : null), [activeTicket]);
+  const activeEvent = activeTicket ? eventFor(activeTicket) : null;
 
   return (
     <div className="space-y-6 text-left">
