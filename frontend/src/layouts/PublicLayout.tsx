@@ -163,8 +163,29 @@ export default function PublicLayout() {
         <Outlet />
       </section>
 
-      <footer className="border-t border-white/70 bg-white/70 px-6 py-6 text-center text-xs font-semibold text-slate-500">
-        © 2026 Trường Đại học Trà Vinh. Tất cả quyền được bảo lưu.
+      <footer className="border-t border-white/70 bg-white/78 px-6 py-8 text-xs font-semibold text-slate-500">
+        <div className="mx-auto grid max-w-[1180px] gap-5 text-left md:grid-cols-[1.4fr_1fr_1fr]">
+          <div>
+            <p className="font-display text-sm font-semibold text-brand-800">TVU Event & Ticketing Platform</p>
+            <p className="mt-2 max-w-xl leading-6">
+              He thong do an quan ly su kien va ve dien tu cho cac cau lac bo tai Truong Dai hoc Tra Vinh.
+            </p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900">Lien he</p>
+            <p className="mt-2 leading-6">Truong Dai hoc Tra Vinh</p>
+            <p className="leading-6">Phong Cong tac Sinh vien va cac CLB phu trach</p>
+          </div>
+          <div>
+            <p className="font-semibold text-slate-900">Thong tin</p>
+            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+              <Link to="/guide" className="hover:text-brand-700">Huong dan</Link>
+              <Link to="/events" className="hover:text-brand-700">Su kien</Link>
+              <Link to="/login" className="hover:text-brand-700">Dang nhap</Link>
+            </div>
+            <p className="mt-3 leading-6">© 2026 Truong Dai hoc Tra Vinh.</p>
+          </div>
+        </div>
       </footer>
     </main>
   );
