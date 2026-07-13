@@ -26,6 +26,16 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
         return;
       }
 
+      if (!hasReadableSessionCookie()) {
+        setCurrentUser(null);
+        if (mounted) {
+          setRouteUser(null);
+          setIsLoadingSession(false);
+          setSessionChecked(true);
+        }
+        return;
+      }
+
       try {
         const user = await authService.me();
         if (mounted) setRouteUser(user);
@@ -65,4 +75,9 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   return <Outlet />;
+}
+
+function hasReadableSessionCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split("; ").some((cookie) => cookie.startsWith("XSRF-TOKEN="));
 }

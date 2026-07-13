@@ -11,13 +11,10 @@ import {
   Ticket,
 } from "lucide-react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import CursorGlow from "../../components/common/CursorGlow";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
-
-gsap.registerPlugin(ScrollTrigger);
 
 const featuredEvents = [
   {
@@ -75,6 +72,8 @@ export default function LandingPage() {
 
   useGSAP(
     () => {
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
       gsap.from(".landing-hero-copy > *", {
         y: 24,
         opacity: 0,
@@ -83,17 +82,13 @@ export default function LandingPage() {
         ease: "power3.out",
       });
 
-      gsap.from(".landing-guide-card", {
-        y: 28,
+      gsap.from(".landing-benefit-card", {
+        y: 18,
         opacity: 0,
-        stagger: 0.1,
+        duration: 0.58,
+        stagger: 0.08,
+        delay: 0.42,
         ease: "power2.out",
-        scrollTrigger: {
-          trigger: "#guide",
-          start: "top 72%",
-          end: "bottom 52%",
-          scrub: 0.7,
-        },
       });
     },
     { scope: rootRef },
@@ -102,17 +97,20 @@ export default function LandingPage() {
   return (
     <main ref={rootRef} className="subtle-gradient-bg relative isolate w-full max-w-full overflow-x-hidden text-left">
       <CursorGlow />
+      <div className="pointer-events-none absolute left-1/2 top-16 h-72 w-72 -translate-x-1/2 rounded-full bg-brand-200/24 blur-3xl landing-soft-orb" aria-hidden="true" />
+      <div className="pointer-events-none absolute right-0 top-[22rem] h-52 w-52 rounded-full bg-accent-400/18 blur-3xl landing-soft-orb landing-soft-orb-delay" aria-hidden="true" />
       <div className="relative z-10">
       <section id="home" className="relative scroll-mt-16 overflow-hidden px-5 py-16 md:px-8 md:py-24">
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(8,47,44,0.1),transparent_46%,rgba(231,182,90,0.14))]" aria-hidden="true" />
         <div className="absolute inset-x-0 top-0 h-px bg-white/80" aria-hidden="true" />
 
         <div className="landing-hero-copy relative mx-auto flex max-w-6xl flex-col items-center text-center">
-          <p className="inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-800 shadow-sm">
-            <ShieldCheck className="h-4 w-4" /> TVU Event Ticketing Platform
+          <p className="landing-hero-kicker inline-flex items-center gap-2 rounded-full border border-brand-100 bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-brand-800 shadow-sm">
+            <ShieldCheck className="h-4 w-4 landing-icon-pulse" /> TVU Event Ticketing Platform
           </p>
-          <h1 className="mt-7 max-w-4xl font-display text-4xl font-semibold leading-tight text-slate-950 md:text-5xl">
-            Quản lý sự kiện và vé QR cho CLB Đại học Trà Vinh
+          <h1 className="landing-title mt-7 max-w-4xl font-display text-4xl font-semibold leading-tight text-slate-950 md:text-5xl">
+            <span className="landing-title-line">Quản lý sự kiện và vé QR</span>
+            <span className="landing-gradient-text landing-title-line"> cho CLB Đại học Trà Vinh</span>
           </h1>
           <p className="mt-5 max-w-3xl text-base font-normal leading-7 text-slate-600 md:text-lg">
             Nền tảng hỗ trợ tạo sự kiện, duyệt đăng ký, phát vé điện tử và check-in QR một lần cho sinh viên, ban tổ chức và quản trị viên.
@@ -130,7 +128,7 @@ export default function LandingPage() {
               ["Vé QR một lần", "Vé hợp lệ được kiểm tra trạng thái và chặn check-in trùng."],
               ["Quản trị toàn trường", "Super Admin theo dõi CLB, tài khoản BTC và nhật ký hệ thống."],
             ].map(([title, text]) => (
-              <div key={title} className="rounded-2xl border border-white/80 bg-white/72 p-5 text-left shadow-sm backdrop-blur">
+              <div key={title} className="landing-benefit-card rounded-2xl border border-white/80 bg-white/72 p-5 text-left shadow-sm backdrop-blur">
                 <p className="font-display text-base font-semibold text-slate-950">{title}</p>
                 <p className="mt-2 text-sm font-normal leading-6 text-slate-600">{text}</p>
               </div>
@@ -142,8 +140,8 @@ export default function LandingPage() {
       <RevealOnScroll as="section" id="events" className="scroll-mt-16 px-5 py-14 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Sự kiện</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold text-slate-950">Sự kiện nổi bật</h2>
+            <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Sự kiện</p>
+            <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Sự kiện nổi bật</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Theo dõi các hoạt động học thuật, CLB, hội thảo và chương trình sinh viên đang mở đăng ký trên hệ thống.
             </p>
@@ -151,9 +149,9 @@ export default function LandingPage() {
 
           <div className="mt-8 grid gap-5 md:grid-cols-3">
             {featuredEvents.map((event, index) => (
-              <RevealOnScroll key={event.title} delay={index * 90} className="enterprise-card card-hover-lift flex h-full flex-col p-5">
+              <RevealOnScroll key={event.title} delay={index * 90} className="landing-event-card enterprise-card card-hover-lift flex h-full flex-col p-5">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
+                  <div className="landing-card-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-700">
                     <CalendarDays className="h-5 w-5" />
                   </div>
                   <span
@@ -196,8 +194,8 @@ export default function LandingPage() {
       <RevealOnScroll as="section" id="guide" className="scroll-mt-16 px-5 py-14 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Hướng dẫn</p>
-            <h2 className="mt-2 font-display text-2xl font-semibold text-slate-950">Hướng dẫn sử dụng</h2>
+            <p className="landing-section-kicker text-[11px] font-semibold uppercase tracking-wider text-brand-700">Hướng dẫn</p>
+            <h2 className="landing-section-title mt-2 font-display text-2xl font-semibold text-slate-950">Hướng dẫn sử dụng</h2>
             <p className="mt-3 text-sm leading-6 text-slate-600">
               Ba nhóm người dùng dùng chung một quy trình dữ liệu: đăng ký, duyệt, phát vé QR và ghi nhận check-in.
             </p>
@@ -207,8 +205,8 @@ export default function LandingPage() {
             {guideItems.map((item) => {
               const Icon = item.icon;
               return (
-                <article key={item.title} className="landing-guide-card enterprise-card p-5">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
+                <article key={item.title} className="landing-guide-card enterprise-card card-hover-lift p-5">
+                  <div className="landing-card-icon grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
                     <Icon className="h-5 w-5" />
                   </div>
                   <h3 className="mt-4 font-display text-base font-semibold text-slate-950">{item.title}</h3>
@@ -231,8 +229,8 @@ export default function LandingPage() {
       </RevealOnScroll>
 
       <RevealOnScroll as="section" className="px-5 pb-16 pt-6 md:px-8">
-        <div className="mx-auto max-w-[1180px] rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-7 text-center text-white shadow-xl shadow-brand-900/16 md:p-8">
-          <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white/12 text-white ring-1 ring-white/18">
+        <div className="landing-cta-panel mx-auto max-w-[1180px] rounded-2xl bg-gradient-to-r from-brand-800 to-brand-600 p-7 text-center text-white shadow-xl shadow-brand-900/16 md:p-8">
+          <div className="landing-floating-badge mx-auto grid h-11 w-11 place-items-center rounded-xl bg-white/12 text-white ring-1 ring-white/18">
             <Ticket className="h-5 w-5" />
           </div>
           <h2 className="mt-4 font-display text-2xl font-semibold">Sẵn sàng quản lý sự kiện CLB chuyên nghiệp hơn?</h2>

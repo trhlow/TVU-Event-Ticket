@@ -72,11 +72,11 @@ export default function PublicLayout() {
       <nav
         className={[
           "fixed inset-x-0 top-0 z-50 border-b px-4 backdrop-blur-xl transition-all duration-300 sm:px-5 lg:px-8",
-          isScrolled ? "border-slate-200/70 bg-white/94 shadow-sm shadow-slate-900/5" : "border-white/60 bg-white/82",
+          isScrolled ? "border-slate-200/70 bg-white/94 shadow-md shadow-slate-900/10" : "border-white/60 bg-white/82",
         ].join(" ")}
       >
         <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between gap-4">
-          <button type="button" onClick={() => handleNavClick("home")} className="flex min-w-0 items-center gap-3 text-left">
+          <button type="button" onClick={() => handleNavClick("home")} className="public-logo-link flex min-w-0 items-center gap-3 text-left">
             <img
               src="/src/assets/images/tvu_logo_1783065060265.jpg"
               alt="TVU Event"
@@ -97,12 +97,12 @@ export default function PublicLayout() {
                   type="button"
                   onClick={() => handleNavClick(item.id)}
                   className={[
-                    "relative flex h-full items-center text-sm font-medium transition-colors",
+                    "public-nav-link relative flex h-full items-center text-sm font-medium transition-colors",
                     active ? "text-brand-800" : "text-slate-600 hover:text-brand-800",
                   ].join(" ")}
                 >
                   {item.label}
-                  {active && <span className="absolute bottom-3.5 left-0 h-0.5 w-full rounded-full bg-brand-600" />}
+                  <span className={["public-nav-underline absolute bottom-3.5 left-0 h-0.5 w-full rounded-full bg-brand-600", active ? "scale-x-100" : "scale-x-0"].join(" ")} />
                 </button>
               );
             })}
@@ -121,14 +121,16 @@ export default function PublicLayout() {
             type="button"
             onClick={() => setMobileOpen((value) => !value)}
             className="btn-press grid h-8 w-8 place-items-center justify-self-end rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm md:hidden"
-            aria-label="Mở menu"
+            aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
+            aria-expanded={mobileOpen}
+            aria-controls="public-mobile-menu"
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
         {mobileOpen && (
-          <div className="animate-fade-in mx-auto max-w-[1180px] border-t border-slate-100 py-3 md:hidden">
+          <div id="public-mobile-menu" className="public-mobile-menu animate-fade-in mx-auto max-w-[1180px] border-t border-slate-100 py-3 md:hidden">
             <div className="grid gap-2">
               {navItems.map((item) => (
                 <button

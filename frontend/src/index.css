@@ -183,8 +183,165 @@
     transition: transform 0.16s ease, box-shadow 0.18s ease, background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
   }
 
+  .btn-press:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn-press:hover svg:last-child {
+    transform: translateX(2px);
+  }
+
+  .btn-press svg {
+    transition: transform 0.18s ease;
+  }
+
   .btn-press:active {
     transform: scale(0.98);
+  }
+
+  .public-logo-link {
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+
+  .public-logo-link:hover {
+    transform: translateY(-1px);
+    filter: saturate(1.08);
+  }
+
+  .public-logo-link img {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .public-logo-link:hover img {
+    transform: scale(1.04);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.1);
+  }
+
+  .public-nav-link {
+    transition: color 0.2s ease, transform 0.2s ease;
+  }
+
+  .public-nav-link:hover {
+    transform: translateY(-1px);
+  }
+
+  .public-nav-underline {
+    transform-origin: left center;
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .public-nav-link:hover .public-nav-underline {
+    transform: scaleX(1);
+  }
+
+  .public-mobile-menu {
+    animation: mobileMenuIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .landing-title-line {
+    display: inline;
+  }
+
+  .landing-gradient-text {
+    background: linear-gradient(90deg, #0c3f3b, #17685f, #b9821f, #0c3f3b);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: landingTextSheen 7s ease-in-out infinite;
+  }
+
+  .landing-hero-kicker {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .landing-hero-kicker::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 42%;
+    transform: translateX(-130%) skewX(-18deg);
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
+    animation: landingKickerSweep 5.8s ease-in-out infinite;
+  }
+
+  .landing-benefit-card,
+  .landing-event-card,
+  .landing-guide-card,
+  .landing-cta-panel {
+    will-change: transform;
+  }
+
+  .landing-benefit-card {
+    transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
+  }
+
+  .landing-benefit-card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(31, 122, 112, 0.26);
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
+  }
+
+  .landing-event-card:hover .landing-card-icon,
+  .landing-guide-card:hover .landing-card-icon {
+    transform: scale(1.06) rotate(-2deg);
+    background: #d8ebe8;
+  }
+
+  .landing-card-icon {
+    transition: transform 0.22s ease, background-color 0.22s ease;
+  }
+
+  .landing-section-kicker {
+    position: relative;
+    display: inline-flex;
+    justify-content: center;
+  }
+
+  .landing-section-kicker::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    height: 2px;
+    width: 34px;
+    transform: translateX(-50%);
+    border-radius: 999px;
+    background: linear-gradient(90deg, #17685f, #e7b65a);
+  }
+
+  .landing-section-title {
+    animation: landingTitleSettle 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .landing-soft-orb {
+    animation: landingOrbFloat 13s ease-in-out infinite;
+  }
+
+  .landing-soft-orb-delay {
+    animation-delay: -5s;
+  }
+
+  .landing-icon-pulse,
+  .landing-floating-badge {
+    animation: landingSoftFloat 4.8s ease-in-out infinite;
+  }
+
+  .landing-cta-panel {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .landing-cta-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.14) 45%, transparent 70%);
+    transform: translateX(-100%);
+    animation: landingPanelSweep 7s ease-in-out infinite;
   }
 
   .section-heading {
@@ -226,6 +383,80 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes mobileMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landingTextSheen {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes landingKickerSweep {
+  0%,
+  58%,
+  100% {
+    transform: translateX(-130%) skewX(-18deg);
+  }
+  76% {
+    transform: translateX(260%) skewX(-18deg);
+  }
+}
+
+@keyframes landingTitleSettle {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landingOrbFloat {
+  0%,
+  100% {
+    transform: translate3d(-50%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-48%, 12px, 0) scale(1.05);
+  }
+}
+
+@keyframes landingSoftFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes landingPanelSweep {
+  0%,
+  62%,
+  100% {
+    transform: translateX(-100%);
+  }
+  82% {
+    transform: translateX(100%);
   }
 }
 
@@ -286,6 +517,17 @@
   .reveal-on-scroll {
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  .landing-gradient-text,
+  .landing-hero-kicker::after,
+  .landing-soft-orb,
+  .landing-icon-pulse,
+  .landing-floating-badge,
+  .landing-cta-panel::before,
+  .public-mobile-menu,
+  .landing-section-title {
+    animation: none !important;
   }
 }
 

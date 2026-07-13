@@ -150,9 +150,9 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
           {!collapsed && <span className="truncate text-sm font-medium leading-none">Cài đặt</span>}
         </NavLink>
         <button
-          onClick={() => {
-            void authService.logout();
-            navigate("/login");
+          onClick={async () => {
+            await authService.logout();
+            navigate("/login", { replace: true });
           }}
           title={collapsed ? "Đăng xuất" : undefined}
           className={`btn-press mt-1.5 flex h-11 w-full items-center rounded-xl text-left text-sm font-medium text-slate-600 hover:bg-rose-50 hover:text-rose-700 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}

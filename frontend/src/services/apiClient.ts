@@ -37,11 +37,16 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     if (csrfToken) headers.set(CSRF_HEADER_NAME, csrfToken);
   }
 
-  const response = await fetch(buildApiUrl(path), {
-    ...init,
-    credentials: "include",
-    headers,
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path), {
+      ...init,
+      credentials: "include",
+      headers,
+    });
+  } catch {
+    throw new ApiError("Không thể kết nối máy chủ. Vui lòng kiểm tra backend và thử lại.", 0);
+  }
 
   if (!response.ok) {
     throw await createApiError(response);
@@ -64,6 +69,10 @@ export const apiConfig = {
   useDemoData: USE_DEMO_DATA,
   enableMockFallback: ENABLE_MOCK_FALLBACK,
 };
+
+export function apiUrl(path: string): string {
+  return buildApiUrl(path);
+}
 
 export function createUnsupportedApiError(featureName: string): ApiError {
   return new ApiError(`Backend hien chua co API cho chuc nang ${featureName}.`, 501);
@@ -137,20 +146,20 @@ function localizeError(status: number, code?: string, rawMessage?: string): stri
   const message = typeof rawMessage === "string" ? rawMessage : "";
   const lower = message.toLowerCase();
 
-  if (status === 401) return "Phien dang nhap da het han. Vui long dang nhap lai.";
+  if (status === 401) return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
   if (status === 403) {
-    if (lower.includes("locked")) return "Tai khoan hoac cau lac bo dang bi khoa.";
-    return "Ban khong co quyen thuc hien thao tac nay.";
+    if (lower.includes("locked")) return "Tài khoản hoặc câu lạc bộ đang bị khóa.";
+    return "Bạn không có quyền thực hiện thao tác này.";
   }
-  if (status === 404) return "Khong tim thay du lieu yeu cau.";
+  if (status === 404) return "Không tìm thấy dữ liệu yêu cầu.";
   if (status === 409) {
-    if (lower.includes("already") || lower.includes("duplicate")) return "Yeu cau bi trung hoac da duoc xu ly truoc do.";
+    if (lower.includes("already") || lower.includes("duplicate")) return "Yêu cầu bị trùng hoặc đã được xử lý trước đó.";
     if (lower.includes("sold") || lower.includes("capacity") || lower.includes("ticket")) {
-      return "Su kien da het ve hoac khong con kha dung.";
+      return "Sự kiện đã hết vé hoặc không còn khả dụng.";
     }
-    return message || "Yeu cau xung dot voi du lieu hien co.";
+    return message || "Yêu cầu xung đột với dữ liệu hiện có.";
   }
-  if (status === 400 || status === 422) return message || "Du lieu gui len chua hop le.";
-  if (status >= 500) return "May chu dang gap loi. Vui long thu lai sau.";
-  return message || code || "Khong the ket noi may chu. Vui long thu lai sau.";
+  if (status === 400 || status === 422) return message || "Dữ liệu gửi lên chưa hợp lệ.";
+  if (status >= 500) return "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.";
+  return message || code || "Không thể kết nối máy chủ. Vui lòng thử lại sau.";
 }

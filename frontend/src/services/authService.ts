@@ -1,6 +1,6 @@
 import { mockAuthAccounts, getCurrentUser, setCurrentUser } from "../data/mockAuth";
 import { User } from "../types/user";
-import { apiConfig, apiRequest } from "./apiClient";
+import { apiConfig, apiRequest, apiUrl } from "./apiClient";
 
 interface LoginRequest {
   credential: string;
@@ -26,8 +26,6 @@ interface UpdateProfileRequest {
   mssv: string;
   classCode: string;
 }
-
-const MICROSOFT_DEV_CREDENTIAL = import.meta.env.VITE_MICROSOFT_DEV_CREDENTIAL || "student@tvu.edu.vn";
 
 function mapProfileToUser(profile: AuthProfileResponse): User {
   return {
@@ -78,26 +76,10 @@ export const authService = {
     );
   },
   async loginWithMicrosoft(): Promise<User> {
-    return withAuthFallback(
-      async () => {
-        const response = await apiRequest<LoginResponse>("/auth/login", {
-          method: "POST",
-          body: JSON.stringify({
-            credential: MICROSOFT_DEV_CREDENTIAL,
-            displayName: "Sinh vien TVU",
-          }),
-        });
-        return persistProfile(response.profile);
-      },
-      () => {
-        const user = mockAuthAccounts.SINH_VIEN;
-        setCurrentUser(user);
-        return user;
-      },
-    );
+    window.location.assign(apiUrl("/auth/oauth2/microsoft/authorize"));
+    return new Promise<User>(() => undefined);
   },
-  async loginInternal(email: string, password: string): Promise<User> {
-    void password;
+  async loginWithDevStub(email: string): Promise<User> {
     const credential = email.trim().toLowerCase();
     const payload: LoginRequest = {
       credential,
@@ -114,7 +96,11 @@ export const authService = {
       },
       () => {
         const normalized = email.toLowerCase();
-        const user = normalized.includes("admin") ? mockAuthAccounts.SUPER_ADMIN : mockAuthAccounts.ORGANIZER;
+        const user = normalized.includes("admin")
+          ? mockAuthAccounts.SUPER_ADMIN
+          : normalized.includes("organizer")
+            ? mockAuthAccounts.ORGANIZER
+            : mockAuthAccounts.SINH_VIEN;
         setCurrentUser(user);
         return user;
       },
