@@ -29,7 +29,7 @@ export default function Header({
             type="button"
             onClick={onToggleSidebar}
             className="btn-press grid h-10 w-10 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100 lg:hidden"
-            aria-label="Mo menu"
+            aria-label="Mở menu"
           >
             <Menu className="h-5 w-5" />
           </button>
@@ -38,8 +38,8 @@ export default function Header({
           <button
             type="button"
             onClick={onToggleCollapse}
-            aria-label={collapsed ? "Mo rong thanh ben" : "Thu gon thanh ben"}
-            title={collapsed ? "Mo rong thanh ben" : "Thu gon thanh ben"}
+            aria-label={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
+            title={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
             className="btn-press hidden h-10 w-10 place-items-center rounded-full text-slate-700 transition hover:bg-slate-100 active:bg-slate-200 lg:grid"
           >
             <Menu className="h-5 w-5" />
@@ -48,10 +48,10 @@ export default function Header({
         {showWorkspaceTitle && (
           <div className="min-w-0">
             <p className="hidden text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400 sm:block">
-              Khu vuc lam viec
+              Khu vực làm việc
             </p>
             <h2 className="truncate font-display text-lg font-semibold text-slate-950 sm:text-xl">
-              {title || "Tong quan"}
+              {title || "Tổng quan"}
             </h2>
           </div>
         )}
@@ -63,14 +63,14 @@ export default function Header({
             <Search className="h-4 w-4 text-slate-400" />
             <input
               className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none placeholder:text-slate-400"
-              placeholder="Tim kiem..."
-              aria-label="Tim kiem nhanh"
+              placeholder="Tìm kiếm..."
+              aria-label="Tìm kiếm nhanh"
             />
           </label>
         )}
         <button
           className="btn-press relative grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-brand-200 hover:text-brand-700"
-          aria-label="Thong bao"
+          aria-label="Thông báo"
         >
           <Bell className="h-5 w-5" />
           <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
@@ -78,7 +78,7 @@ export default function Header({
         <div className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-white/90 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
           <img
             src="/src/assets/images/tvu_logo_1783065060265.jpg"
-            alt="Anh dai dien"
+            alt="Ảnh đại diện"
             className="h-8 w-8 rounded-lg border border-slate-100 bg-white object-cover"
           />
           <div className="max-w-40">

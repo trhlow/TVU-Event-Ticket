@@ -9,7 +9,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-  const [currentUser, setRouteUser] = useState<User | null>(() => (isAuthenticated() ? getCurrentUser() : null));
+  const [currentUser, setRouteUser] = useState<User | null>(() => getCurrentUser());
   const [isLoadingSession, setIsLoadingSession] = useState(!isAuthenticated());
   const [sessionChecked, setSessionChecked] = useState(isAuthenticated());
 
@@ -17,19 +17,10 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     let mounted = true;
 
     async function restoreSession() {
-      if (isAuthenticated()) {
+      const cachedUser = getCurrentUser();
+      if (isAuthenticated() && cachedUser) {
         if (mounted) {
-          setRouteUser(getCurrentUser());
-          setIsLoadingSession(false);
-          setSessionChecked(true);
-        }
-        return;
-      }
-
-      if (!hasReadableSessionCookie()) {
-        setCurrentUser(null);
-        if (mounted) {
-          setRouteUser(null);
+          setRouteUser(cachedUser);
           setIsLoadingSession(false);
           setSessionChecked(true);
         }
@@ -60,7 +51,7 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return (
       <div className="grid min-h-[260px] place-items-center p-6">
         <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-bold text-slate-600 shadow-sm">
-          Dang kiem tra phien dang nhap...
+          Đang kiểm tra phiên đăng nhập...
         </div>
       </div>
     );
@@ -75,9 +66,4 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   return <Outlet />;
-}
-
-function hasReadableSessionCookie(): boolean {
-  if (typeof document === "undefined") return false;
-  return document.cookie.split("; ").some((cookie) => cookie.startsWith("XSRF-TOKEN="));
 }

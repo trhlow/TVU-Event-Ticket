@@ -54,7 +54,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             { to: "/organizer/reports", label: "Báo cáo CLB", icon: BarChart3 },
             { to: "/organizer/reservations", label: "Duyệt đăng ký", icon: ClipboardCheck },
             { to: "/organizer/registration-qr", label: "QR đăng ký", icon: QrCode },
-            { to: "/organizer/check-in", label: "Quét QR", icon: ScanLine },
+            { to: "/organizer/check-in", label: "Quét QR điểm danh", icon: ScanLine },
             { to: "/organizer/notifications", label: "Thông báo", icon: Bell },
           ]
         : [

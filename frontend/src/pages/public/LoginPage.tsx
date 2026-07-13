@@ -3,10 +3,17 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { AlertCircle, ChevronRight, Loader2, Mail, ShieldCheck, TicketCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
+import { User } from "../../types/user";
 
 const authProvider = (import.meta.env.VITE_AUTH_PROVIDER || (import.meta.env.DEV ? "devstub" : "microsoft")).toLowerCase();
 const isDevStubEnabled = authProvider === "devstub";
 const isMicrosoftLoginEnabled = authProvider === "microsoft";
+
+function homePathForRole(role: User["role"]): string {
+  if (role === "SUPER_ADMIN") return "/admin/dashboard";
+  if (role === "ORGANIZER") return "/organizer/dashboard";
+  return "/student/home";
+}
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -19,22 +26,24 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const authError = params.get("error");
+
     if (authError) {
       setErrorMsg(oauthErrorMessage(authError));
       navigate(location.pathname, { replace: true });
       return;
     }
-    if (params.get("auth") === "success") {
-      navigate(location.pathname, { replace: true });
-      void authService.me().then((user) => {
-        if (!user) return;
-        const nextPath =
-          user.role === "SUPER_ADMIN" ? "/admin/dashboard" : user.role === "ORGANIZER" ? "/organizer/dashboard" : "/student/home";
-        navigate(nextPath, { replace: true });
-      }).catch(() => {
+
+    if (params.get("auth") !== "success") return;
+
+    navigate(location.pathname, { replace: true });
+    void authService
+      .me()
+      .then((user) => {
+        if (user) navigate(homePathForRole(user.role), { replace: true });
+      })
+      .catch(() => {
         setErrorMsg("Không thể xác minh phiên đăng nhập Microsoft. Vui lòng thử lại.");
       });
-    }
   }, [location.pathname, location.search, navigate]);
 
   const handleMicrosoftLogin = async () => {
@@ -67,9 +76,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const user = await authService.loginWithDevStub(normalizedEmail);
-      const nextPath =
-        user.role === "SUPER_ADMIN" ? "/admin/dashboard" : user.role === "ORGANIZER" ? "/organizer/dashboard" : "/student/home";
-      setTimeout(() => navigate(nextPath), 650);
+      navigate(homePathForRole(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập thử nghiệm.");
     } finally {
@@ -91,9 +98,11 @@ export default function LoginPage() {
           </div>
           <div className="mt-14 rounded-3xl border border-white/18 bg-white/12 p-6 backdrop-blur">
             <TicketCheck className="h-12 w-12 text-white" />
-            <h2 className="mt-5 font-display text-3xl font-extrabold leading-tight">Quản lý sự kiện CLB minh bạch, nhanh và an toàn.</h2>
+            <h2 className="mt-5 font-display text-3xl font-extrabold leading-tight">
+              Quản lý sự kiện CLB minh bạch, nhanh và an toàn.
+            </h2>
             <p className="mt-4 text-sm font-medium leading-7 text-white/78">
-              Sinh viên đăng ký bằng Microsoft 365, Ban tổ chức duyệt đăng ký và phát hành vé QR qua một quy trình thống nhất.
+              Sinh viên đăng ký, Ban tổ chức duyệt đăng ký và vé QR được cấp qua một quy trình thống nhất từ backend.
             </p>
           </div>
           <p className="mt-12 text-xs font-semibold text-white/65">© 2026 Trường Đại học Trà Vinh</p>
@@ -124,15 +133,17 @@ export default function LoginPage() {
             </span>
             {isSubmitting && isMicrosoftLoginEnabled ? "Đang chuyển hướng..." : "Đăng nhập bằng Microsoft 365"}
           </button>
+
           {!isMicrosoftLoginEnabled && (
             <div className="mt-3 flex gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-left text-xs font-semibold text-amber-800">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-              <span>Microsoft OAuth đang tắt trong cấu hình frontend hiện tại. Local demo dùng DevStub riêng bên dưới.</span>
+              <span>Microsoft OAuth đang tắt trong cấu hình frontend hiện tại. Local development dùng DevStub bên dưới.</span>
             </div>
           )}
+
           <div className="mt-3 rounded-2xl border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800">
             <ShieldCheck className="mr-1 inline h-4 w-4 align-[-3px]" />
-            Phiên đăng nhập được xác thực bằng cookie HttpOnly từ backend.
+            Phiên đăng nhập được xác thực bằng cookie HttpOnly từ backend. Frontend không lưu JWT vào storage.
           </div>
 
           {errorMsg && !isDevStubEnabled && (
@@ -172,9 +183,13 @@ export default function LoginPage() {
                   </span>
                 </label>
                 <p className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
-                  Chỉ dùng cho local development/test. Backend DevStub xác thực bằng email hợp lệ và không sử dụng mật khẩu.
+                  Chỉ dùng cho local development/test. Backend DevStub nhận email hợp lệ và trả về profile thật; frontend điều hướng theo role backend trả về.
                 </p>
-                <button type="submit" disabled={isSubmitting} className="btn-press flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="btn-press flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-4 text-sm font-extrabold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-70"
+                >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}
                   {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập thử nghiệm"}
                 </button>

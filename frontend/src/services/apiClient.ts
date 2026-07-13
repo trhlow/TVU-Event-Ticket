@@ -75,7 +75,7 @@ export function apiUrl(path: string): string {
 }
 
 export function createUnsupportedApiError(featureName: string): ApiError {
-  return new ApiError(`Backend hien chua co API cho chuc nang ${featureName}.`, 501);
+  return new ApiError(`Backend hiện chưa có API cho chức năng ${featureName}.`, 501);
 }
 
 export function getListPayload<T>(value: unknown): T[] {

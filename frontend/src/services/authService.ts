@@ -1,6 +1,6 @@
-import { mockAuthAccounts, getCurrentUser, setCurrentUser } from "../data/mockAuth";
+import { getCurrentUser, setCurrentUser } from "../data/mockAuth";
 import { User } from "../types/user";
-import { apiConfig, apiRequest, apiUrl } from "./apiClient";
+import { apiRequest, apiUrl } from "./apiClient";
 
 interface LoginRequest {
   credential: string;
@@ -47,16 +47,6 @@ function displayNameFromEmail(email: string): string {
   return localPart.charAt(0).toUpperCase() + localPart.slice(1);
 }
 
-async function withAuthFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
-  if (apiConfig.useDemoData) return fallback();
-  try {
-    return await request();
-  } catch (error) {
-    if (!apiConfig.enableMockFallback) throw error;
-    return fallback();
-  }
-}
-
 function persistProfile(profile: AuthProfileResponse): User {
   const user = mapProfileToUser(profile);
   setCurrentUser(user);
@@ -66,14 +56,7 @@ function persistProfile(profile: AuthProfileResponse): User {
 export const authService = {
   getCurrentUser,
   async me(): Promise<User | null> {
-    return withAuthFallback(
-      async () => persistProfile(await apiRequest<AuthProfileResponse>("/auth/me")),
-      () => {
-        const user = getCurrentUser();
-        setCurrentUser(user);
-        return user;
-      },
-    );
+    return persistProfile(await apiRequest<AuthProfileResponse>("/auth/me"));
   },
   async loginWithMicrosoft(): Promise<User> {
     window.location.assign(apiUrl("/auth/oauth2/microsoft/authorize"));
@@ -86,47 +69,24 @@ export const authService = {
       displayName: displayNameFromEmail(credential),
     };
 
-    return withAuthFallback(
-      async () => {
-        const response = await apiRequest<LoginResponse>("/auth/login", {
-          method: "POST",
-          body: JSON.stringify(payload),
-        });
-        return persistProfile(response.profile);
-      },
-      () => {
-        const normalized = email.toLowerCase();
-        const user = normalized.includes("admin")
-          ? mockAuthAccounts.SUPER_ADMIN
-          : normalized.includes("organizer")
-            ? mockAuthAccounts.ORGANIZER
-            : mockAuthAccounts.SINH_VIEN;
-        setCurrentUser(user);
-        return user;
-      },
-    );
+    const response = await apiRequest<LoginResponse>("/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    return persistProfile(response.profile);
   },
   async updateProfile(data: UpdateProfileRequest): Promise<User> {
-    return withAuthFallback(
-      async () => {
-        const response = await apiRequest<LoginResponse>("/auth/me/profile", {
-          method: "PATCH",
-          body: JSON.stringify(data),
-        });
-        return persistProfile(response.profile);
-      },
-      () => {
-        const user = { ...getCurrentUser(), mssv: data.mssv, className: data.classCode, profileComplete: true };
-        setCurrentUser(user);
-        return user;
-      },
-    );
+    const response = await apiRequest<LoginResponse>("/auth/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+    return persistProfile(response.profile);
   },
   async logout(): Promise<void> {
-    await withAuthFallback(
-      () => apiRequest<void>("/auth/logout", { method: "POST" }),
-      () => undefined,
-    );
-    setCurrentUser(null);
+    try {
+      await apiRequest<void>("/auth/logout", { method: "POST" });
+    } finally {
+      setCurrentUser(null);
+    }
   },
 };

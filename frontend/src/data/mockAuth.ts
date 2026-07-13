@@ -1,17 +1,10 @@
 import { User } from '../types/user';
-import { mockUsers } from './mockUsers';
-
-export const mockAuthAccounts: Record<string, User> = {
-  SINH_VIEN: mockUsers.find(u => u.role === 'SINH_VIEN' && u.profileComplete && u.status === 'ACTIVE') || mockUsers[4],
-  ORGANIZER: mockUsers.find(u => u.role === 'ORGANIZER') || mockUsers[1],
-  SUPER_ADMIN: mockUsers.find(u => u.role === 'SUPER_ADMIN') || mockUsers[0],
-};
 
 let currentUser: User | null = null;
 let authenticated = false;
 
 export function getCurrentUser(): User {
-  return currentUser || mockAuthAccounts.SINH_VIEN;
+  return currentUser as User;
 }
 
 export function isAuthenticated(): boolean {
