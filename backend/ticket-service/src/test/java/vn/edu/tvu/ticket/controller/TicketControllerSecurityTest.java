@@ -1,6 +1,7 @@
 package vn.edu.tvu.ticket.controller;
 
 import vn.edu.tvu.ticket.security.SecurityConfig;
+import vn.edu.tvu.ticket.service.DashboardService;
 import vn.edu.tvu.ticket.service.TicketReservationService;
 import vn.edu.tvu.ticket.service.TicketingService;
 
@@ -32,6 +33,7 @@ class TicketControllerSecurityTest {
     @Autowired MockMvc mockMvc;
     @MockitoBean TicketReservationService reservationService;
     @MockitoBean TicketingService ticketingService;
+    @MockitoBean DashboardService dashboardService;
     @MockitoBean JwtDecoder jwtDecoder;
 
     @Test
@@ -94,6 +96,21 @@ class TicketControllerSecurityTest {
                         .with(organizerJwt()))
                 .andExpect(status().isOk());
         verify(reservationService).approve(any(), any());
+    }
+
+    @Test
+    void clubDashboardRequiresOrganizerAndStatsRequiresSuperAdmin() throws Exception {
+        when(dashboardService.clubDashboard(any())).thenReturn(
+                new vn.edu.tvu.ticket.dto.response.ClubDashboardResponse(
+                        java.util.UUID.randomUUID(), 0, 0, 0, null, List.of()));
+
+        mockMvc.perform(get("/api/ticketing/dashboard/club").with(studentJwt()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/ticketing/dashboard/club").with(organizerJwt()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/ticketing/stats").with(organizerJwt()))
+                .andExpect(status().isForbidden());
     }
 
     private org.springframework.test.web.servlet.request.RequestPostProcessor studentJwt() {

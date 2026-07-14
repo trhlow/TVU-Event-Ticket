@@ -31,6 +31,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/reservations/**", "/api/ticketing/check-in",
                                 "/api/tickets/check-in", "/api/ticketing/events/*/attendees",
                                 "/api/ticketing/events/*/attendees.csv").hasRole("ORGANIZER")
+                        .requestMatchers(HttpMethod.GET, "/api/ticketing/dashboard/club").hasRole("ORGANIZER")
+                        .requestMatchers(HttpMethod.GET, "/api/ticketing/stats").hasRole("SUPER_ADMIN")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

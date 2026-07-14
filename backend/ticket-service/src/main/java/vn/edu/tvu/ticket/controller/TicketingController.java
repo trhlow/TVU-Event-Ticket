@@ -3,8 +3,10 @@ package vn.edu.tvu.ticket.controller;
 import vn.edu.tvu.ticket.dto.request.CheckInRequest;
 import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
 import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
+import vn.edu.tvu.ticket.dto.response.ClubDashboardResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
 import vn.edu.tvu.ticket.security.CurrentUser;
+import vn.edu.tvu.ticket.service.DashboardService;
 import vn.edu.tvu.ticket.service.TicketingService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,13 +31,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@Tag(name = "Ticketing", description = "Availability, check-in and event attendee operations")
+@Tag(name = "Ticketing", description = "Availability, check-in, dashboards and event attendee operations")
 public class TicketingController {
 
     private final TicketingService service;
+    private final DashboardService dashboardService;
 
-    public TicketingController(TicketingService service) {
+    public TicketingController(TicketingService service, DashboardService dashboardService) {
         this.service = service;
+        this.dashboardService = dashboardService;
     }
 
     @GetMapping("/api/ticketing/events/{eventId}/availability")
@@ -70,5 +74,11 @@ public class TicketingController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=attendees-" + eventId + ".csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
                 .body(body);
+    }
+
+    @GetMapping("/api/ticketing/dashboard/club")
+    @Operation(summary = "Get the organizer's club-wide reservation and check-in KPIs")
+    public ClubDashboardResponse dashboardClub(@AuthenticationPrincipal Jwt jwt) {
+        return dashboardService.clubDashboard(CurrentUser.from(jwt));
     }
 }
