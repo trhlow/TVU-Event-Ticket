@@ -59,10 +59,26 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
         doThrow(new IllegalStateException("smtp unavailable")).when(mailSender).send(any(), any());
 
         publish(messageId, message());
-        verify(mailSender, timeout(TimeUnit.SECONDS.toMillis(10)).times(1)).send(any(), any());
         awaitDlqMetric();
 
         assertThat(redisTemplate.hasKey("notification:done:" + messageId)).isFalse();
+    }
+
+    @Test
+    void transientMailFailureIsRetriedAndSucceedsWithoutReachingDlq() throws Exception {
+        var messageId = UUID.randomUUID();
+        doThrow(new IllegalStateException("smtp unavailable"))
+                .doAnswer(invocation -> null)
+                .when(mailSender).send(any(), any());
+
+        publish(messageId, message());
+
+        verify(mailSender, timeout(TimeUnit.SECONDS.toMillis(15)).times(2)).send(any(), any());
+        awaitDoneKey(messageId);
+        verify(mailSender, after(1000).times(2)).send(any(), any());
+        assertThat(meterRegistry.find("notification.messages.dlq").counter()).satisfiesAnyOf(
+                counter -> assertThat(counter).isNull(),
+                counter -> assertThat(counter.count()).isZero());
     }
 
     private void publish(UUID messageId, ReservationApprovedMessage message) throws Exception {
@@ -74,7 +90,8 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
     }
 
     private void awaitDlqMetric() throws InterruptedException {
-        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        // Must exceed the worst-case listener retry backoff (5 attempts, 500ms/2x/max 5s ~= 7.5s) before DLQ.
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
         while (System.nanoTime() < deadline) {
             if (meterRegistry.find("notification.messages.dlq").counter() != null
                     && meterRegistry.find("notification.messages.dlq").counter().count() > 0) {
