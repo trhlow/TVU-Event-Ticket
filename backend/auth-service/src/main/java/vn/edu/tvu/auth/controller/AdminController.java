@@ -40,6 +40,12 @@ public class AdminController {
         this.adminManagementService = adminManagementService;
     }
 
+    @GetMapping("/stats")
+    @Operation(summary = "Get school-wide club and user totals")
+    public vn.edu.tvu.auth.dto.response.AdminStatsResponse stats() {
+        return adminManagementService.stats();
+    }
+
     @PostMapping("/clubs")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a club")
