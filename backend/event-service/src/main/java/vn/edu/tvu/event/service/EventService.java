@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 import vn.edu.tvu.event.domain.*;
 import vn.edu.tvu.event.dto.request.EventRequest;
 import vn.edu.tvu.event.dto.response.EventResponse;
+import vn.edu.tvu.event.dto.response.EventStatsResponse;
 import vn.edu.tvu.event.exception.*;
 import vn.edu.tvu.event.mapper.EventMapper;
 import vn.edu.tvu.event.messaging.EventAuditPublisher;
@@ -12,7 +13,9 @@ import vn.edu.tvu.event.repository.EventRepository;
 import vn.edu.tvu.event.security.CurrentUser;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -79,6 +82,15 @@ public class EventService {
     public List<EventResponse> listOwned(CurrentUser user) {
         requireClub(user);
         return repository.findByClubIdOrderByStartAtDesc(user.clubId()).stream().map(mapper::toResponse).toList();
+    }
+
+    public EventStatsResponse stats() {
+        java.util.Map<EventStatus, Long> eventsByStatus = new java.util.EnumMap<>(EventStatus.class);
+        for (var status : EventStatus.values()) {
+            eventsByStatus.put(status, 0L);
+        }
+        repository.countGroupedByStatus().forEach(row -> eventsByStatus.put(row.getStatus(), row.getCount()));
+        return new EventStatsResponse(repository.count(), eventsByStatus);
     }
 
     public List<EventResponse> listPublic() {

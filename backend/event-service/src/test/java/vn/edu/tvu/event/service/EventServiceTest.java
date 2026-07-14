@@ -18,6 +18,7 @@ import vn.edu.tvu.event.messaging.EventAuditPublisher;
 import vn.edu.tvu.event.repository.EventRepository;
 import vn.edu.tvu.event.security.CurrentUser;
 import java.time.*;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
@@ -129,5 +130,27 @@ class EventServiceTest {
 
     private void mapResponses() {
         when(mapper.toResponse(any())).thenAnswer(invocation -> response(invocation.getArgument(0)));
+    }
+
+    @Test
+    void statsReturnsTotalAndZeroFilledStatusBreakdown() {
+        when(repository.count()).thenReturn(12L);
+        when(repository.countGroupedByStatus()).thenReturn(List.of(
+                statusCount(EventStatus.OPEN, 5L),
+                statusCount(EventStatus.CLOSED, 7L)));
+
+        var stats = service.stats();
+
+        assertThat(stats.totalEvents()).isEqualTo(12);
+        assertThat(stats.eventsByStatus()).containsEntry(EventStatus.OPEN, 5L);
+        assertThat(stats.eventsByStatus()).containsEntry(EventStatus.CLOSED, 7L);
+        assertThat(stats.eventsByStatus()).containsEntry(EventStatus.DRAFT, 0L);
+    }
+
+    private EventRepository.EventStatusCountProjection statusCount(EventStatus status, long count) {
+        return new EventRepository.EventStatusCountProjection() {
+            @Override public EventStatus getStatus() { return status; }
+            @Override public long getCount() { return count; }
+        };
     }
 }
