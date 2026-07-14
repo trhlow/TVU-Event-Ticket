@@ -25,6 +25,7 @@ class EventOpenApiIntegrationTest extends AbstractPostgresIntegrationTest {
                 .contains("/api/events")
                 .contains("/api/events/{eventId}")
                 .contains("/api/events/{eventId}/status")
-                .contains("/api/events/mine");
+                .contains("/api/events/mine")
+                .contains("/api/events/stats");
     }
 }
