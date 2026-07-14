@@ -54,8 +54,10 @@ public class GatewaySecurityConfig {
                         .hasAnyRole("ORGANIZER", "SUPER_ADMIN")
                         .pathMatchers(HttpMethod.GET, "/api/ticketing/events/*/availability",
                                 "/api/ticketing/events/availability").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/api/ticketing/stats").hasRole("SUPER_ADMIN")
                         .pathMatchers("/api/ticketing/**").hasRole("ORGANIZER")
                         .pathMatchers("/api/tickets/**", "/api/reservations/**").authenticated()
+                        .pathMatchers(HttpMethod.GET, "/api/events/stats").hasRole("SUPER_ADMIN")
                         .pathMatchers(HttpMethod.GET, "/api/events/**").permitAll()
                         .pathMatchers("/api/events/**").hasRole("ORGANIZER")
                         .anyExchange().authenticated())
