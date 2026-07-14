@@ -188,8 +188,28 @@ Inventory request:
 | EPIC 2 - Gateway security and routing | 100% | Complete on `main`. |
 | EPIC 3 - Event service | 100% | Complete on `main`. |
 | EPIC 4 - Ticket service core | 100% | Complete on `main`; plan-audit hardening adds POST compatibility and additional concurrency/contract coverage. |
-| EPIC 5 - Notification service | 100% | Complete on `main`: approved-reservation mail, signed QR, Redis idempotency, RabbitMQ DLQ and Mailpit smoke coverage. |
+| EPIC 5 - Notification service | 100% | Complete on `hlow` (not yet merged to `main`). Fixed after a real Docker E2E re-verification found the wire format was broken end-to-end — see note below. |
 | EPIC 6-8 | Not started as complete EPICs | Some infrastructure/documentation pieces exist, but none should be marked complete yet. |
+
+**2026-07-14 correction:** the "100% / Docker smoke passed" claim recorded below for EPIC 5 predates a real
+end-to-end verification and was inaccurate. Re-running the actual Docker Compose stack (not just the
+Testcontainers suite) surfaced three bugs that made the notification flow non-functional in practice, all
+fixed on `hlow`:
+1. `notification-service` crashed on every startup race with RabbitMQ (a redundant, eager
+   `ApplicationRunner`/`RabbitAdmin` in `NotificationRabbitConfig` force-connected synchronously instead of
+   relying on Spring Boot's default lazy topology declaration, the same pattern already used by
+   `ticket-service`).
+2. `ticket-service`'s outbox publisher (`ConfirmedRabbitPublisher`) double-encoded every JSON payload
+   (`convertAndSend(String, ...)` ran the already-serialized JSON text through the message converter a second
+   time), so **every** `reservation.approved` and `audit.ticket.*` message failed to deserialize on the
+   consumer side and was dead-lettered. This affected EPIC 4's outbox relay too, not just EPIC 5.
+3. Transient mail/lock failures had no retry before hitting the DLQ (`default-requeue-rejected: false` with no
+   `listener.simple.retry` config), contradicting the EPIC 5 plan's own acceptance criteria.
+
+After the fixes, a full E2E run (login -> create club/organizer -> create+open event -> student registers ->
+organizer approves -> RabbitMQ -> notification-service -> signed QR -> email) was verified against a real
+Docker Compose stack: the email arrived in Mailpit with the correct recipient/subject and an inline QR PNG
+(`Content-ID: ticket-qr`) matching the HTML `cid:` reference.
 
 EPIC 4 now includes event-authoritative reservation snapshots, safe Redis Lua capacity, row-locked concurrent
 approval, leased outbox delivery, availability APIs, signed single-use QR check-in, scoped attendee JSON/CSV,
