@@ -9,6 +9,7 @@ import vn.edu.tvu.auth.repository.AuditLogRepository;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -99,6 +100,32 @@ class AdminManagementServiceTest {
         verify(auditLogRepository).save(auditCaptor.capture());
         assertThat(auditCaptor.getValue().getAction()).isEqualTo("auth.organizer.create");
         assertThat(auditCaptor.getValue().getTargetId()).isEqualTo(organizerId);
+    }
+
+    @Test
+    void statsReturnsTotalsAndZeroFilledRoleBreakdown() {
+        var auditLogService = new AuditLogService(auditLogRepository);
+        var service = new AdminManagementService(clubRepository, userRepository, auditLogService);
+        when(clubRepository.count()).thenReturn(4L);
+        when(userRepository.count()).thenReturn(50L);
+        when(userRepository.countGroupedByRole()).thenReturn(List.of(
+                roleCount(UserRole.SINH_VIEN, 40L),
+                roleCount(UserRole.ORGANIZER, 8L)));
+
+        var stats = service.stats();
+
+        assertThat(stats.totalClubs()).isEqualTo(4);
+        assertThat(stats.totalUsers()).isEqualTo(50);
+        assertThat(stats.usersByRole()).containsEntry(UserRole.SINH_VIEN, 40L);
+        assertThat(stats.usersByRole()).containsEntry(UserRole.ORGANIZER, 8L);
+        assertThat(stats.usersByRole()).containsEntry(UserRole.SUPER_ADMIN, 0L);
+    }
+
+    private UserRepository.UserRoleCountProjection roleCount(UserRole role, long count) {
+        return new UserRepository.UserRoleCountProjection() {
+            @Override public UserRole getRole() { return role; }
+            @Override public long getCount() { return count; }
+        };
     }
 
     private static Club persistedClub(Club club, UUID id) {
