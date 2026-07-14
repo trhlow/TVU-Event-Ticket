@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, Mail, Bookmark, Save, CreditCard } from 'lucide-react';
-import { getCurrentUser, setCurrentUser } from '../../data/mockAuth';
+import { getCurrentUser, setCurrentUser } from '../../state/authSession';
 import Toast from '../../components/common/Toast';
 import Breadcrumb from '../../components/common/Breadcrumb';
 

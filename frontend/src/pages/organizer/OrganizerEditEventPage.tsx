@@ -5,7 +5,7 @@ import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import Toast from '../../components/common/Toast';
 import EventForm from '../../components/events/EventForm';
-import { getCurrentUser } from '../../data/mockAuth';
+import { getCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 

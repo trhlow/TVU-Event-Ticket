@@ -20,7 +20,7 @@ import {
   User,
   Users,
 } from "lucide-react";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { authService } from "../../services/authService";
 
 interface SidebarProps {

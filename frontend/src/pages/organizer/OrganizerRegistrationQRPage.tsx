@@ -1,33 +1,12 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertTriangle, Copy, Download, ExternalLink, FileDown, Printer, QrCode } from "lucide-react";
+import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { getEvents } from "../../data/mockEvents";
 import { formatDateTime } from "../../utils/formatDate";
-
-function FakeQRCode({ value }: { value: string }) {
-  const cells = useMemo(() => {
-    let seed = 0;
-    for (const char of value) seed += char.charCodeAt(0);
-    return Array.from({ length: 121 }, (_, index) => {
-      const row = Math.floor(index / 11);
-      const col = index % 11;
-      const finder = (row < 3 && col < 3) || (row < 3 && col > 7) || (row > 7 && col < 3);
-      return finder || (index * 17 + seed) % 5 < 2;
-    });
-  }, [value]);
-
-  return (
-    <div className="mx-auto grid h-64 w-64 grid-cols-11 gap-1 rounded-3xl border border-slate-200 bg-white p-4 shadow-inner">
-      {cells.map((filled, index) => (
-        <span key={index} className={filled ? "rounded-sm bg-slate-950" : "rounded-sm bg-slate-50"} />
-      ))}
-    </div>
-  );
-}
 
 export default function OrganizerRegistrationQRPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -51,7 +30,7 @@ export default function OrganizerRegistrationQRPage() {
         <div>
           <h1 className="tvu-page-title text-2xl">QR đăng ký sự kiện</h1>
           <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-            QR này dùng để sinh viên mở trang đăng ký sự kiện. Đây là QR công khai của Ban tổ chức, không phải vé tham gia.
+            Liên kết dùng để sinh viên mở trang đăng ký sự kiện. Đây là liên kết công khai của Ban tổ chức, không phải vé tham gia.
           </p>
         </div>
         <label className="w-full sm:w-80">
@@ -68,9 +47,13 @@ export default function OrganizerRegistrationQRPage() {
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           <section className="enterprise-card p-6 text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-brand-700">
-              <QrCode className="h-4 w-4" /> QR đăng ký
+              <QrCode className="h-4 w-4" /> Liên kết đăng ký
             </div>
-            <FakeQRCode value={registrationLink} />
+            <div className="mx-auto grid h-64 w-64 place-items-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
+              <p className="text-xs font-bold leading-5 text-slate-500">
+                Chưa có tính năng tạo mã QR thật cho liên kết này. Dùng nút "Sao chép liên kết" bên dưới để chia sẻ.
+              </p>
+            </div>
             <p className="mt-4 break-all rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs font-semibold leading-5 text-slate-600">
               {registrationLink}
             </p>
@@ -102,32 +85,26 @@ export default function OrganizerRegistrationQRPage() {
             <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
               <p className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                <span>QR này chỉ dùng để mở trang đăng ký sự kiện. Đây không phải là vé tham gia sự kiện.</span>
+                <span>Liên kết này chỉ dùng để mở trang đăng ký sự kiện. Đây không phải là vé tham gia sự kiện.</span>
               </p>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              <button onClick={() => setToastMsg("Đã chuẩn bị tải QR PNG.")} className="min-h-11 rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
-                <Download className="mr-2 inline h-4 w-4" /> Tải PNG
-              </button>
-              <button onClick={() => setToastMsg("Đã chuẩn bị tải QR PDF.")} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <FileDown className="mr-2 inline h-4 w-4" /> Tải PDF
-              </button>
+            <div className="grid gap-2 sm:grid-cols-2">
               <button onClick={copyLink} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <Copy className="mr-2 inline h-4 w-4" /> Sao chép
+                <Copy className="mr-2 inline h-4 w-4" /> Sao chép liên kết
               </button>
               <button onClick={() => window.print()} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <Printer className="mr-2 inline h-4 w-4" /> In QR
+                <Printer className="mr-2 inline h-4 w-4" /> In trang này
               </button>
-              <Link to={`/student/events/${event.id}/register`} className="flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <ExternalLink className="mr-2 h-4 w-4" /> Xem trang đăng ký
+              <Link to={`/student/events/${event.id}/register`} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50 sm:col-span-2">
+                <ExternalLink className="h-4 w-4" /> Xem trang đăng ký
               </Link>
             </div>
           </section>
         </div>
       ) : (
         <div className="enterprise-card p-10 text-center text-sm font-bold text-slate-500">
-          CLB chưa có sự kiện để tạo QR đăng ký.
+          CLB chưa có sự kiện để tạo liên kết đăng ký.
         </div>
       )}
 

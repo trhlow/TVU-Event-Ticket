@@ -1,5 +1,5 @@
 import { Bell, Menu, Search } from "lucide-react";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
 
 interface HeaderProps {

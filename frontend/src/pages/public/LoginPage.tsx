@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, Eye, EyeOff, Lock, Mail, ShieldCheck, TicketCheck } from "lucide-react";
+import { AlertCircle, AlertTriangle, FlaskConical, Lock, Mail, ShieldCheck, TicketCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
-
-const isMicrosoftLoginEnabled = (import.meta.env.VITE_AUTH_PROVIDER || "microsoft").toLowerCase() === "microsoft";
+import { isDevStubProvider, isMicrosoftProvider } from "../../lib/env";
 
 function homePathForRole(role: User["role"]): string {
   if (role === "SUPER_ADMIN") return "/admin/dashboard";
@@ -16,12 +15,11 @@ function homePathForRole(role: User["role"]): string {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [internalEmail, setInternalEmail] = useState("");
-  const [internalPassword, setInternalPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [devCredential, setDevCredential] = useState("");
+  const [devDisplayName, setDevDisplayName] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -58,18 +56,25 @@ export default function LoginPage() {
     }
   };
 
-  const handleInternalSubmit = (event: React.FormEvent) => {
+  const handleDevStubLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMsg("");
 
-    if (!internalEmail.trim() || !internalPassword.trim()) {
-      setErrorMsg("Vui lòng nhập email và mật khẩu nội bộ.");
+    if (!devCredential.trim()) {
+      setErrorMsg("Nhập một địa chỉ email hợp lệ để đăng nhập thử nghiệm.");
       return;
     }
 
-    setErrorMsg(
-      "Backend hiện chưa hỗ trợ đăng nhập nội bộ bằng email + mật khẩu. Không thể đăng nhập Admin/Ban tổ chức an toàn cho đến khi backend có contract mật khẩu hoặc invite/reset password.",
-    );
+    setIsSubmitting(true);
+    try {
+      // Role is never chosen here — it is whatever role the backend already assigned to this
+      // email, read back from GET /auth/me after login (see authService.loginWithDevStub).
+      const user = await authService.loginWithDevStub(devCredential, devDisplayName);
+      navigate(homePathForRole(user.role), { replace: true });
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập thử nghiệm. Vui lòng thử lại.");
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -82,7 +87,7 @@ export default function LoginPage() {
         <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
         <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
         <p className="mx-auto mt-3 max-w-[340px] text-sm font-medium leading-6 text-slate-600">
-          Sinh viên dùng Microsoft OAuth/OIDC. Admin và Ban tổ chức phải dùng tài khoản nội bộ email + mật khẩu khi backend hỗ trợ.
+          Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Vai trò luôn do backend quyết định sau khi xác thực.
         </p>
 
         {errorMsg && (
@@ -92,21 +97,64 @@ export default function LoginPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={isMicrosoftLoginEnabled ? handleMicrosoftLogin : undefined}
-          disabled={isSubmitting || !isMicrosoftLoginEnabled}
-          className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white shadow-sm shadow-blue-900/15 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
-          title={isMicrosoftLoginEnabled ? undefined : "Microsoft OAuth chỉ bật khi VITE_AUTH_PROVIDER=microsoft"}
-        >
-          <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
-            <span className="bg-[#f25022]" />
-            <span className="bg-[#7fba00]" />
-            <span className="bg-[#00a4ef]" />
-            <span className="bg-[#ffb900]" />
-          </span>
-          {isSubmitting && isMicrosoftLoginEnabled ? "Đang đăng nhập..." : "Sinh viên đăng nhập bằng Microsoft"}
-        </button>
+        {isMicrosoftProvider && (
+          <button
+            type="button"
+            onClick={handleMicrosoftLogin}
+            disabled={isSubmitting}
+            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white shadow-sm shadow-blue-900/15 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
+              <span className="bg-[#f25022]" />
+              <span className="bg-[#7fba00]" />
+              <span className="bg-[#00a4ef]" />
+              <span className="bg-[#ffb900]" />
+            </span>
+            {isSubmitting ? "Đang đăng nhập..." : "Sinh viên đăng nhập bằng Microsoft"}
+          </button>
+        )}
+
+        {/* import.meta.env.DEV is a build-time literal: Vite/Rollup dead-code-eliminates this
+            entire branch from a `vite build` production bundle, so it cannot ship even if
+            VITE_AUTH_PROVIDER is misconfigured at runtime. */}
+        {import.meta.env.DEV && isDevStubProvider && (
+          <div className="mt-8 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 p-4 text-left">
+            <div className="flex items-center gap-2 text-amber-800">
+              <FlaskConical className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="text-[11px] font-black uppercase tracking-[0.14em]">DEV ONLY · Đăng nhập thử nghiệm</span>
+            </div>
+            <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">
+              Đây là đăng nhập thử nghiệm dành riêng cho môi trường phát triển cục bộ, không phải cơ chế xác thực production. Backend
+              chấp nhận bất kỳ email hợp lệ nào, không kiểm tra mật khẩu. Vai trò trả về sau khi đăng nhập là vai trò backend đã gán
+              sẵn cho email đó — form này không cho bạn tự chọn vai trò.
+            </p>
+            <form onSubmit={handleDevStubLogin} className="mt-4 space-y-3">
+              <input
+                type="email"
+                value={devCredential}
+                onChange={(event) => setDevCredential(event.target.value)}
+                placeholder="ten@vidu.dev"
+                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                autoComplete="off"
+              />
+              <input
+                type="text"
+                value={devDisplayName}
+                onChange={(event) => setDevDisplayName(event.target.value)}
+                placeholder="Tên hiển thị (tuỳ chọn)"
+                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                autoComplete="off"
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-amber-600 px-4 text-sm font-extrabold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập thử nghiệm (DEV ONLY)"}
+              </button>
+            </form>
+          </div>
+        )}
 
         <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-left text-xs font-semibold leading-5 text-brand-800">
           <ShieldCheck className="mr-1 inline h-4 w-4 align-[-3px]" />
@@ -119,56 +167,51 @@ export default function LoginPage() {
           <div className="h-px flex-1 bg-slate-200" />
         </div>
 
-        <form onSubmit={handleInternalSubmit} noValidate className="space-y-5 text-left">
-          <label className="block">
+        <div className="space-y-4 text-left">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-semibold leading-5 text-amber-900">
+            <span className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
+              Chức năng đăng nhập dành cho CLB đang chờ backend hỗ trợ cơ chế xác thực an toàn.
+            </span>
+          </div>
+
+          <label className="block opacity-60">
             <span className="mb-2 block text-sm font-bold text-slate-800">Email nội bộ</span>
             <span className="relative block">
               <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <input
                 className="tvu-input min-h-12 rounded-lg pl-11 text-base font-medium placeholder:text-slate-400"
                 type="email"
-                value={internalEmail}
-                onChange={(event) => setInternalEmail(event.target.value)}
                 placeholder="admin@tvu.edu.vn"
-                autoComplete="username"
+                disabled
+                readOnly
               />
             </span>
           </label>
 
-          <label className="block">
+          <label className="block opacity-60">
             <span className="mb-2 block text-sm font-bold text-slate-800">Mật khẩu nội bộ</span>
             <span className="relative block">
               <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
               <input
-                className="tvu-input min-h-12 rounded-lg px-11 text-base font-medium placeholder:text-slate-400"
-                type={showPassword ? "text" : "password"}
-                value={internalPassword}
-                onChange={(event) => setInternalPassword(event.target.value)}
-                placeholder="Nhập mật khẩu"
-                autoComplete="current-password"
+                className="tvu-input min-h-12 rounded-lg pl-11 text-base font-medium placeholder:text-slate-400"
+                type="password"
+                placeholder="••••••••"
+                disabled
+                readOnly
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword((value) => !value)}
-                className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-brand-700"
-                aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
-              </button>
             </span>
           </label>
 
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold leading-5 text-amber-800">
-            Backend `LoginRequest` hiện chỉ có `credential/displayName`, chưa có `password`. Vì vậy frontend không gửi đăng nhập nội bộ email-only và chưa thể xác thực Admin/Ban tổ chức an toàn.
-          </p>
-
           <button
-            type="submit"
-            className="btn-press flex min-h-12 w-full items-center justify-center rounded-lg bg-slate-800 px-4 text-sm font-extrabold text-white shadow-sm hover:bg-slate-900"
+            type="button"
+            disabled
+            className="flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-lg bg-slate-300 px-4 text-sm font-extrabold text-slate-500"
+            title="Backend LoginRequest hiện chỉ có credential/displayName, chưa có password."
           >
-            Kiểm tra đăng nhập nội bộ
+            Đăng nhập nội bộ (chưa khả dụng)
           </button>
-        </form>
+        </div>
       </section>
 
       {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}

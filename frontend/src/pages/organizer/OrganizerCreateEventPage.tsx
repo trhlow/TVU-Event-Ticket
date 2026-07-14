@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import EventForm from '../../components/events/EventForm';
 import Toast from '../../components/common/Toast';
-import { getCurrentUser } from '../../data/mockAuth';
+import { getCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 

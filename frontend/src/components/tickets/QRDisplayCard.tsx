@@ -12,19 +12,6 @@ interface QRDisplayCardProps {
   onPrint?: () => void;
 }
 
-function FakeQRCode() {
-  const cells = Array.from({ length: 121 }, (_, index) => {
-    const finder =
-      (Math.floor(index / 11) < 3 && index % 11 < 3) ||
-      (Math.floor(index / 11) < 3 && index % 11 > 7) ||
-      (Math.floor(index / 11) > 7 && index % 11 < 3);
-    const filled = finder || [5, 9, 14, 18, 24, 29, 35, 41, 44, 50, 57, 63, 69, 72, 78, 83, 89, 94, 101, 108, 115].includes(index);
-    return <span key={index} className={filled ? "rounded-[2px] bg-slate-950" : "rounded-[2px] bg-white"} />;
-  });
-
-  return <div className="grid h-full w-full grid-cols-11 gap-1 rounded-xl bg-white p-3">{cells}</div>;
-}
-
 export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QRDisplayCardProps) {
   const hasQrPayload = Boolean(ticket.qrCodeValue);
 
@@ -43,10 +30,16 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
       <div className="p-5 text-center">
         <div className="mx-auto grid h-56 w-56 place-items-center rounded-2xl border border-slate-200 bg-white p-3 shadow-inner">
           {hasQrPayload ? (
-            <FakeQRCode />
+            // The backend supplies a real signed payload here, but no QR-rendering library is
+            // wired up yet — showing the raw payload is honest; a fabricated checkerboard image
+            // that doesn't actually encode this string would not be.
+            <div className="px-3 text-center">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payload vé (chưa có bộ render QR)</p>
+              <p className="mt-2 break-all font-mono text-[11px] font-semibold leading-5 text-slate-700">{ticket.qrCodeValue}</p>
+            </div>
           ) : (
             <div className="px-4 text-center text-xs font-bold leading-5 text-slate-500">
-              Backend chua cung cap QR payload cho ve nay.
+              Backend chưa cung cấp QR payload cho vé này.
             </div>
           )}
         </div>

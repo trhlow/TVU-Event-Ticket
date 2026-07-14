@@ -1,4 +1,4 @@
-import { getCurrentUser, setCurrentUser } from "../data/mockAuth";
+import { getCurrentUser, setCurrentUser } from "../state/authSession";
 import { User } from "../types/user";
 import { apiRequest } from "./apiClient";
 
@@ -71,6 +71,15 @@ export const authService = {
   getCurrentUser,
   async me(): Promise<User | null> {
     return persistProfile(await apiRequest<AuthProfileResponse>("/auth/me"));
+  },
+  /**
+   * Dev-only login path. Calls the exact same POST /auth/login + GET /auth/me endpoints as
+   * loginWithMicrosoft, matching backend's DevStubIdentityProvider contract (any string
+   * containing "@", no password). Callers must gate this behind VITE_AUTH_PROVIDER=devstub and
+   * a non-production build so it never reaches real users.
+   */
+  async loginWithDevStub(credential: string, displayName?: string): Promise<User> {
+    return loginWithCredential({ credential: credential.trim(), displayName: displayName?.trim() || undefined });
   },
   async loginWithMicrosoft(): Promise<User> {
     const { PublicClientApplication } = await import("@azure/msal-browser");

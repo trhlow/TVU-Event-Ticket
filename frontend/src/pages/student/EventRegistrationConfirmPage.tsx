@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Calendar, MapPin, CheckSquare, Square, ArrowLeft, Send } from 'lucide-react';
-import { getCurrentUser } from '../../data/mockAuth';
+import { getCurrentUser } from '../../state/authSession';
 import { formatDateTime } from '../../utils/formatDate';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import Toast from '../../components/common/Toast';

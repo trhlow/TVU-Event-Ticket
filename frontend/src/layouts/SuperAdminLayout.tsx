@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import Header from "../components/common/Header";
 import Sidebar from "../components/common/Sidebar";
-import { getCurrentUser } from "../data/mockAuth";
+import { getCurrentUser } from "../state/authSession";
 
 export default function SuperAdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

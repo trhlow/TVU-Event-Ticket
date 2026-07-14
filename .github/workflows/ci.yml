@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.filter.outputs.changes }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -34,6 +35,8 @@ jobs:
             notification-service:
               - 'backend/pom.xml'
               - 'backend/notification-service/**'
+            frontend:
+              - 'frontend/**'
 
   build:
     needs: changes
@@ -56,3 +59,62 @@ jobs:
       - name: Build & test ${{ matrix.module }}
         working-directory: backend
         run: mvn -B -pl ${{ matrix.module }} -am verify
+
+  frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # Safe, non-production defaults so the build never needs real secrets and never ships
+      # with DevStub, demo data, or mock fallback baked in.
+      VITE_APP_ENV: production
+      VITE_AUTH_PROVIDER: microsoft
+      VITE_USE_DEMO_DATA: 'false'
+      VITE_ENABLE_MOCK_FALLBACK: 'false'
+      VITE_API_BASE_URL: http://localhost:8080/api
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Test
+        working-directory: frontend
+        run: npm run test -- --run
+
+      - name: Build (production-safe env)
+        working-directory: frontend
+        run: npm run build
+
+      - name: Audit dependencies (non-blocking)
+        working-directory: frontend
+        run: npm audit --audit-level=high || true
+
+      - name: Fail if a real .env file was accidentally committed
+        run: |
+          if git ls-files frontend | grep -E '^frontend/\.env($|\.[^.]*$)' | grep -v '\.env\.example$'; then
+            echo "A real .env file is tracked in git — remove it and rotate any secrets it held."
+            exit 1
+          fi
+          echo "No tracked .env file found."
+
+      - name: Fail if the production bundle contains DevStub UI or demo account strings
+        working-directory: frontend
+        run: |
+          if grep -rl "DEV ONLY\|admin@example.com" dist/assets/*.js 2>/dev/null; then
+            echo "Production bundle contains dev-only login UI or a default admin account string."
+            exit 1
+          fi
+          echo "Production bundle is clean."

@@ -41,11 +41,15 @@ interface AvailabilityResponse {
 
 type EventPayload = Partial<Event>;
 
+// EventResponse has no club display-name field (see docs/BACKEND_SECURITY_REQUIREMENTS.md item
+// 15) — this must stay a neutral placeholder, never a fabricated specific club name.
+const CLUB_NAME_PLACEHOLDER = "Chưa có thông tin CLB";
+
 function mapRemoteEvent(event: EventResponse, availability?: AvailabilityResponse): Event {
   return {
     id: event.id,
     clubId: event.clubId,
-    clubName: "Cau lac bo TVU",
+    clubName: CLUB_NAME_PLACEHOLDER,
     title: event.title,
     description: event.description || "",
     category: "Su kien",
@@ -91,13 +95,10 @@ async function loadAvailability(eventIds: string[]): Promise<Map<string, Availab
 }
 
 async function withEventFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
+  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
+  // so the UI shows a genuine error state instead of silently masking it with fixture data.
   if (apiConfig.useDemoData) return fallback();
-  try {
-    return await request();
-  } catch (error) {
-    if (!apiConfig.enableMockFallback) throw error;
-    return fallback();
-  }
+  return request();
 }
 
 export const eventService = {

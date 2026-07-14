@@ -9,7 +9,7 @@ import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { ticketService } from "../../services/ticketService";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";

@@ -4,7 +4,7 @@ import { Calendar, ChevronLeft, Mail, MapPin, UserRound } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";

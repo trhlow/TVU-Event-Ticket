@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import StatusBadge from "../../components/common/StatusBadge";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import Toast from "../../components/common/Toast";

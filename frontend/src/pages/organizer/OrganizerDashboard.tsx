@@ -6,7 +6,7 @@ import LineChartCard from "../../components/charts/LineChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { ticketService } from "../../services/ticketService";

@@ -7,7 +7,7 @@ import DataTable from "../../components/common/DataTable";
 import EventForm from "../../components/events/EventForm";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";

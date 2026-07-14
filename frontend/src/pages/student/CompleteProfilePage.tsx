@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Info, Save, ShieldAlert, User } from "lucide-react";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import Toast from "../../components/common/Toast";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import { authService } from "../../services/authService";

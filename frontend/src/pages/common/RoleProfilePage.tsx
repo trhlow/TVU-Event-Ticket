@@ -2,7 +2,7 @@ import { Building2, Mail, Save, ShieldCheck, UserRound } from "lucide-react";
 import { useState } from "react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 import { mockClubs } from "../../data/mockClubs";
 import { getRoleLabel } from "../../utils/roleHelpers";
 

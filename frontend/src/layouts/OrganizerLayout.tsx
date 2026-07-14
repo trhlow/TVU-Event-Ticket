@@ -3,7 +3,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import Header from "../components/common/Header";
 import PageGreeting from "../components/common/PageGreeting";
 import Sidebar from "../components/common/Sidebar";
-import { getCurrentUser } from "../data/mockAuth";
+import { getCurrentUser } from "../state/authSession";
 
 export default function OrganizerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,7 +31,7 @@ export default function OrganizerLayout() {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onToggleCollapse={() => setCollapsed((value) => !value)}
           collapsed={collapsed}
-          title={user.clubName || "CLB Tin học TVU"}
+          title={user.clubName || "Chưa có thông tin CLB"}
         />
         <section className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <PageGreeting name={user.fullName} />

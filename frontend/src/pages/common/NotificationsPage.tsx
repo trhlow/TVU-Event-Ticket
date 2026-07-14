@@ -1,7 +1,7 @@
 import { Bell, CalendarClock, CheckCircle2, ClipboardCheck, QrCode, ShieldAlert } from "lucide-react";
 import Button from "../../components/common/Button";
 import EmptyState from "../../components/common/EmptyState";
-import { getCurrentUser } from "../../data/mockAuth";
+import { getCurrentUser } from "../../state/authSession";
 
 type NotificationScope = "student" | "organizer" | "admin";
 

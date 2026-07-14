@@ -3,7 +3,7 @@ import { CalendarDays, CheckCircle, Clock, Search } from 'lucide-react';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import StatisticCard from '../../components/common/StatisticCard';
 import StatusBadge from '../../components/common/StatusBadge';
-import { getCurrentUser } from '../../data/mockAuth';
+import { getCurrentUser } from '../../state/authSession';
 import { getEvents } from '../../data/mockEvents';
 import { getTickets } from '../../data/mockTickets';
 import { formatDateTime } from '../../utils/formatDate';
