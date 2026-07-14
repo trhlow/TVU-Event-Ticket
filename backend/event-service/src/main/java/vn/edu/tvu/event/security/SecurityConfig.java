@@ -23,6 +23,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/mine").hasRole("ORGANIZER")
+                        .requestMatchers(HttpMethod.GET, "/api/events/stats").hasRole("SUPER_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/events", "/api/events/*").permitAll()
                         .requestMatchers("/api/events/**").hasRole("ORGANIZER")
                         .anyRequest().authenticated())
