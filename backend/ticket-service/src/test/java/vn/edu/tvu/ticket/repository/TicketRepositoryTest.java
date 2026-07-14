@@ -6,6 +6,7 @@ import vn.edu.tvu.ticket.domain.Reservation;
 import vn.edu.tvu.ticket.domain.ReservationStatus;
 import vn.edu.tvu.ticket.domain.Ticket;
 import vn.edu.tvu.ticket.domain.TicketInventory;
+import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.support.AbstractPostgresIntegrationTest;
 
 import java.time.Instant;
@@ -192,6 +193,25 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         assertThat(rows).hasSize(1);
         assertThat(rows.getFirst().getDay()).isEqualTo(day);
         assertThat(rows.getFirst().getCount()).isEqualTo(1);
+    }
+
+    @Test
+    void ticketRepositoryCountsAllTicketsByStatusAcrossClubs() {
+        var firstReservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), "idem-status-1"));
+        firstReservation.approve(UUID.randomUUID());
+        reservationRepository.saveAndFlush(firstReservation);
+        var firstTicket = ticketRepository.saveAndFlush(Ticket.issue(firstReservation));
+        var secondReservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), "idem-status-2"));
+        secondReservation.approve(UUID.randomUUID());
+        reservationRepository.saveAndFlush(secondReservation);
+        ticketRepository.saveAndFlush(Ticket.issue(secondReservation));
+        var before = ticketRepository.countByStatus(TicketStatus.VALID);
+
+        assertThat(ticketRepository.countByStatus(TicketStatus.VALID)).isEqualTo(before);
+        assertThat(ticketRepository.countByStatus(TicketStatus.CHECKED_IN)).isZero();
+        assertThat(firstTicket.getStatus()).isEqualTo(TicketStatus.VALID);
     }
 
     private void backdateRequestedAt(UUID reservationId, Instant requestedAt) {

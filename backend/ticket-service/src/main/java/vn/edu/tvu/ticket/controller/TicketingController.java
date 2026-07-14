@@ -81,4 +81,10 @@ public class TicketingController {
     public ClubDashboardResponse dashboardClub(@AuthenticationPrincipal Jwt jwt) {
         return dashboardService.clubDashboard(CurrentUser.from(jwt));
     }
+
+    @GetMapping("/api/ticketing/stats")
+    @Operation(summary = "Get school-wide ticket issuance and check-in totals")
+    public vn.edu.tvu.ticket.dto.response.TicketStatsResponse ticketStats() {
+        return dashboardService.ticketStats();
+    }
 }

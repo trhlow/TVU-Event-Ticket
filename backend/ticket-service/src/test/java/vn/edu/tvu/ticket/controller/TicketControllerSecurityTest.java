@@ -113,6 +113,17 @@ class TicketControllerSecurityTest {
                 .andExpect(status().isForbidden());
     }
 
+    @Test
+    void ticketStatsRequiresSuperAdminRole() throws Exception {
+        when(dashboardService.ticketStats()).thenReturn(
+                new vn.edu.tvu.ticket.dto.response.TicketStatsResponse(0, 0, null));
+
+        mockMvc.perform(get("/api/ticketing/stats").with(organizerJwt()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/ticketing/stats").with(superAdminJwt()))
+                .andExpect(status().isOk());
+    }
+
     private org.springframework.test.web.servlet.request.RequestPostProcessor studentJwt() {
         return jwt().jwt(builder -> builder.subject(UUID.randomUUID().toString())
                 .claim("email", "student@example.com")
@@ -127,5 +138,12 @@ class TicketControllerSecurityTest {
                 .claim("roles", List.of("ORGANIZER"))
                 .claim("club_id", UUID.randomUUID().toString()))
                 .authorities(() -> "ROLE_ORGANIZER");
+    }
+
+    private org.springframework.test.web.servlet.request.RequestPostProcessor superAdminJwt() {
+        return jwt().jwt(builder -> builder.subject(UUID.randomUUID().toString())
+                .claim("email", "admin@example.com")
+                .claim("roles", List.of("SUPER_ADMIN")))
+                .authorities(() -> "ROLE_SUPER_ADMIN");
     }
 }
