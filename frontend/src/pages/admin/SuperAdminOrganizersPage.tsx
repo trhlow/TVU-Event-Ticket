@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Lock, Plus, Search, X } from "lucide-react";
-import { mockClubs } from "../../data/mockClubs";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import StatusBadge from "../../components/common/StatusBadge";
+import ConfirmModal from "../../components/common/ConfirmModal";
 import Toast from "../../components/common/Toast";
 import { User } from "../../types/user";
 import { userService } from "../../services/userService";
@@ -14,11 +14,13 @@ const supportsSecureOrganizerProvisioning = false;
 
 export default function SuperAdminOrganizersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [clubs, setClubs] = useState<Club[]>(mockClubs);
+  const [clubs, setClubs] = useState<Club[]>([]);
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState("");
-  const [form, setForm] = useState({ fullName: "", email: "", clubId: mockClubs[0]?.id || "" });
+  const [form, setForm] = useState({ fullName: "", email: "", clubId: "" });
+  const [lockTarget, setLockTarget] = useState<User | null>(null);
+  const [isLocking, setIsLocking] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -35,13 +37,18 @@ export default function SuperAdminOrganizersPage() {
     void loadData();
   }, [loadData]);
 
-  const handleLock = async (userId: string) => {
+  const handleLock = async () => {
+    if (!lockTarget) return;
+    setIsLocking(true);
     try {
-      await userService.lockOrganizer(userId);
+      await userService.lockOrganizer(lockTarget.id);
       setToastMsg("Đã khóa tài khoản organizer.");
+      setLockTarget(null);
       await loadData();
     } catch (error) {
       setToastMsg(error instanceof Error ? error.message : "Không thể khóa tài khoản.");
+    } finally {
+      setIsLocking(false);
     }
   };
 
@@ -89,7 +96,7 @@ export default function SuperAdminOrganizersPage() {
       accessor: (user: User) => (
         <div className="flex justify-end gap-1">
           {user.status === "ACTIVE" && (
-            <button onClick={() => handleLock(user.id)} className="cursor-pointer rounded-lg border border-gray-100 p-1.5 text-rose-600 transition-colors hover:border-rose-200 hover:bg-rose-50" title="Khóa tài khoản">
+            <button onClick={() => setLockTarget(user)} className="cursor-pointer rounded-lg border border-gray-100 p-1.5 text-rose-600 transition-colors hover:border-rose-200 hover:bg-rose-50" title="Khóa tài khoản">
               <Lock className="h-3.5 w-3.5" />
             </button>
           )}
@@ -162,6 +169,19 @@ export default function SuperAdminOrganizersPage() {
             </div>
           </form>
         </div>
+      )}
+
+      {lockTarget && (
+        <ConfirmModal
+          isOpen={!!lockTarget}
+          title="Khóa tài khoản Ban tổ chức"
+          description={`Tài khoản "${lockTarget.fullName}" sẽ không thể đăng nhập cho đến khi được mở khóa lại. Bạn có chắc muốn khóa?`}
+          confirmText={isLocking ? "Đang khóa..." : "Khóa tài khoản"}
+          cancelText="Hủy"
+          type="danger"
+          onConfirm={() => void handleLock()}
+          onCancel={() => setLockTarget(null)}
+        />
       )}
 
       {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
