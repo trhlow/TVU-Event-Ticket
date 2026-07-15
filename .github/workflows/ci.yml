@@ -12,7 +12,7 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.filter.outputs.changes }}
+      matrix: ${{ steps.backend-matrix.outputs.matrix }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
@@ -37,6 +37,11 @@ jobs:
               - 'backend/notification-service/**'
             frontend:
               - 'frontend/**'
+      - name: Build backend matrix
+        id: backend-matrix
+        run: |
+          matrix="$(echo '${{ steps.filter.outputs.changes }}' | jq -c '[.[] | select(. != "frontend")]')"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   build:
     needs: changes
