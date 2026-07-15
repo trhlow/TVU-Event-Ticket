@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Info, Save, ShieldAlert, User } from "lucide-react";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import Toast from "../../components/common/Toast";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import { authService } from "../../services/authService";
 
 export default function CompleteProfilePage() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [mssv, setMssv] = useState(currentUser.mssv || "");
   const [className, setClassName] = useState(currentUser.className || "");
   const [errorMsg, setErrorMsg] = useState("");

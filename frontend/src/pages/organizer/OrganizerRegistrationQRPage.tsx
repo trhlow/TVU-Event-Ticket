@@ -4,13 +4,13 @@ import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react
 import Breadcrumb from "../../components/common/Breadcrumb";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { getEvents } from "../../data/mockEvents";
 import { formatDateTime } from "../../utils/formatDate";
 
 export default function OrganizerRegistrationQRPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const events = getEvents().filter((event) => event.clubId === currentUser.clubId);
   const [selectedEventId, setSelectedEventId] = useState(eventId || events[0]?.id || "");
   const [toastMsg, setToastMsg] = useState("");

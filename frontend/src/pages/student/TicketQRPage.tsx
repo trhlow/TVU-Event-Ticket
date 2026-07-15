@@ -4,7 +4,7 @@ import { Calendar, ChevronLeft, Mail, MapPin, UserRound } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
@@ -33,7 +33,7 @@ function fallbackEvent(ticket: Ticket): Event {
 
 export default function TicketQRPage() {
   const { ticketId } = useParams<{ ticketId: string }>();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
   const [toastMsg, setToastMsg] = useState("");

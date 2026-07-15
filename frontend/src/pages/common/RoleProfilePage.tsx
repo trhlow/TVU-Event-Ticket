@@ -1,6 +1,6 @@
 import { Building2, Info, Mail, ShieldCheck, UserRound } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
 
 interface RoleProfilePageProps {
@@ -8,7 +8,7 @@ interface RoleProfilePageProps {
 }
 
 export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
-  const user = getCurrentUser();
+  const user = requireCurrentUser();
   const isAdmin = scope === "admin";
 
   return (

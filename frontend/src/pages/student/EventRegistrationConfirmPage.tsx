@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Calendar, MapPin, CheckSquare, Square, ArrowLeft, Send } from 'lucide-react';
-import { getCurrentUser } from '../../state/authSession';
+import { requireCurrentUser } from '../../state/authSession';
 import { formatDateTime } from '../../utils/formatDate';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import Toast from '../../components/common/Toast';
@@ -12,7 +12,7 @@ import { Event } from '../../types/event';
 export default function EventRegistrationConfirmPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
 
   const [committed, setCommitted] = useState(false);
   const [note, setNote] = useState('');

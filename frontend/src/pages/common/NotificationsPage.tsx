@@ -1,6 +1,6 @@
 import { Bell } from "lucide-react";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 
 type NotificationScope = "student" | "organizer" | "admin";
 
@@ -27,7 +27,7 @@ const notificationCopy: Record<NotificationScope, { title: string; description: 
 };
 
 export default function NotificationsPage({ scope }: NotificationsPageProps) {
-  const user = getCurrentUser();
+  const user = requireCurrentUser();
   const page = notificationCopy[scope];
 
   return (

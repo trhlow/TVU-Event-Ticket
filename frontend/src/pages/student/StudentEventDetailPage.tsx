@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Info, MapPin, ShieldAlert, Ticket } from "lucide-react";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import EventBanner from "../../components/events/EventBanner";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -15,7 +15,7 @@ import { Reservation } from "../../types/reservation";
 export default function StudentEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [event, setEvent] = useState<Event | undefined>();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [toastMsg, setToastMsg] = useState("");

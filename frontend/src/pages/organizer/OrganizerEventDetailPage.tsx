@@ -11,7 +11,7 @@ import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { ticketService } from "../../services/ticketService";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";
@@ -20,7 +20,7 @@ const BASE_BREADCRUMB = [{ label: "Ban tổ chức", path: "/organizer" }, { lab
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [event, setEvent] = useState<Event | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<IssuedTicket[]>([]);

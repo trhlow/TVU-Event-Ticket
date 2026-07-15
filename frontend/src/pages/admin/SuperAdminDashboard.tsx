@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Award, Calendar, Layers, ShieldCheck, Ticket, Users, Activity } from "lucide-react";
+import { Award, Calendar, Layers, ShieldCheck, Ticket, Activity } from "lucide-react";
 import BarChartCard from "../../components/charts/BarChartCard";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
@@ -11,7 +11,6 @@ import { mockClubs } from "../../data/mockClubs";
 import { getEvents } from "../../data/mockEvents";
 import { getReservations } from "../../data/mockReservations";
 import { getTickets } from "../../data/mockTickets";
-import { mockUsers } from "../../data/mockUsers";
 import { formatDateTime } from "../../utils/formatDate";
 import { apiConfig } from "../../services/apiClient";
 import { statisticsService } from "../../services/statisticsService";
@@ -82,9 +81,8 @@ export default function SuperAdminDashboard() {
           <div className="flex justify-end">
             <DemoDataBadge />
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <StatisticCard label="Tổng CLB" value={mockClubs.length} icon={Layers} />
-            <StatisticCard label="Tài khoản Ban tổ chức" value={mockUsers.filter((user) => user.role === "ORGANIZER").length} icon={Users} color="success" />
             <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} color="warning" />
             <StatisticCard label="Sinh viên tham gia" value={reservations.filter((item) => item.status === "APPROVED").length} icon={Award} />
             <StatisticCard label="Vé phát hành" value={tickets.length} icon={Ticket} color="success" />

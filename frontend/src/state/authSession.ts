@@ -3,8 +3,15 @@ import { User } from '../types/user';
 let currentUser: User | null = null;
 let authenticated = false;
 
-export function getCurrentUser(): User {
-  return currentUser as User;
+export function getCurrentUser(): User | null {
+  return currentUser;
+}
+
+export function requireCurrentUser(): User {
+  if (!currentUser) {
+    throw new Error("Authenticated user is required for this route.");
+  }
+  return currentUser;
 }
 
 export function isAuthenticated(): boolean {

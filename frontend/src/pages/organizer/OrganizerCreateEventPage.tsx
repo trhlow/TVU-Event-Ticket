@@ -3,13 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EventForm from '../../components/events/EventForm';
 import Toast from '../../components/common/Toast';
-import { getCurrentUser } from '../../state/authSession';
+import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
 export default function OrganizerCreateEventPage() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [toastMsg, setToastMsg] = useState('');
 
   const handleSubmit = async (data: Partial<Event>) => {

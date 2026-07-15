@@ -6,7 +6,7 @@ import LineChartCard from "../../components/charts/LineChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { ticketService } from "../../services/ticketService";
@@ -16,7 +16,7 @@ import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerDashboard() {
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [events, setEvents] = useState<Event[]>([]);
   const [pendingReservations, setPendingReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<IssuedTicket[]>([]);

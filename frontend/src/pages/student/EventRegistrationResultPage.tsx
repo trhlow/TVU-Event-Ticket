@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { CheckCircle2, Calendar, MapPin, ListChecks } from "lucide-react";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { registrationService } from "../../services/registrationService";
 import { formatDateTime } from "../../utils/formatDate";
 import PageHeader from "../../components/common/PageHeader";
@@ -9,7 +9,7 @@ import { Reservation } from "../../types/reservation";
 
 export default function EventRegistrationResultPage() {
   const { reservationId } = useParams<{ reservationId: string }>();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [reservation, setReservation] = useState<Reservation | null | undefined>(undefined);
 
   useEffect(() => {

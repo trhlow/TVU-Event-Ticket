@@ -5,7 +5,7 @@ import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import Toast from '../../components/common/Toast';
 import EventForm from '../../components/events/EventForm';
-import { getCurrentUser } from '../../state/authSession';
+import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
@@ -14,7 +14,7 @@ const BREADCRUMB_BASE = [{ label: 'Ban tổ chức', path: '/organizer' }, { lab
 export default function OrganizerEditEventPage() {
   const navigate = useNavigate();
   const { eventId } = useParams();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [event, setEvent] = useState<Event | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState('');

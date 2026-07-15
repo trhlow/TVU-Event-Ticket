@@ -13,6 +13,7 @@ interface AuthProfileResponse {
   displayName: string;
   role: User["role"];
   clubId?: string | null;
+  clubName?: string | null;
   mssv?: string | null;
   classCode?: string | null;
   profileComplete: boolean;
@@ -34,6 +35,7 @@ function mapProfileToUser(profile: AuthProfileResponse): User {
     email: profile.email,
     role: profile.role,
     clubId: profile.clubId || undefined,
+    clubName: profile.clubName || undefined,
     mssv: profile.mssv || undefined,
     className: profile.classCode || undefined,
     profileComplete: profile.profileComplete,

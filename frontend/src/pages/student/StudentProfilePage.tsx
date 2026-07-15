@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { Bookmark, CreditCard, Info, Mail, Save, ShieldAlert, User } from 'lucide-react';
-import { getCurrentUser } from '../../state/authSession';
+import { requireCurrentUser } from '../../state/authSession';
 import { authService } from '../../services/authService';
 import Toast from '../../components/common/Toast';
 import PageHeader from '../../components/common/PageHeader';
 
 export default function StudentProfilePage() {
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
 
   const [mssv, setMssv] = useState(currentUser.mssv || '');
   const [className, setClassName] = useState(currentUser.className || '');

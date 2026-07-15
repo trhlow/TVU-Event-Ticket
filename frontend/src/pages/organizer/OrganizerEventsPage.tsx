@@ -7,14 +7,14 @@ import DataTable from "../../components/common/DataTable";
 import EventForm from "../../components/events/EventForm";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
 import { Event } from "../../types/event";
 
 export default function OrganizerEventsPage() {
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [events, setEvents] = useState<Event[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | undefined>(undefined);

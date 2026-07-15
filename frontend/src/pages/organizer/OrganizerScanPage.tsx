@@ -3,14 +3,14 @@ import { AlertCircle, CheckCircle2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import Toast from "../../components/common/Toast";
 import QRScannerPanel from "../../components/tickets/QRScannerPanel";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { Event } from "../../types/event";
 import { Ticket } from "../../types/ticket";
 
 export default function OrganizerScanPage() {
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [events, setEvents] = useState<Event[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [cameraPermission, setCameraPermission] = useState<"idle" | "granted" | "denied">("idle");

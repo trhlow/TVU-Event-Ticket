@@ -4,7 +4,7 @@ import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
@@ -16,7 +16,7 @@ interface EnhancedTicket extends Ticket {
 }
 
 export default function OrganizerTicketsPage() {
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [events, setEvents] = useState<Event[]>([]);
   const [tickets, setTickets] = useState<EnhancedTicket[]>([]);
   const [search, setSearch] = useState("");

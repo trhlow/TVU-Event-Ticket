@@ -24,7 +24,7 @@ export const appEnv: AppEnvironment =
 export const isProductionEnv = appEnv === "production";
 
 export const useDemoData = import.meta.env.VITE_USE_DEMO_DATA === "true";
-export const enableMockFallback = useDemoData || import.meta.env.VITE_ENABLE_MOCK_FALLBACK === "true";
+export const legacyMockFallbackConfigured = import.meta.env.VITE_ENABLE_MOCK_FALLBACK === "true";
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 
 export function validateAppEnv(): EnvValidationResult {
@@ -53,9 +53,9 @@ export function validateAppEnv(): EnvValidationResult {
     );
   }
 
-  if (isProductionEnv && enableMockFallback) {
+  if (isProductionEnv && legacyMockFallbackConfigured) {
     warnings.push(
-      "VITE_ENABLE_MOCK_FALLBACK=true đang bật trong cấu hình production. Lỗi API thật sẽ bị che giấu bởi dữ liệu mock thay vì hiển thị lỗi thật cho người dùng.",
+      "VITE_ENABLE_MOCK_FALLBACK=true đang bật trong cấu hình production. Cờ legacy này không còn bật fallback dữ liệu ở runtime; hãy gỡ khỏi cấu hình để tránh hiểu nhầm khi vận hành.",
     );
   }
 

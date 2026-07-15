@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ListChecks } from "lucide-react";
-import { getCurrentUser } from "../../state/authSession";
+import { requireCurrentUser } from "../../state/authSession";
 import StatusBadge from "../../components/common/StatusBadge";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
@@ -12,7 +12,7 @@ import { registrationService } from "../../services/registrationService";
 const TABS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 
 export default function MyRegistrationsPage() {
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("ALL");
   const [toastMsg, setToastMsg] = useState("");
