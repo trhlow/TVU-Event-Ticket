@@ -1,6 +1,13 @@
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { getCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
+
+const notificationsPathByRole: Record<string, string> = {
+  SINH_VIEN: "/student/notifications",
+  ORGANIZER: "/organizer/notifications",
+  SUPER_ADMIN: "/admin/notifications",
+};
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -18,6 +25,7 @@ export default function Header({
   showWorkspaceTitle = true,
 }: HeaderProps) {
   const currentUser = getCurrentUser();
+  const navigate = useNavigate();
 
   if (!currentUser) return null;
 
@@ -58,27 +66,18 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        {currentUser.role === "SUPER_ADMIN" && (
-          <label className="hidden h-10 w-64 items-center gap-2 rounded-xl border border-blue-100 bg-white/92 px-3 shadow-sm shadow-blue-950/[0.03] transition focus-within:border-brand-300 focus-within:ring-4 focus-within:ring-blue-100 lg:flex">
-            <Search className="h-4 w-4 text-blue-500" />
-            <input
-              className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-800 outline-none placeholder:text-slate-400"
-              placeholder="Tìm kiếm..."
-              aria-label="Tìm kiếm nhanh"
-            />
-          </label>
-        )}
         <button
-          className="btn-press relative grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm shadow-blue-950/[0.03] hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
+          type="button"
+          onClick={() => navigate(notificationsPathByRole[currentUser.role] || "/notifications")}
+          className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm shadow-blue-950/[0.03] hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
           aria-label="Thông báo"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
         </button>
         <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm shadow-blue-950/[0.03] sm:flex">
           <img
             src="/tvu_logo_1783065060265.jpg"
-            alt="Ảnh đại diện"
+            alt=""
             className="h-8 w-8 rounded-lg border border-blue-50 bg-white object-cover"
           />
           <div className="max-w-40">

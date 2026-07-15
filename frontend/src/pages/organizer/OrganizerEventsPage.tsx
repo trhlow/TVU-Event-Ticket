@@ -150,7 +150,7 @@ export default function OrganizerEventsPage() {
             initialData={editingEvent}
             clubId={currentUser.clubId || ""}
             clubName={currentUser.clubName || "CLB"}
-            onSubmit={(data) => void handleFormSubmit(data)}
+            onSubmit={handleFormSubmit}
             onCancel={() => {
               setIsFormOpen(false);
               setEditingEvent(undefined);

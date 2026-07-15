@@ -6,7 +6,7 @@ interface EventFormProps {
   initialData?: Event;
   clubId: string;
   clubName: string;
-  onSubmit: (data: Partial<Event>) => void;
+  onSubmit: (data: Partial<Event>) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -32,6 +32,7 @@ export default function EventForm({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -65,15 +66,19 @@ export default function EventForm({
     }));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      onSubmit({
+    if (!validateForm()) return;
+    setIsSubmitting(true);
+    try {
+      await onSubmit({
         ...formData,
         clubId,
         clubName,
         remainingTickets: initialData ? initialData.remainingTickets : formData.capacity,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -273,16 +278,18 @@ export default function EventForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 cursor-pointer"
+          disabled={isSubmitting}
+          className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
           Hủy bỏ
         </button>
         <button
           type="submit"
-          className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 cursor-pointer"
+          disabled={isSubmitting}
+          className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Save className="w-4 h-4" />
-          Lưu sự kiện
+          {isSubmitting ? "Đang lưu..." : "Lưu sự kiện"}
         </button>
       </div>
     </form>

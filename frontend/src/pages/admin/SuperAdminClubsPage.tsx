@@ -13,6 +13,7 @@ export default function SuperAdminClubsPage() {
   const [toastMsg, setToastMsg] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: "", description: "" });
+  const [isCreating, setIsCreating] = useState(false);
 
   const loadClubs = async () => {
     try {
@@ -40,7 +41,8 @@ export default function SuperAdminClubsPage() {
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.name.trim()) return;
+    if (!form.name.trim() || isCreating) return;
+    setIsCreating(true);
     try {
       await clubService.create({ name: form.name.trim(), description: form.description.trim() || undefined });
       setCreateOpen(false);
@@ -49,6 +51,8 @@ export default function SuperAdminClubsPage() {
       await loadClubs();
     } catch (error) {
       setToastMsg(error instanceof Error ? error.message : "Không thể tạo CLB.");
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -112,8 +116,8 @@ export default function SuperAdminClubsPage() {
               <textarea className="tvu-input min-h-24" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Mô tả" />
             </div>
             <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button type="button" className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setCreateOpen(false)}>Hủy</button>
-              <button type="submit" className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">Tạo CLB</button>
+              <button type="button" disabled={isCreating} className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setCreateOpen(false)}>Hủy</button>
+              <button type="submit" disabled={isCreating} className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "Đang tạo..." : "Tạo CLB"}</button>
             </div>
           </form>
         </div>
