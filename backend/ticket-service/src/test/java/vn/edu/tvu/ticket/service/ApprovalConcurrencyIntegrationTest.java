@@ -36,7 +36,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(properties = "spring.task.scheduling.enabled=false")
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class ApprovalConcurrencyIntegrationTest {
 
     @Container

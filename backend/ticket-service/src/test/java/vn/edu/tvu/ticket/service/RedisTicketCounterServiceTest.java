@@ -15,7 +15,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Testcontainers
+@Testcontainers(disabledWithoutDocker = true)
 class RedisTicketCounterServiceTest {
 
     @Container
@@ -36,7 +36,9 @@ class RedisTicketCounterServiceTest {
 
     @AfterAll
     static void tearDown() {
-        connectionFactory.destroy();
+        if (connectionFactory != null) {
+            connectionFactory.destroy();
+        }
     }
 
     @Test
