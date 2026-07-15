@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
 import DemoDataBadge from "../../components/common/DemoDataBadge";
@@ -72,15 +72,16 @@ export default function SuperAdminUsersPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Danh bạ người dùng" }]} />
-
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">Danh Sách Người Dùng Hệ Thống</h2>
-        <p className="text-xs text-gray-500 font-semibold">
-          Tra cứu danh sách người dùng. Thay đổi vai trò tài khoản Ban tổ chức thực hiện qua trang{" "}
-          <span className="font-bold text-gray-700">Quản lý Ban tổ chức</span>, không thực hiện trên trang này.
-        </p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Danh bạ người dùng" }]}
+        title="Danh sách người dùng hệ thống"
+        description={
+          <>
+            Tra cứu danh sách người dùng. Thay đổi vai trò tài khoản Ban tổ chức thực hiện qua trang{" "}
+            <span className="font-bold text-slate-700">Quản lý Ban tổ chức</span>, không thực hiện trên trang này.
+          </>
+        }
+      />
 
       {users === null ? (
         <BackendPendingNotice

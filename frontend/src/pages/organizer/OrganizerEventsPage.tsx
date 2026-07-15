@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { BarChart3, CheckSquare, Edit2, Eye, Plus, QrCode, Trash2 } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import DataTable from "../../components/common/DataTable";
 import EventForm from "../../components/events/EventForm";
@@ -27,7 +27,7 @@ export default function OrganizerEventsPage() {
     try {
       setEvents(await eventService.listByClubRemote(currentUser.clubId || ""));
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Khong the tai danh sach su kien.");
+      setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.");
     } finally {
       setIsLoading(false);
     }
@@ -51,17 +51,17 @@ export default function OrganizerEventsPage() {
     try {
       if (editingEvent) {
         await eventService.update(editingEvent.id, data);
-        setToastMsg("Cap nhat su kien thanh cong.");
+        setToastMsg("Cập nhật sự kiện thành công.");
       } else {
         const created = await eventService.create(data);
         await ticketService.initializeInventory(created.id).catch(() => undefined);
-        setToastMsg("Tao su kien moi thanh cong. Ticket inventory da duoc khoi tao neu backend cho phep.");
+        setToastMsg("Đã lưu sự kiện mới dưới dạng nháp. Khởi tạo kho vé nếu backend cho phép.");
       }
       setIsFormOpen(false);
       setEditingEvent(undefined);
       await loadEvents();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Khong the luu su kien.");
+      setToastMsg(error instanceof Error ? error.message : "Không thể lưu sự kiện.");
     }
   };
 
@@ -69,56 +69,56 @@ export default function OrganizerEventsPage() {
     if (!deletingEventId) return;
     try {
       await eventService.delete(deletingEventId);
-      setToastMsg("Da xoa su kien.");
+      setToastMsg("Đã xóa sự kiện.");
       setDeletingEventId(null);
       await loadEvents();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Chi co the xoa su kien DRAFT theo backend.");
+      setToastMsg(error instanceof Error ? error.message : "Chỉ có thể xóa sự kiện ở trạng thái nháp (DRAFT) theo quy định backend.");
     }
   };
 
   const columns = [
     {
-      header: "Ten su kien / The loai",
+      header: "Tên sự kiện / Thể loại",
       accessor: (event: Event) => (
         <div className="text-left font-semibold">
-          <span className="block font-bold text-gray-950">{event.title}</span>
-          <span className="mt-1 block text-[10px] font-extrabold uppercase tracking-wider text-gray-400">{event.category}</span>
+          <span className="block font-bold text-slate-950">{event.title}</span>
+          <span className="mt-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{event.category}</span>
         </div>
       ),
     },
     {
-      header: "Thoi gian bat dau",
-      accessor: (event: Event) => <span className="text-[11px] font-semibold text-gray-700">{formatDateTime(event.startAt)}</span>,
+      header: "Thời gian bắt đầu",
+      accessor: (event: Event) => <span className="text-[11px] font-semibold text-slate-700">{formatDateTime(event.startAt)}</span>,
     },
     {
-      header: "Ve con / Suc chua",
-      accessor: (event: Event) => <span className="font-mono font-bold text-gray-900">{event.remainingTickets} / {event.capacity}</span>,
+      header: "Vé còn / Sức chứa",
+      accessor: (event: Event) => <span className="font-mono font-bold text-slate-900">{event.remainingTickets} / {event.capacity}</span>,
     },
     {
-      header: "Trang thai",
+      header: "Trạng thái",
       accessor: (event: Event) => <StatusBadge type="event" status={event.status} />,
     },
     {
-      header: "Hanh dong",
+      header: "Hành động",
       accessor: (event: Event) => (
         <div className="flex flex-wrap justify-end gap-1">
-          <Link to={`/organizer/events/${event.id}`} className="rounded-lg border border-gray-100 p-1.5 text-gray-600 transition-colors hover:border-gray-200 hover:bg-gray-50" title="Xem chi tiet">
+          <Link to={`/organizer/events/${event.id}`} className="rounded-lg border border-slate-100 p-1.5 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50" title="Xem chi tiết">
             <Eye className="h-3.5 w-3.5" />
           </Link>
-          <button onClick={() => handleEditClick(event)} className="cursor-pointer rounded-lg border border-gray-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chinh sua">
+          <button onClick={() => handleEditClick(event)} className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chỉnh sửa">
             <Edit2 className="h-3.5 w-3.5" />
           </button>
-          <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-lg border border-gray-100 p-1.5 text-sky-700 transition-colors hover:border-sky-200 hover:bg-sky-50" title="QR dang ky">
+          <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-lg border border-slate-100 p-1.5 text-sky-700 transition-colors hover:border-sky-200 hover:bg-sky-50" title="Liên kết đăng ký">
             <QrCode className="h-3.5 w-3.5" />
           </Link>
-          <Link to={`/organizer/events/${event.id}/registrations`} className="rounded-lg border border-gray-100 p-1.5 text-emerald-700 transition-colors hover:border-emerald-200 hover:bg-emerald-50" title="Duyet dang ky">
+          <Link to={`/organizer/events/${event.id}/registrations`} className="rounded-lg border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50" title="Duyệt đăng ký">
             <CheckSquare className="h-3.5 w-3.5" />
           </Link>
-          <Link to={`/organizer/events/${event.id}/statistics`} className="rounded-lg border border-gray-100 p-1.5 text-indigo-700 transition-colors hover:border-indigo-200 hover:bg-indigo-50" title="Thong ke">
+          <Link to={`/organizer/events/${event.id}/statistics`} className="rounded-lg border border-slate-100 p-1.5 text-secondary-700 transition-colors hover:border-secondary-200 hover:bg-secondary-50" title="Thống kê">
             <BarChart3 className="h-3.5 w-3.5" />
           </Link>
-          <button onClick={() => setDeletingEventId(event.id)} className="cursor-pointer rounded-lg border border-gray-100 p-1.5 text-rose-600 transition-colors hover:border-rose-200 hover:bg-rose-50" title="Xoa su kien">
+          <button onClick={() => setDeletingEventId(event.id)} className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-danger-600 transition-colors hover:border-danger-200 hover:bg-danger-50" title="Xóa sự kiện">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
@@ -128,23 +128,21 @@ export default function OrganizerEventsPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Ban to chuc", path: "/organizer" }, { label: "Quan ly su kien" }]} />
-
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div className="space-y-1">
-          <h2 className="text-xl font-black tracking-tight text-gray-950">Quan ly su kien cau lac bo</h2>
-          <p className="text-xs font-semibold text-gray-500">Du lieu su kien lay tu /events/mine qua gateway.</p>
-        </div>
-
-        {!isFormOpen && (
-          <button
-            onClick={handleCreateNew}
-            className="flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
-          >
-            <Plus className="h-4 w-4" /> Tao su kien moi
-          </button>
-        )}
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý sự kiện" }]}
+        title="Quản lý sự kiện câu lạc bộ"
+        description="Dữ liệu sự kiện lấy từ /events/mine qua API Gateway."
+        actions={
+          !isFormOpen && (
+            <button
+              onClick={handleCreateNew}
+              className="btn-press flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
+            >
+              <Plus className="h-4 w-4" aria-hidden="true" /> Tạo sự kiện mới
+            </button>
+          )
+        }
+      />
 
       {isFormOpen ? (
         <div className="animate-fade-in">
@@ -160,11 +158,11 @@ export default function OrganizerEventsPage() {
           />
         </div>
       ) : (
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="enterprise-card p-5">
           {isLoading ? (
-            <div className="py-12 text-center text-sm font-bold text-gray-500">Dang tai su kien...</div>
+            <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải sự kiện...</div>
           ) : (
-            <DataTable data={events} columns={columns} searchPlaceholder="Tim kiem ten su kien..." searchField="title" />
+            <DataTable data={events} columns={columns} searchPlaceholder="Tìm kiếm tên sự kiện..." searchField="title" />
           )}
         </div>
       )}
@@ -172,12 +170,12 @@ export default function OrganizerEventsPage() {
       {deletingEventId && (
         <ConfirmModal
           isOpen={!!deletingEventId}
-          title="Xac nhan xoa su kien"
-          message="Backend chi cho phep xoa su kien DRAFT. Thao tac se bi tu choi neu su kien da OPEN/CLOSED."
+          title="Xác nhận xóa sự kiện"
+          message="Backend chỉ cho phép xóa sự kiện ở trạng thái nháp (DRAFT). Thao tác sẽ bị từ chối nếu sự kiện đã OPEN/CLOSED."
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeletingEventId(null)}
-          confirmText="Xoa su kien"
-          cancelText="Khong"
+          confirmText="Xóa sự kiện"
+          cancelText="Không"
           type="danger"
         />
       )}

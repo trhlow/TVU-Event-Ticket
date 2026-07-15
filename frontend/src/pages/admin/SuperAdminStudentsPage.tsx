@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Search, CheckCircle2, XCircle } from 'lucide-react';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import PageHeader from '../../components/common/PageHeader';
 import DataTable from '../../components/common/DataTable';
 import StatusBadge from '../../components/common/StatusBadge';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
@@ -80,12 +80,11 @@ export default function SuperAdminStudentsPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý sinh viên' }]} />
-
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">Quản Lý Tài Khoản Sinh Viên</h2>
-        <p className="text-xs text-gray-500 font-semibold font-sans">Tra cứu thông tin và giám sát hồ sơ cá nhân của sinh viên trong hệ thống.</p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý sinh viên' }]}
+        title="Quản lý tài khoản sinh viên"
+        description="Tra cứu thông tin và giám sát hồ sơ cá nhân của sinh viên trong hệ thống."
+      />
 
       {students === null ? (
         <BackendPendingNotice

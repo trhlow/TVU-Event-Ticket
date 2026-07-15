@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import DataTable from "../../components/common/DataTable";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
 import DemoDataBadge from "../../components/common/DemoDataBadge";
 import { formatDateTime } from "../../utils/formatDate";
@@ -45,38 +45,35 @@ export default function SuperAdminLogsPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Nhật ký hệ thống" }]} />
-
-      <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-        <div className="space-y-1">
-          <h1 className="tvu-page-title text-2xl">Nhật ký bảo mật và hoạt động</h1>
-          <p className="max-w-3xl text-sm font-semibold leading-6 text-slate-500">
-            Backend hiện ghi audit log cho các thao tác quản trị nhưng chưa expose API đọc log cho frontend.
-          </p>
-        </div>
-        {available && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
-            <label className="block">
-              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Vai trò</span>
-              <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="tvu-input">
-                <option value="ALL">Tất cả</option>
-                <option value="SINH_VIEN">Sinh viên</option>
-                <option value="ORGANIZER">Ban tổ chức</option>
-                <option value="SUPER_ADMIN">Super Admin</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động</span>
-              <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="tvu-input">
-                <option value="ALL">Tất cả</option>
-                <option value="ticket">Ticket</option>
-                <option value="event">Event</option>
-                <option value="auth">Auth</option>
-              </select>
-            </label>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Nhật ký hệ thống" }]}
+        title="Nhật ký bảo mật và hoạt động"
+        description="Backend hiện ghi audit log cho các thao tác quản trị nhưng chưa expose API đọc log cho frontend."
+        actions={
+          available && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:w-[460px]">
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Vai trò</span>
+                <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)} className="tvu-input">
+                  <option value="ALL">Tất cả</option>
+                  <option value="SINH_VIEN">Sinh viên</option>
+                  <option value="ORGANIZER">Ban tổ chức</option>
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động</span>
+                <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="tvu-input">
+                  <option value="ALL">Tất cả</option>
+                  <option value="ticket">Ticket</option>
+                  <option value="event">Event</option>
+                  <option value="auth">Auth</option>
+                </select>
+              </label>
+            </div>
+          )
+        }
+      />
 
       {!available ? (
         <BackendPendingNotice

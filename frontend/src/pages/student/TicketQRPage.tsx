@@ -15,12 +15,12 @@ function fallbackEvent(ticket: Ticket): Event {
   return {
     id: ticket.eventId,
     clubId: "",
-    clubName: "CLB phu trach",
-    title: ticket.eventId,
+    clubName: "Chưa có thông tin CLB",
+    title: "Sự kiện đang cập nhật thông tin",
     description: "",
-    category: "Su kien",
+    category: "Sự kiện",
     bannerUrl: "",
-    location: "Dia diem su kien",
+    location: "Đang cập nhật địa điểm",
     startAt: ticket.issuedAt,
     endAt: ticket.issuedAt,
     registrationOpenAt: ticket.issuedAt,
@@ -60,7 +60,7 @@ export default function TicketQRPage() {
           if (mounted) setEvent(currentEvent || fallbackEvent(currentTicket));
         }
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai thong tin ve.");
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải thông tin vé.");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -75,8 +75,8 @@ export default function TicketQRPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[{ label: "Sinh vien", path: "/student" }, { label: "Ve cua toi", path: "/student/tickets" }, { label: "Chi tiet ve" }]} />
-        <div className="enterprise-card mx-auto max-w-md p-8 text-center text-sm font-bold text-slate-500">Dang tai thong tin ve...</div>
+        <Breadcrumb items={[{ label: "Sinh viên", path: "/student" }, { label: "Vé của tôi", path: "/student/tickets" }, { label: "Chi tiết vé" }]} />
+        <div className="enterprise-card mx-auto max-w-md p-8 text-center text-sm font-bold text-slate-500">Đang tải thông tin vé...</div>
       </div>
     );
   }
@@ -84,11 +84,11 @@ export default function TicketQRPage() {
   if (!ticket || !event) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[{ label: "Sinh vien", path: "/student" }, { label: "Ve cua toi", path: "/student/tickets" }, { label: "Chi tiet ve" }]} />
+        <Breadcrumb items={[{ label: "Sinh viên", path: "/student" }, { label: "Vé của tôi", path: "/student/tickets" }, { label: "Chi tiết vé" }]} />
         <div className="enterprise-card mx-auto max-w-md p-8 text-center">
-          <p className="text-sm font-bold text-slate-900">Ve khong ton tai hoac chua thuoc tai khoan hien tai.</p>
+          <p className="text-sm font-bold text-slate-900">Vé không tồn tại hoặc chưa thuộc tài khoản hiện tại.</p>
           <Link to="/student/tickets" className="mt-3 inline-block text-sm font-extrabold text-brand-700">
-            Quay lai ve cua toi
+            Quay lại vé của tôi
           </Link>
         </div>
         {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
@@ -100,19 +100,19 @@ export default function TicketQRPage() {
     <div className="space-y-6 text-left">
       <Breadcrumb
         items={[
-          { label: "Sinh vien", path: "/student" },
-          { label: "Ve cua toi", path: "/student/tickets" },
+          { label: "Sinh viên", path: "/student" },
+          { label: "Vé của tôi", path: "/student/tickets" },
           { label: ticket.ticketCode },
         ]}
       />
 
       <div className="flex items-center gap-3">
-        <Link to="/student/tickets" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600">
-          <ChevronLeft className="h-5 w-5" />
+        <Link to="/student/tickets" className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </Link>
         <div>
-          <h1 className="tvu-page-title text-xl">Chi tiet ve QR dien tu</h1>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Ve chi co QR khi backend da cap signed QR payload hop le.</p>
+          <h1 className="tvu-page-title text-xl">Chi tiết vé QR điện tử</h1>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Vé chỉ có QR khi backend đã cấp signed QR payload hợp lệ.</p>
         </div>
       </div>
 
@@ -120,7 +120,7 @@ export default function TicketQRPage() {
         <QRDisplayCard
           ticket={ticket}
           event={event}
-          onDownload={() => setToastMsg("Backend chua cung cap file ve QR cho sinh vien.")}
+          onDownload={() => setToastMsg("Backend chưa cung cấp file vé QR cho sinh viên.")}
           onPrint={() => window.print()}
         />
 
@@ -133,12 +133,12 @@ export default function TicketQRPage() {
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {[
-              [UserRound, "Ho ten sinh vien", currentUser.fullName],
-              [UserRound, "MSSV", currentUser.mssv || "Chua cap nhat"],
+              [UserRound, "Họ tên sinh viên", currentUser.fullName],
+              [UserRound, "MSSV", currentUser.mssv || "Chưa cập nhật"],
               [Mail, "Email", currentUser.email],
-              [Calendar, "Thoi gian", formatDateTime(event.startAt)],
-              [MapPin, "Dia diem", event.location],
-              [Calendar, "Ngay cap ve", formatDateTime(ticket.issuedAt)],
+              [Calendar, "Thời gian", formatDateTime(event.startAt)],
+              [MapPin, "Địa điểm", event.location],
+              [Calendar, "Ngày cấp vé", formatDateTime(ticket.issuedAt)],
             ].map(([Icon, label, value]) => (
               <div key={label as string} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
                 {React.createElement(Icon as typeof UserRound, { className: "h-4 w-4 text-brand-700" })}
@@ -149,11 +149,11 @@ export default function TicketQRPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link to="/student/registrations" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-              Quay lai dang ky cua toi
+            <Link to="/student/registrations" className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
+              Quay lại đăng ký của tôi
             </Link>
-            <Link to="/student/tickets" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
-              Xem tat ca ve
+            <Link to="/student/tickets" className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
+              Xem tất cả vé
             </Link>
           </div>
         </section>

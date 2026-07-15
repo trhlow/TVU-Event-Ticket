@@ -77,7 +77,7 @@ export default function Header({
         </button>
         <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm shadow-blue-950/[0.03] sm:flex">
           <img
-            src="/src/assets/images/tvu_logo_1783065060265.jpg"
+            src="/tvu_logo_1783065060265.jpg"
             alt="Ảnh đại diện"
             className="h-8 w-8 rounded-lg border border-blue-50 bg-white object-cover"
           />

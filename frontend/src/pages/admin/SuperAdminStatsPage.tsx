@@ -4,7 +4,7 @@ import { getEvents } from '../../data/mockEvents';
 import { getReservations } from '../../data/mockReservations';
 import { getTickets } from '../../data/mockTickets';
 import { mockClubs } from '../../data/mockClubs';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import PageHeader from '../../components/common/PageHeader';
 import BarChartCard from '../../components/charts/BarChartCard';
 import DonutChartCard from '../../components/charts/DonutChartCard';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
@@ -60,12 +60,11 @@ export default function SuperAdminStatsPage() {
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Thống kê toàn trường' }]} />
-
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">Thống Kê Toàn Trường & Phân Tích Hiệu Quả</h2>
-        <p className="text-xs text-gray-500 font-semibold font-sans">Báo cáo tổng hợp số liệu tương tác sự kiện, đăng ký, duyệt phát hành vé và tỷ lệ tham dự của sinh viên Đại học Trà Vinh</p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Thống kê toàn trường' }]}
+        title="Thống kê toàn trường & phân tích hiệu quả"
+        description="Báo cáo tổng hợp số liệu tương tác sự kiện, đăng ký, duyệt phát hành vé và tỷ lệ tham dự của sinh viên Đại học Trà Vinh."
+      />
 
       {!available ? (
         <BackendPendingNotice

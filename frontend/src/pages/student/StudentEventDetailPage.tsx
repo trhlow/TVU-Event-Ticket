@@ -36,7 +36,7 @@ export default function StudentEventDetailPage() {
         setEvent(eventData);
         setReservations(reservationData);
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai chi tiet su kien.");
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -63,14 +63,14 @@ export default function StudentEventDetailPage() {
   };
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm font-bold text-gray-500">Dang tai chi tiet su kien...</div>;
+    return <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải chi tiết sự kiện...</div>;
   }
 
   if (!event) {
     return (
-      <div className="space-y-4 py-12 text-center font-bold text-gray-400">
-        <p>Su kien khong ton tai, da dong, hoac khong con trong cong khai.</p>
-        <Link to="/student/events" className="text-brand-600 hover:underline">Quay lai danh sach</Link>
+      <div className="space-y-4 py-12 text-center font-bold text-slate-400">
+        <p>Sự kiện không tồn tại, đã đóng, hoặc không còn công khai.</p>
+        <Link to="/student/events" className="text-brand-600 hover:underline">Quay lại danh sách</Link>
         {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
@@ -81,25 +81,25 @@ export default function StudentEventDetailPage() {
   return (
     <div className="space-y-6 text-left">
       <Breadcrumb items={[
-        { label: "Sinh vien", path: "/student" },
-        { label: "Su kien", path: "/student/events" },
-        { label: "Chi tiet" },
+        { label: "Sinh viên", path: "/student" },
+        { label: "Sự kiện", path: "/student/events" },
+        { label: "Chi tiết" },
       ]} />
 
       <button
         onClick={() => navigate(-1)}
-        className="flex cursor-pointer items-center gap-1.5 text-xs font-extrabold text-gray-500 hover:text-brand-700"
+        className="flex cursor-pointer items-center gap-1.5 text-xs font-extrabold text-slate-500 hover:text-brand-700"
       >
-        <ArrowLeft className="h-4 w-4" /> Quay lai trang truoc
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Quay lại trang trước
       </button>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-            <div className="relative h-64 overflow-hidden bg-gray-100 sm:h-80">
+          <div className="enterprise-card overflow-hidden">
+            <div className="relative h-64 overflow-hidden bg-slate-100 sm:h-80">
               <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-64 w-full sm:h-80" />
               <div className="absolute left-4 top-4 flex gap-2">
-                <span className="rounded-xl bg-[#111218]/80 px-3 py-1 text-xs font-black text-white backdrop-blur-xs">
+                <span className="rounded-xl bg-slate-950/80 px-3 py-1 text-xs font-black text-white backdrop-blur-xs">
                   {event.category}
                 </span>
                 <StatusBadge type="event" status={event.status} />
@@ -109,61 +109,61 @@ export default function StudentEventDetailPage() {
             <div className="space-y-4 p-6 md:p-8">
               <div className="space-y-1">
                 <span className="block text-xs font-extrabold uppercase tracking-wider text-brand-600">{event.clubName}</span>
-                <h1 className="text-xl font-black leading-tight tracking-tight text-gray-950 md:text-2xl">{event.title}</h1>
+                <h1 className="text-xl font-black leading-tight tracking-tight text-slate-950 md:text-2xl">{event.title}</h1>
               </div>
 
-              <div className="grid grid-cols-1 gap-4 border-y border-gray-100 py-4 text-xs font-semibold text-gray-700 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 border-y border-slate-100 py-4 text-xs font-semibold text-slate-700 sm:grid-cols-2">
                 <div className="flex items-center gap-3">
-                  <Calendar className="h-5 w-5 shrink-0 text-gray-400" />
+                  <Calendar className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
                   <div className="space-y-0.5 text-left">
-                    <span className="block text-[10px] font-bold uppercase leading-none text-gray-400">Thoi gian to chuc</span>
-                    <span className="mt-1 block font-bold text-gray-900">{formatDateTime(event.startAt)}</span>
+                    <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Thời gian tổ chức</span>
+                    <span className="mt-1 block font-bold text-slate-900">{formatDateTime(event.startAt)}</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <MapPin className="h-5 w-5 shrink-0 text-gray-400" />
+                  <MapPin className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
                   <div className="space-y-0.5 text-left">
-                    <span className="block text-[10px] font-bold uppercase leading-none text-gray-400">Dia diem to chuc</span>
-                    <span className="mt-1 block max-w-[220px] truncate font-bold text-gray-900" title={event.location}>{event.location}</span>
+                    <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Địa điểm tổ chức</span>
+                    <span className="mt-1 block max-w-[220px] truncate font-bold text-slate-900" title={event.location}>{event.location}</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3 pt-2">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-950">Mo ta su kien</h3>
-                <p className="whitespace-pre-wrap text-xs font-semibold leading-relaxed text-gray-600">{event.description}</p>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-slate-950">Mô tả sự kiện</h3>
+                <p className="whitespace-pre-wrap text-xs font-semibold leading-relaxed text-slate-600">{event.description}</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="border-b border-gray-100 pb-4">
-              <span className="block text-[10px] font-bold uppercase leading-none text-gray-400">Tinh trang ve</span>
+          <div className="enterprise-card space-y-6 p-6">
+            <div className="border-b border-slate-100 pb-4">
+              <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Tình trạng vé</span>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className={`text-2xl font-black ${isSoldOut ? "text-rose-600" : "text-emerald-600"}`}>
-                  {isSoldOut ? "HET VE" : event.remainingTickets}
+                <span className={`text-2xl font-black ${isSoldOut ? "text-danger-600" : "text-success-600"}`}>
+                  {isSoldOut ? "HẾT VÉ" : event.remainingTickets}
                 </span>
-                {!isSoldOut && <span className="text-xs font-bold text-gray-500">ve kha dung / {event.capacity} cho</span>}
+                {!isSoldOut && <span className="text-xs font-bold text-slate-500">vé khả dụng / {event.capacity} chỗ</span>}
               </div>
             </div>
 
-            <div className="space-y-3.5 text-xs font-semibold text-gray-600">
+            <div className="space-y-3.5 text-xs font-semibold text-slate-600">
               <div className="flex items-start gap-2.5">
-                <Clock className="mt-0.5 h-4 w-4 text-gray-400" />
+                <Clock className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div className="text-left">
-                  <span className="block text-[10px] font-bold uppercase leading-none text-gray-400">Mo dang ky</span>
-                  <span className="mt-1 block font-bold text-gray-900">{formatDateTime(event.registrationOpenAt)}</span>
+                  <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Mở đăng ký</span>
+                  <span className="mt-1 block font-bold text-slate-900">{formatDateTime(event.registrationOpenAt)}</span>
                 </div>
               </div>
 
               <div className="flex items-start gap-2.5">
-                <Clock className="mt-0.5 h-4 w-4 text-gray-400" />
+                <Clock className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
                 <div className="text-left">
-                  <span className="block text-[10px] font-bold uppercase leading-none text-gray-400">Dong dang ky</span>
-                  <span className="mt-1 block font-bold text-gray-900">{formatDateTime(event.registrationCloseAt)}</span>
+                  <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Đóng đăng ký</span>
+                  <span className="mt-1 block font-bold text-slate-900">{formatDateTime(event.registrationCloseAt)}</span>
                 </div>
               </div>
             </div>
@@ -171,22 +171,22 @@ export default function StudentEventDetailPage() {
             <div className="pt-2">
               {existingReservation ? (
                 <div className="space-y-3 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 rounded-xl border bg-gray-50 p-4">
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
                     <StatusBadge type="reservation" status={existingReservation.status} />
-                    <p className="mt-1 text-[11px] font-bold text-gray-500">
+                    <p className="mt-1 text-[11px] font-bold text-slate-500">
                       {existingReservation.status === "PENDING"
-                        ? "Ban da gui dang ky. Vui long cho Ban to chuc CLB kiem duyet."
+                        ? "Bạn đã gửi đăng ký. Vui lòng chờ Ban tổ chức CLB kiểm duyệt."
                         : existingReservation.status === "APPROVED"
-                          ? "Dang ky da duoc duyet. Ve QR se duoc backend/notification cap qua email neu san sang."
-                          : "Yeu cau cua ban da bi tu choi."}
+                          ? "Đăng ký đã được duyệt. Vé QR sẽ được backend/notification cấp qua email nếu sẵn sàng."
+                          : "Yêu cầu của bạn đã bị từ chối."}
                     </p>
                   </div>
                   {existingReservation.status === "APPROVED" && (
                     <Link
                       to="/student/tickets"
-                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-xs font-extrabold text-white shadow-sm transition-all hover:bg-brand-700"
+                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
                     >
-                      <Ticket className="h-4 w-4" /> Di toi vi ve QR
+                      <Ticket className="h-4 w-4" aria-hidden="true" /> Đi tới ví vé QR
                     </Link>
                   )}
                 </div>
@@ -195,20 +195,20 @@ export default function StudentEventDetailPage() {
                   {event.status === "OPEN" && !isSoldOut ? (
                     <button
                       onClick={handleRegisterClick}
-                      className="flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-xs font-black text-white shadow-lg shadow-brand-600/10 transition-all hover:bg-brand-700"
+                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-xs font-black text-white shadow-lg shadow-brand-600/10 hover:bg-brand-700"
                     >
-                      <Ticket className="h-4 w-4 animate-pulse" /> Dang ky ve tham du
+                      <Ticket className="h-4 w-4" aria-hidden="true" /> Đăng ký vé tham dự
                     </button>
                   ) : (
-                    <button disabled className="w-full cursor-not-allowed rounded-xl bg-gray-100 py-3 text-xs font-black text-gray-400">
-                      {isSoldOut ? "Het ve tham du" : "Su kien hien khong mo dang ky"}
+                    <button disabled className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3 text-xs font-black text-slate-400">
+                      {isSoldOut ? "Hết vé tham dự" : "Sự kiện hiện không mở đăng ký"}
                     </button>
                   )}
 
                   {!currentUser.profileComplete && (
-                    <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[10px] font-semibold text-amber-800">
-                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
-                      <span>Ban chua hoan tat MSSV va lop. He thong yeu cau cap nhat ho so truoc khi dang ky ve.</span>
+                    <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
+                      <span>Bạn chưa hoàn tất MSSV và lớp. Hệ thống yêu cầu cập nhật hồ sơ trước khi đăng ký vé.</span>
                     </div>
                   )}
                 </div>
@@ -216,13 +216,13 @@ export default function StudentEventDetailPage() {
             </div>
           </div>
 
-          <div className="space-y-2 rounded-2xl border border-brand-100 bg-brand-50/40 p-4 text-[11px] font-semibold text-brand-900">
+          <div className="space-y-2 rounded-2xl border border-info-100 bg-info-50/50 p-4 text-[11px] font-semibold text-brand-900">
             <p className="flex items-center gap-1 font-extrabold">
-              <Info className="h-4 w-4 text-brand-600" /> Luu y quan trong khi nhan ve:
+              <Info className="h-4 w-4 text-brand-600" aria-hidden="true" /> Lưu ý quan trọng khi nhận vé:
             </p>
-            <p className="leading-relaxed">- Moi sinh vien chi gui mot dang ky cho moi su kien.</p>
-            <p className="leading-relaxed">- Ve QR hop le duoc cap sau khi Ban to chuc approve reservation.</p>
-            <p className="leading-relaxed">- Frontend khong tu tao QR signed; check-in chi nhan payload do backend/notification cap.</p>
+            <p className="leading-relaxed">- Mỗi sinh viên chỉ gửi một đăng ký cho mỗi sự kiện.</p>
+            <p className="leading-relaxed">- Vé QR hợp lệ được cấp sau khi Ban tổ chức duyệt đăng ký.</p>
+            <p className="leading-relaxed">- Frontend không tự tạo QR ký; check-in chỉ nhận payload do backend/notification cấp.</p>
           </div>
         </div>
       </div>

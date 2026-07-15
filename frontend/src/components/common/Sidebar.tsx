@@ -81,7 +81,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
       <div className={`flex h-16 shrink-0 items-center border-b border-blue-50 bg-white/96 transition-all duration-300 ${collapsed ? "justify-center px-0" : "px-5"}`}>
         <div className={`flex min-w-0 items-center transition-all duration-200 ${collapsed ? "w-full justify-center gap-0" : "gap-2.5"}`}>
           <img
-            src="/src/assets/images/tvu_logo_1783065060265.jpg"
+            src="/tvu_logo_1783065060265.jpg"
             alt="TVU Logo"
             className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1.5 shadow-sm shadow-blue-950/[0.04] ring-1 ring-blue-100"
           />

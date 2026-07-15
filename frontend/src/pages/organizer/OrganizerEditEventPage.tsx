@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import Toast from '../../components/common/Toast';
@@ -8,6 +8,8 @@ import EventForm from '../../components/events/EventForm';
 import { getCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
+
+const BREADCRUMB_BASE = [{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Chỉnh sửa sự kiện' }];
 
 export default function OrganizerEditEventPage() {
   const navigate = useNavigate();
@@ -42,7 +44,7 @@ export default function OrganizerEditEventPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[{ label: 'Ban to chuc', path: '/organizer' }, { label: 'Chinh sua su kien' }]} />
+        <PageHeader breadcrumb={BREADCRUMB_BASE} title="Chỉnh sửa sự kiện" />
         <LoadingSkeleton type="list" count={4} />
       </div>
     );
@@ -51,11 +53,11 @@ export default function OrganizerEditEventPage() {
   if (!event || event.clubId !== currentUser.clubId) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[{ label: 'Ban to chuc', path: '/organizer' }, { label: 'Chinh sua su kien' }]} />
+        <PageHeader breadcrumb={BREADCRUMB_BASE} title="Chỉnh sửa sự kiện" />
         <EmptyState
-          title="Khong tim thay su kien"
-          description="Su kien khong ton tai hoac khong thuoc cau lac bo ban dang quan ly."
-          actionText="Quay lai danh sach"
+          title="Không tìm thấy sự kiện"
+          description="Sự kiện không tồn tại hoặc không thuộc câu lạc bộ bạn đang quản lý."
+          actionText="Quay lại danh sách"
           onAction={() => navigate('/organizer/events')}
         />
       </div>
@@ -64,25 +66,21 @@ export default function OrganizerEditEventPage() {
 
   const handleSubmit = async (data: Partial<Event>) => {
     await eventService.update(event.id, data);
-    setToastMsg(data.status === 'OPEN' ? 'Da cap nhat va cong bo su kien.' : 'Da cap nhat su kien thanh cong.');
+    setToastMsg(data.status === 'OPEN' ? 'Đã cập nhật và công bố sự kiện.' : 'Đã cập nhật sự kiện thành công.');
     setTimeout(() => navigate(`/organizer/events/${event.id}`), 850);
   };
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb
-        items={[
-          { label: 'Ban to chuc', path: '/organizer' },
-          { label: 'Quan ly su kien', path: '/organizer/events' },
-          { label: 'Chinh sua su kien' },
+      <PageHeader
+        breadcrumb={[
+          { label: 'Ban tổ chức', path: '/organizer' },
+          { label: 'Quản lý sự kiện', path: '/organizer/events' },
+          { label: 'Chỉnh sửa sự kiện' },
         ]}
+        title="Chỉnh sửa sự kiện"
+        description="Cập nhật nội dung, thời gian đăng ký, số lượng vé và trạng thái phát hành cho sự kiện của câu lạc bộ."
       />
-      <div className="space-y-1">
-        <h2 className="text-2xl font-black tracking-tight text-gray-950">Chinh sua su kien</h2>
-        <p className="text-sm font-medium text-gray-500">
-          Cap nhat noi dung, thoi gian dang ky, so luong ve va trang thai phat hanh cho su kien cua cau lac bo.
-        </p>
-      </div>
       <EventForm
         initialData={event}
         clubId={currentUser.clubId || event.clubId}

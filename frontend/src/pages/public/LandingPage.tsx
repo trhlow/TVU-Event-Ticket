@@ -360,11 +360,14 @@ export default function LandingPage() {
             <Sparkles className="h-4 w-4" /> TVU Ticket
           </p>
           <h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
-            {"Hệ thống quản lý vé sự kiện chuyên nghiệp".split(" ").map((word, index) => (
-              <span key={`${word}-${index}`} className="landing-hero-word inline-block px-1">
-                {word}
-              </span>
-            ))}
+            <span className="sr-only">Hệ thống quản lý vé sự kiện chuyên nghiệp</span>
+            <span aria-hidden="true">
+              {"Hệ thống quản lý vé sự kiện chuyên nghiệp".split(" ").map((word, index) => (
+                <span key={`${word}-${index}`} className="landing-hero-word inline-block px-1">
+                  {word}
+                </span>
+              ))}
+            </span>
           </h1>
           <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
             Trải nghiệm đăng ký, check-in và quản lý sự kiện liền mạch, minh bạch dành cho sinh viên và các câu lạc bộ TVU.

@@ -1,6 +1,22 @@
 import { Reservation } from '../types/reservation';
+import { getEvents } from './mockEvents';
 
-const INITIAL_RESERVATIONS: Reservation[] = [
+type ReservationFixture = Omit<Reservation, 'eventTitle' | 'eventLocation' | 'eventStartAt'>;
+
+function withEventInfo(reservations: ReservationFixture[]): Reservation[] {
+  const events = getEvents();
+  return reservations.map((reservation) => {
+    const event = events.find((item) => item.id === reservation.eventId);
+    return {
+      ...reservation,
+      eventTitle: event?.title || '',
+      eventLocation: event?.location || '',
+      eventStartAt: event?.startAt || '',
+    };
+  });
+}
+
+const INITIAL_RESERVATIONS: ReservationFixture[] = [
   {
     id: 'res_1',
     eventId: 'event_it_1',
@@ -148,7 +164,7 @@ export function getReservations(): Reservation[] {
       // ignore
     }
   }
-  return INITIAL_RESERVATIONS;
+  return withEventInfo(INITIAL_RESERVATIONS);
 }
 
 export function saveReservations(reservations: Reservation[]): void {

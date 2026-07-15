@@ -4,6 +4,7 @@ import { Event } from "../../types/event";
 import { formatDateTime } from "../../utils/formatDate";
 import StatusBadge from "../common/StatusBadge";
 import EventBanner from "./EventBanner";
+import { useCardTilt } from "../../hooks/useCardTilt";
 
 interface EventCardProps {
   key?: React.Key;
@@ -21,9 +22,11 @@ export default function EventCard({
 }: EventCardProps) {
   const isSoldOut = event.remainingTickets === 0 || event.status === "FULL";
   const fillRate = Math.max(0, Math.min(100, Math.round(((event.capacity - event.remainingTickets) / event.capacity) * 100)));
+  const tiltRef = useCardTilt<HTMLElement>({ maxTilt: 3 });
 
   return (
-    <article className="enterprise-card hover-lift group flex h-full flex-col overflow-hidden text-left">
+    <article ref={tiltRef} className="enterprise-card tilt-card group flex h-full flex-col overflow-hidden text-left">
+      <div className="tilt-card-sheen" aria-hidden="true" />
       <div className="relative h-44 bg-slate-100">
         <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-44 w-full transition duration-500 group-hover:scale-[1.04]" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/72 via-slate-950/18 to-transparent" />

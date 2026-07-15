@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Header from "../components/common/Header";
 import Sidebar from "../components/common/Sidebar";
+import ScrollToTopButton from "../components/common/ScrollToTopButton";
 import { getCurrentUser } from "../state/authSession";
 
 export default function SuperAdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   const user = getCurrentUser();
 
   if (!user || user.role !== "SUPER_ADMIN") return <Navigate to="/login" replace />;
@@ -33,10 +35,11 @@ export default function SuperAdminLayout() {
           title="Tổng quan toàn trường"
           showWorkspaceTitle={false}
         />
-        <section className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="page-enter mx-auto w-full max-w-[1280px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
+        <section id="admin-scroll-region" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <div key={location.pathname} className="page-enter mx-auto w-full max-w-[1280px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
             <Outlet />
           </div>
+          <ScrollToTopButton scrollContainerId="admin-scroll-region" />
         </section>
       </div>
     </main>

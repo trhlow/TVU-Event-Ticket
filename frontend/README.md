@@ -72,6 +72,28 @@ Test stack: Vitest + React Testing Library + jsdom. Coverage focuses on auth/rou
 the API client's CSRF/credentials handling, the "no silent mock fallback on API error" contract,
 and the Super Admin pages that are honest about missing backend APIs.
 
+## Design system & motion
+
+Design tokens live as CSS custom properties in `src/index.css` (`@theme` block): brand/secondary/accent
+colors, semantic status tokens (`--color-success-*`, `--color-warning-*`, `--color-danger-*`, `--color-info-*`),
+surface/border/text tokens, and motion tokens (`--ease-premium`, `--motion-fast/base/slow`). Components consume
+these tokens (e.g. `bg-success-50`, `text-danger-600`) instead of hard-coding raw palette colours.
+
+Shared building blocks:
+- `PageHeader` — breadcrumb + title + description + actions, used across Student/Organizer/Super Admin routes.
+- `Breadcrumb`, `EmptyState`, `BackendPendingNotice`, `DemoDataBadge`, `StatisticCard`, `EventCard`, `TicketCard`,
+  `QRDisplayCard` — all theme-token driven.
+
+Motion primitives (`src/hooks/`):
+- `useCardTilt` — pointer-driven 3D tilt + spotlight written to CSS variables (no per-pixel React re-render);
+  auto-disabled on touch devices and under `prefers-reduced-motion`.
+- `useCountUp` — KPI count-up on scroll-into-view via IntersectionObserver + rAF; snaps to final value under
+  reduced motion.
+
+Per-route page transitions come from keying the layout content by `location.pathname` so the `.page-enter`
+animation re-triggers on navigation. All non-essential animation is disabled under
+`@media (prefers-reduced-motion: reduce)`.
+
 ## Build & lint
 
 ```bash

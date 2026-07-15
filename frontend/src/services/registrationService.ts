@@ -27,6 +27,9 @@ function mapReservation(response: ReservationResponse): Reservation {
     // a name from the email; callers already fall back to showing the email when name is empty.
     id: response.id,
     eventId: response.eventId,
+    eventTitle: response.eventTitle || "",
+    eventLocation: response.eventLocation || "",
+    eventStartAt: response.eventStartAt || "",
     studentId: response.studentId,
     studentName: "",
     mssv: response.studentMssv || "",

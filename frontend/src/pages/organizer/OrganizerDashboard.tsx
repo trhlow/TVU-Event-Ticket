@@ -37,7 +37,7 @@ export default function OrganizerDashboard() {
         setPendingReservations(pendingData);
         setTickets(attendeeGroups.flat());
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai dashboard CLB.");
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải dashboard CLB.");
       }
     }
 
@@ -51,14 +51,14 @@ export default function OrganizerDashboard() {
   const checkedInCount = tickets.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length;
 
   const lineChartData = useMemo(() => ([
-    { name: "Da cap", "Luot dang ky": tickets.length, "Da diem danh": checkedInCount },
-    { name: "Cho duyet", "Luot dang ky": pendingReservations.length, "Da diem danh": 0 },
+    { name: "Đã cấp", "Lượt đăng ký": tickets.length, "Đã điểm danh": checkedInCount },
+    { name: "Chờ duyệt", "Lượt đăng ký": pendingReservations.length, "Đã điểm danh": 0 },
   ]), [checkedInCount, pendingReservations.length, tickets.length]);
 
   const statusData = [
-    { name: "Cho duyet", value: pendingReservations.length },
-    { name: "Da cap ve", value: tickets.length },
-    { name: "Da diem danh", value: checkedInCount },
+    { name: "Chờ duyệt", value: pendingReservations.length },
+    { name: "Đã cấp vé", value: tickets.length },
+    { name: "Đã điểm danh", value: checkedInCount },
   ];
 
   return (
@@ -67,60 +67,60 @@ export default function OrganizerDashboard() {
         <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
-              <Sparkles className="h-4 w-4" /> Khong gian Ban to chuc
+              <Sparkles className="h-4 w-4" /> Không gian Ban tổ chức
             </p>
-            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Tong quan CLB</h1>
+            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Tổng quan CLB</h1>
             <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-white/82">
-              Theo doi su kien, duyet dang ky, phat hanh ve QR va tien do check-in cua {currentUser.clubName || "CLB"}.
+              Theo dõi sự kiện, duyệt đăng ký, phát hành vé QR và tiến độ check-in của {currentUser.clubName || "CLB"}.
             </p>
           </div>
           <Link to="/organizer/events/create" className="btn-press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-extrabold text-brand-800 shadow-xl shadow-brand-950/10">
-            Tao su kien <ArrowRight className="h-4 w-4" />
+            Tạo sự kiện <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatisticCard label="Tong su kien" value={events.length} icon={Calendar} />
-        <StatisticCard label="Su kien dang mo" value={activeEventsCount} icon={CheckCircle} color="success" />
-        <StatisticCard label="Dang ky cho duyet" value={pendingReservations.length} icon={ClipboardList} color="warning" />
-        <StatisticCard label="Ve da phat hanh" value={tickets.length} icon={Ticket} color="primary" />
-        <StatisticCard label="Da diem danh" value={checkedInCount} icon={Award} color="success" />
+        <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
+        <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
+        <StatisticCard label="Đăng ký chờ duyệt" value={pendingReservations.length} icon={ClipboardList} color="warning" />
+        <StatisticCard label="Vé đã phát hành" value={tickets.length} icon={Ticket} color="primary" />
+        <StatisticCard label="Đã điểm danh" value={checkedInCount} icon={Award} color="success" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <LineChartCard
-            title="Tong hop dang ky va diem danh"
+            title="Tổng hợp đăng ký và điểm danh"
             data={lineChartData}
             xAxisKey="name"
             dataKeys={[
-              { key: "Luot dang ky", name: "Luot dang ky", color: "#2563eb" },
-              { key: "Da diem danh", name: "Da diem danh", color: "#00a896" },
+              { key: "Lượt đăng ký", name: "Lượt đăng ký", color: "#2563eb" },
+              { key: "Đã điểm danh", name: "Đã điểm danh", color: "#00a896" },
             ]}
           />
         </div>
-        <DonutChartCard title="Trang thai ticketing" data={statusData} colors={["#f59e0b", "#10b981", "#2563eb"]} />
+        <DonutChartCard title="Trạng thái ticketing" data={statusData} colors={["#f59e0b", "#10b981", "#2563eb"]} />
       </div>
 
       <section className="enterprise-card p-5">
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
-            <h2 className="section-heading">Su kien gan day</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Danh sach su kien moi nhat cua CLB</p>
+            <h2 className="section-heading">Sự kiện gần đây</h2>
+            <p className="mt-1 text-sm font-semibold text-slate-500">Danh sách sự kiện mới nhất của CLB</p>
           </div>
           <Link to="/organizer/events" className="inline-flex items-center gap-1 text-sm font-extrabold text-brand-700">
-            Xem tat ca <ArrowRight className="h-4 w-4" />
+            Xem tất cả <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 text-left text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                <th className="py-3">Su kien</th>
-                <th className="py-3">Thoi gian</th>
-                <th className="py-3">Ve con lai</th>
-                <th className="py-3">Trang thai</th>
+                <th className="py-3">Sự kiện</th>
+                <th className="py-3">Thời gian</th>
+                <th className="py-3">Vé còn lại</th>
+                <th className="py-3">Trạng thái</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -134,7 +134,7 @@ export default function OrganizerDashboard() {
               ))}
             </tbody>
           </table>
-          {events.length === 0 && <div className="py-10 text-center text-sm font-bold text-slate-400">Chua co su kien nao.</div>}
+          {events.length === 0 && <div className="py-10 text-center text-sm font-bold text-slate-400">Chưa có sự kiện nào.</div>}
         </div>
       </section>
 

@@ -66,12 +66,13 @@ export default function SuperAdminClubDetailPage() {
     <div className="space-y-6 text-left">
       <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý CLB', path: '/admin/clubs' }, { label: club.name }]} />
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <section className="tilt-card enterprise-card relative overflow-hidden p-6">
+        <div className="tilt-card-sheen" aria-hidden="true" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <span className="inline-flex rounded-full bg-brand-50 px-3 py-1 text-xs font-black text-brand-700">{club.code}</span>
-            <h2 className="text-2xl font-black tracking-tight text-gray-950">{club.name}</h2>
-            <p className="max-w-3xl text-sm font-medium leading-relaxed text-gray-500">{club.description || 'Chưa có mô tả.'}</p>
+            <span className="inline-flex rounded-full bg-info-50 px-3 py-1 text-xs font-black text-brand-700">{club.code}</span>
+            <h2 className="text-2xl font-black tracking-tight text-slate-950">{club.name}</h2>
+            <p className="max-w-3xl text-sm font-medium leading-relaxed text-slate-500">{club.description || 'Chưa có mô tả.'}</p>
           </div>
           <StatusBadge type="user" status={club.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'} />
         </div>

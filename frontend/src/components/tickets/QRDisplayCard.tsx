@@ -4,6 +4,7 @@ import { Event } from "../../types/event";
 import { Ticket } from "../../types/ticket";
 import StatusBadge from "../common/StatusBadge";
 import { formatDateTime } from "../../utils/formatDate";
+import { useCardTilt } from "../../hooks/useCardTilt";
 
 interface QRDisplayCardProps {
   ticket: Ticket;
@@ -14,9 +15,10 @@ interface QRDisplayCardProps {
 
 export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QRDisplayCardProps) {
   const hasQrPayload = Boolean(ticket.qrCodeValue);
+  const tiltRef = useCardTilt<HTMLDivElement>({ maxTilt: 5 });
 
   return (
-    <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-xl shadow-brand-900/10">
+    <div ref={tiltRef} className="tilt-card mx-auto max-w-sm overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-xl shadow-brand-900/10">
       <div className="relative overflow-hidden bg-gradient-to-br from-brand-800 via-brand-600 to-accent-500 p-5 text-left text-white">
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">TVU Electronic Ticket</p>

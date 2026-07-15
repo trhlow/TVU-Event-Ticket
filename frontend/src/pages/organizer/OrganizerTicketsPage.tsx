@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
+import { getCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
@@ -15,6 +16,7 @@ interface EnhancedTicket extends Ticket {
 }
 
 export default function OrganizerTicketsPage() {
+  const currentUser = getCurrentUser();
   const [events, setEvents] = useState<Event[]>([]);
   const [tickets, setTickets] = useState<EnhancedTicket[]>([]);
   const [search, setSearch] = useState("");
@@ -29,7 +31,7 @@ export default function OrganizerTicketsPage() {
     async function loadTickets() {
       setIsLoading(true);
       try {
-        const eventData = await eventService.listByClubRemote("");
+        const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
         const attendeeGroups = await Promise.all(
           eventData.map((event) => ticketService.listAttendees(event.id).catch(() => [] as Ticket[])),
         );
@@ -38,10 +40,10 @@ export default function OrganizerTicketsPage() {
         setEvents(eventData);
         setTickets(attendeeGroups.flatMap((items, index) => {
           const event = eventData[index];
-          return items.map((ticket) => ({ ...ticket, eventTitle: event?.title || ticket.eventId }));
+          return items.map((ticket) => ({ ...ticket, eventTitle: event?.title || "Sự kiện đang cập nhật thông tin" }));
         }));
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai danh sach ve.");
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách vé.");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -51,7 +53,7 @@ export default function OrganizerTicketsPage() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [currentUser.clubId]);
 
   const filteredTickets = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -65,37 +67,37 @@ export default function OrganizerTicketsPage() {
 
   const columns = [
     {
-      header: "Ma ve / Ngay cap",
+      header: "Mã vé / Ngày cấp",
       accessor: (ticket: EnhancedTicket) => (
         <div className="text-left font-semibold">
-          <span className="block font-mono font-bold tracking-wider text-gray-950">{ticket.ticketCode}</span>
-          <span className="mt-0.5 block text-[10px] font-semibold text-gray-400">Cap: {formatDateTime(ticket.issuedAt)}</span>
+          <span className="block font-mono font-bold tracking-wider text-slate-950">{ticket.ticketCode}</span>
+          <span className="mt-0.5 block text-[10px] font-semibold text-slate-400">Cấp: {formatDateTime(ticket.issuedAt)}</span>
         </div>
       ),
     },
     {
-      header: "Sinh vien",
+      header: "Sinh viên",
       accessor: (ticket: EnhancedTicket) => (
         <div className="text-left font-semibold">
-          <span className="block font-bold text-gray-900">{ticket.studentId}</span>
-          <span className="block text-[10px] font-mono text-gray-500">Student ID tu attendee API</span>
+          <span className="block font-bold text-slate-900">{ticket.studentId}</span>
+          <span className="block text-[10px] font-mono text-slate-500">Student ID từ attendee API</span>
         </div>
       ),
     },
     {
-      header: "Su kien",
+      header: "Sự kiện",
       accessor: (ticket: EnhancedTicket) => (
-        <span className="block max-w-xs truncate text-xs font-bold text-gray-700" title={ticket.eventTitle}>
+        <span className="block max-w-xs truncate text-xs font-bold text-slate-700" title={ticket.eventTitle}>
           {ticket.eventTitle}
         </span>
       ),
     },
     {
-      header: "Trang thai ve",
+      header: "Trạng thái vé",
       accessor: (ticket: EnhancedTicket) => (
         <div className="flex flex-col items-start gap-1">
           <StatusBadge type="ticket" status={ticket.status} checkInStatus={ticket.checkInStatus} />
-          {ticket.checkedInAt && <span className="text-[9px] font-semibold text-gray-400">{formatDateTime(ticket.checkedInAt)}</span>}
+          {ticket.checkedInAt && <span className="text-[9px] font-semibold text-slate-400">{formatDateTime(ticket.checkedInAt)}</span>}
         </div>
       ),
     },
@@ -103,36 +105,31 @@ export default function OrganizerTicketsPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Ban to chuc", path: "/organizer" }, { label: "Quan ly ve" }]} />
+      <PageHeader
+        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý vé" }]}
+        title="Quản lý vé đã phát hành"
+        description="Đọc attendee JSON từ ticket-service theo từng sự kiện của CLB."
+      />
 
-      <div className="space-y-1">
-        <h2 className="text-xl font-black tracking-tight text-gray-950">Quan ly ve da phat hanh</h2>
-        <p className="text-xs font-semibold text-gray-500">Doc attendee JSON tu ticketing service theo tung su kien cua club.</p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3">
         <div className="space-y-1">
-          <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Tim kiem</label>
+          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</label>
           <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
             <input
               type="text"
-              placeholder="Su kien, student ID, ma ve..."
+              placeholder="Sự kiện, student ID, mã vé..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-xs font-semibold focus:border-brand-500 focus:outline-hidden focus:ring-1 focus:ring-brand-500"
+              className="tvu-input pl-9"
             />
           </div>
         </div>
 
         <div className="space-y-1">
-          <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Loc theo su kien</label>
-          <select
-            value={filterEvent}
-            onChange={(event) => setFilterEvent(event.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2 text-xs font-semibold focus:border-brand-500 focus:outline-hidden"
-          >
-            <option value="ALL">Tat ca su kien</option>
+          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Lọc theo sự kiện</label>
+          <select value={filterEvent} onChange={(event) => setFilterEvent(event.target.value)} className="tvu-input">
+            <option value="ALL">Tất cả sự kiện</option>
             {events.map((event) => (
               <option key={event.id} value={event.id}>{event.title}</option>
             ))}
@@ -140,24 +137,20 @@ export default function OrganizerTicketsPage() {
         </div>
 
         <div className="space-y-1">
-          <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Loc check-in</label>
-          <select
-            value={filterCheckin}
-            onChange={(event) => setFilterCheckin(event.target.value)}
-            className="w-full rounded-xl border border-gray-200 bg-transparent px-3 py-2 text-xs font-semibold focus:border-brand-500 focus:outline-hidden"
-          >
-            <option value="ALL">Tat ca trang thai</option>
-            <option value="PENDING">Chua check-in</option>
-            <option value="CHECKED_IN">Da check-in</option>
+          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Lọc check-in</label>
+          <select value={filterCheckin} onChange={(event) => setFilterCheckin(event.target.value)} className="tvu-input">
+            <option value="ALL">Tất cả trạng thái</option>
+            <option value="PENDING">Chưa check-in</option>
+            <option value="CHECKED_IN">Đã check-in</option>
           </select>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
+      <div className="enterprise-card overflow-hidden p-1">
         {isLoading ? (
-          <div className="py-12 text-center text-sm font-bold text-gray-500">Dang tai ve da phat hanh...</div>
+          <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải vé đã phát hành...</div>
         ) : (
-          <DataTable data={filteredTickets} columns={columns} searchPlaceholder="Loc nhanh danh sach..." searchField="eventTitle" />
+          <DataTable data={filteredTickets} columns={columns} searchPlaceholder="Lọc nhanh danh sách..." searchField="eventTitle" />
         )}
       </div>
 

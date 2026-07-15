@@ -3,7 +3,8 @@ import { Info, Ticket as TicketIcon } from "lucide-react";
 import TicketCard from "../../components/tickets/TicketCard";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import DetailDrawer from "../../components/common/DetailDrawer";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
 import Toast from "../../components/common/Toast";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
@@ -14,12 +15,12 @@ function fallbackEvent(ticket: Ticket): Event {
   return {
     id: ticket.eventId,
     clubId: "",
-    clubName: "CLB phu trach",
-    title: ticket.eventId,
+    clubName: "Chưa có thông tin CLB",
+    title: "Sự kiện đang cập nhật thông tin",
     description: "",
-    category: "Su kien",
+    category: "Sự kiện",
     bannerUrl: "",
-    location: "Dia diem su kien",
+    location: "Đang cập nhật địa điểm",
     startAt: ticket.issuedAt,
     endAt: ticket.issuedAt,
     registrationOpenAt: ticket.issuedAt,
@@ -48,7 +49,7 @@ export default function MyTicketsPage() {
         setEventsById(Object.fromEntries(events.filter((event): event is Event => Boolean(event)).map((event) => [event.id, event])));
       })
       .catch((error) => {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Khong the tai vi ve.");
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải ví vé.");
       });
     return () => {
       mounted = false;
@@ -61,12 +62,11 @@ export default function MyTicketsPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Sinh vien", path: "/student" }, { label: "Vi ve QR cua toi" }]} />
-
-      <div className="space-y-1">
-        <h2 className="text-xl font-black tracking-tight text-gray-950">Vi ve dien tu ca nhan</h2>
-        <p className="text-xs font-semibold text-gray-500">Ve xuat hien sau khi organizer approve reservation va backend tra ticketId.</p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Sinh viên", path: "/student" }, { label: "Ví vé QR của tôi" }]}
+        title="Ví vé điện tử cá nhân"
+        description="Vé xuất hiện sau khi Ban tổ chức duyệt đăng ký và backend cấp mã vé."
+      />
 
       {tickets.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -75,24 +75,20 @@ export default function MyTicketsPage() {
           ))}
         </div>
       ) : (
-        <div className="mx-auto max-w-md space-y-3 rounded-2xl border border-gray-200 bg-white p-8 py-16 text-center shadow-sm">
-          <TicketIcon className="mx-auto h-12 w-12 text-gray-300" />
-          <h4 className="text-sm font-bold text-gray-950">Vi ve cua ban dang trong</h4>
-          <p className="text-xs font-semibold leading-relaxed text-gray-500">Chua co reservation APPROVED kem ticketId.</p>
-        </div>
+        <EmptyState icon={TicketIcon} title="Ví vé của bạn đang trống" description="Chưa có đăng ký được duyệt kèm mã vé." />
       )}
 
-      <div className="flex gap-3 rounded-xl border border-brand-100 bg-brand-50/50 p-4 text-left">
-        <Info className="h-5 w-5 shrink-0 text-brand-600" />
+      <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
+        <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
         <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-          Backend hien chua co API tra QR payload cho sinh vien; khong tao QR signed gia o frontend.
+          Backend hiện chưa có API trả QR payload trực tiếp cho sinh viên; frontend không tự tạo QR ký giả.
         </p>
       </div>
 
       {activeTicket && activeEvent && (
-        <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thong tin ve">
+        <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thông tin vé">
           <div className="p-1">
-            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => setToastMsg("Backend chua cung cap file ve QR.")} />
+            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => setToastMsg("Backend chưa cung cấp file vé QR.")} />
           </div>
         </DetailDrawer>
       )}
