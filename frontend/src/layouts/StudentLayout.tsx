@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Header from "../components/common/Header";
 import Sidebar from "../components/common/Sidebar";
@@ -10,6 +10,12 @@ export default function StudentLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const user = getCurrentUser();
+  const scrollRegionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (location.hash) return;
+    scrollRegionRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [location.pathname, location.hash]);
 
   if (!user || user.role !== "SINH_VIEN") return <Navigate to="/login" replace />;
 
@@ -34,7 +40,7 @@ export default function StudentLayout() {
           collapsed={collapsed}
           showWorkspaceTitle={false}
         />
-        <section id="student-scroll-region" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <section ref={scrollRegionRef} id="student-scroll-region" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <div key={location.pathname} className="page-enter mx-auto w-full max-w-[1240px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
             <Outlet />
           </div>

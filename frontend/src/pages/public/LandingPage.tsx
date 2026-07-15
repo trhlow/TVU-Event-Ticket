@@ -24,6 +24,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import EmptyState from "../../components/common/EmptyState";
+import FAQAccordion from "../../components/common/FAQAccordion";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
@@ -57,6 +58,34 @@ const features = [
     title: "Chống vé ảo",
     description: "Hệ thống đồng bộ dữ liệu sinh viên trực tiếp, ngăn chặn tình trạng đầu cơ hoặc đăng ký ảo.",
     tone: "text-rose-700 bg-rose-50",
+  },
+];
+
+const faqItems = [
+  {
+    question: "Làm sao để đăng ký tham gia một sự kiện?",
+    answer:
+      "Đăng nhập bằng tài khoản TVU của bạn, chọn sự kiện đang mở đăng ký và gửi yêu cầu tham dự. Đăng ký của bạn sẽ ở trạng thái chờ duyệt cho đến khi Ban tổ chức CLB xác nhận.",
+  },
+  {
+    question: "Vé điện tử và mã QR hoạt động như thế nào?",
+    answer:
+      "Sau khi đăng ký được duyệt, hệ thống phát hành một vé điện tử kèm mã QR duy nhất cho tài khoản của bạn. Bạn xuất trình mã QR này tại cổng sự kiện để Ban tổ chức quét và xác nhận tham dự.",
+  },
+  {
+    question: "Vì sao đăng ký của tôi vẫn ở trạng thái chờ duyệt?",
+    answer:
+      "Mỗi đăng ký cần được Ban tổ chức CLB duyệt thủ công để đảm bảo đúng số lượng vé còn lại. Bạn có thể theo dõi trạng thái mới nhất trong mục Đăng ký của tôi sau khi đăng nhập.",
+  },
+  {
+    question: "Một vé đã check-in có thể dùng lại được không?",
+    answer:
+      "Không. Mỗi mã QR chỉ hợp lệ cho một lượt check-in duy nhất, giúp ngăn chặn tình trạng chia sẻ vé hoặc quét lại vé đã sử dụng.",
+  },
+  {
+    question: "Câu lạc bộ muốn tổ chức sự kiện thì cần làm gì?",
+    answer:
+      "Tài khoản Ban tổ chức của từng CLB được quản trị viên nhà trường cấp và phân quyền. Sau khi đăng nhập bằng tài khoản này, bạn có thể tạo sự kiện, duyệt đăng ký và quét mã QR check-in ngay trong hệ thống.",
   },
 ];
 
@@ -269,6 +298,8 @@ export default function LandingPage() {
         const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
         hero.style.setProperty("--hero-x", `${x * 12}px`);
         hero.style.setProperty("--hero-y", `${y * 10}px`);
+        hero.style.setProperty("--hero-rot-x", `${y * -6}deg`);
+        hero.style.setProperty("--hero-rot-y", `${x * 8}deg`);
         hero.style.setProperty("--mouse-x", `${event.clientX - rect.left}px`);
         hero.style.setProperty("--mouse-y", `${event.clientY - rect.top}px`);
         hero.classList.add("is-pointer-active");
@@ -278,6 +309,8 @@ export default function LandingPage() {
     const handlePointerLeave = () => {
       hero.style.setProperty("--hero-x", "0px");
       hero.style.setProperty("--hero-y", "0px");
+      hero.style.setProperty("--hero-rot-x", "0deg");
+      hero.style.setProperty("--hero-rot-y", "0deg");
       hero.classList.remove("is-pointer-active");
     };
 
@@ -355,39 +388,43 @@ export default function LandingPage() {
         <div className="landing-hero-spotlight absolute inset-0" aria-hidden="true" />
         <div className="landing-depth absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(37,99,235,0.16),transparent_34%)]" aria-hidden="true" />
 
-        <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-[1180px] flex-col items-center justify-center px-5 py-20 text-center md:px-8">
-          <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/72 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
-            <Sparkles className="h-4 w-4" /> TVU Ticket
-          </p>
-          <h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
-            <span className="sr-only">Hệ thống quản lý vé sự kiện chuyên nghiệp</span>
-            <span aria-hidden="true">
-              {"Hệ thống quản lý vé sự kiện chuyên nghiệp".split(" ").map((word, index) => (
-                <span key={`${word}-${index}`} className="landing-hero-word inline-block px-1">
-                  {word}
-                </span>
-              ))}
-            </span>
-          </h1>
-          <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
-            Trải nghiệm đăng ký, check-in và quản lý sự kiện liền mạch, minh bạch dành cho sinh viên và các câu lạc bộ TVU.
-          </p>
-          <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link
-              to="/events"
-              className="btn-press magnetic-button group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-xl shadow-blue-900/20 hover:bg-blue-700"
-            >
-              <MagneticContent enabled={finePointer && !reducedMotion}>
-                Xem sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-              </MagneticContent>
-            </Link>
-            <Link
-              to="/login"
-              className="btn-press magnetic-button inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-md shadow-blue-950/8 backdrop-blur hover:bg-white"
-            >
-              <MagneticContent enabled={finePointer && !reducedMotion}>Đăng nhập</MagneticContent>
-            </Link>
+        <div className="landing-hero-copy relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center gap-10 px-5 py-20 text-center md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:text-left">
+          <div className="flex flex-col items-center lg:items-start">
+            <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/72 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
+              <Sparkles className="h-4 w-4" /> TVU Ticket
+            </p>
+            <h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
+              <span className="sr-only">Hệ thống quản lý vé sự kiện chuyên nghiệp</span>
+              <span aria-hidden="true">
+                {"Hệ thống quản lý vé sự kiện chuyên nghiệp".split(" ").map((word, index) => (
+                  <span key={`${word}-${index}`} className="landing-hero-word inline-block px-1">
+                    {word}
+                  </span>
+                ))}
+              </span>
+            </h1>
+            <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
+              Trải nghiệm đăng ký, check-in và quản lý sự kiện liền mạch, minh bạch dành cho sinh viên và các câu lạc bộ TVU.
+            </p>
+            <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to="/events"
+                className="btn-press magnetic-button group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-xl shadow-blue-900/20 hover:bg-blue-700"
+              >
+                <MagneticContent enabled={finePointer && !reducedMotion}>
+                  Xem sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                </MagneticContent>
+              </Link>
+              <Link
+                to="/login"
+                className="btn-press magnetic-button inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-md shadow-blue-950/8 backdrop-blur hover:bg-white"
+              >
+                <MagneticContent enabled={finePointer && !reducedMotion}>Đăng nhập</MagneticContent>
+              </Link>
+            </div>
           </div>
+
+          <HeroShowcase3D />
         </div>
       </section>
 
@@ -489,6 +526,21 @@ export default function LandingPage() {
         </div>
       </RevealOnScroll>
 
+      <RevealOnScroll as="section" id="faq" className="scroll-mt-20 border-t border-slate-200 bg-white px-5 py-16 md:px-8">
+        <div className="mx-auto max-w-[1180px]">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Câu hỏi thường gặp</h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
+              Một số thắc mắc phổ biến về đăng ký, vé điện tử và check-in trên TVU Ticket.
+            </p>
+          </div>
+
+          <div className="mt-10">
+            <FAQAccordion items={faqItems} />
+          </div>
+        </div>
+      </RevealOnScroll>
+
       <LandingFooter />
       <ScrollToTopButton />
     </div>
@@ -503,6 +555,37 @@ interface EventMarqueeProps {
 }
 
 type FeatureItem = (typeof features)[number];
+
+function HeroShowcase3D() {
+  return (
+    <div className="landing-hero-3d hidden lg:block" aria-hidden="true">
+      <div className="landing-hero-3d-stage">
+        <div className="landing-hero-3d-card landing-hero-3d-card-back" />
+        <div className="landing-hero-3d-card landing-hero-3d-ticket">
+          <div className="flex items-center gap-2 text-blue-800">
+            <Ticket className="h-5 w-5" />
+            <span className="text-xs font-extrabold uppercase tracking-[0.14em]">Vé điện tử</span>
+          </div>
+          <p className="mt-4 font-display text-lg font-extrabold leading-snug text-slate-900">Tên sự kiện của bạn</p>
+          <p className="mt-1 text-xs font-semibold text-slate-500">Thời gian · Địa điểm</p>
+          <div className="landing-hero-3d-divider" />
+          <div className="landing-hero-3d-qr">
+            <QrCode className="h-16 w-16 text-slate-900" strokeWidth={1.4} />
+          </div>
+          <span className="landing-hero-3d-status">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Vé hợp lệ
+          </span>
+        </div>
+        <div className="landing-hero-3d-badge landing-hero-3d-badge-scan">
+          <ScanLine className="h-4 w-4" /> Check-in
+        </div>
+        <div className="landing-hero-3d-badge landing-hero-3d-badge-shield">
+          <ShieldCheck className="h-4 w-4" /> Chống vé ảo
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function MagneticContent({ enabled, children }: { enabled: boolean; children: ReactNode }) {
   const ref = usePointerMotion<HTMLSpanElement>({ enabled, magnetic: true, maxMagnet: 5 });
@@ -650,7 +733,7 @@ function LandingEventCard({ event, ariaHidden = false, motionEnabled, onOpen }: 
 function LandingFooter() {
   return (
     <footer className="bg-slate-50 px-5 py-12 md:px-8">
-      <div className="mx-auto grid max-w-[1180px] gap-8 border-t border-slate-200 pt-10 md:grid-cols-2 lg:grid-cols-[1.4fr_0.8fr_0.9fr_1fr]">
+      <div className="mx-auto grid max-w-[1180px] gap-8 border-t border-slate-200 pt-10 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-3">
             <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-10 w-10 rounded-full object-contain ring-1 ring-blue-100" />
@@ -659,13 +742,20 @@ function LandingFooter() {
           <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-600">
             Hệ thống quản lý và phân phối vé sự kiện chính thức dành cho sinh viên và các Câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
           </p>
-          <div className="mt-5 flex gap-3 text-blue-800">
-            <a href="/" aria-label="Kênh thông tin TVU Ticket" className="landing-social-link"><Share2 className="h-4 w-4" /></a>
-            <a href="/" aria-label="Cộng đồng sinh viên TVU" className="landing-social-link"><Users className="h-4 w-4" /></a>
+          <div className="mt-5 flex gap-3 text-blue-800" aria-hidden="true">
+            <Share2 className="h-4 w-4" />
+            <Users className="h-4 w-4" />
           </div>
         </div>
-        <FooterColumn title="Khám phá" links={[["Trang chủ", "/"], ["Sự kiện", "/events"], ["Hướng dẫn", "/#guide"], ["Tin tức", "/"]]} />
-        <FooterColumn title="Chính sách" links={[["Điều khoản sử dụng", "/"], ["Chính sách bảo mật", "/"], ["Quy định check-in", "/#guide"]]} />
+        <FooterColumn
+          title="Khám phá"
+          links={[
+            ["Trang chủ", "/"],
+            ["Sự kiện", "/events"],
+            ["Hướng dẫn sử dụng", "/#guide"],
+            ["Câu hỏi thường gặp", "/#faq"],
+          ]}
+        />
         <div>
           <h2 className="text-sm font-extrabold text-slate-900">Liên hệ</h2>
           <div className="mt-4 space-y-3 text-sm font-medium text-slate-600">

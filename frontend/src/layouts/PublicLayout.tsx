@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Mail, MapPin, Menu, Phone, Share2, Users, X } from "lucide-react";
+import AnimatedOutlet from "../components/common/AnimatedOutlet";
 
 const navItems = [
   { label: "Trang chủ", id: "home" },
   { label: "Sự kiện", id: "events" },
   { label: "Hướng dẫn", id: "guide" },
+  { label: "Hỏi đáp", id: "faq" },
 ];
 
 export default function PublicLayout() {
@@ -106,7 +108,7 @@ export default function PublicLayout() {
   }, [getCurrentNavId, moveNavIndicator]);
 
   if (isLoginPage) {
-    return <Outlet />;
+    return <AnimatedOutlet />;
   }
 
   return (
@@ -235,7 +237,7 @@ export default function PublicLayout() {
       </nav>
 
       <section className="flex w-full flex-1 flex-col pt-16">
-        <Outlet />
+        <AnimatedOutlet />
       </section>
 
       {!isLanding && (
