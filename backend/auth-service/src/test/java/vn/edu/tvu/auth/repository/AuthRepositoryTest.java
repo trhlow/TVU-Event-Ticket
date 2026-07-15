@@ -119,4 +119,22 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
         assertThat(auditLogRepository.countByMessageId(messageId)).isEqualTo(1);
         assertThat(auditLogRepository.count()).isEqualTo(3);
     }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void userRepositoryGroupsCountsByRole() {
+        var club = clubRepository.saveAndFlush(new Club("CLB Stats " + UUID.randomUUID(), null));
+        userRepository.saveAndFlush(User.student("ext-stats-1", "stats-student-1@example.com", "Student One"));
+        userRepository.saveAndFlush(User.student("ext-stats-2", "stats-student-2@example.com", "Student Two"));
+        userRepository.saveAndFlush(User.organizer("ext-stats-3", "stats-organizer@example.com", "Organizer One",
+                club));
+
+        var rows = userRepository.countGroupedByRole();
+
+        var byRole = rows.stream().collect(java.util.stream.Collectors.toMap(
+                UserRepository.UserRoleCountProjection::getRole,
+                UserRepository.UserRoleCountProjection::getCount));
+        assertThat(byRole.get(UserRole.SINH_VIEN)).isGreaterThanOrEqualTo(2L);
+        assertThat(byRole.get(UserRole.ORGANIZER)).isGreaterThanOrEqualTo(1L);
+    }
 }

@@ -1,6 +1,7 @@
 package vn.edu.tvu.event.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import vn.edu.tvu.event.domain.Event;
 import vn.edu.tvu.event.domain.EventStatus;
 import java.time.Instant;
@@ -13,4 +14,12 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
     List<Event> findByClubIdOrderByStartAtDesc(UUID clubId);
     List<Event> findByStatusAndRegistrationOpenAtLessThanEqualAndRegistrationCloseAtGreaterThanEqualOrderByStartAt(
             EventStatus status, Instant openedAt, Instant closesAt);
+
+    @Query("select e.status as status, count(e) as count from Event e group by e.status")
+    List<EventStatusCountProjection> countGroupedByStatus();
+
+    interface EventStatusCountProjection {
+        EventStatus getStatus();
+        long getCount();
+    }
 }

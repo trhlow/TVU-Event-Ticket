@@ -35,6 +35,12 @@ public class EventController {
         return service.listOwned(CurrentUser.from(jwt));
     }
 
+    @GetMapping("/stats")
+    @Operation(summary = "Get school-wide event totals by status")
+    public vn.edu.tvu.event.dto.response.EventStatsResponse stats() {
+        return service.stats();
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a draft event")

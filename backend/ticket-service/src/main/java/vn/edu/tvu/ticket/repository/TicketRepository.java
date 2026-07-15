@@ -18,6 +18,10 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
 
     long countByEventId(UUID eventId);
 
+    long countByClubIdAndStatus(UUID clubId, vn.edu.tvu.ticket.domain.TicketStatus status);
+
+    long countByStatus(vn.edu.tvu.ticket.domain.TicketStatus status);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             update Ticket t set t.status = vn.edu.tvu.ticket.domain.TicketStatus.CHECKED_IN,

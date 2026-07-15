@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import vn.edu.tvu.event.security.SecurityConfig;
 import vn.edu.tvu.event.service.EventService;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -59,6 +60,19 @@ class EventControllerSecurityTest {
                         .content(validRequest()))
                 .andExpect(status().isCreated());
         verify(eventService).create(any(), any());
+    }
+
+    @Test
+    void eventsStatsRequiresSuperAdminNotPublicOrOrganizer() throws Exception {
+        mockMvc.perform(get("/api/events/stats")).andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/events/stats").with(jwt().authorities(() -> "ROLE_ORGANIZER")))
+                .andExpect(status().isForbidden());
+
+        when(eventService.stats()).thenReturn(
+                new vn.edu.tvu.event.dto.response.EventStatsResponse(0, java.util.Map.of()));
+        mockMvc.perform(get("/api/events/stats").with(jwt().authorities(() -> "ROLE_SUPER_ADMIN")))
+                .andExpect(status().isOk());
     }
 
     private String validRequest() {

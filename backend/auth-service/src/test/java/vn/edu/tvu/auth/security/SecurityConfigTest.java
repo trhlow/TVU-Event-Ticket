@@ -91,6 +91,21 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void adminStatsRouteRequiresSuperAdmin() throws Exception {
+        var studentToken = token(UserRole.SINH_VIEN);
+        mockMvc.perform(get("/api/admin/stats")
+                        .header("Authorization", "Bearer " + studentToken))
+                .andExpect(status().isForbidden());
+
+        when(adminManagementService.stats()).thenReturn(
+                new vn.edu.tvu.auth.dto.response.AdminStatsResponse(0, 0, java.util.Map.of()));
+        var adminToken = token(UserRole.SUPER_ADMIN);
+        mockMvc.perform(get("/api/admin/stats")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk());
+    }
+
     private String token(UserRole role) {
         return jwtService.mint(new JwtSubject(UUID.randomUUID(), role.name().toLowerCase() + "@example.com", role,
                 null, null)).value();

@@ -12,6 +12,14 @@ spring:
       simple:
         # Failed deliveries go to the Dead Letter Queue rather than being requeued forever (§6.4)
         default-requeue-rejected: false
+        # Bounded retry with backoff so a transient SMTP/lock blip recovers without a DLQ round-trip;
+        # only failures that persist past the last attempt are rejected (see NotificationRabbitConfig DLX).
+        retry:
+          enabled: true
+          max-attempts: 5
+          initial-interval: 500ms
+          multiplier: 2.0
+          max-interval: 5s
 
 tvu:
   notification:

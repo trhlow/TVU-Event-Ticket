@@ -6,9 +6,12 @@ import vn.edu.tvu.ticket.domain.Reservation;
 import vn.edu.tvu.ticket.domain.ReservationStatus;
 import vn.edu.tvu.ticket.domain.Ticket;
 import vn.edu.tvu.ticket.domain.TicketInventory;
+import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.support.AbstractPostgresIntegrationTest;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -42,6 +45,9 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
     @Test
     void inventoryRepositoryPersistsEventSnapshotAndVersionColumn() {
@@ -143,6 +149,79 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         assertThat(outboxRepository.findClaimable(now))
                 .extracting(OutboxMessage::getId)
                 .contains(message.getId());
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void reservationRepositoryCountsByClubAndStatus() {
+        var clubId = UUID.randomUUID();
+        var otherClubId = UUID.randomUUID();
+        var pending = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), clubId,
+                UUID.randomUUID(), "idem-pending"));
+        var approved = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), clubId,
+                UUID.randomUUID(), "idem-approved"));
+        approved.approve(UUID.randomUUID());
+        reservationRepository.saveAndFlush(approved);
+        reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), otherClubId, UUID.randomUUID(),
+                "idem-other-club"));
+
+        assertThat(reservationRepository.countByClubIdAndStatus(clubId, ReservationStatus.PENDING)).isEqualTo(1);
+        assertThat(reservationRepository.countByClubIdAndStatus(clubId, ReservationStatus.APPROVED)).isEqualTo(1);
+        assertThat(reservationRepository.countByClubIdAndStatus(otherClubId, ReservationStatus.PENDING))
+                .isEqualTo(1);
+        assertThat(pending.getStatus()).isEqualTo(ReservationStatus.PENDING);
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void reservationRepositoryGroupsDailyRegistrationsByClubSinceGivenInstant() {
+        var clubId = UUID.randomUUID();
+        var inWindow = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), clubId,
+                UUID.randomUUID(), "idem-in-window"));
+        var outOfWindow = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), clubId,
+                UUID.randomUUID(), "idem-out-of-window"));
+        var otherClub = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), "idem-other-club-2"));
+        var day = LocalDate.of(2026, 6, 20);
+        backdateRequestedAt(inWindow.getId(), day.atStartOfDay(ZoneOffset.UTC).toInstant().plusSeconds(3600));
+        backdateRequestedAt(outOfWindow.getId(), day.minusDays(40).atStartOfDay(ZoneOffset.UTC).toInstant());
+        backdateRequestedAt(otherClub.getId(), day.atStartOfDay(ZoneOffset.UTC).toInstant());
+
+        var since = day.minusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        var rows = reservationRepository.countDailyRegistrationsByClub(clubId, since);
+
+        assertThat(rows).hasSize(1);
+        assertThat(rows.getFirst().getDay()).isEqualTo(day);
+        assertThat(rows.getFirst().getCount()).isEqualTo(1);
+    }
+
+    @Test
+    void ticketRepositoryCountsAllTicketsByStatusAcrossClubs() {
+        var firstReservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), "idem-status-1"));
+        firstReservation.approve(UUID.randomUUID());
+        reservationRepository.saveAndFlush(firstReservation);
+        var firstTicket = ticketRepository.saveAndFlush(Ticket.issue(firstReservation));
+        var secondReservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), "idem-status-2"));
+        secondReservation.approve(UUID.randomUUID());
+        reservationRepository.saveAndFlush(secondReservation);
+        ticketRepository.saveAndFlush(Ticket.issue(secondReservation));
+        var before = ticketRepository.countByStatus(TicketStatus.VALID);
+
+        assertThat(ticketRepository.countByStatus(TicketStatus.VALID)).isEqualTo(before);
+        assertThat(ticketRepository.countByStatus(TicketStatus.CHECKED_IN)).isZero();
+        assertThat(firstTicket.getStatus()).isEqualTo(TicketStatus.VALID);
+    }
+
+    private void backdateRequestedAt(UUID reservationId, Instant requestedAt) {
+        new org.springframework.transaction.support.TransactionTemplate(transactionManager).executeWithoutResult(
+                status -> entityManager
+                        .createNativeQuery("update reservations set requested_at = :requestedAt where id = :id")
+                        .setParameter("requestedAt", requestedAt)
+                        .setParameter("id", reservationId)
+                        .executeUpdate());
+        entityManager.clear();
     }
 
     private static TicketInventory inventory(UUID eventId, UUID clubId, int capacity) {

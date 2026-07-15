@@ -2,16 +2,11 @@ package vn.edu.tvu.notification.config;
 
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
-import org.springframework.amqp.core.AmqpAdmin;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
-import org.springframework.amqp.rabbit.connection.ConnectionFactory;
-import org.springframework.amqp.rabbit.core.RabbitAdmin;
-import org.springframework.amqp.rabbit.listener.RabbitListenerEndpointRegistry;
-import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -69,32 +64,6 @@ public class NotificationRabbitConfig {
         return BindingBuilder.bind(notificationDeadLetterQueue)
                 .to(notificationDeadLetterExchange)
                 .with(properties.deadLetterQueue());
-    }
-
-    @Bean
-    RabbitAdmin notificationRabbitAdmin(ConnectionFactory connectionFactory) {
-        return new RabbitAdmin(connectionFactory);
-    }
-
-    @Bean
-    ApplicationRunner notificationTopologyInitializer(
-            AmqpAdmin notificationRabbitAdmin,
-            TopicExchange notificationEventsExchange,
-            DirectExchange notificationDeadLetterExchange,
-            Queue notificationQueue,
-            Queue notificationDeadLetterQueue,
-            Binding notificationBinding,
-            Binding notificationDeadLetterBinding,
-            RabbitListenerEndpointRegistry rabbitListenerEndpointRegistry) {
-        return args -> {
-            notificationRabbitAdmin.declareExchange(notificationEventsExchange);
-            notificationRabbitAdmin.declareExchange(notificationDeadLetterExchange);
-            notificationRabbitAdmin.declareQueue(notificationQueue);
-            notificationRabbitAdmin.declareQueue(notificationDeadLetterQueue);
-            notificationRabbitAdmin.declareBinding(notificationBinding);
-            notificationRabbitAdmin.declareBinding(notificationDeadLetterBinding);
-            rabbitListenerEndpointRegistry.start();
-        };
     }
 
 }

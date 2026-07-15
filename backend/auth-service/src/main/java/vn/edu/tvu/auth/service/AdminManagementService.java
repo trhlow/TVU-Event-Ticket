@@ -6,13 +6,16 @@ import vn.edu.tvu.auth.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
+import vn.edu.tvu.auth.dto.response.AdminStatsResponse;
 import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
 
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -34,6 +37,16 @@ public class AdminManagementService {
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+    }
+
+    @Transactional(readOnly = true)
+    public AdminStatsResponse stats() {
+        Map<UserRole, Long> usersByRole = new EnumMap<>(UserRole.class);
+        for (var role : UserRole.values()) {
+            usersByRole.put(role, 0L);
+        }
+        userRepository.countGroupedByRole().forEach(row -> usersByRole.put(row.getRole(), row.getCount()));
+        return new AdminStatsResponse(clubRepository.count(), userRepository.count(), usersByRole);
     }
 
     @Transactional

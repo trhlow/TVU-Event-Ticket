@@ -1,8 +1,10 @@
 package vn.edu.tvu.gateway;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -88,5 +90,53 @@ class GatewayRoutingIntegrationTest {
                 .flatMap(predicate -> predicate.getArgs().values().stream())
                 .toList();
         assertThat(configuredPaths).contains(expectedPaths);
+    }
+
+    @Test
+    void ticketingStatsRouteRejectsOrganizerButNotSuperAdmin() {
+        stubJwt("organizer-stats-token", "organizer-stats", "ORGANIZER", UUID.randomUUID().toString());
+        stubJwt("admin-stats-token", "admin-stats", "SUPER_ADMIN", null);
+
+        client.get().uri("/api/ticketing/stats")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer organizer-stats-token")
+                .exchange()
+                .expectStatus().isForbidden();
+
+        client.get().uri("/api/ticketing/stats")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer admin-stats-token")
+                .exchange()
+                .expectStatus().value(status -> assertThat(status).isNotEqualTo(403));
+    }
+
+    @Test
+    void eventsStatsRouteRejectsAnonymousAndOrganizerButNotSuperAdmin() {
+        stubJwt("organizer-events-stats-token", "organizer-events-stats", "ORGANIZER",
+                UUID.randomUUID().toString());
+        stubJwt("admin-events-stats-token", "admin-events-stats", "SUPER_ADMIN", null);
+
+        client.get().uri("/api/events/stats")
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        client.get().uri("/api/events/stats")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer organizer-events-stats-token")
+                .exchange()
+                .expectStatus().isForbidden();
+
+        client.get().uri("/api/events/stats")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer admin-events-stats-token")
+                .exchange()
+                .expectStatus().value(status -> assertThat(status).isNotEqualTo(403));
+    }
+
+    private void stubJwt(String token, String subject, String role, String clubId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("sub", subject);
+        claims.put("roles", List.of(role));
+        if (clubId != null) {
+            claims.put("club_id", clubId);
+        }
+        var jwt = new Jwt(token, Instant.now(), Instant.now().plusSeconds(300), Map.of("alg", "RS256"), claims);
+        when(jwtDecoder.decode(token)).thenReturn(Mono.just(jwt));
     }
 }
