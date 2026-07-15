@@ -20,9 +20,9 @@ afterEach(() => {
 });
 
 describe("LoginPage with the default (microsoft) provider", () => {
-  it("shows the Microsoft login button and no DevStub panel", async () => {
+  it("shows a single, role-neutral Microsoft login button and no DevStub panel", async () => {
     await renderLoginPage();
-    expect(screen.getByText(/Sinh viên đăng nhập bằng Microsoft/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Đăng nhập bằng tài khoản Microsoft/i })).toBeInTheDocument();
     expect(screen.queryByText(/DEV ONLY/i)).not.toBeInTheDocument();
   });
 
@@ -33,13 +33,11 @@ describe("LoginPage with the default (microsoft) provider", () => {
     expect(screen.queryByText(/SUPER_ADMIN|ORGANIZER|SINH_VIEN/)).not.toBeInTheDocument();
   });
 
-  it("disables the Admin/Organizer credential fields instead of pretending they work", async () => {
+  it("tells Organizer/Super Admin to use the same Microsoft button instead of a fake internal form", async () => {
     await renderLoginPage();
-    const emailField = screen.getByPlaceholderText("admin@tvu.edu.vn");
-    expect(emailField).toBeDisabled();
-    const submitButton = screen.getByRole("button", { name: /Đăng nhập nội bộ/i });
-    expect(submitButton).toBeDisabled();
-    expect(screen.getByText(/đang chờ backend hỗ trợ cơ chế xác thực an toàn/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("admin@tvu.edu.vn")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Đăng nhập nội bộ/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/do quản trị viên nhà trường cấp sẵn/i)).toBeInTheDocument();
   });
 });
 

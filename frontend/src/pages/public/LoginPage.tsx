@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, AlertTriangle, FlaskConical, Lock, Mail, ShieldCheck, TicketCheck } from "lucide-react";
+import { AlertCircle, FlaskConical, ShieldCheck, TicketCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -87,7 +87,7 @@ export default function LoginPage() {
         <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
         <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
         <p className="mx-auto mt-3 max-w-[340px] text-sm font-medium leading-6 text-slate-600">
-          Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Vai trò luôn do backend quyết định sau khi xác thực.
+          Sinh viên, Ban tổ chức và Quản trị viên đều đăng nhập chung bằng tài khoản Microsoft của trường. Vai trò và quyền truy cập luôn do backend quyết định sau khi xác thực, frontend không cho chọn vai trò.
         </p>
 
         {errorMsg && (
@@ -110,7 +110,7 @@ export default function LoginPage() {
               <span className="bg-[#00a4ef]" />
               <span className="bg-[#ffb900]" />
             </span>
-            {isSubmitting ? "Đang đăng nhập..." : "Sinh viên đăng nhập bằng Microsoft"}
+            {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
           </button>
         )}
 
@@ -161,56 +161,12 @@ export default function LoginPage() {
           Role luôn lấy từ backend profile/session. Frontend không cho chọn role và không lưu JWT/token vào localStorage hoặc sessionStorage.
         </div>
 
-        <div className="my-8 flex items-center gap-4">
-          <div className="h-px flex-1 bg-slate-200" />
-          <span className="shrink-0 text-xs font-bold text-slate-500">Admin / Ban tổ chức</span>
-          <div className="h-px flex-1 bg-slate-200" />
-        </div>
-
-        <div className="space-y-4 text-left">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs font-semibold leading-5 text-amber-900">
-            <span className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" aria-hidden="true" />
-              Chức năng đăng nhập dành cho CLB đang chờ backend hỗ trợ cơ chế xác thực an toàn.
-            </span>
-          </div>
-
-          <label className="block opacity-60">
-            <span className="mb-2 block text-sm font-bold text-slate-800">Email nội bộ</span>
-            <span className="relative block">
-              <Mail className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input
-                className="tvu-input min-h-12 rounded-lg pl-11 text-base font-medium placeholder:text-slate-400"
-                type="email"
-                placeholder="admin@tvu.edu.vn"
-                disabled
-                readOnly
-              />
-            </span>
-          </label>
-
-          <label className="block opacity-60">
-            <span className="mb-2 block text-sm font-bold text-slate-800">Mật khẩu nội bộ</span>
-            <span className="relative block">
-              <Lock className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-              <input
-                className="tvu-input min-h-12 rounded-lg pl-11 text-base font-medium placeholder:text-slate-400"
-                type="password"
-                placeholder="••••••••"
-                disabled
-                readOnly
-              />
-            </span>
-          </label>
-
-          <button
-            type="button"
-            disabled
-            className="flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-lg bg-slate-300 px-4 text-sm font-extrabold text-slate-500"
-            title="Backend LoginRequest hiện chỉ có credential/displayName, chưa có password."
-          >
-            Đăng nhập nội bộ (chưa khả dụng)
-          </button>
+        <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3 text-left text-xs font-semibold leading-5 text-brand-900">
+          <span className="flex items-start gap-2">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+            Tài khoản Ban tổ chức CLB và Quản trị viên do quản trị viên nhà trường cấp sẵn — đăng nhập bằng đúng nút Microsoft phía trên,
+            không có bước đăng ký hay biểu mẫu riêng. Nếu tài khoản Microsoft của bạn chưa được cấp quyền, hệ thống sẽ báo lỗi cụ thể sau khi đăng nhập.
+          </span>
         </div>
       </section>
 
