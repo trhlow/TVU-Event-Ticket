@@ -3,17 +3,23 @@ package vn.edu.tvu.auth.controller;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
+import vn.edu.tvu.auth.dto.response.AuditLogResponse;
 import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
+import vn.edu.tvu.auth.dto.response.PageResponse;
 import vn.edu.tvu.auth.service.AdminManagementService;
+import vn.edu.tvu.auth.service.AuditLogService;
+import vn.edu.tvu.auth.web.PageableFactory;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -25,6 +31,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,9 +42,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminController {
 
     private final AdminManagementService adminManagementService;
+    private final AuditLogService auditLogService;
 
-    public AdminController(AdminManagementService adminManagementService) {
+    public AdminController(AdminManagementService adminManagementService, AuditLogService auditLogService) {
         this.adminManagementService = adminManagementService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping("/stats")
@@ -107,6 +116,21 @@ public class AdminController {
     @Operation(summary = "Delete an organizer account")
     public void deleteOrganizer(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID organizerId) {
         adminManagementService.deleteOrganizer(actorId(jwt), organizerId);
+    }
+
+    @GetMapping("/audit-log")
+    @Operation(summary = "Search the audit log, paginated")
+    public PageResponse<AuditLogResponse> auditLog(
+            @RequestParam(required = false) UUID actorId,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String sort) {
+        var pageable = PageableFactory.of(page, size, sort, AuditLogService.AUDIT_SORT_FIELDS,
+                AuditLogService.DEFAULT_AUDIT_SORT);
+        return auditLogService.search(actorId, action, from, to, pageable);
     }
 
     private UUID actorId(Jwt jwt) {

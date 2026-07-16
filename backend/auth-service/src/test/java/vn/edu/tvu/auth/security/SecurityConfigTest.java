@@ -5,6 +5,7 @@ import vn.edu.tvu.auth.controller.AuthController;
 import vn.edu.tvu.auth.controller.WellKnownController;
 import vn.edu.tvu.auth.domain.UserRole;
 import vn.edu.tvu.auth.service.AdminManagementService;
+import vn.edu.tvu.auth.service.AuditLogService;
 import vn.edu.tvu.auth.service.AuthApplicationService;
 import vn.edu.tvu.auth.service.InternalJwtService;
 
@@ -46,6 +47,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private AdminManagementService adminManagementService;
+
+    @MockitoBean
+    private AuditLogService auditLogService;
 
     @Test
     void wellKnownEndpointsArePublic() throws Exception {
