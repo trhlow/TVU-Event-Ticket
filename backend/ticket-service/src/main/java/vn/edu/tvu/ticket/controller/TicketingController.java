@@ -5,6 +5,7 @@ import vn.edu.tvu.ticket.dto.request.CheckInRequest;
 import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
 import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
 import vn.edu.tvu.ticket.dto.response.ClubDashboardResponse;
+import vn.edu.tvu.ticket.dto.response.EventDashboardResponse;
 import vn.edu.tvu.ticket.dto.response.PageResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
 import vn.edu.tvu.ticket.security.CurrentUser;
@@ -97,6 +98,12 @@ public class TicketingController {
     @Operation(summary = "Get the organizer's club-wide reservation and check-in KPIs")
     public ClubDashboardResponse dashboardClub(@AuthenticationPrincipal Jwt jwt) {
         return dashboardService.clubDashboard(CurrentUser.from(jwt));
+    }
+
+    @GetMapping("/api/ticketing/events/{eventId}/dashboard")
+    @Operation(summary = "Get live capacity and check-in KPIs for the organizer's event")
+    public EventDashboardResponse eventDashboard(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID eventId) {
+        return dashboardService.eventDashboard(CurrentUser.from(jwt), eventId);
     }
 
     @GetMapping("/api/ticketing/stats")

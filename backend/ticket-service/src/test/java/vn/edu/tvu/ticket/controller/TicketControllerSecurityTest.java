@@ -153,6 +153,21 @@ class TicketControllerSecurityTest {
     }
 
     @Test
+    void eventDashboardRequiresOrganizer() throws Exception {
+        var eventId = UUID.randomUUID();
+        when(dashboardService.eventDashboard(any(), any())).thenReturn(
+                new vn.edu.tvu.ticket.dto.response.EventDashboardResponse(
+                        eventId, UUID.randomUUID(), 50, 30, 20, 5L, 0.25));
+
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/dashboard", eventId))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/dashboard", eventId).with(studentJwt()))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/dashboard", eventId).with(organizerJwt()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void ticketStatsRequiresSuperAdminRole() throws Exception {
         when(dashboardService.ticketStats()).thenReturn(
                 new vn.edu.tvu.ticket.dto.response.TicketStatsResponse(0, 0, null));
