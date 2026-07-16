@@ -3,10 +3,11 @@ package vn.edu.tvu.ticket.repository;
 import vn.edu.tvu.ticket.domain.Ticket;
 
 import java.util.Optional;
-import java.util.List;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -32,15 +33,21 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
     int checkIn(@Param("ticketId") UUID ticketId, @Param("eventId") UUID eventId,
             @Param("clubId") UUID clubId, @Param("now") Instant now);
 
-    @Query(value = """
-            SELECT t.id AS ticketId, t.event_id AS eventId, r.student_id AS studentId,
-                   r.student_email AS studentEmail, r.student_mssv AS studentMssv,
-                   t.status AS status, t.issued_at AS issuedAt, t.checked_in_at AS checkedInAt
-            FROM tickets t JOIN reservations r ON r.id = t.reservation_id
-            WHERE t.event_id = :eventId AND t.club_id = :clubId
-            ORDER BY r.student_mssv, r.student_email
-            """, nativeQuery = true)
-    List<AttendeeProjection> findAttendees(@Param("eventId") UUID eventId, @Param("clubId") UUID clubId);
+    long countByEventIdAndStatus(UUID eventId, vn.edu.tvu.ticket.domain.TicketStatus status);
+
+    @Query("""
+            select t.id as ticketId, t.eventId as eventId, r.studentId as studentId,
+                   r.studentEmail as studentEmail, r.studentMssv as studentMssv,
+                   t.status as status, t.issuedAt as issuedAt, t.checkedInAt as checkedInAt
+            from Ticket t join Reservation r on r.id = t.reservationId
+            where t.eventId = :eventId and t.clubId = :clubId
+              and (:status is null or t.status = :status)
+              and (:keyword is null or lower(r.studentEmail) like :keyword
+                   or lower(r.studentMssv) like :keyword)
+            """)
+    Page<AttendeeProjection> findAttendees(@Param("eventId") UUID eventId, @Param("clubId") UUID clubId,
+            @Param("status") vn.edu.tvu.ticket.domain.TicketStatus status, @Param("keyword") String keyword,
+            Pageable pageable);
 
     interface AttendeeProjection {
         UUID getTicketId();
@@ -48,7 +55,7 @@ public interface TicketRepository extends JpaRepository<Ticket, UUID> {
         UUID getStudentId();
         String getStudentEmail();
         String getStudentMssv();
-        String getStatus();
+        vn.edu.tvu.ticket.domain.TicketStatus getStatus();
         Instant getIssuedAt();
         Instant getCheckedInAt();
     }

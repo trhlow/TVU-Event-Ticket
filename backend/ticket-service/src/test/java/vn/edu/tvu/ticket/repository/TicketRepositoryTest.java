@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import jakarta.persistence.EntityManager;
@@ -212,6 +214,73 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         assertThat(ticketRepository.countByStatus(TicketStatus.VALID)).isEqualTo(before);
         assertThat(ticketRepository.countByStatus(TicketStatus.CHECKED_IN)).isZero();
         assertThat(firstTicket.getStatus()).isEqualTo(TicketStatus.VALID);
+    }
+
+    @Test
+    void findAttendeesPagesFiltersAndSortsByStudentFields() {
+        var eventId = UUID.randomUUID();
+        var clubId = UUID.randomUUID();
+        inventoryRepository.saveAndFlush(inventory(eventId, clubId, 10));
+        issueTicket(eventId, clubId, "zoe@example.com", "110122003", "idem-att-1");
+        issueTicket(eventId, clubId, "amy@example.com", "110122001", "idem-att-2");
+        issueTicket(eventId, clubId, "bob@example.com", "110122002", "idem-att-3");
+
+        var firstPage = ticketRepository.findAttendees(eventId, clubId, null, null,
+                PageRequest.of(0, 2, Sort.by(Sort.Direction.ASC, "r.studentEmail")));
+
+        assertThat(firstPage.getTotalElements()).isEqualTo(3);
+        assertThat(firstPage.getTotalPages()).isEqualTo(2);
+        assertThat(firstPage.getContent()).extracting(
+                TicketRepository.AttendeeProjection::getStudentEmail)
+                .containsExactly("amy@example.com", "bob@example.com");
+    }
+
+    @Test
+    void findAttendeesFiltersByKeywordAcrossEmailAndMssv() {
+        var eventId = UUID.randomUUID();
+        var clubId = UUID.randomUUID();
+        inventoryRepository.saveAndFlush(inventory(eventId, clubId, 10));
+        issueTicket(eventId, clubId, "amy@example.com", "110122001", "idem-kw-1");
+        issueTicket(eventId, clubId, "bob@example.com", "990000002", "idem-kw-2");
+
+        var byEmail = ticketRepository.findAttendees(eventId, clubId, null, "%amy%",
+                PageRequest.of(0, 20, Sort.by("r.studentEmail")));
+        var byMssv = ticketRepository.findAttendees(eventId, clubId, null, "%9900000%",
+                PageRequest.of(0, 20, Sort.by("r.studentEmail")));
+
+        assertThat(byEmail.getContent()).extracting(
+                TicketRepository.AttendeeProjection::getStudentEmail)
+                .containsExactly("amy@example.com");
+        assertThat(byMssv.getContent()).extracting(
+                TicketRepository.AttendeeProjection::getStudentMssv)
+                .containsExactly("990000002");
+    }
+
+    @Test
+    void findAttendeesFiltersByStatusAndExcludesOtherClubs() {
+        var eventId = UUID.randomUUID();
+        var clubId = UUID.randomUUID();
+        inventoryRepository.saveAndFlush(inventory(eventId, clubId, 10));
+        issueTicket(eventId, clubId, "amy@example.com", "110122001", "idem-st-1");
+
+        var checkedIn = ticketRepository.findAttendees(eventId, clubId, TicketStatus.CHECKED_IN, null,
+                PageRequest.of(0, 20, Sort.by("r.studentEmail")));
+        var valid = ticketRepository.findAttendees(eventId, clubId, TicketStatus.VALID, null,
+                PageRequest.of(0, 20, Sort.by("r.studentEmail")));
+        var otherClub = ticketRepository.findAttendees(eventId, UUID.randomUUID(), null, null,
+                PageRequest.of(0, 20, Sort.by("r.studentEmail")));
+
+        assertThat(checkedIn.getContent()).isEmpty();
+        assertThat(valid.getTotalElements()).isEqualTo(1);
+        assertThat(otherClub.getContent()).isEmpty();
+    }
+
+    private void issueTicket(UUID eventId, UUID clubId, String email, String mssv, String idempotencyKey) {
+        var reservation = Reservation.pending(eventId, clubId, UUID.randomUUID(), email, mssv, idempotencyKey);
+        reservationRepository.saveAndFlush(reservation);
+        reservation.approve(UUID.randomUUID());
+        reservationRepository.saveAndFlush(reservation);
+        ticketRepository.saveAndFlush(Ticket.issue(reservation));
     }
 
     private void backdateRequestedAt(UUID reservationId, Instant requestedAt) {
