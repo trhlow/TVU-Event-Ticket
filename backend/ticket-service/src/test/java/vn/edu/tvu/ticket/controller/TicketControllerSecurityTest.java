@@ -110,6 +110,21 @@ class TicketControllerSecurityTest {
     }
 
     @Test
+    void attendeesRejectsInvalidStatusValue() throws Exception {
+        var eventId = UUID.randomUUID();
+
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees", eventId)
+                        .param("status", "BOGUS")
+                        .with(organizerJwt()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees.csv", eventId)
+                        .param("status", "BOGUS")
+                        .with(organizerJwt()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void approvePostCompatibilityRouteRequiresOrganizer() throws Exception {
         var reservationId = UUID.randomUUID();
         mockMvc.perform(post("/api/reservations/{reservationId}/approve", reservationId)
