@@ -1,8 +1,10 @@
 package vn.edu.tvu.ticket.service;
 
 import vn.edu.tvu.ticket.domain.OutboxMessage;
+import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
 import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
+import vn.edu.tvu.ticket.dto.response.PageResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
 import vn.edu.tvu.ticket.messaging.AuditEventMessage;
 import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
@@ -17,9 +19,13 @@ import tools.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -82,30 +88,50 @@ public class TicketingService {
                 ticket.getStudentId(), ticket.getStatus(), ticket.getIssuedAt(), ticket.getCheckedInAt());
     }
 
+    public static final Map<String, String> ATTENDEE_SORT_FIELDS = Map.of(
+            "issuedAt", "t.issuedAt",
+            "checkedInAt", "t.checkedInAt",
+            "studentEmail", "r.studentEmail",
+            "studentMssv", "r.studentMssv");
+
+    public static final String DEFAULT_ATTENDEE_SORT = "issuedAt,desc";
+
     @Transactional(readOnly = true)
-    public List<AttendeeResponse> attendees(CurrentUser actor, UUID eventId) {
-        requireOrganizer(actor);
-        var inventory = inventoryRepository.findByEventId(eventId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event ticketing not found"));
-        if (!inventory.getClubId().equals(actor.clubId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is outside organizer club scope");
-        }
-        return ticketRepository.findAttendees(eventId, actor.clubId()).stream()
-                .map(row -> new AttendeeResponse(row.getTicketId(), row.getEventId(), row.getStudentId(),
-                        row.getStudentEmail(), row.getStudentMssv(), row.getStatus(), row.getIssuedAt(),
-                        row.getCheckedInAt()))
-                .toList();
+    public PageResponse<AttendeeResponse> attendees(CurrentUser actor, UUID eventId, TicketStatus status,
+            String keyword, Pageable pageable) {
+        return PageResponse.from(attendeePage(actor, eventId, status, keyword, pageable));
     }
 
-    public String attendeesCsv(CurrentUser actor, UUID eventId) {
-        var rows = attendees(actor, eventId);
-        var csv = new StringBuilder("ticket_id,event_id,student_id,student_email,student_mssv,status,issued_at,checked_in_at\r\n");
+    @Transactional(readOnly = true)
+    public String attendeesCsv(CurrentUser actor, UUID eventId, TicketStatus status, String keyword) {
+        var rows = attendeePage(actor, eventId, status, keyword,
+                Pageable.unpaged(Sort.by(Sort.Direction.ASC, "r.studentMssv", "r.studentEmail")))
+                .getContent();
+        var csv = new StringBuilder(
+                "ticket_id,event_id,student_id,student_email,student_mssv,status,issued_at,checked_in_at\r\n");
         rows.forEach(row -> csv.append(csv(row.ticketId())).append(',')
                 .append(csv(row.eventId())).append(',').append(csv(row.studentId())).append(',')
                 .append(csv(row.studentEmail())).append(',').append(csv(row.studentMssv())).append(',')
                 .append(csv(row.status())).append(',').append(csv(row.issuedAt())).append(',')
                 .append(csv(row.checkedInAt())).append("\r\n"));
         return csv.toString();
+    }
+
+    private Page<AttendeeResponse> attendeePage(CurrentUser actor, UUID eventId, TicketStatus status,
+            String keyword, Pageable pageable) {
+        requireOrganizer(actor);
+        var inventory = inventoryRepository.findByEventId(eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event ticketing not found"));
+        if (!inventory.getClubId().equals(actor.clubId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Event is outside organizer club scope");
+        }
+        var normalized = keyword == null || keyword.isBlank()
+                ? null
+                : "%" + keyword.trim().toLowerCase(Locale.ROOT) + "%";
+        return ticketRepository.findAttendees(eventId, actor.clubId(), status, normalized, pageable)
+                .map(row -> new AttendeeResponse(row.getTicketId(), row.getEventId(), row.getStudentId(),
+                        row.getStudentEmail(), row.getStudentMssv(), row.getStatus().name(), row.getIssuedAt(),
+                        row.getCheckedInAt()));
     }
 
     private void recordAudit(UUID actorId, UUID ticketId, UUID eventId) {

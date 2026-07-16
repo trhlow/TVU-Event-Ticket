@@ -71,7 +71,8 @@ class TicketControllerSecurityTest {
     @Test
     void organizerCanCheckInAndReadAttendeesWithClubClaim() throws Exception {
         var eventId = UUID.randomUUID();
-        when(ticketingService.attendees(any(), any())).thenReturn(List.of());
+        when(ticketingService.attendees(any(), any(), any(), any(), any()))
+                .thenReturn(new vn.edu.tvu.ticket.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(post("/api/ticketing/check-in")
                         .with(organizerJwt())
@@ -81,6 +82,29 @@ class TicketControllerSecurityTest {
         verify(ticketingService).checkIn(any(), anyString());
 
         mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees", eventId)
+                        .with(organizerJwt()))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void attendeesRejectsOversizedPageAndUnknownSortField() throws Exception {
+        var eventId = UUID.randomUUID();
+        when(ticketingService.attendees(any(), any(), any(), any(), any()))
+                .thenReturn(new vn.edu.tvu.ticket.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees", eventId)
+                        .param("size", "101")
+                        .with(organizerJwt()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees", eventId)
+                        .param("sort", "studentPassword")
+                        .with(organizerJwt()))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees", eventId)
+                        .param("size", "100")
+                        .param("sort", "studentEmail,asc")
                         .with(organizerJwt()))
                 .andExpect(status().isOk());
     }

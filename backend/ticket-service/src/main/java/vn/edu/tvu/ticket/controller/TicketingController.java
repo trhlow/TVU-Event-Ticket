@@ -1,13 +1,16 @@
 package vn.edu.tvu.ticket.controller;
 
+import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.dto.request.CheckInRequest;
 import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
 import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
 import vn.edu.tvu.ticket.dto.response.ClubDashboardResponse;
+import vn.edu.tvu.ticket.dto.response.PageResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.service.DashboardService;
 import vn.edu.tvu.ticket.service.TicketingService;
+import vn.edu.tvu.ticket.web.PageableFactory;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -61,15 +64,29 @@ public class TicketingController {
     }
 
     @GetMapping("/api/ticketing/events/{eventId}/attendees")
-    @Operation(summary = "List attendees for the organizer's event")
-    public List<AttendeeResponse> attendees(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID eventId) {
-        return service.attendees(CurrentUser.from(jwt), eventId);
+    @Operation(summary = "List attendees for the organizer's event, paginated and filterable")
+    public PageResponse<AttendeeResponse> attendees(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID eventId,
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String sort) {
+        var pageable = PageableFactory.of(page, size, sort, TicketingService.ATTENDEE_SORT_FIELDS,
+                TicketingService.DEFAULT_ATTENDEE_SORT);
+        return service.attendees(CurrentUser.from(jwt), eventId, status, keyword, pageable);
     }
 
     @GetMapping(value = "/api/ticketing/events/{eventId}/attendees.csv", produces = "text/csv")
-    @Operation(summary = "Export attendees as UTF-8 CSV")
-    public ResponseEntity<byte[]> attendeesCsv(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID eventId) {
-        var body = service.attendeesCsv(CurrentUser.from(jwt), eventId).getBytes(StandardCharsets.UTF_8);
+    @Operation(summary = "Export every attendee matching the filters as UTF-8 CSV")
+    public ResponseEntity<byte[]> attendeesCsv(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID eventId,
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) String keyword) {
+        var body = service.attendeesCsv(CurrentUser.from(jwt), eventId, status, keyword)
+                .getBytes(StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=attendees-" + eventId + ".csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))

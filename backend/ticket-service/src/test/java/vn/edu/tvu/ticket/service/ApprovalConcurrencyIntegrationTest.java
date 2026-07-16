@@ -136,11 +136,15 @@ class ApprovalConcurrencyIntegrationTest {
         assertThat(checkedIn.status().name()).isEqualTo("CHECKED_IN");
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> ticketingService.checkIn(organizer(clubId), qr))
                 .isInstanceOf(ResponseStatusException.class);
-        assertThat(ticketingService.attendees(organizer(clubId), eventId)).hasSize(1);
-        assertThat(ticketingService.attendeesCsv(organizer(clubId), eventId))
+        var attendeesPageable = org.springframework.data.domain.PageRequest.of(0, 20,
+                org.springframework.data.domain.Sort.by("t.issuedAt"));
+        assertThat(ticketingService.attendees(organizer(clubId), eventId, null, null, attendeesPageable).content())
+                .hasSize(1);
+        assertThat(ticketingService.attendeesCsv(organizer(clubId), eventId, null, null))
                 .contains("student_email", "student@example.com", "CHECKED_IN");
         org.assertj.core.api.Assertions.assertThatThrownBy(
-                () -> ticketingService.attendees(organizer(UUID.randomUUID()), eventId))
+                () -> ticketingService.attendees(organizer(UUID.randomUUID()), eventId, null, null,
+                        attendeesPageable))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("outside organizer club scope");
     }
