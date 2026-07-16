@@ -110,6 +110,74 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void auditLogRouteRejectsStudentRole() throws Exception {
+        var token = token(UserRole.SINH_VIEN);
+
+        mockMvc.perform(get("/api/admin/audit-log")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void auditLogRouteAllowsSuperAdminRole() throws Exception {
+        when(auditLogService.search(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new vn.edu.tvu.auth.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/api/admin/audit-log")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.content").isArray())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.page").value(0))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.size").value(20))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.totalElements").value(0))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.totalPages").value(0));
+    }
+
+    @Test
+    void auditLogRouteRejectsOversizedPageSize() throws Exception {
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/api/admin/audit-log")
+                        .param("size", "101")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void auditLogRouteRejectsUnknownSortField() throws Exception {
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/api/admin/audit-log")
+                        .param("sort", "notAField,asc")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void auditLogRouteBindsFromAndToDateTimeParams() throws Exception {
+        when(auditLogService.search(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(java.time.Instant.parse("2026-01-01T00:00:00Z")),
+                org.mockito.ArgumentMatchers.eq(java.time.Instant.parse("2026-02-01T00:00:00Z")),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new vn.edu.tvu.auth.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/api/admin/audit-log")
+                        .param("from", "2026-01-01T00:00:00Z")
+                        .param("to", "2026-02-01T00:00:00Z")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
     private String token(UserRole role) {
         return jwtService.mint(new JwtSubject(UUID.randomUUID(), role.name().toLowerCase() + "@example.com", role,
                 null, null)).value();
