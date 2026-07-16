@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Download, Search } from "lucide-react";
 import { useParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
@@ -18,7 +18,7 @@ export default function AttendeesPage() {
   useEffect(() => {
     if (!eventId) return;
     let mounted = true;
-    ticketService.listAttendees(eventId)
+    ticketService.listAttendees(eventId, search)
       .then((items) => {
         if (mounted) setAttendees(items);
       })
@@ -28,13 +28,7 @@ export default function AttendeesPage() {
     return () => {
       mounted = false;
     };
-  }, [eventId]);
-
-  const filteredAttendees = useMemo(() => {
-    const normalized = search.trim().toLowerCase();
-    if (!normalized) return attendees;
-    return attendees.filter((ticket) => `${ticket.ticketCode} ${ticket.studentId}`.toLowerCase().includes(normalized));
-  }, [attendees, search]);
+  }, [eventId, search]);
 
   const handleExportCSV = async () => {
     if (!eventId) {
@@ -42,7 +36,8 @@ export default function AttendeesPage() {
       return;
     }
     try {
-      const csv = await apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv`);
+      const query = search.trim() ? `?keyword=${encodeURIComponent(search.trim())}` : "";
+      const csv = await apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${query}`);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -100,7 +95,7 @@ export default function AttendeesPage() {
       </div>
 
       <div className="enterprise-card overflow-hidden p-1">
-        <DataTable data={filteredAttendees} columns={columns} searchPlaceholder="Lọc nhanh..." searchField="ticketCode" />
+        <DataTable data={attendees} columns={columns} searchPlaceholder="Lọc nhanh..." searchField="ticketCode" />
       </div>
       {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>

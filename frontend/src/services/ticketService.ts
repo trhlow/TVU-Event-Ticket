@@ -32,6 +32,14 @@ interface AttendeeResponse {
   checkedInAt?: string | null;
 }
 
+interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 interface AvailabilityResponse {
   eventId: string;
   totalCapacity: number;
@@ -119,9 +127,16 @@ export const ticketService = {
   listByEvents(eventIds: string[]): Ticket[] {
     return getTickets().filter((ticket) => eventIds.includes(ticket.eventId));
   },
-  async listAttendees(eventId: string): Promise<Ticket[]> {
+  async listAttendees(eventId: string, keyword?: string): Promise<Ticket[]> {
     return withTicketFallback(
-      async () => (await apiRequest<AttendeeResponse[]>(`/ticketing/events/${eventId}/attendees`)).map(mapAttendeeTicket),
+      async () => {
+        const query = new URLSearchParams({ size: "100" });
+        if (keyword?.trim()) query.set("keyword", keyword.trim());
+        const page = await apiRequest<PageResponse<AttendeeResponse>>(
+          `/ticketing/events/${eventId}/attendees?${query.toString()}`,
+        );
+        return page.content.map(mapAttendeeTicket);
+      },
       () => getTickets().filter((ticket) => ticket.eventId === eventId),
     );
   },
