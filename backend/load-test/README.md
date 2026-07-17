@@ -1,4 +1,8 @@
-# EPIC 7 load test: the concurrent-approval capacity race
+# Concurrent-approval capacity race (modular monolith)
+
+The historical results below were captured before the migration. The harness now targets the
+single monolith at `http://localhost:8080`; run it again before treating any latency measurement
+as current.
 
 ## What this proves
 
@@ -33,13 +37,11 @@ cd backend/load-test
 
 One command does everything:
 
-1. Brings up the full stack (`docker compose -f ../infra/docker-compose.app.yml up -d --build --wait`) --
-   returns only once every service reports healthy.
+1. Brings up the monolith and supporting infrastructure (`docker compose -f ../infra/docker-compose.app.yml up -d --build --wait`).
 2. Seeds the fixture (`node seed.mjs`): creates a club, an organizer, an event with capacity 100, and 500
    PENDING reservations under 500 distinct students, through the public API only. Writes `.seed.json`.
-3. Runs the k6 scenario (`approval-capacity.js`) inside `grafana/k6` via `docker run`, hitting
-   ticket-service **directly** on `host.docker.internal:8082` -- not through the gateway. See "About the
-   gateway's rate limiter" below for why.
+3. Runs the k6 scenario (`approval-capacity.js`) inside `grafana/k6` via `docker run`, hitting the
+   monolith at `host.docker.internal:8080` with an Authorization bearer token.
 4. Reconciles the result from two independent sources: the ticket-service's own `/availability` endpoint
    (`approvedCount`, `remaining`) and k6's own per-status counters, and prints a verdict.
 5. Exits non-zero if either reconciliation fails.
@@ -56,9 +58,9 @@ Environment variables, read by `seed.mjs` (and `run.sh` passes `BASE_URL` throug
 
 - `CAPACITY` -- event capacity (default 100)
 - `STUDENTS` -- number of reservations to seed (default 500)
-- `BASE_URL` -- gateway base URL as seen from the host (default `http://localhost:8080`)
+- `BASE_URL` -- monolith base URL as seen from the host (default `http://localhost:8080`)
 
-`approval-capacity.js` reads `TICKET_SERVICE_URL` (default `http://host.docker.internal:8082`) if you need
+`approval-capacity.js` reads `TICKET_SERVICE_URL` (default `http://host.docker.internal:8080`) if you need
 to point it somewhere other than the default compose network layout.
 
 ## Reading the verdict
@@ -75,9 +77,9 @@ If `approvedCount` is not exactly `CAPACITY`, or the counters don't reconcile, o
 200/409/429 appears, that is a genuine system finding, not a harness bug -- see `RESULTS.md` for the
 actual measured result of the last real run.
 
-## About the gateway's rate limiter (and why the approval hammer bypasses the gateway)
+## Legacy note: gateway rate limiting
 
-Every `/api/reservations/**` call through the gateway is rate-limited (`replenishRate: 10`,
+The removed gateway previously rate-limited `/api/reservations/**` (`replenishRate: 10`,
 `burstCapacity: 20`, `api-gateway/src/main/resources/application.yml`), keyed **per authenticated
 principal** (`GatewaySecurityConfig#clientKeyResolver`). Since every approval in this run authenticates as
 the same organizer, all 500 requests would share ONE token bucket through the gateway regardless of k6's
@@ -97,21 +99,16 @@ So the scenario is split by design:
 - **Seeding** (`seed.mjs`) still goes through the gateway at `http://localhost:8080` -- it exercises the
   real registration path end-to-end, and the gateway's rate limiter is legitimate anti-abuse protection
   for that path, not something to route around.
-- **The approval hammer** (`approval-capacity.js`) talks to ticket-service **directly** on
-  `host.docker.internal:8082` (published directly by `docker-compose.app.yml`), with genuine
-  `shared-iterations` concurrency (50 VUs, 500 iterations, no artificial pacing). The rate limiter lives
-  in the gateway; the race being tested lives in ticket-service. They are separable, and bypassing the
-  gateway here is a documented, deliberate scope choice -- not disabling a safety mechanism, since the
-  gateway's rate limiting is never in the path this test cares about.
+- **The approval hammer** (`approval-capacity.js`) talks to the monolith on
+  `host.docker.internal:8080`, with genuine `shared-iterations` concurrency (50 VUs, 500 iterations,
+  no artificial pacing).
 
 Two things change because of that:
 
-- **Auth**: ticket-service is an OAuth2 resource server that reads a standard `Authorization: Bearer`
-  header. The gateway is what turns the browser's `TVU_AUTH` cookie into that bearer token, so the script
-  parses the JWT back out of `seed.organizer.cookie` (the raw cookie value *is* the JWT) and sends
-  `Authorization: Bearer <jwt>` directly.
-- **CSRF**: enforced by a gateway global filter, not by ticket-service, so `X-XSRF-TOKEN` is simply
-  dropped -- there's nothing on the other end to check it.
+- **Auth**: the monolith accepts the standard `Authorization: Bearer` header. The script parses the JWT
+  from `seed.organizer.cookie` and sends it as a bearer token.
+- **CSRF**: the monolith enforces CSRF for browser cookie authentication; bearer-token calls remain
+  compatible with non-browser API clients.
 
 `429`s are not expected on this path (the rate limiter is gateway-only), but the script still counts them
 in their own `approvals_rate_limited` bucket rather than folding them into `approvals_sold_out` or
@@ -123,8 +120,8 @@ This scenario is deliberately **not** wired into CI:
 
 - A CI runner's hardware is arbitrary and often shared/throttled, so p95 latency measured there is
   meaningless -- it would neither catch regressions reliably nor be reproducible run to run.
-- Standing up five services (gateway, auth, event, ticket, notification) plus Postgres/Redis/RabbitMQ per
-  PR, just to run a several-minutes-long load test, is slow for no proportional gain: the property this
+- Starting the monolith plus Postgres/Redis/RabbitMQ per PR, just to run a several-minutes-long load test,
+  is slow for no proportional gain: the property this
   test proves (no overbooking under concurrent approval) is about the approval code path's correctness,
   not something that regresses on every unrelated PR.
 

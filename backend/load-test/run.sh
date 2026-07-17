@@ -24,10 +24,7 @@ TOTAL=$(node -e "console.log(require('./.seed.json').reservationIds.length)")
 
 echo "==> before: $(curl -s "$BASE/api/ticketing/events/$EVENT/availability")"
 
-echo "==> running k6 ($TOTAL concurrent approvals against capacity $CAPACITY, direct to ticket-service:8082)"
-# The approval hammer bypasses the gateway on purpose (see approval-capacity.js) -- the gateway's
-# per-principal rate limiter would otherwise serialize all 500 approvals into a slow trickle and mask
-# whether ticket-service's own Redis-DECR + DB-transaction pairing is race-free under real concurrency.
+echo "==> running k6 ($TOTAL concurrent approvals against capacity $CAPACITY, monolith :8080)"
 # MSYS_NO_PATHCONV=1: Git Bash rewrites the -v host:container mount and -w path as if they were Windows
 # paths, mangling both sides of the docker bind mount. Disabling that conversion, plus using $PWD (already
 # cd'ed into $HERE) instead of re-interpolating $HERE, gets the k6 container an actual working mount.

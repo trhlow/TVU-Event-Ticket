@@ -5,13 +5,15 @@ import java.net.http.HttpClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
-public class EventClient {
+@Profile("!monolith")
+public class EventClient implements EventLookup {
 
     private final RestClient restClient;
 

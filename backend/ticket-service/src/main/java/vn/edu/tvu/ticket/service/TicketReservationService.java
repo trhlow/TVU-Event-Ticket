@@ -1,6 +1,6 @@
 package vn.edu.tvu.ticket.service;
 
-import vn.edu.tvu.ticket.client.EventClient;
+import vn.edu.tvu.ticket.client.EventLookup;
 import vn.edu.tvu.ticket.client.EventSnapshot;
 import vn.edu.tvu.ticket.domain.OutboxMessage;
 import vn.edu.tvu.ticket.domain.Reservation;
@@ -46,7 +46,7 @@ public class TicketReservationService {
     private final TicketInventoryRepository inventoryRepository;
     private final OutboxMessageRepository outboxRepository;
     private final TicketCounterService ticketCounterService;
-    private final EventClient eventClient;
+    private final EventLookup eventLookup;
     private final ReservationMapper reservationMapper;
     private final TicketInventoryMapper inventoryMapper;
     private final ObjectMapper objectMapper;
@@ -57,7 +57,7 @@ public class TicketReservationService {
             TicketInventoryRepository inventoryRepository,
             OutboxMessageRepository outboxRepository,
             TicketCounterService ticketCounterService,
-            EventClient eventClient,
+            EventLookup eventLookup,
             ReservationMapper reservationMapper,
             TicketInventoryMapper inventoryMapper,
             ObjectMapper objectMapper) {
@@ -66,7 +66,7 @@ public class TicketReservationService {
         this.inventoryRepository = inventoryRepository;
         this.outboxRepository = outboxRepository;
         this.ticketCounterService = ticketCounterService;
-        this.eventClient = eventClient;
+        this.eventLookup = eventLookup;
         this.reservationMapper = reservationMapper;
         this.inventoryMapper = inventoryMapper;
         this.objectMapper = objectMapper;
@@ -75,7 +75,7 @@ public class TicketReservationService {
     @Transactional
     public TicketInventoryResponse initializeInventory(CurrentUser actor, InitializeTicketInventoryRequest request) {
         requireOrganizerOrAdmin(actor);
-        var event = eventClient.getOpenEvent(request.eventId());
+        var event = eventLookup.getOpenEvent(request.eventId());
         requireClubScope(actor, event.clubId(), "Inventory is outside organizer club scope");
         if (inventoryRepository.existsByEventId(request.eventId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Ticket inventory already exists");
@@ -105,7 +105,7 @@ public class TicketReservationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Reservation already exists for event");
         }
 
-        var event = eventClient.getOpenEvent(request.eventId());
+        var event = eventLookup.getOpenEvent(request.eventId());
         validateRegistrationWindow(event);
         var inventory = inventoryRepository.findByEventId(event.id())
                 .orElseGet(() -> inventoryRepository.save(TicketInventory.create(

@@ -1,6 +1,8 @@
 # Backend — TVU Event & Ticket
 
-Maven multi-module project. Java 25, Spring Boot 4.0.x. Base package `vn.edu.tvu`.
+Modular monolith built with Maven, Java 25 and Spring Boot 4.0.x. It exposes the
+same public API at `http://localhost:8080/api`; the former service modules are
+build-time feature libraries, not independently deployed applications.
 
 Frontend integration status is summarized in
 [../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
@@ -17,37 +19,28 @@ Frontend integration status is summarized in
 - **Shared frontend types** should eventually be generated from the OpenAPI spec (§6.7). Until that pipeline
   is wired, keep frontend handwritten types aligned with [../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
 
-## Modules
+## Runtime
 
-| Module                 | Port | Responsibility |
-|------------------------|------|----------------|
-| `api-gateway`          | 8080 | Single entry point: CORS, JWT auth, RBAC, rate limiting, routing |
-| `auth-service`         | 8084 | Dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies |
-| `event-service`        | 8081 | Public event discovery and club-scoped organizer CRUD/lifecycle APIs |
-| `ticket-service`       | 8082 | Reservations and ticket inventory; atomic reservation via Redis (§6.3) |
-| `notification-service` | 8083 | Consumes approval events, generates signed QR tickets and sends email |
+| Component | Port | Responsibility |
+|---|---:|---|
+| `monolith` | 8080 | Auth/RBAC, event lifecycle, reservations, tickets, analytics, outbox and notification consumer |
+| PostgreSQL | 5432 | Single `tvu_app` schema managed by Flyway |
+| Redis | 6379 | Capacity counter and notification idempotency |
+| RabbitMQ | 5672 / 15672 | Durable outbox-to-notification boundary |
+| Mailpit | 8025 | Local mail inbox |
 
 ## Run locally
 
-Start local dependencies only (Postgres, Redis, RabbitMQ):
-
-```bash
-docker compose -f infra/docker-compose.yml up -d
-```
-
-The dependency Compose file starts PostgreSQL, Redis and RabbitMQ. Its init script creates `tvu_auth`,
-`tvu_event`, and `tvu_ticket`.
-
-Run the complete application stack (five services, dependencies and Mailpit) in containers:
+Run the complete local application (one Spring Boot JVM plus supporting infrastructure):
 
 ```bash
 docker compose -f infra/docker-compose.app.yml up -d --build --wait
 ```
 
-`--wait` is important: it returns only after the services and their dependencies pass real healthchecks. The
-gateway is exposed on `http://localhost:8080`, and Mailpit's inbox is at `http://localhost:8025`.
+`--wait` returns only after the monolith and dependencies pass healthchecks. The API is exposed at
+`http://localhost:8080`, and Mailpit's inbox is at `http://localhost:8025`.
 
-Frontend dev server should call the gateway:
+Frontend dev server should call the monolith:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8080/api
@@ -63,17 +56,18 @@ Run all commands from this `backend/` directory.
 # Build and verify all modules
 mvn clean verify
 
-# Build/test a single module (with its dependencies)
-mvn -pl ticket-service -am clean test
+# Build/test the deployable runtime (with all feature libraries)
+mvn -pl monolith -am clean test
 
-# Run one service (dev profile is the default; or run its ...Application class from the IDE)
-mvn -pl ticket-service spring-boot:run
+# Build then run the single application
+mvn -pl monolith -am package
+java -jar monolith/target/monolith-0.0.1-SNAPSHOT.jar
 
 # Run against the prod profile (expects env vars to be set)
-mvn -pl ticket-service spring-boot:run -Dspring-boot.run.profiles=prod
+SPRING_PROFILES_ACTIVE=prod java -jar monolith/target/monolith-0.0.1-SNAPSHOT.jar
 
 # Run a single test class
-mvn -pl ticket-service test -Dtest=TicketReservationServiceTest
+mvn -pl monolith -am test -Dtest=TicketReservationServiceTest
 ```
 
 ## Notes

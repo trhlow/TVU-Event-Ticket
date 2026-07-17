@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>TVU Event &amp; Ticket - Backend</name>
-    <description>Distributed event management and e-ticketing platform (microservices)</description>
+    <description>Modular monolith event management and e-ticketing platform</description>
 
     <!-- Spring Boot as parent so all modules inherit dependency management -->
     <parent>
@@ -20,11 +20,11 @@
     </parent>
 
     <modules>
-        <module>api-gateway</module>
         <module>auth-service</module>
         <module>event-service</module>
         <module>ticket-service</module>
         <module>notification-service</module>
+        <module>monolith</module>
     </modules>
 
     <properties>
