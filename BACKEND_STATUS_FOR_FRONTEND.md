@@ -172,12 +172,42 @@ Inventory request:
 | `event-service` | Event schema, public discovery, organizer CRUD/lifecycle, club scoping, OpenAPI and audit publishing are ready. | Public and organizer event screens can use live APIs. |
 | `notification-service` | Ready: consumes approved reservations, produces ticket-service-compatible signed QR PNGs, sends localized email, deduplicates by outbox message ID, and exposes DLQ metrics. | No frontend endpoint. After an organizer approves a reservation, the existing approval flow asynchronously sends the student's ticket email. Keep status UI based on reservation state, never on email delivery. |
 
+## BREAKING CHANGE (2026-07-17, on `hlow`): the attendee endpoint is now paginated
+
+`GET /api/ticketing/events/{eventId}/attendees` **no longer returns a bare array.** It returns:
+
+```json
+{ "content": [ /* AttendeeResponse */ ], "page": 0, "size": 20, "totalElements": 0, "totalPages": 0 }
+```
+
+`AttendeeResponse`'s own fields are unchanged. The frontend caller in this repo has already been updated;
+any other consumer must read `.content`.
+
+Query params: `status` (a `TicketStatus`), `keyword`, `page` (default 0), `size` (default 20, **hard max
+100** — larger returns 400), `sort` (one of `issuedAt`, `checkedInAt`, `studentEmail`, `studentMssv`,
+optionally `,asc`/`,desc`; default `issuedAt,desc`; anything else returns 400).
+
+**`keyword` matches student email or MSSV only — not ticket id, not student id.** If your UI offers a search
+box against this endpoint, label it accordingly and display those fields, or users will search for values the
+server cannot match.
+
+`GET .../attendees.csv` accepts the same `status`/`keyword` but is never paginated — it exports every matching
+row.
+
+The same pagination envelope and rules apply to `GET /api/admin/audit-log`.
+
 ## Known gaps for frontend
 
 - Ticket availability, organizer QR check-in, attendee JSON and CSV APIs are available under `/api/ticketing/**`.
 - Notification/email delivery is asynchronous after a successful organizer approval. It has no gateway route and should not be polled from the UI.
 - OpenAPI-based TypeScript generation is planned, but frontend currently still has handwritten service/types.
 - Internal password is not validated in dev auth; `credential` is the source of identity in the dev profile.
+- There is no backend aggregate endpoint for the SUPER_ADMIN overview by design: compose it from the three
+  slices (`/api/admin/stats`, `/api/events/stats`, `/api/ticketing/stats`). Figures may differ slightly between
+  slices; that eventual consistency is accepted for the MVP.
+- Several Testcontainers-backed tests carry `@Testcontainers(disabledWithoutDocker = true)`, including the
+  overbooking concurrency test. Without Docker running they **skip silently instead of failing** — a local
+  green run proves nothing unless the output says `Skipped: 0`.
 
 ## EPIC delivery progress
 
@@ -189,7 +219,17 @@ Inventory request:
 | EPIC 3 - Event service | 100% | Complete on `main`. |
 | EPIC 4 - Ticket service core | 100% | Complete on `main`; plan-audit hardening adds POST compatibility and additional concurrency/contract coverage. |
 | EPIC 5 - Notification service | 100% | Complete on `hlow` (not yet merged to `main`). Fixed after a real Docker E2E re-verification found the wire format was broken end-to-end — see note below. |
-| EPIC 6-8 | Not started as complete EPICs | Some infrastructure/documentation pieces exist, but none should be marked complete yet. |
+| EPIC 6 - Lightweight analytics | 100% | Complete on `hlow` (not yet merged to `main`). Club dashboard (`/api/ticketing/dashboard/club`) plus three SUPER_ADMIN slices (`/api/admin/stats`, `/api/events/stats`, `/api/ticketing/stats`). Also fixed two pre-existing route-ordering RBAC bugs found during design. |
+| EPIC UI - Dashboard API contract | 100% | Complete on `hlow` (not yet merged to `main`). Closes TU.3 (`/api/ticketing/events/{id}/dashboard`), TU.4 (attendee pagination/filtering — **breaking**, see above) and TU.5 (`/api/admin/audit-log`). TU.1/TU.2/TU.6 were already served by EPIC 4 and EPIC 6. |
+| EPIC 7 - JVM tuning, Docker, CI, monitoring, load test | Not started | — |
+| EPIC 8 - Documentation and close-out | Not started | Some pieces exist, but the EPIC is not complete. |
+
+**2026-07-17 correction:** the row above previously read "EPIC 6-8 — not started". EPIC 6 was in fact already
+complete, and EPIC UI was recorded as delivered while `TU.4`'s acceptance criteria (`status`, `keyword`,
+`page`, `size`, `sort`) were not implemented at all — the endpoint existed but returned an unfiltered,
+unpaginated list, so the frontend filtered client-side. Both are now genuinely done and verified with
+`mvn -B clean verify` (`Skipped: 0`). Treat progress tables here as claims to re-check against the code, not
+as evidence.
 
 **2026-07-14 correction:** the "100% / Docker smoke passed" claim recorded below for EPIC 5 predates a real
 end-to-end verification and was inaccurate. Re-running the actual Docker Compose stack (not just the
