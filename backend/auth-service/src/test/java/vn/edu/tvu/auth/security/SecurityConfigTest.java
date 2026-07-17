@@ -178,6 +178,16 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void auditLogRouteRejectsMalformedActorIdWithBadRequest() throws Exception {
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/api/admin/audit-log")
+                        .param("actorId", "not-a-uuid")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
     private String token(UserRole role) {
         return jwtService.mint(new JwtSubject(UUID.randomUUID(), role.name().toLowerCase() + "@example.com", role,
                 null, null)).value();
