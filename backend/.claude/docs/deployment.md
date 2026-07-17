@@ -45,6 +45,19 @@ Oracle Always Free ARM capacity can be revoked ("Out of host capacity"). Keep a 
 provider's free tier) pre-configured with the same `docker-compose.yml` for fast failover. The defensive JVM
 sizing above is what lets the system stay up on minimum resources.
 
+## Monitoring & readiness
+
+- **Uptime ping**: point UptimeRobot (or equivalent) at `GET /actuator/health` on the gateway. Spring Boot
+  aggregates the db, Redis and RabbitMQ health indicators (auto-configured wherever the matching starter is
+  present) into that one endpoint, so a single ping transitively covers all three dependencies.
+- **Container log rotation**: Docker's default `json-file` log driver has no size cap and will grow without
+  bound. Set `max-size`/`max-file` via the daemon's `log-opts` (or per-service `logging:` config) on the
+  deployment host so container logs don't fill the disk.
+- **Startup gating**: the compose stack's `depends_on` entries now use `condition: service_healthy` against
+  real healthchecks (bash `/dev/tcp` probes of `/actuator/health` for the Spring Boot services; `pg_isready`,
+  `redis-cli ping`, `rabbitmq-diagnostics ping` for the infra dependencies). Bring the stack up with
+  `docker compose up --wait` — it only returns once every service is genuinely healthy, not merely started.
+
 ## MVP cut lines (§9)
 
 If timeline slips: merge `notification-service` into `ticket-service` (one fewer container), then trim the
