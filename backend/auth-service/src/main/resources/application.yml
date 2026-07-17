@@ -1,6 +1,9 @@
 # Common config. Environment-specific values live in application-{dev,prod}.yml
 server:
   port: 8084
+  tomcat:
+    threads:
+      max: 20
 
 spring:
   application:

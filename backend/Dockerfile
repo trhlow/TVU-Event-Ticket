@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -pl ${MODULE} -am -Dmaven.test.sk
 
 FROM eclipse-temurin:25-jre
 ARG MODULE
-ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -Xss256k -XX:MaxRAMPercentage=70.0"
+ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -Xss512k -XX:MaxRAMPercentage=70.0"
 ENV SPRING_MAIN_LAZY_INITIALIZATION=true
 ENV SERVER_TOMCAT_THREADS_MAX=20
 WORKDIR /app
