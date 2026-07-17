@@ -22,18 +22,23 @@ jobs:
           filters: |
             api-gateway:
               - 'backend/pom.xml'
+              - 'backend/Dockerfile'
               - 'backend/api-gateway/**'
             auth-service:
               - 'backend/pom.xml'
+              - 'backend/Dockerfile'
               - 'backend/auth-service/**'
             event-service:
               - 'backend/pom.xml'
+              - 'backend/Dockerfile'
               - 'backend/event-service/**'
             ticket-service:
               - 'backend/pom.xml'
+              - 'backend/Dockerfile'
               - 'backend/ticket-service/**'
             notification-service:
               - 'backend/pom.xml'
+              - 'backend/Dockerfile'
               - 'backend/notification-service/**'
             frontend:
               - 'frontend/**'
