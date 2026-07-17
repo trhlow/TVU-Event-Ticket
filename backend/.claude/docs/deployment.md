@@ -47,9 +47,17 @@ sizing above is what lets the system stay up on minimum resources.
 
 ## Monitoring & readiness
 
-- **Uptime ping**: point UptimeRobot (or equivalent) at `GET /actuator/health` on the gateway. Spring Boot
-  aggregates the db, Redis and RabbitMQ health indicators (auto-configured wherever the matching starter is
-  present) into that one endpoint, so a single ping transitively covers all three dependencies.
+- **Uptime ping**: the gateway's `GET /actuator/health` (port 8080) only proves the gateway itself and Redis
+  are up — `api-gateway/pom.xml` pulls in `spring-boot-starter-data-redis-reactive` but no datasource and no
+  `spring-boot-starter-amqp`, and Spring Cloud Gateway does not aggregate downstream services' health into
+  its own. A single ping at the gateway does **not** cover Postgres, RabbitMQ, or the other four services —
+  ticket-service could be down entirely while the gateway stays green. Point UptimeRobot (or equivalent) at
+  each service's own `/actuator/health` instead:
+  - gateway: `:8080/actuator/health` (gateway + Redis)
+  - auth-service: `:8084/actuator/health` (auth + its DB + RabbitMQ)
+  - event-service: `:8081/actuator/health` (event + its DB + RabbitMQ)
+  - ticket-service: `:8082/actuator/health` (ticket + its DB + Redis + RabbitMQ)
+  - notification-service: `:8083/actuator/health` (notification + Redis + RabbitMQ + mail)
 - **Container log rotation**: Docker's default `json-file` log driver has no size cap and will grow without
   bound. Set `max-size`/`max-file` via the daemon's `log-opts` (or per-service `logging:` config) on the
   deployment host so container logs don't fill the disk.
