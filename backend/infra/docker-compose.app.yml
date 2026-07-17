@@ -6,7 +6,7 @@ services:
       file: docker-compose.yml
       service: postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U tvu"]
+      test: ["CMD-SHELL", "pg_isready -U tvu -d tvu_auth -h 127.0.0.1"]
       interval: 5s
       timeout: 3s
       retries: 12
