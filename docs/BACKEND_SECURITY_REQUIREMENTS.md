@@ -1,16 +1,15 @@
 # Backend security & API requirements blocked on the backend team
 
-This document lists every gap found during the frontend hardening pass (2026-07) that **cannot
-be fixed from `frontend/`, `.github/`, or documentation alone** because the underlying capability
-does not exist in `backend/`. Per the scope of that pass, no file under `backend/` was created,
-edited, deleted, renamed, or reformatted — this document is the substitute for those changes.
+This document records findings from the frontend hardening pass (2026-07) that required backend work.
+It is a living security backlog: items completed in later epics are explicitly marked rather than presented
+as current gaps.
 
 Each item states the problem, the risk, the endpoint/module involved, the API contract the
 frontend already expects (or would need), acceptance criteria for the fix, priority, and status.
-None of the JSON contracts below are implemented anywhere — they are proposals for the backend
-team, not endpoints the frontend calls today.
+Unless an item is marked **Resolved**, its JSON contract is a proposal rather than an endpoint the frontend
+can rely on.
 
-Status legend: all items are **Blocked by backend** unless noted otherwise.
+Status legend: items are **Blocked by backend** unless marked **Resolved**.
 
 ---
 
@@ -239,7 +238,13 @@ execution, the attacker gets root inside the container rather than an unprivileg
 
 ---
 
-## 10. Docker Compose has no healthchecks
+## 10. Docker Compose healthchecks
+
+**Status: Resolved in EPIC 7.** `backend/infra/docker-compose.app.yml` now health-checks Postgres, Redis,
+RabbitMQ, Mailpit and all five Spring services. Service dependencies use `condition: service_healthy`; bring
+the stack up with `docker compose -f infra/docker-compose.app.yml up -d --build --wait`.
+
+**Historical finding.**
 
 **Problem.** Neither `backend/infra/docker-compose.yml` nor `docker-compose.app.yml` define a
 `healthcheck` for any service (Postgres, Redis, RabbitMQ, Mailpit, or any of the 5 Spring
@@ -320,7 +325,14 @@ a ticket owned by the requesting student.
 
 ---
 
-## 14. No statistics or audit-log read API for Super Admin
+## 14. Super Admin statistics and audit-log read APIs
+
+**Status: Resolved in EPIC 6 and EPIC UI.** The backend exposes the three SUPER_ADMIN metric slices
+`/api/admin/stats`, `/api/events/stats` and `/api/ticketing/stats`, plus the paginated
+`/api/admin/audit-log` endpoint. There is intentionally no single cross-service aggregate; consumers compose
+the three slices and accept small eventual-consistency differences.
+
+**Historical finding.**
 
 **Problem.** `auth-service` records audit log entries internally (`AuditLog` entity/service) for
 every admin action, but exposes no endpoint to *read* them. No service exposes a
@@ -405,9 +417,9 @@ values wherever these fields are missing.
 | 7 | `.../reset` does not reset a password | Medium | Blocked by backend |
 | 8 | CSV injection in attendee export | High | Blocked by backend |
 | 9 | Backend container runs as root | High | Blocked by backend |
-| 10 | Docker Compose has no healthchecks | Medium | Blocked by backend |
+| 10 | Docker Compose healthchecks | Medium | Resolved (EPIC 7) |
 | 11 | Notification DLQ has no re-drive path | Medium | Blocked by backend |
 | 12 | `/tickets/inventories` missing explicit role rule | Low | Blocked by backend |
 | 13 | No endpoint to re-fetch a ticket's QR | Medium | Blocked by backend |
-| 14 | No statistics/audit-log read API | Medium | Blocked by backend |
+| 14 | Super Admin statistics/audit-log APIs | Medium | Resolved (EPIC 6/UI) |
 | 15 | Reservation/Event DTOs missing display fields | Medium | Blocked by backend |

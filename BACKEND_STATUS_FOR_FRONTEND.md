@@ -222,7 +222,7 @@ The same pagination envelope and rules apply to `GET /api/admin/audit-log`.
 | EPIC 6 - Lightweight analytics | 100% | Complete on `hlow` (not yet merged to `main`). Club dashboard (`/api/ticketing/dashboard/club`) plus three SUPER_ADMIN slices (`/api/admin/stats`, `/api/events/stats`, `/api/ticketing/stats`). Also fixed two pre-existing route-ordering RBAC bugs found during design. |
 | EPIC UI - Dashboard API contract | 100% | Complete on `hlow` (not yet merged to `main`). Closes TU.3 (`/api/ticketing/events/{id}/dashboard`), TU.4 (attendee pagination/filtering — **breaking**, see above) and TU.5 (`/api/admin/audit-log`). TU.1/TU.2/TU.6 were already served by EPIC 4 and EPIC 6. |
 | EPIC 7 - JVM tuning, Docker, CI, monitoring, load test | 100% | Complete on `hlow`: resource limits, health-gated Compose startup, CI hardening, and a measured concurrent approval load test are delivered. |
-| EPIC 8 - Documentation and close-out | Not started | Some pieces exist, but the EPIC is not complete. |
+| EPIC 8 - Documentation and close-out | 100% | README, deployment/operations guidance, close-out record and GitNexus index have been refreshed on `hlow`. |
 
 **2026-07-17 correction:** the row above previously read "EPIC 6-8 — not started". EPIC 6 was in fact already
 complete, and EPIC UI was recorded as delivered while `TU.4`'s acceptance criteria (`status`, `keyword`,

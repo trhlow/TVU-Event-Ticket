@@ -21,16 +21,20 @@ Every Spring Boot container runs with these so it fits the minimum free-tier RAM
 
 ```
 -XX:+UseSerialGC
--Xss256k            # (or 512k)
+-Xss512k
 -XX:MaxRAMPercentage=70.0
 ```
-Plus in config: `spring.main.lazy-initialization=true` and `server.tomcat.threads.max=20` (not the 200 default).
+`SPRING_MAIN_LAZY_INITIALIZATION=true` is supplied by the runtime Docker image so it constrains containers
+without deferring Spring bean wiring in tests. The four servlet services set
+`server.tomcat.threads.max=20`; the reactive API gateway deliberately does not carry a Tomcat setting.
 
 ## Packaging & CI/CD
 
-- Docker + Docker Compose; images built in GitHub Actions with path filters (build/test only the changed
-  module). Base images must be ARM-compatible (Ampere A1).
+- Docker + Docker Compose; GitHub Actions runs on `main` and `hlow`, path-filters changed services, verifies
+  their tests, fails if a test is skipped, and builds each changed module image. Base images must be
+  ARM-compatible (Ampere A1).
 - Local dev dependencies come up with `docker compose -f infra/docker-compose.yml up -d`.
+- The complete local stack uses `docker compose -f infra/docker-compose.app.yml up -d --build --wait`.
 
 ## Config / secrets in prod
 

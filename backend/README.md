@@ -25,9 +25,9 @@ Frontend integration status is summarized in
 | `auth-service`         | 8084 | Dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies |
 | `event-service`        | 8081 | Public event discovery and club-scoped organizer CRUD/lifecycle APIs |
 | `ticket-service`       | 8082 | Reservations and ticket inventory; atomic reservation via Redis (§6.3) |
-| `notification-service` | 8083 | Scaffolded service for future QR/email delivery |
+| `notification-service` | 8083 | Consumes approval events, generates signed QR tickets and sends email |
 
-## Prerequisites
+## Run locally
 
 Start local dependencies only (Postgres, Redis, RabbitMQ):
 
@@ -35,13 +35,17 @@ Start local dependencies only (Postgres, Redis, RabbitMQ):
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-The compose init script creates `tvu_auth`, `tvu_event`, and `tvu_ticket`.
+The dependency Compose file starts PostgreSQL, Redis and RabbitMQ. Its init script creates `tvu_auth`,
+`tvu_event`, and `tvu_ticket`.
 
-Run the full backend stack in containers:
+Run the complete application stack (five services, dependencies and Mailpit) in containers:
 
 ```bash
-docker compose -f infra/docker-compose.app.yml up --build
+docker compose -f infra/docker-compose.app.yml up -d --build --wait
 ```
+
+`--wait` is important: it returns only after the services and their dependencies pass real healthchecks. The
+gateway is exposed on `http://localhost:8080`, and Mailpit's inbox is at `http://localhost:8025`.
 
 Frontend dev server should call the gateway:
 
@@ -56,11 +60,11 @@ VITE_ENABLE_MOCK_FALLBACK=false
 Run all commands from this `backend/` directory.
 
 ```bash
-# Build all modules
-mvn clean install
+# Build and verify all modules
+mvn clean verify
 
 # Build/test a single module (with its dependencies)
-mvn -pl ticket-service -am test
+mvn -pl ticket-service -am clean test
 
 # Run one service (dev profile is the default; or run its ...Application class from the IDE)
 mvn -pl ticket-service spring-boot:run
@@ -74,8 +78,10 @@ mvn -pl ticket-service test -Dtest=TicketReservationServiceTest
 
 ## Notes
 
-- OpenAPI-based TypeScript generation is planned; frontend types are currently handwritten.
 - The atomic ticket deduction happens at **organizer approval time**, not at student submit (§6.3, §6.11).
-- Current implemented live APIs: auth/profile/admin, event CRUD/lifecycle, reservation workflow, and ticket inventory initialization.
-- Current gaps: QR check-in and notification/email delivery are not implemented yet.
+- The implemented APIs cover auth/profile/admin management, event CRUD/lifecycle, reservations, ticket
+  inventory, signed QR check-in, notification email, club/admin analytics and attendee/audit-log queries.
+- The frontend currently uses handwritten API types; OpenAPI-based TypeScript generation remains a follow-up.
+- The manual approval-capacity load test is in [load-test/](load-test/README.md). It records a measured
+  500-concurrent-approval run with no overbooking; it is intentionally not part of CI.
 - See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full set of design invariants.

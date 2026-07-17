@@ -1,20 +1,39 @@
 # TVU Event & Ticket
 
-Distributed event-management and e-ticketing platform for TVU university clubs (CLB). See
-[decuongTVUEventTicket.md](decuongTVUEventTicket.md) for the full project proposal (đề cương).
+Distributed event-management and e-ticketing platform for TVU university clubs. The delivered core flow is
+**sign in → create/open event → register → organizer approval → signed QR ticket email → one-time check-in**.
+See [decuongTVUEventTicket.md](decuongTVUEventTicket.md) for the original project proposal.
 
-## Frontend integration status
+## Quick start
 
-Frontend devs should start with [BACKEND_STATUS_FOR_FRONTEND.md](BACKEND_STATUS_FOR_FRONTEND.md).
-It lists the current backend progress, live endpoints, request/response contracts, and known gaps.
+Prerequisites: Docker Desktop, Java 25, Maven, Node.js 22+.
 
-## Repo layout
+```bash
+# Terminal 1: start the full backend stack and wait for every service to be ready.
+cd backend/infra
+docker compose -f docker-compose.app.yml up -d --build --wait
+
+# Terminal 2: start the frontend against the gateway.
+cd ../../frontend
+npm ci
+VITE_API_BASE_URL=http://localhost:8080/api npm run dev
+```
+
+The API gateway is at `http://localhost:8080`; Mailpit is available at `http://localhost:8025` in the local
+Compose stack. Stop the stack with `cd backend/infra && docker compose -f docker-compose.app.yml down`.
+
+## Repository layout
 
 ```
-backend/     Java 25 + Spring Boot 4 Maven multi-module: API Gateway + auth/event/ticket/notification services.
-frontend/    React + TypeScript + Vite workspace.
+backend/     Java 25 + Spring Boot 4 Maven services, Docker Compose, load test
+frontend/    React + TypeScript + Vite application
+docs/        Close-out notes and frontend/backend integration constraints
 ```
 
-Each subproject has its own `README.md` with build commands and stack-specific notes. Backend agent/workflow
-rules live under `backend/.claude/`. CI (`.github/workflows/ci.yml`) builds/tests only the backend module(s)
-actually touched by a change.
+Start with the relevant guide:
+
+- [Backend guide](backend/README.md) — services, container stack, testing and load test.
+- [Frontend guide](frontend/README.md) — environment and production-safety checks.
+- [Frontend API status](BACKEND_STATUS_FOR_FRONTEND.md) — current endpoint contracts and known gaps.
+- [Deployment guide](backend/.claude/docs/deployment.md) — free-tier topology, readiness and production config.
+- [Project close-out](docs/PROJECT_CLOSEOUT.md) — delivered scope, verification and remaining risks.
