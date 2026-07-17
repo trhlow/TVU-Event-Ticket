@@ -33,6 +33,7 @@ class AuthOpenApiIntegrationTest extends AbstractPostgresIntegrationTest {
                 .contains("/api/admin/clubs")
                 .contains("/api/admin/organizers")
                 .contains("/api/admin/stats")
+                .contains("/api/admin/audit-log")
                 .contains("/.well-known/jwks.json");
     }
 }

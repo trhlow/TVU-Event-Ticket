@@ -35,6 +35,7 @@ class TicketOpenApiIntegrationTest extends AbstractPostgresIntegrationTest {
                 .contains("/api/ticketing/check-in")
                 .contains("/api/ticketing/events/{eventId}/attendees")
                 .contains("/api/ticketing/events/{eventId}/attendees.csv")
+                .contains("/api/ticketing/events/{eventId}/dashboard")
                 .contains("/api/ticketing/dashboard/club")
                 .contains("/api/ticketing/stats");
     }
