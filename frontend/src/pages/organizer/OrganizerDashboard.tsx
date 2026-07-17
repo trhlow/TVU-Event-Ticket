@@ -30,12 +30,12 @@ export default function OrganizerDashboard() {
         const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
         const [pendingData, attendeeGroups] = await Promise.all([
           registrationService.listPendingForOrganizer(),
-          Promise.all(eventData.map((event) => ticketService.listAttendees(event.id).catch(() => [] as IssuedTicket[]))),
+          Promise.all(eventData.map((event) => ticketService.listAttendees(event.id).catch(() => ({ tickets: [] as IssuedTicket[], totalElements: 0 })))),
         ]);
         if (!mounted) return;
         setEvents(eventData);
         setPendingReservations(pendingData);
-        setTickets(attendeeGroups.flat());
+        setTickets(attendeeGroups.flatMap((group) => group.tickets));
       } catch (error) {
         if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải dashboard CLB.");
       }

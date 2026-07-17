@@ -12,15 +12,25 @@ import { Ticket } from "../../types/ticket";
 export default function AttendeesPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const [attendees, setAttendees] = useState<Ticket[]>([]);
+  const [totalElements, setTotalElements] = useState(0);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [toastMsg, setToastMsg] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     if (!eventId) return;
     let mounted = true;
-    ticketService.listAttendees(eventId, search)
-      .then((items) => {
-        if (mounted) setAttendees(items);
+    ticketService.listAttendees(eventId, debouncedSearch)
+      .then((page) => {
+        if (mounted) {
+          setAttendees(page.tickets);
+          setTotalElements(page.totalElements);
+        }
       })
       .catch((error) => {
         if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách tham dự.");
@@ -28,7 +38,7 @@ export default function AttendeesPage() {
     return () => {
       mounted = false;
     };
-  }, [eventId, search]);
+  }, [eventId, debouncedSearch]);
 
   const handleExportCSV = async () => {
     if (!eventId) {
@@ -53,6 +63,8 @@ export default function AttendeesPage() {
   const columns = [
     { header: "Vé", accessor: (ticket: Ticket) => <span className="font-mono text-xs font-bold text-slate-900">{ticket.ticketCode}</span> },
     { header: "Student ID", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentId}</span> },
+    { header: "MSSV", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentMssv || "-"}</span> },
+    { header: "Email", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentEmail || "-"}</span> },
     { header: "Sự kiện", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.eventId}</span> },
     {
       header: "Check-in",
@@ -89,10 +101,16 @@ export default function AttendeesPage() {
           <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</span>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Vé, student ID..." className="tvu-input pl-9" />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Email, MSSV..." className="tvu-input pl-9" />
           </div>
         </label>
       </div>
+
+      {totalElements > attendees.length && (
+        <p className="rounded-xl bg-warning-50 px-4 py-2 text-xs font-bold text-warning-700">
+          Hiển thị {attendees.length} trong tổng số {totalElements}. Dùng ô tìm kiếm để thu hẹp hoặc xuất CSV để xem đầy đủ.
+        </p>
+      )}
 
       <div className="enterprise-card overflow-hidden p-1">
         <DataTable data={attendees} columns={columns} searchPlaceholder="Lọc nhanh..." searchField="ticketCode" />

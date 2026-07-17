@@ -40,6 +40,11 @@ interface PageResponse<T> {
   totalPages: number;
 }
 
+export interface AttendeePage {
+  tickets: Ticket[];
+  totalElements: number;
+}
+
 interface AvailabilityResponse {
   eventId: string;
   totalCapacity: number;
@@ -84,6 +89,8 @@ function mapAttendeeTicket(response: AttendeeResponse): Ticket {
     eventId: response.eventId,
     studentId: response.studentId,
     ticketCode: response.ticketId,
+    studentEmail: response.studentEmail,
+    studentMssv: response.studentMssv,
     status: response.status === "CHECKED_IN" ? "VALID" : (response.status as Ticket["status"]),
     checkInStatus: checkedIn ? "CHECKED_IN" : "PENDING",
     issuedAt: response.issuedAt,
@@ -127,7 +134,7 @@ export const ticketService = {
   listByEvents(eventIds: string[]): Ticket[] {
     return getTickets().filter((ticket) => eventIds.includes(ticket.eventId));
   },
-  async listAttendees(eventId: string, keyword?: string): Promise<Ticket[]> {
+  async listAttendees(eventId: string, keyword?: string): Promise<AttendeePage> {
     return withTicketFallback(
       async () => {
         const query = new URLSearchParams({ size: "100" });
@@ -135,9 +142,12 @@ export const ticketService = {
         const page = await apiRequest<PageResponse<AttendeeResponse>>(
           `/ticketing/events/${eventId}/attendees?${query.toString()}`,
         );
-        return page.content.map(mapAttendeeTicket);
+        return { tickets: page.content.map(mapAttendeeTicket), totalElements: page.totalElements };
       },
-      () => getTickets().filter((ticket) => ticket.eventId === eventId),
+      () => {
+        const tickets = getTickets().filter((ticket) => ticket.eventId === eventId);
+        return { tickets, totalElements: tickets.length };
+      },
     );
   },
   async availability(eventId: string): Promise<AvailabilityResponse> {

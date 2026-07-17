@@ -33,14 +33,14 @@ export default function OrganizerEventDetailPage() {
     if (!eventId) return;
     setIsLoading(true);
     try {
-      const [events, pendingReservations, issuedTickets] = await Promise.all([
+      const [events, pendingReservations, attendeePage] = await Promise.all([
         eventService.listByClubRemote(currentUser.clubId || ""),
         registrationService.listPendingForOrganizer(),
-        ticketService.listAttendees(eventId).catch(() => [] as IssuedTicket[]),
+        ticketService.listAttendees(eventId).catch(() => ({ tickets: [] as IssuedTicket[], totalElements: 0 })),
       ]);
       setEvent(events.find((item) => item.id === eventId) || null);
       setReservations(pendingReservations.filter((item) => item.eventId === eventId));
-      setTickets(issuedTickets);
+      setTickets(attendeePage.tickets);
     } catch (error) {
       setToastMsg(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.");
     } finally {

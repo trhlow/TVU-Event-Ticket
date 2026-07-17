@@ -5,6 +5,8 @@ export interface Ticket {
   studentId: string;
   ticketCode: string;
   qrCodeValue?: string;
+  studentEmail?: string;
+  studentMssv?: string;
   status: 'VALID' | 'EXPIRED' | 'INVALID' | 'CANCELLED';
   checkInStatus: 'PENDING' | 'CHECKED_IN';
   issuedAt: string;
