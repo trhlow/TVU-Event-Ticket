@@ -218,7 +218,7 @@ services:
       redis:
         condition: service_healthy
       mailpit:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "8083:8083"
 
