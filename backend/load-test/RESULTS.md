@@ -66,7 +66,17 @@ Wall-clock: 500 iterations across 50 VUs completed in **1.9 seconds**.
 `remaining` landed at exactly 0 and was never negative, every rejection was a clean `409` (zero `5xx`,
 zero unexpected statuses), and `approved + rejected == 500` reconciled exactly. Under genuine 50-VU
 concurrency (500 iterations in 1.9s, ~258 req/s, p95 398ms -- a clear sign of real contention on shared
-state, not a serialized queue), the Redis `DECR` + database-transaction pairing held: no overbooking.
+state, not a serialized queue), the end-to-end invariant held black-box: no overbooking. The mechanism
+behind that is pessimistic locking, not a race survived: `TicketReservationService.approve()` takes a
+`SELECT … FOR UPDATE` on the event's inventory row (`TicketInventoryRepository.findLockedByEventId`,
+`@Lock(LockModeType.PESSIMISTIC_WRITE)`) before it ever calls the Redis counter, so all 500 approvals --
+including the 400 sold-out losers -- serialize on that single row lock. This test proves the invariant
+holds under real concurrent *client* load; it does not exercise a `DECR`/transaction race, because the
+row lock removes the race window entirely. The numbers are consistent with that: 1.9s / 500 ≈ 3.8ms per
+serialized transaction, and 50 VUs each waiting roughly that long in the queue lines up with the observed
+~400ms p95. That serialization also gives a genuinely useful capacity fact: **per-event approval
+throughput is ceilinged at roughly 260 req/s, serialized on a single row lock** -- a real bottleneck for
+any bulk-approve tooling against a single hot event, independent of the gateway's rate limiter.
 
 ## Run 1 (superseded): paced through the gateway
 
@@ -104,24 +114,24 @@ so a naive 50-VU blast through the gateway would burn the 20-token burst almost 
 for nearly everything else -- corrupting `approved + rejected == 500`. Run 1 avoided that by pacing itself
 under the refill rate. That made the DB accounting come out right, but it also meant requests almost
 never overlapped: p95 was 19.54ms and the whole run took 78 seconds for 500 requests that individually
-took ~12ms -- i.e., close to fully serialized. **A serialized trickle cannot prove a concurrency-race
-property**, because there is essentially no concurrency for the Redis `DECR` + DB-transaction pairing to
-fail under.
+took ~12ms -- i.e., close to fully serialized. **A serialized trickle cannot prove the end-to-end
+no-overbooking invariant survives real concurrent client load**, because there was essentially no
+concurrent pressure on the inventory row lock to begin with.
 
 Run 2 fixes this by pointing the approval hammer directly at ticket-service on port 8082 (published
 directly by `docker-compose.app.yml`), bypassing the gateway's rate limiter entirely for this one path
 while still seeding through the gateway normally. The jump from p95 19.54ms → 398.21ms and wall-clock
 78s → 1.9s for the *same* 500 requests is the signature of genuine contention -- requests actually
-queueing against shared state (Redis counter, DB row/table locks) -- which is exactly the window the
-approval logic had to survive. It did: 100 issued, 0 overbooked, 0 unexpected statuses, 500/500 accounted
-for.
+queueing on the inventory row lock -- which is exactly the condition the end-to-end invariant had to hold
+under. It did: 100 issued, 0 overbooked, 0 unexpected statuses, 500/500 accounted for.
 
 ## What surprised us
 
 - The magnitude of the latency jump between the paced and concurrent runs (19.54ms → 398.21ms p95, a
-  ~20x increase) was larger than expected for a 100-seat capacity check; it suggests the last ~100
-  approvals (the ones actually contending for remaining inventory) serialize meaningfully on the shared
-  counter/transaction, even though the final answer was still correct.
+  ~20x increase) was larger than expected for a 100-seat capacity check; given the pessimistic row lock,
+  it isn't just the last ~100 approvals contending -- all 500 serialize on the same inventory row lock,
+  which is what produces a hard per-event throughput ceiling (~260 req/s here) rather than a soft slowdown
+  near the end.
 - The gateway's rate limiter is keyed per-principal, not per-IP or globally, which means any bulk-approve
   tooling authenticating as a single organizer account would hit this same ceiling in production, not
   just under artificial test load. That's outside this test's scope (rate limiting is not what's being

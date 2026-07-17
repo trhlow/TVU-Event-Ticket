@@ -37,18 +37,22 @@ MSYS_NO_PATHCONV=1 docker run --rm -i \
   --add-host=host.docker.internal:host-gateway \
   grafana/k6 run --summary-export=/scripts/results.json approval-capacity.js || K6_FAILED=1
 
-AFTER=$(curl -s "$BASE/api/ticketing/events/$EVENT/availability")
+AFTER=$(curl -s "$BASE/api/ticketing/events/$EVENT/availability") || true
 echo "==> after: $AFTER"
 
-APPROVED_COUNT=$(node -e "console.log(JSON.parse(process.argv[1]).approvedCount)" "$AFTER")
-REMAINING=$(node -e "console.log(JSON.parse(process.argv[1]).remaining)" "$AFTER")
+FAILED=0
+APPROVED_COUNT=$(node -e "console.log(JSON.parse(process.argv[1]).approvedCount)" "$AFTER" 2>/dev/null) || { echo "FAIL: could not parse the 'after' availability response: $AFTER"; FAILED=1; APPROVED_COUNT=""; }
+REMAINING=$(node -e "console.log(JSON.parse(process.argv[1]).remaining)" "$AFTER" 2>/dev/null) || { echo "FAIL: could not parse the 'after' availability response: $AFTER"; FAILED=1; REMAINING=""; }
 
 echo
 echo "==> verdict (database counters)"
-FAILED=0
-[ "$APPROVED_COUNT" -eq "$CAPACITY" ] || { echo "FAIL: approvedCount=$APPROVED_COUNT, expected exactly $CAPACITY (OVERBOOKING or under-issue)"; FAILED=1; }
-[ "$REMAINING" -eq 0 ] || { echo "FAIL: remaining=$REMAINING, expected 0"; FAILED=1; }
-[ "$REMAINING" -ge 0 ] || { echo "FAIL: remaining is negative"; FAILED=1; }
+if [ -n "$APPROVED_COUNT" ]; then
+  [ "$APPROVED_COUNT" -eq "$CAPACITY" ] || { echo "FAIL: approvedCount=$APPROVED_COUNT, expected exactly $CAPACITY (OVERBOOKING or under-issue)"; FAILED=1; }
+fi
+if [ -n "$REMAINING" ]; then
+  [ "$REMAINING" -eq 0 ] || { echo "FAIL: remaining=$REMAINING, expected 0"; FAILED=1; }
+  [ "$REMAINING" -ge 0 ] || { echo "FAIL: remaining is negative"; FAILED=1; }
+fi
 [ "$K6_FAILED" -eq 0 ] || { echo "FAIL: k6 exited non-zero (a threshold was breached -- see its summary above)"; FAILED=1; }
 if [ "$FAILED" -eq 0 ]; then
   echo "PASS: exactly $CAPACITY tickets issued, remaining 0, no overbooking."
