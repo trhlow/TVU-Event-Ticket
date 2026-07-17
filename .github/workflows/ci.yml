@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, hlow]
   pull_request:
     branches: [main]
 
@@ -64,6 +64,27 @@ jobs:
       - name: Build & test ${{ matrix.module }}
         working-directory: backend
         run: mvn -B -pl ${{ matrix.module }} -am verify
+
+      - name: Fail if any test was skipped
+        working-directory: backend
+        run: |
+          reports=$(find ${{ matrix.module }}/target/surefire-reports -name 'TEST-*.xml' 2>/dev/null || true)
+          if [ -z "$reports" ]; then
+            echo "No surefire reports found for ${{ matrix.module }} — the suite did not run."
+            exit 1
+          fi
+          skipped=$(grep -ho 'skipped="[0-9]*"' $reports | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
+          if [ "$skipped" -ne 0 ]; then
+            echo "$skipped test(s) were skipped. Testcontainers tests skip silently without Docker —"
+            echo "a skipped run is not a passing run. Failing the build."
+            grep -l 'skipped="[1-9]' $reports || true
+            exit 1
+          fi
+          echo "No tests were skipped."
+
+      - name: Build Docker image for ${{ matrix.module }}
+        working-directory: backend
+        run: docker build --build-arg MODULE=${{ matrix.module }} -t tvu/${{ matrix.module }}:ci .
 
   frontend:
     needs: changes
