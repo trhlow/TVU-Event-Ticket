@@ -5,6 +5,7 @@ import { getReservations } from '../../data/mockReservations';
 import { getTickets } from '../../data/mockTickets';
 import { mockClubs } from '../../data/mockClubs';
 import PageHeader from '../../components/common/PageHeader';
+import StatisticCard from '../../components/common/StatisticCard';
 import BarChartCard from '../../components/charts/BarChartCard';
 import DonutChartCard from '../../components/charts/DonutChartCard';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
@@ -77,55 +78,13 @@ export default function SuperAdminStatsPage() {
             <DemoDataBadge />
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-brand-600 flex-shrink-0">
-                <Landmark className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">CLB Hoạt Động</span>
-                <span className="text-lg font-black text-gray-950 block mt-0.5">{totalClubs}</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 flex-shrink-0">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Tổng Sự Kiện</span>
-                <span className="text-lg font-black text-gray-950 block mt-0.5">{totalEvents}</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600 flex-shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Đăng ký (Lượt)</span>
-                <span className="text-lg font-black text-gray-950 block mt-0.5">{totalReservations}</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 bg-sky-50 rounded-xl flex items-center justify-center text-sky-600 flex-shrink-0">
-                <Ticket className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Vé đã phê duyệt</span>
-                <span className="text-lg font-black text-gray-950 block mt-0.5">{activeTicketsCount}</span>
-              </div>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex items-center gap-3 col-span-2 md:col-span-1">
-              <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wider block">Tỷ Lệ Check-in</span>
-                <span className="text-lg font-black text-gray-950 block mt-0.5">{checkinRate}%</span>
-              </div>
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            <StatisticCard label="CLB Hoạt Động" value={totalClubs} icon={Landmark} />
+            <StatisticCard label="Tổng Sự Kiện" value={totalEvents} icon={Calendar} color="warning" />
+            <StatisticCard label="Đăng ký (Lượt)" value={totalReservations} icon={Users} />
+            <StatisticCard label="Vé đã phê duyệt" value={activeTicketsCount} icon={Ticket} color="primary" />
+            <div className="col-span-2 md:col-span-1">
+              <StatisticCard label="Tỷ Lệ Check-in" value={`${checkinRate}%`} icon={ShieldCheck} color="success" />
             </div>
           </div>
 

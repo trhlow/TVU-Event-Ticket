@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Calendar, Clock, Info, MapPin, ShieldAlert, Ticket } from "lucide-react";
 import { requireCurrentUser } from "../../state/authSession";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import EventBanner from "../../components/events/EventBanner";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import { useToast } from "../../components/common/ToastProvider";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { formatDateTime } from "../../utils/formatDate";
@@ -16,9 +17,9 @@ export default function StudentEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [event, setEvent] = useState<Event | undefined>();
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [toastMsg, setToastMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function StudentEventDetailPage() {
         setEvent(eventData);
         setReservations(reservationData);
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.", "error");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -46,6 +47,7 @@ export default function StudentEventDetailPage() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id, eventId]);
 
   const existingReservation = useMemo(
@@ -63,7 +65,11 @@ export default function StudentEventDetailPage() {
   };
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải chi tiết sự kiện...</div>;
+    return (
+      <div className="space-y-6 text-left">
+        <LoadingSkeleton type="list" count={4} />
+      </div>
+    );
   }
 
   if (!event) {
@@ -71,7 +77,6 @@ export default function StudentEventDetailPage() {
       <div className="space-y-4 py-12 text-center font-bold text-slate-400">
         <p>Sự kiện không tồn tại, đã đóng, hoặc không còn công khai.</p>
         <Link to="/student/events" className="text-brand-600 hover:underline">Quay lại danh sách</Link>
-        {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
   }
@@ -80,11 +85,14 @@ export default function StudentEventDetailPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[
-        { label: "Sinh viên", path: "/student" },
-        { label: "Sự kiện", path: "/student/events" },
-        { label: "Chi tiết" },
-      ]} />
+      <PageHeader
+        breadcrumb={[
+          { label: "Sinh viên", path: "/student" },
+          { label: "Sự kiện", path: "/student/events" },
+          { label: "Chi tiết" },
+        ]}
+        title="Chi tiết sự kiện"
+      />
 
       <button
         onClick={() => navigate(-1)}
@@ -195,7 +203,7 @@ export default function StudentEventDetailPage() {
                   {event.status === "OPEN" && !isSoldOut ? (
                     <button
                       onClick={handleRegisterClick}
-                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-xs font-black text-white shadow-lg shadow-brand-600/10 hover:bg-brand-700"
+                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-xs font-black text-white shadow-sm hover:bg-brand-700"
                     >
                       <Ticket className="h-4 w-4" aria-hidden="true" /> Đăng ký vé tham dự
                     </button>
@@ -226,7 +234,6 @@ export default function StudentEventDetailPage() {
           </div>
         </div>
       </div>
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

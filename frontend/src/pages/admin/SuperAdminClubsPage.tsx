@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Lock, Plus } from "lucide-react";
 import DataTable from "../../components/common/DataTable";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import Dialog from "../../components/common/Dialog";
 import Toast from "../../components/common/Toast";
 import PageHeader from "../../components/common/PageHeader";
 import { Club } from "../../types/club";
@@ -106,22 +107,23 @@ export default function SuperAdminClubsPage() {
         <DataTable data={clubs} columns={columns} searchPlaceholder="Tìm kiếm tên câu lạc bộ..." searchField="name" />
       </div>
 
-      {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setCreateOpen(false)} aria-label="Đóng" />
-          <form onSubmit={handleCreate} className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <h2 className="font-display text-lg font-extrabold text-slate-950">Tạo CLB</h2>
-            <div className="mt-5 grid gap-4">
-              <input className="tvu-input" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tên CLB" />
-              <textarea className="tvu-input min-h-24" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Mô tả" />
-            </div>
-            <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button type="button" disabled={isCreating} className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setCreateOpen(false)}>Hủy</button>
-              <button type="submit" disabled={isCreating} className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "Đang tạo..." : "Tạo CLB"}</button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Dialog
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Tạo CLB"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button type="button" disabled={isCreating} className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setCreateOpen(false)}>Hủy</button>
+            <button type="submit" form="create-club-form" disabled={isCreating} className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "Đang tạo..." : "Tạo CLB"}</button>
+          </>
+        }
+      >
+        <form id="create-club-form" onSubmit={handleCreate} className="grid gap-4">
+          <input className="tvu-input" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tên CLB" />
+          <textarea className="tvu-input min-h-24" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Mô tả" />
+        </form>
+      </Dialog>
 
       {targetClub && (
         <ConfirmModal isOpen={!!targetClub} title="Xác nhận khóa CLB" message={`Khóa CLB "${targetClub.name}"? Backend hiện chỉ hỗ trợ khóa (deactivate), chưa có API mở khóa.`} onConfirm={handleConfirmDeactivate} onCancel={() => setTargetClub(null)} confirmText="Khóa CLB" cancelText="Hủy" type="danger" />

@@ -5,16 +5,17 @@ import DataTable from "../../components/common/DataTable";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
-import Toast from "../../components/common/Toast";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import { useToast } from "../../components/common/ToastProvider";
 import { Reservation } from "../../types/reservation";
 import { formatDateTime } from "../../utils/formatDate";
 import { registrationService } from "../../services/registrationService";
 
 export default function OrganizerReservationsPage() {
+  const { showToast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [pendingAction, setPendingAction] = useState<{ id: string; type: "APPROVE" | "REJECT" } | null>(null);
-  const [toastMsg, setToastMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const loadReservations = async () => {
@@ -22,7 +23,7 @@ export default function OrganizerReservationsPage() {
     try {
       setReservations(await registrationService.listRemote());
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách đăng ký.");
+      showToast(error instanceof Error ? error.message : "Không thể tải danh sách đăng ký.", "error");
     } finally {
       setIsLoading(false);
     }
@@ -41,11 +42,11 @@ export default function OrganizerReservationsPage() {
     if (!pendingAction) return;
     try {
       await registrationService.updateStatus(pendingAction.id, pendingAction.type === "APPROVE" ? "APPROVED" : "REJECTED");
-      setToastMsg(pendingAction.type === "APPROVE" ? "Đã duyệt đăng ký." : "Đã từ chối đăng ký.");
+      showToast(pendingAction.type === "APPROVE" ? "Đã duyệt đăng ký." : "Đã từ chối đăng ký.");
       setPendingAction(null);
       await loadReservations();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể xử lý đăng ký.");
+      showToast(error instanceof Error ? error.message : "Không thể xử lý đăng ký.", "error");
     }
   };
 
@@ -123,7 +124,7 @@ export default function OrganizerReservationsPage() {
       </div>
 
       {isLoading ? (
-        <div className="py-10 text-center text-sm font-bold text-slate-500">Đang tải...</div>
+        <LoadingSkeleton type="table" count={5} />
       ) : (
         <DataTable data={filteredReservations} columns={columns} searchPlaceholder="Tìm sinh viên, MSSV, email..." searchField={(row) => `${row.studentName} ${row.mssv} ${row.email}`} />
       )}
@@ -140,8 +141,6 @@ export default function OrganizerReservationsPage() {
           type={pendingAction.type === "APPROVE" ? "success" : "danger"}
         />
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

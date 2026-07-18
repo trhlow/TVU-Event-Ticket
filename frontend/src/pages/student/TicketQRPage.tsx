@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Calendar, ChevronLeft, Mail, MapPin, UserRound } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import { Calendar, Mail, MapPin, UserRound } from "lucide-react";
+import PageHeader from "../../components/common/PageHeader";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
-import Toast from "../../components/common/Toast";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
@@ -34,9 +35,9 @@ function fallbackEvent(ticket: Ticket): Event {
 export default function TicketQRPage() {
   const { ticketId } = useParams<{ ticketId: string }>();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
-  const [toastMsg, setToastMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,7 +61,7 @@ export default function TicketQRPage() {
           if (mounted) setEvent(currentEvent || fallbackEvent(currentTicket));
         }
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải thông tin vé.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải thông tin vé.", "error");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -70,13 +71,19 @@ export default function TicketQRPage() {
     return () => {
       mounted = false;
     };
-  }, [ticketId]);
+  }, [ticketId, showToast]);
+
+  const breadcrumb = [
+    { label: "Sinh viên", path: "/student" },
+    { label: "Vé của tôi", path: "/student/tickets" },
+    { label: "Chi tiết vé" },
+  ];
 
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[{ label: "Sinh viên", path: "/student" }, { label: "Vé của tôi", path: "/student/tickets" }, { label: "Chi tiết vé" }]} />
-        <div className="enterprise-card mx-auto max-w-md p-8 text-center text-sm font-bold text-slate-500">Đang tải thông tin vé...</div>
+        <PageHeader breadcrumb={breadcrumb} title="Chi tiết vé QR điện tử" />
+        <LoadingSkeleton type="list" count={3} />
       </div>
     );
   }
@@ -84,43 +91,34 @@ export default function TicketQRPage() {
   if (!ticket || !event) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[{ label: "Sinh viên", path: "/student" }, { label: "Vé của tôi", path: "/student/tickets" }, { label: "Chi tiết vé" }]} />
+        <PageHeader breadcrumb={breadcrumb} title="Chi tiết vé QR điện tử" />
         <div className="enterprise-card mx-auto max-w-md p-8 text-center">
           <p className="text-sm font-bold text-slate-900">Vé không tồn tại hoặc chưa thuộc tài khoản hiện tại.</p>
           <Link to="/student/tickets" className="mt-3 inline-block text-sm font-extrabold text-brand-700">
             Quay lại vé của tôi
           </Link>
         </div>
-        {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
   }
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb
-        items={[
+      <PageHeader
+        breadcrumb={[
           { label: "Sinh viên", path: "/student" },
           { label: "Vé của tôi", path: "/student/tickets" },
           { label: ticket.ticketCode },
         ]}
+        title="Chi tiết vé QR điện tử"
+        description="Vé chỉ có QR khi backend đã cấp signed QR payload hợp lệ."
       />
-
-      <div className="flex items-center gap-3">
-        <Link to="/student/tickets" className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-        </Link>
-        <div>
-          <h1 className="tvu-page-title text-xl">Chi tiết vé QR điện tử</h1>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Vé chỉ có QR khi backend đã cấp signed QR payload hợp lệ.</p>
-        </div>
-      </div>
 
       <div className="grid max-w-5xl gap-8 lg:grid-cols-[390px_1fr]">
         <QRDisplayCard
           ticket={ticket}
           event={event}
-          onDownload={() => setToastMsg("Backend chưa cung cấp file vé QR cho sinh viên.")}
+          onDownload={() => showToast("Backend chưa cung cấp file vé QR cho sinh viên.", "info")}
           onPrint={() => window.print()}
         />
 
@@ -158,7 +156,6 @@ export default function TicketQRPage() {
           </div>
         </section>
       </div>
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

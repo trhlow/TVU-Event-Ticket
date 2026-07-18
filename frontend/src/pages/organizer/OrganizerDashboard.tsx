@@ -3,9 +3,14 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, Sparkles, Ticket } from "lucide-react";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
+import PageHeader from "../../components/common/PageHeader";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import DataTable from "../../components/common/DataTable";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import EmptyState from "../../components/common/EmptyState";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
@@ -17,15 +22,17 @@ import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerDashboard() {
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [pendingReservations, setPendingReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<IssuedTicket[]>([]);
-  const [toastMsg, setToastMsg] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadDashboard() {
+      setIsLoading(true);
       try {
         const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
         const [pendingData, attendeeGroups] = await Promise.all([
@@ -37,7 +44,9 @@ export default function OrganizerDashboard() {
         setPendingReservations(pendingData);
         setTickets(attendeeGroups.flat());
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải dashboard CLB.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải dashboard CLB.", "error");
+      } finally {
+        if (mounted) setIsLoading(false);
       }
     }
 
@@ -45,7 +54,7 @@ export default function OrganizerDashboard() {
     return () => {
       mounted = false;
     };
-  }, [currentUser.clubId]);
+  }, [currentUser.clubId, showToast]);
 
   const activeEventsCount = events.filter((event) => event.status === "OPEN").length;
   const checkedInCount = tickets.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length;
@@ -61,32 +70,52 @@ export default function OrganizerDashboard() {
     { name: "Đã điểm danh", value: checkedInCount },
   ];
 
+  const recentEventColumns = [
+    {
+      header: "Sự kiện",
+      accessor: (event: Event) => <span className="font-extrabold text-slate-950">{event.title}</span>,
+    },
+    {
+      header: "Thời gian",
+      accessor: (event: Event) => <span className="font-semibold text-slate-500">{formatDateTime(event.startAt)}</span>,
+    },
+    {
+      header: "Vé còn lại",
+      accessor: (event: Event) => <span className="font-semibold text-slate-700">{event.remainingTickets}/{event.capacity}</span>,
+    },
+    {
+      header: "Trạng thái",
+      accessor: (event: Event) => <StatusBadge type="event" status={event.status} />,
+    },
+  ];
+
   return (
     <div className="space-y-7 text-left">
-      <section className="page-hero relative overflow-hidden p-6 text-white md:p-8">
-        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
-              <Sparkles className="h-4 w-4" /> Không gian Ban tổ chức
-            </p>
-            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Tổng quan CLB</h1>
-            <p className="mt-3 max-w-2xl text-base font-medium leading-7 text-white/82">
-              Theo dõi sự kiện, duyệt đăng ký, phát hành vé QR và tiến độ check-in của {currentUser.clubName || "CLB"}.
-            </p>
-          </div>
-          <Link to="/organizer/events/create" className="btn-press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-extrabold text-brand-800 shadow-xl shadow-brand-950/10">
-            Tạo sự kiện <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
+      <PageHeader
+        eyebrow="Không gian Ban tổ chức"
+        icon={Sparkles}
+        title="Tổng quan CLB"
+        description={`Theo dõi sự kiện, duyệt đăng ký, phát hành vé QR và tiến độ check-in của ${currentUser.clubName || "CLB"}.`}
+        actions={
+          <Button asChild>
+            <Link to="/organizer/events/create">
+              Tạo sự kiện <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+          </Button>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
-        <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
-        <StatisticCard label="Đăng ký chờ duyệt" value={pendingReservations.length} icon={ClipboardList} color="warning" />
-        <StatisticCard label="Vé đã phát hành" value={tickets.length} icon={Ticket} color="primary" />
-        <StatisticCard label="Đã điểm danh" value={checkedInCount} icon={Award} color="success" />
-      </div>
+      {isLoading ? (
+        <LoadingSkeleton type="card" count={5} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
+          <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
+          <StatisticCard label="Đăng ký chờ duyệt" value={pendingReservations.length} icon={ClipboardList} color="warning" />
+          <StatisticCard label="Vé đã phát hành" value={tickets.length} icon={Ticket} color="primary" />
+          <StatisticCard label="Đã điểm danh" value={checkedInCount} icon={Award} color="success" />
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -113,32 +142,16 @@ export default function OrganizerDashboard() {
             Xem tất cả <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 text-left text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                <th className="py-3">Sự kiện</th>
-                <th className="py-3">Thời gian</th>
-                <th className="py-3">Vé còn lại</th>
-                <th className="py-3">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {events.slice(0, 5).map((event) => (
-                <tr key={event.id} className="transition hover:bg-brand-50/40">
-                  <td className="py-4 font-extrabold text-slate-950">{event.title}</td>
-                  <td className="py-4 font-semibold text-slate-500">{formatDateTime(event.startAt)}</td>
-                  <td className="py-4 font-semibold text-slate-700">{event.remainingTickets}/{event.capacity}</td>
-                  <td className="py-4"><StatusBadge type="event" status={event.status} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {events.length === 0 && <div className="py-10 text-center text-sm font-bold text-slate-400">Chưa có sự kiện nào.</div>}
+        <div className="pt-4">
+          {isLoading ? (
+            <LoadingSkeleton type="table" count={5} />
+          ) : events.length === 0 ? (
+            <EmptyState title="Chưa có sự kiện nào" description="Tạo sự kiện đầu tiên cho CLB để bắt đầu quản lý đăng ký và vé." />
+          ) : (
+            <DataTable data={events.slice(0, 5)} columns={recentEventColumns} searchPlaceholder="Tìm kiếm sự kiện..." searchField="title" pageSize={5} />
+          )}
         </div>
       </section>
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

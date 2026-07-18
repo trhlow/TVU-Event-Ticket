@@ -5,6 +5,8 @@ import { mockClubs } from '../../data/mockClubs';
 import EventCard from '../../components/events/EventCard';
 import EventFilter from '../../components/events/EventFilter';
 import PageHeader from '../../components/common/PageHeader';
+import LoadingSkeleton from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
@@ -88,13 +90,9 @@ export default function StudentEventListPage() {
 
       {/* Events list */}
       {isLoading ? (
-        <div className="py-16 text-center text-sm font-bold text-gray-500">Đang tải danh sách sự kiện...</div>
+        <LoadingSkeleton type="card" count={6} />
       ) : errorMsg ? (
-        <div className="py-16 text-center bg-white border border-rose-100 rounded-2xl p-8 max-w-lg mx-auto shadow-sm space-y-3">
-          <Calendar className="w-12 h-12 text-rose-300 mx-auto" />
-          <h4 className="text-sm font-bold text-gray-950">Không thể tải sự kiện</h4>
-          <p className="text-xs text-gray-500 font-semibold max-w-sm mx-auto leading-relaxed">{errorMsg}</p>
-        </div>
+        <EmptyState icon={Calendar} title="Không thể tải sự kiện" description={errorMsg} />
       ) : filteredEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {filteredEvents.map((evt) => (
@@ -107,13 +105,13 @@ export default function StudentEventListPage() {
           ))}
         </div>
       ) : (
-        <div className="py-16 text-center bg-white border border-gray-200 rounded-2xl p-8 max-w-lg mx-auto shadow-sm space-y-3">
-          <Calendar className="w-12 h-12 text-gray-300 mx-auto" />
-          <h4 className="text-sm font-bold text-gray-950">Không tìm thấy sự kiện nào</h4>
-          <p className="text-xs text-gray-500 font-semibold max-w-sm mx-auto leading-relaxed">
-            Hãy điều chỉnh từ khóa tìm kiếm hoặc các tiêu chí lọc danh mục để hiển thị thêm thông tin sự kiện Đoàn Hội nhé.
-          </p>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title="Không tìm thấy sự kiện nào"
+          description="Hãy điều chỉnh từ khóa tìm kiếm hoặc các tiêu chí lọc danh mục để hiển thị thêm thông tin sự kiện Đoàn Hội nhé."
+          actionText="Đặt lại bộ lọc"
+          onAction={handleResetFilters}
+        />
       )}
     </div>
   );

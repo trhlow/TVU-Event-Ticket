@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { Ticket } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
+import { Button } from '../../components/ui/button';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
@@ -37,12 +38,11 @@ export default function OrganizerEventStatsPage() {
         description={isLoading ? 'Đang tải sự kiện...' : event?.title || 'Không tìm thấy sự kiện.'}
         actions={
           eventId && (
-            <Link
-              to={`/organizer/events/${eventId}/check-in`}
-              className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700"
-            >
-              <Ticket className="mr-2 h-4 w-4" aria-hidden="true" /> Đi tới quét QR
-            </Link>
+            <Button asChild>
+              <Link to={`/organizer/events/${eventId}/check-in`}>
+                <Ticket className="h-4 w-4" aria-hidden="true" /> Đi tới quét QR
+              </Link>
+            </Button>
           )
         }
       />

@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Lock, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, Lock, Plus, Search } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import Dialog from "../../components/common/Dialog";
 import Toast from "../../components/common/Toast";
 import { User } from "../../types/user";
 import { userService } from "../../services/userService";
@@ -112,7 +113,7 @@ export default function SuperAdminOrganizersPage() {
         title="Quản lý tài khoản Ban tổ chức"
         description="Chỉ tạo tài khoản khi backend hỗ trợ mật khẩu tạm thời hoặc link thiết lập mật khẩu."
         actions={
-          <button onClick={() => setCreateOpen(true)} className="btn-press flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold tracking-tight text-white shadow-md shadow-brand-600/10 hover:bg-brand-700">
+          <button onClick={() => setCreateOpen(true)} className="btn-press flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold tracking-tight text-white hover:bg-brand-700">
             <Plus className="h-4 w-4" aria-hidden="true" /> Cấp tài khoản mới
           </button>
         }
@@ -142,34 +143,32 @@ export default function SuperAdminOrganizersPage() {
         <DataTable data={filteredUsers} columns={columns} searchPlaceholder="Lọc nhanh danh sách..." searchField="fullName" />
       </div>
 
-      {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setCreateOpen(false)} aria-label="Đóng" />
-          <form onSubmit={handleCreateOrganizer} className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <button type="button" className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-slate-100" onClick={() => setCreateOpen(false)}>
-              <X className="h-4 w-4" />
-            </button>
-            <h2 className="font-display text-lg font-extrabold text-slate-950">Cấp tài khoản Ban tổ chức</h2>
-            <div className="mt-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold leading-6 text-amber-900">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-              <span>
-                Backend chưa có trường mật khẩu tạm thời hoặc link thiết lập mật khẩu. Chức năng tạo tài khoản mới đang bị khóa ở frontend.
-              </span>
-            </div>
-            <div className="mt-5 grid gap-4">
-              <input className="tvu-input disabled:bg-slate-50 disabled:text-slate-400" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} placeholder="Họ và tên" disabled={!supportsSecureOrganizerProvisioning} />
-              <input className="tvu-input disabled:bg-slate-50 disabled:text-slate-400" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="organizer@tvu.edu.vn" disabled={!supportsSecureOrganizerProvisioning} />
-              <select className="tvu-input disabled:bg-slate-50 disabled:text-slate-400" value={form.clubId} onChange={(event) => setForm({ ...form, clubId: event.target.value })} disabled={!supportsSecureOrganizerProvisioning}>
-                {clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
-              </select>
-            </div>
-            <div className="mt-6 flex justify-end gap-2 border-t border-slate-100 pt-4">
-              <button type="button" className="min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setCreateOpen(false)}>Hủy</button>
-              <button type="submit" disabled={!supportsSecureOrganizerProvisioning} className="min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50">Cấp tài khoản</button>
-            </div>
-          </form>
+      <Dialog
+        isOpen={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Cấp tài khoản Ban tổ chức"
+        maxWidth="max-w-lg"
+        footer={
+          <>
+            <button type="button" className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600" onClick={() => setCreateOpen(false)}>Hủy</button>
+            <button type="submit" form="create-organizer-form" disabled={!supportsSecureOrganizerProvisioning} className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-50">Cấp tài khoản</button>
+          </>
+        }
+      >
+        <div className="flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-semibold leading-6 text-amber-900">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <span>
+            Backend chưa có trường mật khẩu tạm thời hoặc link thiết lập mật khẩu. Chức năng tạo tài khoản mới đang bị khóa ở frontend.
+          </span>
         </div>
-      )}
+        <form id="create-organizer-form" onSubmit={handleCreateOrganizer} className="mt-5 grid gap-4">
+          <input className="tvu-input disabled:bg-slate-50 disabled:text-slate-400" value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} placeholder="Họ và tên" disabled={!supportsSecureOrganizerProvisioning} />
+          <input className="tvu-input disabled:bg-slate-50 disabled:text-slate-400" type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="organizer@tvu.edu.vn" disabled={!supportsSecureOrganizerProvisioning} />
+          <select className="tvu-input disabled:bg-slate-50 disabled:text-slate-400" value={form.clubId} onChange={(event) => setForm({ ...form, clubId: event.target.value })} disabled={!supportsSecureOrganizerProvisioning}>
+            {clubs.map((club) => <option key={club.id} value={club.id}>{club.name}</option>)}
+          </select>
+        </form>
+      </Dialog>
 
       {lockTarget && (
         <ConfirmModal

@@ -3,7 +3,9 @@ import { Download, Search } from "lucide-react";
 import { useParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
-import Toast from "../../components/common/Toast";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../components/common/ToastProvider";
 import { formatDateTime } from "../../utils/formatDate";
 import { ticketService } from "../../services/ticketService";
 import { apiRequest } from "../../services/apiClient";
@@ -11,9 +13,9 @@ import { Ticket } from "../../types/ticket";
 
 export default function AttendeesPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const { showToast } = useToast();
   const [attendees, setAttendees] = useState<Ticket[]>([]);
   const [search, setSearch] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
     if (!eventId) return;
@@ -23,12 +25,12 @@ export default function AttendeesPage() {
         if (mounted) setAttendees(items);
       })
       .catch((error) => {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách tham dự.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách tham dự.", "error");
       });
     return () => {
       mounted = false;
     };
-  }, [eventId]);
+  }, [eventId, showToast]);
 
   const filteredAttendees = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -38,7 +40,7 @@ export default function AttendeesPage() {
 
   const handleExportCSV = async () => {
     if (!eventId) {
-      setToastMsg("Vui lòng chọn sự kiện trước khi xuất CSV.");
+      showToast("Vui lòng chọn sự kiện trước khi xuất CSV.", "error");
       return;
     }
     try {
@@ -51,7 +53,7 @@ export default function AttendeesPage() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể xuất CSV.");
+      showToast(error instanceof Error ? error.message : "Không thể xuất CSV.", "error");
     }
   };
 
@@ -83,18 +85,18 @@ export default function AttendeesPage() {
         title="Danh sách sinh viên tham dự"
         description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT."
         actions={
-          <button onClick={handleExportCSV} className="btn-press flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-600/10 hover:bg-brand-700">
+          <Button onClick={handleExportCSV}>
             <Download className="h-4 w-4" aria-hidden="true" /> Xuất CSV
-          </button>
+          </Button>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="enterprise-card grid grid-cols-1 gap-4 p-4">
         <label className="space-y-1">
           <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</span>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Vé, student ID..." className="tvu-input pl-9" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Vé, student ID..." className="pl-9" />
           </div>
         </label>
       </div>
@@ -102,7 +104,6 @@ export default function AttendeesPage() {
       <div className="enterprise-card overflow-hidden p-1">
         <DataTable data={filteredAttendees} columns={columns} searchPlaceholder="Lọc nhanh..." searchField="ticketCode" />
       </div>
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

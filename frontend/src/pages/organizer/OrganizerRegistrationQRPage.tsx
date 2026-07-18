@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { getEvents } from "../../data/mockEvents";
 import { formatDateTime } from "../../utils/formatDate";
@@ -11,42 +12,39 @@ import { formatDateTime } from "../../utils/formatDate";
 export default function OrganizerRegistrationQRPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const events = getEvents().filter((event) => event.clubId === currentUser.clubId);
   const [selectedEventId, setSelectedEventId] = useState(eventId || events[0]?.id || "");
-  const [toastMsg, setToastMsg] = useState("");
   const event = events.find((item) => item.id === selectedEventId) || events[0];
   const registrationLink = event ? `${window.location.origin}/student/events/${event.id}/register` : "";
 
   const copyLink = async () => {
     await navigator.clipboard?.writeText(registrationLink);
-    setToastMsg("Đã sao chép liên kết đăng ký sự kiện.");
+    showToast("Đã sao chép liên kết đăng ký sự kiện.");
   };
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "QR đăng ký sự kiện" }]} />
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="tvu-page-title text-2xl">QR đăng ký sự kiện</h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-            Liên kết dùng để sinh viên mở trang đăng ký sự kiện. Đây là liên kết công khai của Ban tổ chức, không phải vé tham gia.
-          </p>
-        </div>
-        <label className="w-full sm:w-80">
-          <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
-          <select value={event?.id || ""} onChange={(e) => setSelectedEventId(e.target.value)} className="tvu-input">
-            {events.map((item) => (
-              <option key={item.id} value={item.id}>{item.title}</option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "QR đăng ký sự kiện" }]}
+        title="QR đăng ký sự kiện"
+        description="Liên kết dùng để sinh viên mở trang đăng ký sự kiện. Đây là liên kết công khai của Ban tổ chức, không phải vé tham gia."
+        actions={
+          <label className="w-full sm:w-80">
+            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
+            <select value={event?.id || ""} onChange={(e) => setSelectedEventId(e.target.value)} className="tvu-input">
+              {events.map((item) => (
+                <option key={item.id} value={item.id}>{item.title}</option>
+              ))}
+            </select>
+          </label>
+        }
+      />
 
       {event ? (
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           <section className="enterprise-card p-6 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-brand-700">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
               <QrCode className="h-4 w-4" /> Liên kết đăng ký
             </div>
             <div className="mx-auto grid h-64 w-64 place-items-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
@@ -90,15 +88,17 @@ export default function OrganizerRegistrationQRPage() {
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <button onClick={copyLink} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <Copy className="mr-2 inline h-4 w-4" /> Sao chép liên kết
-              </button>
-              <button onClick={() => window.print()} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <Printer className="mr-2 inline h-4 w-4" /> In trang này
-              </button>
-              <Link to={`/student/events/${event.id}/register`} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50 sm:col-span-2">
-                <ExternalLink className="h-4 w-4" /> Xem trang đăng ký
-              </Link>
+              <Button variant="outline" onClick={copyLink}>
+                <Copy className="h-4 w-4" /> Sao chép liên kết
+              </Button>
+              <Button variant="outline" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" /> In trang này
+              </Button>
+              <Button variant="outline" asChild className="sm:col-span-2">
+                <Link to={`/student/events/${event.id}/register`}>
+                  <ExternalLink className="h-4 w-4" /> Xem trang đăng ký
+                </Link>
+              </Button>
             </div>
           </section>
         </div>
@@ -107,8 +107,6 @@ export default function OrganizerRegistrationQRPage() {
           CLB chưa có sự kiện để tạo liên kết đăng ký.
         </div>
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

@@ -117,7 +117,7 @@ export default function PublicLayout() {
         className={[
           "fixed inset-x-0 top-0 z-50 border-b px-4 transition-all duration-300 sm:px-5 lg:px-8",
           isScrolled
-            ? "border-blue-100/80 bg-white/94 shadow-lg shadow-blue-950/8 backdrop-blur-xl"
+            ? "border-blue-100/80 bg-white/94 shadow-sm backdrop-blur-xl"
             : "border-white/70 bg-white/82 backdrop-blur-md",
         ].join(" ")}
       >
@@ -188,7 +188,7 @@ export default function PublicLayout() {
           <div className="hidden items-center justify-end gap-3 md:flex">
             <Link
               to="/login"
-              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-md shadow-blue-900/18 hover:bg-brand-600 hover:shadow-lg hover:shadow-blue-900/20"
+              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-brand-600"
             >
               Đăng nhập
             </Link>

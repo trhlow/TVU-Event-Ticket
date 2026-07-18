@@ -30,7 +30,7 @@ export default function Header({
   if (!currentUser) return null;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-blue-100/70 bg-white/86 px-4 shadow-sm shadow-blue-950/[0.04] backdrop-blur-xl sm:px-5 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-blue-100/70 bg-white/86 px-4 shadow-sm backdrop-blur-xl sm:px-5 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">
         {onToggleSidebar && (
           <button
@@ -69,12 +69,12 @@ export default function Header({
         <button
           type="button"
           onClick={() => navigate(notificationsPathByRole[currentUser.role] || "/notifications")}
-          className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm shadow-blue-950/[0.03] hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
+          className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
           aria-label="Thông báo"
         >
           <Bell className="h-5 w-5" />
         </button>
-        <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm shadow-blue-950/[0.03] sm:flex">
+        <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
           <img
             src="/tvu_logo_1783065060265.jpg"
             alt=""

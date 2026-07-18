@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Activity, Users } from 'lucide-react';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import PageHeader from '../../components/common/PageHeader';
 import StatisticCard from '../../components/common/StatisticCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
+import LoadingSkeleton from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
 import { clubService } from '../../services/clubService';
 import { userService } from '../../services/userService';
 import { Club } from '../../types/club';
@@ -50,7 +52,11 @@ export default function SuperAdminClubDetailPage() {
   }, [clubId]);
 
   if (isLoading) {
-    return <div className="py-16 text-center text-sm font-bold text-slate-500">Đang tải thông tin CLB...</div>;
+    return (
+      <div className="space-y-6 text-left">
+        <LoadingSkeleton type="card" count={3} />
+      </div>
+    );
   }
 
   if (loadError || !club) {
@@ -64,19 +70,13 @@ export default function SuperAdminClubDetailPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý CLB', path: '/admin/clubs' }, { label: club.name }]} />
-
-      <section className="tilt-card enterprise-card relative overflow-hidden p-6">
-        <div className="tilt-card-sheen" aria-hidden="true" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <span className="inline-flex rounded-full bg-info-50 px-3 py-1 text-xs font-black text-brand-700">{club.code}</span>
-            <h2 className="text-2xl font-black tracking-tight text-slate-950">{club.name}</h2>
-            <p className="max-w-3xl text-sm font-medium leading-relaxed text-slate-500">{club.description || 'Chưa có mô tả.'}</p>
-          </div>
-          <StatusBadge type="user" status={club.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'} />
-        </div>
-      </section>
+      <PageHeader
+        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý CLB', path: '/admin/clubs' }, { label: club.name }]}
+        eyebrow={club.code}
+        title={club.name}
+        description={club.description || 'Chưa có mô tả.'}
+        actions={<StatusBadge type="user" status={club.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'} />}
+      />
 
       <div className="flex gap-2 overflow-x-auto border-b border-gray-200">
         {TABS.map(([key, label]) => (
@@ -108,8 +108,8 @@ export default function SuperAdminClubDetailPage() {
       {activeTab === 'members' && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {organizers.length === 0 ? (
-            <div className="md:col-span-2 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm font-bold text-gray-500">
-              CLB chưa có tài khoản Ban tổ chức nào.
+            <div className="md:col-span-2">
+              <EmptyState title="Chưa có thành viên" description="CLB chưa có tài khoản Ban tổ chức nào." icon={Users} />
             </div>
           ) : (
             organizers.map((user) => (

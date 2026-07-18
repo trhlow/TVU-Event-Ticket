@@ -5,7 +5,8 @@ import Breadcrumb from "../../components/common/Breadcrumb";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
-import Toast from "../../components/common/Toast";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import { useToast } from "../../components/common/ToastProvider";
 import { formatDateTime } from "../../utils/formatDate";
 import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
@@ -21,10 +22,10 @@ const BASE_BREADCRUMB = [{ label: "Ban tổ chức", path: "/organizer" }, { lab
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<IssuedTicket[]>([]);
-  const [toastMsg, setToastMsg] = useState("");
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -42,11 +43,11 @@ export default function OrganizerEventDetailPage() {
       setReservations(pendingReservations.filter((item) => item.eventId === eventId));
       setTickets(issuedTickets);
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.");
+      showToast(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser.clubId, eventId]);
+  }, [currentUser.clubId, eventId, showToast]);
 
   useEffect(() => {
     void loadEventData();
@@ -63,10 +64,10 @@ export default function OrganizerEventDetailPage() {
     setActionId(reservationId);
     try {
       await registrationService.updateStatus(reservationId, "APPROVED");
-      setToastMsg("Đã duyệt đăng ký. Backend sẽ cấp vé và gửi email QR bất đồng bộ nếu notification đã sẵn sàng.");
+      showToast("Đã duyệt đăng ký. Backend sẽ cấp vé và gửi email QR bất đồng bộ nếu notification đã sẵn sàng.");
       await loadEventData();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể duyệt đăng ký.");
+      showToast(error instanceof Error ? error.message : "Không thể duyệt đăng ký.", "error");
     } finally {
       setActionId(null);
     }
@@ -77,11 +78,11 @@ export default function OrganizerEventDetailPage() {
     setActionId(rejectTargetId);
     try {
       await registrationService.updateStatus(rejectTargetId, "REJECTED");
-      setToastMsg("Đã từ chối đăng ký.");
+      showToast("Đã từ chối đăng ký.");
       setRejectTargetId(null);
       await loadEventData();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể từ chối đăng ký.");
+      showToast(error instanceof Error ? error.message : "Không thể từ chối đăng ký.", "error");
     } finally {
       setActionId(null);
     }
@@ -91,7 +92,7 @@ export default function OrganizerEventDetailPage() {
     return (
       <div className="space-y-6 text-left">
         <Breadcrumb items={[...BASE_BREADCRUMB, { label: "Chi tiết sự kiện" }]} />
-        <div className="enterprise-card p-8 text-center text-sm font-bold text-slate-500">Đang tải chi tiết sự kiện...</div>
+        <LoadingSkeleton type="list" count={4} />
       </div>
     );
   }
@@ -106,7 +107,6 @@ export default function OrganizerEventDetailPage() {
             Quay lại danh sách sự kiện
           </Link>
         </div>
-        {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
   }
@@ -246,8 +246,6 @@ export default function OrganizerEventDetailPage() {
           type="danger"
         />
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

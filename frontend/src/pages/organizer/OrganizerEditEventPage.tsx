@@ -3,8 +3,8 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
-import Toast from '../../components/common/Toast';
 import EventForm from '../../components/events/EventForm';
+import { useToast } from '../../components/common/ToastProvider';
 import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
@@ -15,9 +15,9 @@ export default function OrganizerEditEventPage() {
   const navigate = useNavigate();
   const { eventId } = useParams();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [event, setEvent] = useState<Event | undefined>();
   const [isLoading, setIsLoading] = useState(true);
-  const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -66,7 +66,7 @@ export default function OrganizerEditEventPage() {
 
   const handleSubmit = async (data: Partial<Event>) => {
     await eventService.update(event.id, data);
-    setToastMsg(data.status === 'OPEN' ? 'Đã cập nhật và công bố sự kiện.' : 'Đã cập nhật sự kiện thành công.');
+    showToast(data.status === 'OPEN' ? 'Đã cập nhật và công bố sự kiện.' : 'Đã cập nhật sự kiện thành công.');
     setTimeout(() => navigate(`/organizer/events/${event.id}`), 850);
   };
 
@@ -88,7 +88,6 @@ export default function OrganizerEditEventPage() {
         onSubmit={handleSubmit}
         onCancel={() => navigate(`/organizer/events/${event.id}`)}
       />
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
     </div>
   );
 }

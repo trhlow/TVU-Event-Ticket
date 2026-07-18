@@ -97,8 +97,7 @@
     margin: 0;
     min-width: 320px;
     overflow-x: hidden;
-    background:
-      linear-gradient(180deg, #f8fbff 0%, #eef6ff 42%, #f8fafc 100%);
+    background: #f8fafc;
     color: #0f172a;
     font-family: "TVUFont", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
@@ -122,36 +121,26 @@
 
 @layer components {
   .app-shell-surface {
-    background:
-      linear-gradient(180deg, rgba(248, 251, 255, 0.98) 0%, rgba(239, 246, 255, 0.94) 46%, rgba(248, 250, 252, 0.98) 100%),
-      linear-gradient(90deg, rgba(37, 99, 235, 0.045) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(14, 165, 233, 0.035) 1px, transparent 1px);
-    background-size: auto, 44px 44px, 44px 44px;
+    background: #f8fafc;
   }
 
   .enterprise-card {
     position: relative;
-    border: 1px solid rgba(203, 213, 225, 0.78);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.9));
-    border-radius: 14px;
-    box-shadow:
-      0 18px 42px rgba(15, 23, 42, 0.07),
-      0 2px 8px rgba(30, 64, 175, 0.05),
-      inset 0 1px 0 rgba(255, 255, 255, 0.88);
-    backdrop-filter: blur(14px);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
     transition:
-      transform 0.22s ease,
-      box-shadow 0.22s ease,
-      border-color 0.22s ease,
-      background-color 0.22s ease;
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      border-color 0.18s ease,
+      background-color 0.18s ease;
   }
 
   .enterprise-panel {
-    border: 1px solid rgba(191, 219, 254, 0.8);
-    background: linear-gradient(135deg, rgba(239, 246, 255, 0.94), rgba(255, 255, 255, 0.92));
-    border-radius: 14px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(226, 232, 240, 0.95);
+    background: rgba(248, 250, 252, 0.7);
+    border-radius: 12px;
   }
 
   .tvu-input {
@@ -229,13 +218,13 @@
   }
 
   .card-hover-lift {
-    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
   }
 
   .card-hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
-    border-color: rgba(37, 99, 235, 0.24);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+    border-color: rgba(37, 99, 235, 0.22);
   }
 
   .button-press {
@@ -244,10 +233,6 @@
 
   .button-press:active {
     transform: scale(0.98);
-  }
-
-  .soft-glow {
-    box-shadow: 0 14px 36px rgba(37, 99, 235, 0.14);
   }
 
   .subtle-gradient-bg {
@@ -259,9 +244,9 @@
   }
 
   .hover-lift:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 22px 46px rgba(15, 23, 42, 0.12), 0 6px 16px rgba(37, 99, 235, 0.08);
-    border-color: rgba(37, 99, 235, 0.28);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    border-color: rgba(37, 99, 235, 0.24);
   }
 
   .btn-press {
@@ -291,30 +276,17 @@
      and QRDisplayCard so every "physical" card in the app shares one depth language. */
   .tilt-card {
     position: relative;
-    transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(0);
-    transition: transform var(--motion-base) var(--ease-premium), box-shadow var(--motion-base) ease, border-color var(--motion-base) ease;
-    will-change: transform;
+    transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease;
   }
 
   .tilt-card:hover {
-    transform: perspective(1000px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-3px);
-    box-shadow: 0 20px 40px rgba(15, 23, 42, 0.1), 0 4px 12px rgba(37, 99, 235, 0.06);
-    border-color: rgba(37, 99, 235, 0.22);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+    border-color: rgba(37, 99, 235, 0.2);
   }
 
   .tilt-card-sheen {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0;
-    border-radius: inherit;
-    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 40%), rgba(37, 99, 235, 0.14), transparent 15rem);
-    transition: opacity var(--motion-base) ease;
-  }
-
-  .tilt-card:hover .tilt-card-sheen {
-    opacity: 1;
+    display: none;
   }
 
   @media (hover: none), (pointer: coarse) {
@@ -463,184 +435,8 @@
     display: inline;
   }
 
-  .landing-gradient-text {
-    background: linear-gradient(90deg, #0c3f3b, #17685f, #b9821f, #0c3f3b);
-    background-size: 220% 100%;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    animation: landingTextSheen 7s ease-in-out infinite;
-  }
-
-  .landing-hero-kicker {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .landing-hero-kicker::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    width: 42%;
-    transform: translateX(-130%) skewX(-18deg);
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.72), transparent);
-    animation: landingKickerSweep 5.8s ease-in-out infinite;
-  }
-
-  .landing-benefit-card,
-  .landing-event-card,
-  .landing-guide-card,
-  .landing-cta-panel,
-  .landing-section-shell,
-  .landing-flow-item,
-  .landing-layer-card,
-  .landing-workflow-chip {
-    will-change: transform;
-  }
-
-  .landing-scroll-progress {
-    transform: translateZ(0);
-    pointer-events: none;
-  }
-
-  .landing-section-shell {
-    transform-origin: center top;
-  }
-
-  .landing-hero-parallax {
-    will-change: transform;
-  }
-
-  .landing-flow-panel {
-    position: relative;
-  }
-
-  .landing-flow-panel::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      linear-gradient(90deg, rgba(31, 122, 112, 0.04) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(31, 122, 112, 0.035) 1px, transparent 1px);
-    background-size: 34px 34px;
-    pointer-events: none;
-  }
-
-  .landing-flow-panel > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .landing-flow-item {
-    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
-  }
-
-  .landing-flow-item:hover {
-    transform: translateX(4px);
-    border-color: rgba(31, 122, 112, 0.26);
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
-  }
-
-  .landing-trust-card,
-  .landing-workflow-chip,
-  .landing-mode-card {
-    transition: transform 0.22s ease, border-color 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease;
-  }
-
-  .landing-trust-card:hover,
-  .landing-workflow-chip:hover {
-    transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, 0.34);
-    background: rgba(255, 255, 255, 0.16);
-  }
-
-  .landing-workflow-chip::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(90deg, rgba(231, 182, 90, 0.9), rgba(123, 185, 175, 0.8));
-    opacity: 0.72;
-  }
-
-  .landing-mode-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(31, 122, 112, 0.24);
-    box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08);
-  }
-
-  .landing-benefit-card {
-    transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background-color 0.24s ease;
-  }
-
-  .landing-benefit-card:hover {
-    transform: translateY(-3px);
-    border-color: rgba(31, 122, 112, 0.26);
-    background: rgba(255, 255, 255, 0.86);
-    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
-  }
-
-  .landing-event-card:hover .landing-card-icon,
-  .landing-guide-card:hover .landing-card-icon {
-    transform: scale(1.06) rotate(-2deg);
-    background: #d8ebe8;
-  }
-
-  .landing-card-icon {
-    transition: transform 0.22s ease, background-color 0.22s ease;
-  }
-
-  .landing-section-kicker {
-    position: relative;
-    display: inline-flex;
-    justify-content: center;
-  }
-
-  .landing-section-kicker::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    bottom: -8px;
-    height: 2px;
-    width: 34px;
-    transform: translateX(-50%);
-    border-radius: 999px;
-    background: linear-gradient(90deg, #17685f, #e7b65a);
-  }
-
-  .landing-section-title {
-    animation: landingTitleSettle 0.72s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
-
-  .landing-soft-orb {
-    animation: landingOrbFloat 13s ease-in-out infinite;
-  }
-
-  .landing-soft-orb-delay {
-    animation-delay: -5s;
-  }
-
-  .landing-icon-pulse,
-  .landing-floating-badge,
   .icon-float {
     animation: landingSoftFloat 4.8s ease-in-out infinite;
-  }
-
-  .landing-cta-panel {
-    position: relative;
-    overflow: hidden;
-  }
-
-  .landing-cta-panel::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(120deg, transparent 0%, rgba(255, 255, 255, 0.14) 45%, transparent 70%);
-    transform: translateX(-100%);
-    animation: landingPanelSweep 7s ease-in-out infinite;
   }
 
   .section-heading {
@@ -652,13 +448,9 @@
   }
 
   .page-hero {
-    border: 1px solid rgba(147, 197, 253, 0.72);
-    background:
-      linear-gradient(135deg, rgba(23, 37, 84, 0.98), rgba(30, 64, 175, 0.94) 56%, rgba(8, 145, 178, 0.88)),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-    background-size: auto, 34px 34px;
-    border-radius: 18px;
-    box-shadow: 0 18px 42px rgba(30, 64, 175, 0.18);
+    border: 1px solid var(--color-border-subtle);
+    background: var(--color-brand-700);
+    border-radius: 14px;
   }
 
   .landing-page {
@@ -666,249 +458,27 @@
   }
 
   .landing-hero-bg {
-    transform: translate3d(var(--hero-x, 0), var(--hero-y, 0), 0) scale(1.035);
-    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-    will-change: transform;
-  }
-
-  .landing-depth {
-    transform: translate3d(calc(var(--hero-x, 0) * -0.35), calc(var(--hero-y, 0) * -0.35), 0);
-    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .landing-hero-spotlight {
-    opacity: 0;
-    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 45%), rgba(255, 255, 255, 0.24), transparent 23rem);
-    mix-blend-mode: screen;
-    pointer-events: none;
-    transition: opacity 0.28s ease;
-  }
-
-  .landing-hero.is-pointer-active .landing-hero-spotlight {
-    opacity: 1;
-  }
-
-  .landing-hero-3d {
-    perspective: 1400px;
-  }
-
-  .landing-hero-3d-stage {
-    position: relative;
-    height: 22rem;
-    transform-style: preserve-3d;
-    transform: rotateX(var(--hero-rot-x, 0deg)) rotateY(var(--hero-rot-y, 0deg));
-    transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-    animation: landingHero3dFloat 6s ease-in-out infinite;
-    will-change: transform;
-  }
-
-  .landing-hero-3d-card {
-    position: absolute;
-    inset: 0;
-    margin: auto;
-    border-radius: 22px;
-  }
-
-  .landing-hero-3d-card-back {
-    width: 15.5rem;
-    height: 18rem;
-    transform: translateZ(-46px) translate(1.4rem, 1.6rem) rotate(-6deg);
-    background: linear-gradient(150deg, rgba(30, 64, 175, 0.92), rgba(8, 145, 178, 0.82));
-    box-shadow: 0 30px 60px rgba(15, 23, 42, 0.22);
-  }
-
-  .landing-hero-3d-ticket {
-    width: 16.5rem;
-    height: 19rem;
-    padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    background: rgba(255, 255, 255, 0.94);
-    border: 1px solid rgba(191, 219, 254, 0.7);
-    box-shadow: 0 34px 68px rgba(15, 23, 42, 0.22);
-    transform: translateZ(28px);
-    backdrop-filter: blur(6px);
-  }
-
-  .landing-hero-3d-divider {
-    width: 100%;
-    margin: 1.1rem 0;
-    border-top: 1.5px dashed rgba(148, 163, 184, 0.6);
-  }
-
-  .landing-hero-3d-qr {
-    display: grid;
-    place-items: center;
-    padding: 0.75rem;
-    border-radius: 14px;
-    background: rgba(241, 245, 249, 0.9);
-    border: 1px solid rgba(226, 232, 240, 0.9);
-  }
-
-  .landing-hero-3d-status {
-    margin-top: 1rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.7rem;
-    border-radius: 999px;
-    background: rgba(16, 185, 129, 0.12);
-    color: #047857;
-    font-size: 0.72rem;
-    font-weight: 800;
-  }
-
-  .landing-hero-3d-badge {
-    position: absolute;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.55rem 0.9rem;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.96);
-    box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: #1e3f8f;
-    transform: translateZ(64px);
-  }
-
-  .landing-hero-3d-badge-scan {
-    top: 0.5rem;
-    right: -0.5rem;
-  }
-
-  .landing-hero-3d-badge-shield {
-    bottom: 1.5rem;
-    left: -1rem;
-    color: #be123c;
-  }
-
-  .landing-feature-card,
-  .landing-event-card {
-    position: relative;
-    overflow: hidden;
-    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(0);
-    transition:
-      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
-      border-color 0.24s ease,
-      box-shadow 0.24s ease;
-    will-change: transform;
-  }
-
-  .landing-feature-card:hover,
-  .landing-event-card:hover {
-    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-4px);
-    border-color: rgba(96, 165, 250, 0.6);
-    box-shadow: 0 22px 46px rgba(15, 23, 42, 0.13);
-  }
-
-  .landing-card-light {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0;
-    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 35%), rgba(59, 130, 246, 0.18), transparent 15rem);
-    transition: opacity 0.24s ease;
-  }
-
-  .landing-feature-card:hover .landing-card-light,
-  .landing-event-card:hover .landing-card-light {
-    opacity: 1;
-  }
-
-  .landing-feature-card:hover .landing-feature-icon {
-    transform: translateY(-2px) scale(1.05);
-  }
-
-  .landing-feature-icon {
-    transition: transform 0.24s ease, background-color 0.24s ease;
-  }
-
-  .landing-event-card img {
-    transform: translate3d(0, 0, 0) scale(1);
-    transition: transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .landing-event-card:hover img {
-    transform: translate3d(0, -2px, 0) scale(1.055);
-  }
-
-  .landing-event-card:hover span[class*="absolute"][class*="top-3"] {
-    filter: brightness(1.04);
+    transform: scale(1.035);
   }
 
   .landing-guide-card {
-    transition: transform 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .landing-guide-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(96, 165, 250, 0.52);
-    box-shadow: 0 18px 38px rgba(15, 23, 42, 0.1);
+    transform: translateY(-2px);
+    border-color: rgba(96, 165, 250, 0.4);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
   }
 
   .landing-guide-step {
-    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
   }
 
   .landing-guide-card:hover .landing-guide-step {
     border-color: rgba(191, 219, 254, 0.86);
     background-color: rgba(239, 246, 255, 0.86);
   }
-
-  .landing-guide-step:hover {
-    transform: translateX(3px);
-  }
-
-  .landing-marquee {
-    overflow: hidden;
-    padding-block: 0.5rem 1.4rem;
-    cursor: grab;
-    touch-action: pan-y;
-  }
-
-  .landing-marquee:active {
-    cursor: grabbing;
-  }
-
-  .landing-marquee-track {
-    display: flex;
-    width: max-content;
-    gap: 1.5rem;
-    padding-inline: max(1.25rem, calc((100vw - 1180px) / 2 + 1.25rem));
-    animation: landingMarquee 42s linear infinite;
-    will-change: transform;
-  }
-
-  .landing-marquee.is-paused .landing-marquee-track,
-  .landing-marquee:hover .landing-marquee-track {
-    animation-play-state: paused;
-  }
-
-  .landing-marquee-reduced {
-    overflow-x: auto;
-    scroll-snap-type: x proximity;
-    cursor: auto;
-  }
-
-  .landing-marquee-reduced .landing-marquee-track {
-    animation: none;
-    width: max-content;
-  }
-
-  .landing-event-card {
-    width: min(355px, calc(100vw - 2.5rem));
-    flex: 0 0 min(355px, calc(100vw - 2.5rem));
-    scroll-snap-align: center;
-    border: 1px solid rgba(226, 232, 240, 0.96);
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
-  }
-
 }
 
 @keyframes scanLine {
@@ -956,48 +526,6 @@
   }
 }
 
-@keyframes landingTextSheen {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes landingKickerSweep {
-  0%,
-  58%,
-  100% {
-    transform: translateX(-130%) skewX(-18deg);
-  }
-  76% {
-    transform: translateX(260%) skewX(-18deg);
-  }
-}
-
-@keyframes landingTitleSettle {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes landingOrbFloat {
-  0%,
-  100% {
-    transform: translate3d(-50%, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-48%, 12px, 0) scale(1.05);
-  }
-}
-
 @keyframes landingSoftFloat {
   0%,
   100% {
@@ -1005,17 +533,6 @@
   }
   50% {
     transform: translateY(-4px);
-  }
-}
-
-@keyframes landingPanelSweep {
-  0%,
-  62%,
-  100% {
-    transform: translateX(-100%);
-  }
-  82% {
-    transform: translateX(100%);
   }
 }
 
@@ -1063,62 +580,16 @@
   }
 }
 
-@keyframes landingMarquee {
-  from {
-    transform: translate3d(0, 0, 0);
-  }
-  to {
-    transform: translate3d(-50%, 0, 0);
-  }
-}
-
-@keyframes landingHero3dFloat {
-  0%,
-  100% {
-    translate: 0 0;
-  }
-  50% {
-    translate: 0 -10px;
-  }
-}
-
-@media (max-width: 640px) {
-  .landing-marquee-track {
-    gap: 1rem;
-    animation-duration: 58s;
-  }
-
-  .landing-event-card {
-    width: min(326px, calc(100vw - 2rem));
-    flex-basis: min(326px, calc(100vw - 2rem));
-  }
-}
-
 @media (hover: none), (pointer: coarse) {
   .landing-hero-bg,
-  .landing-depth,
-  .landing-feature-card,
-  .landing-event-card,
   .magnetic-button-content,
   .tilt-card,
   .tilt-card:hover {
     transform: none !important;
   }
 
-  .landing-hero-3d-stage {
-    animation: none;
-    transform: none !important;
-  }
-
-  .landing-hero-spotlight,
-  .landing-card-light,
   .tilt-card-sheen {
     display: none;
-  }
-
-  .landing-feature-card:hover,
-  .landing-event-card:hover {
-    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
   }
 }
 
@@ -1137,21 +608,10 @@
     transform: none !important;
   }
 
-  .landing-gradient-text,
-  .landing-hero-kicker::after,
-  .landing-marquee-track,
   .landing-hero-bg,
-  .landing-depth,
-  .landing-feature-card,
-  .landing-event-card,
   .magnetic-button-content,
-  .landing-soft-orb,
-  .landing-icon-pulse,
-  .landing-floating-badge,
   .icon-float,
-  .landing-cta-panel::before,
   .public-mobile-menu,
-  .landing-section-title,
   .page-enter,
   .page-enter > *,
   .tilt-card,
@@ -1159,7 +619,6 @@
   .toast-enter,
   .stat-icon-depth,
   .enterprise-card:hover .stat-icon-depth,
-  .landing-hero-3d-stage,
   .route-transition {
     animation: none !important;
     transform: none !important;

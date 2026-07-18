@@ -1,25 +1,24 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BarChart3, CheckSquare, Edit2, Eye, Plus, QrCode, Trash2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import DataTable from "../../components/common/DataTable";
-import EventForm from "../../components/events/EventForm";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
-import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
 import { Event } from "../../types/event";
 
 export default function OrganizerEventsPage() {
   const currentUser = requireCurrentUser();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<Event | undefined>(undefined);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   const loadEvents = useCallback(async () => {
@@ -27,53 +26,28 @@ export default function OrganizerEventsPage() {
     try {
       setEvents(await eventService.listByClubRemote(currentUser.clubId || ""));
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.");
+      showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser.clubId]);
+  }, [currentUser.clubId, showToast]);
 
   useEffect(() => {
     void loadEvents();
   }, [loadEvents]);
 
-  const handleCreateNew = () => {
-    setEditingEvent(undefined);
-    setIsFormOpen(true);
-  };
-
-  const handleEditClick = (event: Event) => {
-    setEditingEvent(event);
-    setIsFormOpen(true);
-  };
-
-  const handleFormSubmit = async (data: Partial<Event>) => {
-    try {
-      if (editingEvent) {
-        await eventService.update(editingEvent.id, data);
-        setToastMsg("Cập nhật sự kiện thành công.");
-      } else {
-        const created = await eventService.create(data);
-        await ticketService.initializeInventory(created.id).catch(() => undefined);
-        setToastMsg("Đã lưu sự kiện mới dưới dạng nháp. Khởi tạo kho vé nếu backend cho phép.");
-      }
-      setIsFormOpen(false);
-      setEditingEvent(undefined);
-      await loadEvents();
-    } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể lưu sự kiện.");
-    }
-  };
-
   const handleConfirmDelete = async () => {
     if (!deletingEventId) return;
     try {
       await eventService.delete(deletingEventId);
-      setToastMsg("Đã xóa sự kiện.");
+      showToast("Đã xóa sự kiện.");
       setDeletingEventId(null);
       await loadEvents();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Chỉ có thể xóa sự kiện ở trạng thái nháp (DRAFT) theo quy định backend.");
+      showToast(
+        error instanceof Error ? error.message : "Chỉ có thể xóa sự kiện ở trạng thái nháp (DRAFT) theo quy định backend.",
+        "error",
+      );
     }
   };
 
@@ -106,9 +80,9 @@ export default function OrganizerEventsPage() {
           <Link to={`/organizer/events/${event.id}`} className="rounded-lg border border-slate-100 p-1.5 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50" title="Xem chi tiết">
             <Eye className="h-3.5 w-3.5" />
           </Link>
-          <button onClick={() => handleEditClick(event)} className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chỉnh sửa">
+          <Link to={`/organizer/events/${event.id}/edit`} className="rounded-lg border border-slate-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chỉnh sửa">
             <Edit2 className="h-3.5 w-3.5" />
-          </button>
+          </Link>
           <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-lg border border-slate-100 p-1.5 text-sky-700 transition-colors hover:border-sky-200 hover:bg-sky-50" title="Liên kết đăng ký">
             <QrCode className="h-3.5 w-3.5" />
           </Link>
@@ -133,45 +107,25 @@ export default function OrganizerEventsPage() {
         title="Quản lý sự kiện câu lạc bộ"
         description="Dữ liệu sự kiện lấy từ /events/mine qua API Gateway."
         actions={
-          !isFormOpen && (
-            <button
-              onClick={handleCreateNew}
-              className="btn-press flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" /> Tạo sự kiện mới
-            </button>
-          )
+          <Button onClick={() => navigate("/organizer/events/create")}>
+            <Plus className="h-4 w-4" aria-hidden="true" /> Tạo sự kiện mới
+          </Button>
         }
       />
 
-      {isFormOpen ? (
-        <div className="animate-fade-in">
-          <EventForm
-            initialData={editingEvent}
-            clubId={currentUser.clubId || ""}
-            clubName={currentUser.clubName || "CLB"}
-            onSubmit={handleFormSubmit}
-            onCancel={() => {
-              setIsFormOpen(false);
-              setEditingEvent(undefined);
-            }}
-          />
-        </div>
-      ) : (
-        <div className="enterprise-card p-5">
-          {isLoading ? (
-            <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải sự kiện...</div>
-          ) : (
-            <DataTable data={events} columns={columns} searchPlaceholder="Tìm kiếm tên sự kiện..." searchField="title" />
-          )}
-        </div>
-      )}
+      <div className="enterprise-card p-5">
+        {isLoading ? (
+          <LoadingSkeleton type="table" count={5} />
+        ) : (
+          <DataTable data={events} columns={columns} searchPlaceholder="Tìm kiếm tên sự kiện..." searchField="title" />
+        )}
+      </div>
 
       {deletingEventId && (
         <ConfirmModal
           isOpen={!!deletingEventId}
           title="Xác nhận xóa sự kiện"
-          message="Backend chỉ cho phép xóa sự kiện ở trạng thái nháp (DRAFT). Thao tác sẽ bị từ chối nếu sự kiện đã OPEN/CLOSED."
+          description="Backend chỉ cho phép xóa sự kiện ở trạng thái nháp (DRAFT). Thao tác sẽ bị từ chối nếu sự kiện đã OPEN/CLOSED."
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeletingEventId(null)}
           confirmText="Xóa sự kiện"
@@ -179,8 +133,6 @@ export default function OrganizerEventsPage() {
           type="danger"
         />
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

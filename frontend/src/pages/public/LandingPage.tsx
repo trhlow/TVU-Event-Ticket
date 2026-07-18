@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -21,7 +21,6 @@ import {
   Zap,
 } from "lucide-react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import EmptyState from "../../components/common/EmptyState";
 import FAQAccordion from "../../components/common/FAQAccordion";
@@ -31,8 +30,6 @@ import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
 import { formatDateTime } from "../../utils/formatDate";
-
-gsap.registerPlugin(ScrollTrigger);
 
 const features = [
   {
@@ -125,96 +122,6 @@ function useReducedMotion() {
   return reduced;
 }
 
-function useFinePointer() {
-  const [isFinePointer, setIsFinePointer] = useState(false);
-
-  useEffect(() => {
-    const media = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const update = () => setIsFinePointer(media.matches);
-
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  return isFinePointer;
-}
-
-interface PointerMotionOptions {
-  enabled: boolean;
-  tilt?: boolean;
-  maxTilt?: number;
-  magnetic?: boolean;
-  maxMagnet?: number;
-}
-
-function usePointerMotion<T extends HTMLElement>({
-  enabled,
-  tilt = false,
-  maxTilt = 3,
-  magnetic = false,
-  maxMagnet = 4,
-}: PointerMotionOptions) {
-  const ref = useRef<T | null>(null);
-
-  useEffect(() => {
-    const node = ref.current;
-    if (!node || !enabled) return undefined;
-
-    let raf = 0;
-
-    const reset = () => {
-      node.style.setProperty("--tilt-x", "0deg");
-      node.style.setProperty("--tilt-y", "0deg");
-      node.style.setProperty("--magnet-x", "0px");
-      node.style.setProperty("--magnet-y", "0px");
-      node.classList.remove("is-pointer-active");
-    };
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (event.pointerType === "touch") return;
-
-      window.cancelAnimationFrame(raf);
-      raf = window.requestAnimationFrame(() => {
-        const rect = node.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-        const normalizedX = x / rect.width - 0.5;
-        const normalizedY = y / rect.height - 0.5;
-
-        node.classList.add("is-pointer-active");
-        node.style.setProperty("--mouse-x", `${x}px`);
-        node.style.setProperty("--mouse-y", `${y}px`);
-
-        if (tilt) {
-          node.style.setProperty("--tilt-x", `${normalizedY * -maxTilt}deg`);
-          node.style.setProperty("--tilt-y", `${normalizedX * maxTilt}deg`);
-        }
-
-        if (magnetic) {
-          node.style.setProperty("--magnet-x", `${normalizedX * maxMagnet}px`);
-          node.style.setProperty("--magnet-y", `${normalizedY * maxMagnet}px`);
-        }
-      });
-    };
-
-    const handlePointerLeave = () => reset();
-
-    node.addEventListener("pointermove", handlePointerMove, { passive: true });
-    node.addEventListener("pointerleave", handlePointerLeave);
-    node.addEventListener("blur", handlePointerLeave, true);
-
-    return () => {
-      window.cancelAnimationFrame(raf);
-      node.removeEventListener("pointermove", handlePointerMove);
-      node.removeEventListener("pointerleave", handlePointerLeave);
-      node.removeEventListener("blur", handlePointerLeave, true);
-    };
-  }, [enabled, magnetic, maxMagnet, maxTilt, tilt]);
-
-  return ref;
-}
-
 function eventStatusLabel(status: Event["status"]) {
   switch (status) {
     case "OPEN":
@@ -256,7 +163,6 @@ export default function LandingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const reducedMotion = useReducedMotion();
-  const finePointer = useFinePointer();
   const visibleEvents = useMemo(() => sortFeatured(events), [events]);
 
   useEffect(() => {
@@ -285,87 +191,17 @@ export default function LandingPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const hero = heroRef.current;
-    if (!hero || reducedMotion || !finePointer) return undefined;
-
-    let raf = 0;
-    const handlePointerMove = (event: PointerEvent) => {
-      window.cancelAnimationFrame(raf);
-      raf = window.requestAnimationFrame(() => {
-        const rect = hero.getBoundingClientRect();
-        const x = ((event.clientX - rect.left) / rect.width - 0.5) * 2;
-        const y = ((event.clientY - rect.top) / rect.height - 0.5) * 2;
-        hero.style.setProperty("--hero-x", `${x * 12}px`);
-        hero.style.setProperty("--hero-y", `${y * 10}px`);
-        hero.style.setProperty("--hero-rot-x", `${y * -6}deg`);
-        hero.style.setProperty("--hero-rot-y", `${x * 8}deg`);
-        hero.style.setProperty("--mouse-x", `${event.clientX - rect.left}px`);
-        hero.style.setProperty("--mouse-y", `${event.clientY - rect.top}px`);
-        hero.classList.add("is-pointer-active");
-      });
-    };
-
-    const handlePointerLeave = () => {
-      hero.style.setProperty("--hero-x", "0px");
-      hero.style.setProperty("--hero-y", "0px");
-      hero.style.setProperty("--hero-rot-x", "0deg");
-      hero.style.setProperty("--hero-rot-y", "0deg");
-      hero.classList.remove("is-pointer-active");
-    };
-
-    hero.addEventListener("pointermove", handlePointerMove, { passive: true });
-    hero.addEventListener("pointerleave", handlePointerLeave);
-
-    return () => {
-      window.cancelAnimationFrame(raf);
-      hero.removeEventListener("pointermove", handlePointerMove);
-      hero.removeEventListener("pointerleave", handlePointerLeave);
-    };
-  }, [finePointer, reducedMotion]);
-
   useGSAP(
     () => {
       if (reducedMotion) return;
 
-      gsap.from(".landing-hero-word", {
-        y: 24,
-        opacity: 0,
-        duration: 0.72,
-        stagger: 0.055,
-        ease: "power3.out",
-      });
-
       gsap.from(".landing-hero-copy .landing-fade-up", {
-        y: 18,
+        y: 14,
         opacity: 0,
-        duration: 0.65,
-        stagger: 0.12,
-        delay: 0.28,
+        duration: 0.5,
+        stagger: 0.1,
+        delay: 0.15,
         ease: "power2.out",
-      });
-
-      gsap.to(".landing-hero-bg", {
-        yPercent: 9,
-        ease: "none",
-        scrollTrigger: {
-          trigger: ".landing-hero",
-          start: "top top",
-          end: "bottom top",
-          scrub: true,
-        },
-      });
-
-      gsap.from(".landing-section-heading", {
-        y: 18,
-        opacity: 0,
-        duration: 0.58,
-        stagger: 0.08,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: "#features",
-          start: "top 75%",
-        },
       });
     },
     { scope: rootRef, dependencies: [reducedMotion] },
@@ -385,23 +221,14 @@ export default function LandingPage() {
           fetchPriority="high"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-white/68 via-white/38 to-white/84" aria-hidden="true" />
-        <div className="landing-hero-spotlight absolute inset-0" aria-hidden="true" />
-        <div className="landing-depth absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(37,99,235,0.16),transparent_34%)]" aria-hidden="true" />
 
         <div className="landing-hero-copy relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center gap-10 px-5 py-20 text-center md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:text-left">
           <div className="flex flex-col items-center lg:items-start">
             <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/72 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4" /> TVU Ticket
             </p>
-            <h1 className="mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
-              <span className="sr-only">Hệ thống quản lý vé sự kiện chuyên nghiệp</span>
-              <span aria-hidden="true">
-                {"Hệ thống quản lý vé sự kiện chuyên nghiệp".split(" ").map((word, index) => (
-                  <span key={`${word}-${index}`} className="landing-hero-word inline-block px-1">
-                    {word}
-                  </span>
-                ))}
-              </span>
+            <h1 className="landing-fade-up mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
+              Hệ thống quản lý vé sự kiện chuyên nghiệp
             </h1>
             <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
               Trải nghiệm đăng ký, check-in và quản lý sự kiện liền mạch, minh bạch dành cho sinh viên và các câu lạc bộ TVU.
@@ -409,17 +236,15 @@ export default function LandingPage() {
             <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 to="/events"
-                className="btn-press magnetic-button group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-xl shadow-blue-900/20 hover:bg-blue-700"
+                className="btn-press group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-md shadow-blue-900/16 hover:bg-blue-700"
               >
-                <MagneticContent enabled={finePointer && !reducedMotion}>
-                  Xem sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-                </MagneticContent>
+                Xem sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/login"
-                className="btn-press magnetic-button inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-md shadow-blue-950/8 backdrop-blur hover:bg-white"
+                className="btn-press inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-sm backdrop-blur hover:bg-white"
               >
-                <MagneticContent enabled={finePointer && !reducedMotion}>Đăng nhập</MagneticContent>
+                Đăng nhập
               </Link>
             </div>
           </div>
@@ -441,7 +266,7 @@ export default function LandingPage() {
             {features.map((feature, index) => {
               return (
                 <RevealOnScroll key={feature.title} delay={index * 80} className={index === 0 || index === 3 ? "lg:col-span-1" : ""}>
-                  <FeatureCard feature={feature} motionEnabled={finePointer && !reducedMotion} />
+                  <FeatureCard feature={feature} />
                 </RevealOnScroll>
               );
             })}
@@ -467,7 +292,7 @@ export default function LandingPage() {
               <EmptyState title="Chưa tải được sự kiện" description={error} icon={CalendarDays} />
             </div>
           ) : visibleEvents.length > 0 ? (
-            <EventMarquee events={visibleEvents} reducedMotion={reducedMotion} motionEnabled={finePointer && !reducedMotion} onOpen={(eventId) => navigate(`/events/${eventId}`)} />
+            <EventGrid events={visibleEvents} onOpen={(eventId) => navigate(`/events/${eventId}`)} />
           ) : (
             <div className="mx-auto max-w-[1180px] px-5 md:px-8">
               <EmptyState
@@ -547,135 +372,73 @@ export default function LandingPage() {
   );
 }
 
-interface EventMarqueeProps {
-  events: Event[];
-  reducedMotion: boolean;
-  motionEnabled: boolean;
-  onOpen: (eventId: string) => void;
-}
-
 type FeatureItem = (typeof features)[number];
 
 function HeroShowcase3D() {
   return (
-    <div className="landing-hero-3d hidden lg:block" aria-hidden="true">
-      <div className="landing-hero-3d-stage">
-        <div className="landing-hero-3d-card landing-hero-3d-card-back" />
-        <div className="landing-hero-3d-card landing-hero-3d-ticket">
-          <div className="flex items-center gap-2 text-blue-800">
-            <Ticket className="h-5 w-5" />
-            <span className="text-xs font-extrabold uppercase tracking-[0.14em]">Vé điện tử</span>
-          </div>
-          <p className="mt-4 font-display text-lg font-extrabold leading-snug text-slate-900">Tên sự kiện của bạn</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">Thời gian · Địa điểm</p>
-          <div className="landing-hero-3d-divider" />
-          <div className="landing-hero-3d-qr">
-            <QrCode className="h-16 w-16 text-slate-900" strokeWidth={1.4} />
-          </div>
-          <span className="landing-hero-3d-status">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Vé hợp lệ
+    <div className="hidden lg:block" aria-hidden="true">
+      <div className="mx-auto w-[17rem] rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-950/[0.06]">
+        <div className="flex items-center gap-2 text-blue-800">
+          <Ticket className="h-5 w-5" />
+          <span className="text-xs font-extrabold uppercase tracking-[0.14em]">Vé điện tử</span>
+        </div>
+        <p className="mt-4 font-display text-lg font-extrabold leading-snug text-slate-900">Tên sự kiện của bạn</p>
+        <p className="mt-1 text-xs font-semibold text-slate-500">Thời gian · Địa điểm</p>
+        <div className="my-4 border-t border-dashed border-slate-200" />
+        <div className="grid place-items-center rounded-xl border border-slate-100 bg-slate-50 p-4">
+          <QrCode className="h-16 w-16 text-slate-900" strokeWidth={1.4} />
+        </div>
+        <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Vé hợp lệ
+        </span>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+            <ScanLine className="h-3.5 w-3.5" /> Check-in
           </span>
-        </div>
-        <div className="landing-hero-3d-badge landing-hero-3d-badge-scan">
-          <ScanLine className="h-4 w-4" /> Check-in
-        </div>
-        <div className="landing-hero-3d-badge landing-hero-3d-badge-shield">
-          <ShieldCheck className="h-4 w-4" /> Chống vé ảo
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
+            <ShieldCheck className="h-3.5 w-3.5" /> Chống vé ảo
+          </span>
         </div>
       </div>
     </div>
   );
 }
 
-function MagneticContent({ enabled, children }: { enabled: boolean; children: ReactNode }) {
-  const ref = usePointerMotion<HTMLSpanElement>({ enabled, magnetic: true, maxMagnet: 5 });
-
-  return (
-    <span ref={ref} className="magnetic-button-content">
-      {children}
-    </span>
-  );
-}
-
-function FeatureCard({ feature, motionEnabled }: { feature: FeatureItem; motionEnabled: boolean }) {
+function FeatureCard({ feature }: { feature: FeatureItem }) {
   const Icon = feature.icon;
-  const cardRef = usePointerMotion<HTMLElement>({ enabled: motionEnabled, tilt: true, maxTilt: 3 });
 
   return (
-    <article ref={cardRef} className="landing-feature-card group h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/4">
-      <div className={`landing-feature-icon grid h-12 w-12 place-items-center rounded-xl ${feature.tone}`}>
-        <Icon className="h-6 w-6 transition duration-300 group-hover:scale-110" />
+    <article className="hover-lift h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className={`grid h-12 w-12 place-items-center rounded-xl ${feature.tone}`}>
+        <Icon className="h-6 w-6" />
       </div>
       <h3 className="mt-5 font-display text-xl font-extrabold text-slate-900">{feature.title}</h3>
       <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
-      <span className="landing-card-light" aria-hidden="true" />
     </article>
   );
 }
 
-function EventMarquee({ events, reducedMotion, motionEnabled, onOpen }: EventMarqueeProps) {
-  const [paused, setPaused] = useState(false);
-  const resumeTimer = useRef<number | null>(null);
-  const repeated = useMemo(() => [...events, ...events], [events]);
-
-  useEffect(() => () => {
-    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
-  }, []);
-
-  const pause = () => {
-    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
-    setPaused(true);
-  };
-
-  const resumeSoon = () => {
-    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
-    resumeTimer.current = window.setTimeout(() => setPaused(false), 420);
-  };
-
+function EventGrid({ events, onOpen }: { events: Event[]; onOpen: (eventId: string) => void }) {
   return (
-    <div
-      className={["landing-marquee", reducedMotion ? "landing-marquee-reduced" : "", paused ? "is-paused" : ""].join(" ")}
-      onMouseEnter={pause}
-      onMouseLeave={resumeSoon}
-      onPointerDown={pause}
-      onPointerUp={resumeSoon}
-      onPointerCancel={resumeSoon}
-      onFocusCapture={pause}
-      onBlurCapture={resumeSoon}
-    >
-      <div className="landing-marquee-track" aria-live="off">
-        {repeated.map((event, index) => (
-          <LandingEventCard
-            key={`${event.id}-${index < events.length ? "primary" : "clone"}`}
-            event={event}
-            ariaHidden={index >= events.length}
-            motionEnabled={motionEnabled}
-            onOpen={onOpen}
-          />
-        ))}
-      </div>
+    <div className="mx-auto grid max-w-[1180px] gap-5 px-5 sm:grid-cols-2 lg:grid-cols-3 md:px-8">
+      {events.map((event) => (
+        <LandingEventCard key={event.id} event={event} onOpen={onOpen} />
+      ))}
     </div>
   );
 }
 
 interface LandingEventCardProps {
   event: Event;
-  ariaHidden?: boolean;
-  motionEnabled: boolean;
   onOpen: (eventId: string) => void;
 }
 
-function LandingEventCard({ event, ariaHidden = false, motionEnabled, onOpen }: LandingEventCardProps) {
+function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
   const isEnded = event.status === "ENDED" || event.status === "CLOSED";
   const isAvailable = event.status === "OPEN" && event.remainingTickets > 0;
-  const cardRef = usePointerMotion<HTMLElement>({ enabled: motionEnabled, tilt: true, maxTilt: 2.6 });
 
   return (
-    <article
-      ref={cardRef}
-      className="landing-event-card group"
-      aria-hidden={ariaHidden}
-    >
+    <article className="hover-lift group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="relative aspect-[16/10] overflow-hidden bg-blue-950">
         {event.bannerUrl ? (
           <img
@@ -711,21 +474,17 @@ function LandingEventCard({ event, ariaHidden = false, motionEnabled, onOpen }: 
         <button
           type="button"
           onClick={() => onOpen(event.id)}
-          tabIndex={ariaHidden ? -1 : 0}
           className={[
-            "btn-press magnetic-button group/btn mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold",
+            "btn-press group/btn mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold",
             isAvailable
-              ? "bg-blue-800 text-white shadow-md shadow-blue-900/16 hover:bg-blue-700"
+              ? "bg-blue-800 text-white hover:bg-blue-700"
               : "border border-blue-200 bg-white text-blue-800 hover:bg-blue-50",
           ].join(" ")}
         >
-          <MagneticContent enabled={motionEnabled && !ariaHidden}>
-            {isAvailable ? "Đăng ký ngay" : isEnded ? "Xem chi tiết" : "Xem chi tiết"}
-            <ArrowRight className="h-4 w-4 transition group-hover/btn:translate-x-1" />
-          </MagneticContent>
+          {isAvailable ? "Đăng ký ngay" : isEnded ? "Xem chi tiết" : "Xem chi tiết"}
+          <ArrowRight className="h-4 w-4 transition group-hover/btn:translate-x-1" />
         </button>
       </div>
-      <span className="landing-card-light" aria-hidden="true" />
     </article>
   );
 }
