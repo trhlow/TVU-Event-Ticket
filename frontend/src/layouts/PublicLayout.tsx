@@ -255,8 +255,12 @@ export default function PublicLayout() {
             <div>
               <p className="font-bold text-slate-900">Liên hệ</p>
               <p className="mt-3 flex items-center gap-2 leading-6"><MapPin className="h-4 w-4 text-brand-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
-              <p className="flex items-center gap-2 leading-6"><Mail className="h-4 w-4 text-brand-700" /> support@tvu.edu.vn</p>
-              <p className="flex items-center gap-2 leading-6"><Phone className="h-4 w-4 text-brand-700" /> 0294 3855 246</p>
+              <a href="mailto:support@tvu.edu.vn" className="flex items-center gap-2 leading-6 hover:text-brand-800 hover:underline">
+                <Mail className="h-4 w-4 text-brand-700" /> support@tvu.edu.vn
+              </a>
+              <a href="tel:+842943855246" className="flex items-center gap-2 leading-6 hover:text-brand-800 hover:underline">
+                <Phone className="h-4 w-4 text-brand-700" /> 0294 3855 246
+              </a>
             </div>
             <div>
               <p className="font-bold text-slate-900">Khám phá</p>
@@ -264,6 +268,7 @@ export default function PublicLayout() {
                 <Link to="/" className="hover:text-brand-800 hover:underline">Trang chủ</Link>
                 <Link to="/events" className="hover:text-brand-800 hover:underline">Sự kiện</Link>
                 <Link to="/#guide" className="hover:text-brand-800 hover:underline">Hướng dẫn</Link>
+                <Link to="/#faq" className="hover:text-brand-800 hover:underline">Hỏi đáp</Link>
               </div>
               <div className="mt-4 flex gap-2 text-brand-800">
                 <Share2 className="h-4 w-4" aria-hidden="true" />

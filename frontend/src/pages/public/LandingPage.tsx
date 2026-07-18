@@ -547,8 +547,12 @@ function LandingFooter() {
           <h2 className="text-sm font-extrabold text-slate-900">Liên hệ</h2>
           <div className="mt-4 space-y-3 text-sm font-medium text-slate-600">
             <p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
-            <p className="flex gap-2"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> support@tvu.edu.vn</p>
-            <p className="flex gap-2"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 0294 3855 246</p>
+            <a href="mailto:support@tvu.edu.vn" className="flex gap-2 hover:text-brand-800 hover:underline">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> support@tvu.edu.vn
+            </a>
+            <a href="tel:+842943855246" className="flex gap-2 hover:text-brand-800 hover:underline">
+              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 0294 3855 246
+            </a>
           </div>
         </div>
       </div>
