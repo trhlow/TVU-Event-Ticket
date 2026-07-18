@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar } from 'lucide-react';
-import { mockClubs } from '../../data/mockClubs';
 import EventCard from '../../components/events/EventCard';
 import EventFilter from '../../components/events/EventFilter';
 import PageHeader from '../../components/common/PageHeader';
@@ -48,6 +47,14 @@ export default function StudentEventListPage() {
     return Array.from(new Set(list));
   }, [events]);
 
+  const clubs = useMemo(() => {
+    const seen = new Map<string, string>();
+    events.forEach((evt) => {
+      if (evt.clubId && !seen.has(evt.clubId)) seen.set(evt.clubId, evt.clubName || evt.clubId);
+    });
+    return Array.from(seen, ([id, name]) => ({ id, name }));
+  }, [events]);
+
   const filteredEvents = useMemo(() => {
     return events.filter((evt) => {
       const matchSearch = evt.title.toLowerCase().includes(searchValue.toLowerCase().trim());
@@ -75,7 +82,7 @@ export default function StudentEventListPage() {
 
       {/* Filter panel */}
       <EventFilter
-        clubs={mockClubs}
+        clubs={clubs}
         categories={categories}
         searchValue={searchValue}
         selectedClubId={selectedClubId}

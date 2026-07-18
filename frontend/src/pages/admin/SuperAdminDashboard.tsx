@@ -43,14 +43,17 @@ export default function SuperAdminDashboard() {
     [events],
   );
 
-  const monthlyData = [
-    { name: "T1", "Lượt đăng ký": 180 },
-    { name: "T2", "Lượt đăng ký": 220 },
-    { name: "T3", "Lượt đăng ký": 260 },
-    { name: "T4", "Lượt đăng ký": 310 },
-    { name: "T5", "Lượt đăng ký": 390 },
-    { name: "T6", "Lượt đăng ký": 430 },
-  ];
+  const monthlyData = useMemo(() => {
+    const counts = new Map<string, number>();
+    reservations.forEach((reservation) => {
+      const month = new Date(reservation.createdAt).getMonth() + 1;
+      const key = `T${month}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts, ([name, value]) => ({ name, "Lượt đăng ký": value })).sort(
+      (a, b) => Number(a.name.slice(1)) - Number(b.name.slice(1)),
+    );
+  }, [reservations]);
 
   const checkedIn = tickets.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length;
 

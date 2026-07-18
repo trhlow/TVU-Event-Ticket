@@ -5,7 +5,6 @@ import EmptyState from "../../components/common/EmptyState";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
 import EventCard from "../../components/events/EventCard";
-import { mockClubs } from "../../data/mockClubs";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
 
@@ -67,6 +66,14 @@ export default function PublicEventsPage() {
     [events],
   );
 
+  const clubs = useMemo(() => {
+    const seen = new Map<string, string>();
+    events.forEach((event) => {
+      if (event.clubId && !seen.has(event.clubId)) seen.set(event.clubId, event.clubName || event.clubId);
+    });
+    return Array.from(seen, ([id, name]) => ({ id, name }));
+  }, [events]);
+
   return (
     <div className="subtle-gradient-bg text-left">
       <section className="px-5 py-14 md:px-8 md:py-20">
@@ -110,7 +117,7 @@ export default function PublicEventsPage() {
                 <Filter className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <select className="tvu-input pl-10" value={clubId} onChange={(event) => setClubId(event.target.value)}>
                   <option value="ALL">Tất cả CLB</option>
-                  {mockClubs.map((club) => (
+                  {clubs.map((club) => (
                     <option key={club.id} value={club.id}>{club.name}</option>
                   ))}
                 </select>

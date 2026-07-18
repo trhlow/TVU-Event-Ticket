@@ -1,20 +1,42 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
 import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
-import { getEvents } from "../../data/mockEvents";
+import { eventService } from "../../services/eventService";
 import { formatDateTime } from "../../utils/formatDate";
+import { Event } from "../../types/event";
 
 export default function OrganizerRegistrationQRPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const currentUser = requireCurrentUser();
   const { showToast } = useToast();
-  const events = getEvents().filter((event) => event.clubId === currentUser.clubId);
-  const [selectedEventId, setSelectedEventId] = useState(eventId || events[0]?.id || "");
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedEventId, setSelectedEventId] = useState(eventId || "");
+
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await eventService.listByClubRemote(currentUser.clubId || "");
+      setEvents(data);
+      setSelectedEventId((current) => current || data[0]?.id || "");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser.clubId, showToast]);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
+
   const event = events.find((item) => item.id === selectedEventId) || events[0];
   const registrationLink = event ? `${window.location.origin}/student/events/${event.id}/register` : "";
 
@@ -26,22 +48,25 @@ export default function OrganizerRegistrationQRPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "QR đăng ký sự kiện" }]}
         title="QR đăng ký sự kiện"
         description="Liên kết dùng để sinh viên mở trang đăng ký sự kiện. Đây là liên kết công khai của Ban tổ chức, không phải vé tham gia."
         actions={
-          <label className="w-full sm:w-80">
-            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
-            <select value={event?.id || ""} onChange={(e) => setSelectedEventId(e.target.value)} className="tvu-input">
-              {events.map((item) => (
-                <option key={item.id} value={item.id}>{item.title}</option>
-              ))}
-            </select>
-          </label>
+          events.length > 0 && (
+            <label className="w-full sm:w-80">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
+              <select value={event?.id || ""} onChange={(e) => setSelectedEventId(e.target.value)} className="tvu-input">
+                {events.map((item) => (
+                  <option key={item.id} value={item.id}>{item.title}</option>
+                ))}
+              </select>
+            </label>
+          )
         }
       />
 
-      {event ? (
+      {isLoading ? (
+        <LoadingSkeleton type="card" count={1} />
+      ) : event ? (
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           <section className="enterprise-card p-6 text-center">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
@@ -103,9 +128,11 @@ export default function OrganizerRegistrationQRPage() {
           </section>
         </div>
       ) : (
-        <div className="enterprise-card p-10 text-center text-sm font-bold text-slate-500">
-          CLB chưa có sự kiện để tạo liên kết đăng ký.
-        </div>
+        <EmptyState
+          title="Chưa có sự kiện"
+          description="CLB chưa có sự kiện nào để tạo liên kết đăng ký."
+          icon={QrCode}
+        />
       )}
     </div>
   );
