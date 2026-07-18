@@ -225,13 +225,13 @@ export default function LandingPage() {
         <div className="landing-hero-copy relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center gap-10 px-5 py-20 text-center md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:text-left">
           <div className="flex flex-col items-center lg:items-start">
             <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/72 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
-              <Sparkles className="h-4 w-4" /> TVU Ticket
+              <Sparkles className="h-4 w-4" /> Nền tảng vé sự kiện chính thức
             </p>
             <h1 className="landing-fade-up mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
-              Hệ thống quản lý vé sự kiện chuyên nghiệp
+              Quản lý vé sự kiện đơn giản, minh bạch và an toàn
             </h1>
             <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
-              Trải nghiệm đăng ký, check-in và quản lý sự kiện liền mạch, minh bạch dành cho sinh viên và các câu lạc bộ TVU.
+              Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
             </p>
             <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
@@ -247,6 +247,9 @@ export default function LandingPage() {
                 Đăng nhập
               </Link>
             </div>
+            <p className="landing-fade-up mt-5 text-xs font-semibold text-slate-500">
+              Miễn phí cho sinh viên · Đăng nhập bằng tài khoản Microsoft của trường
+            </p>
           </div>
 
           <HeroShowcase3D />
@@ -256,27 +259,27 @@ export default function LandingPage() {
       <RevealOnScroll as="section" id="features" className="scroll-mt-20 bg-slate-50 px-5 py-16 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="landing-section-heading mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Tính năng nổi bật</p>
+            <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
               Giải pháp toàn diện cho mọi nhu cầu tổ chức sự kiện của bạn.
             </p>
           </div>
 
-          <div className="mt-10 grid auto-rows-fr gap-5 md:grid-cols-2">
-            {features.map((feature, index) => {
-              return (
-                <RevealOnScroll key={feature.title} delay={index * 80} className={index === 0 || index === 3 ? "lg:col-span-1" : ""}>
-                  <FeatureCard feature={feature} />
-                </RevealOnScroll>
-              );
-            })}
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {features.map((feature, index) => (
+              <RevealOnScroll key={feature.title} delay={index * 80}>
+                <FeatureCard feature={feature} />
+              </RevealOnScroll>
+            ))}
           </div>
         </div>
       </RevealOnScroll>
 
       <section id="events" className="scroll-mt-20 border-y border-slate-200 bg-white px-0 py-16">
         <div className="mx-auto max-w-[1180px] px-5 text-center md:px-8">
-          <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Sự kiện nổi bật</h2>
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Sự kiện</p>
+          <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Sự kiện nổi bật</h2>
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
             Khám phá các hoạt động hấp dẫn sắp diễn ra.
           </p>
@@ -311,7 +314,8 @@ export default function LandingPage() {
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-blue-100 bg-white text-blue-800 shadow-sm">
               <BookOpenCheck className="h-6 w-6" aria-hidden="true" />
             </div>
-            <h2 className="mt-5 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Hướng dẫn sử dụng</h2>
+            <p className="mt-4 text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Hướng dẫn</p>
+            <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Hướng dẫn sử dụng</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
               Nắm nhanh quy trình đăng ký, quản lý và check-in sự kiện trên TVU Ticket.
             </p>
@@ -354,7 +358,8 @@ export default function LandingPage() {
       <RevealOnScroll as="section" id="faq" className="scroll-mt-20 border-t border-slate-200 bg-white px-5 py-16 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Câu hỏi thường gặp</h2>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Hỏi đáp</p>
+            <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Câu hỏi thường gặp</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
               Một số thắc mắc phổ biến về đăng ký, vé điện tử và check-in trên TVU Ticket.
             </p>
@@ -365,6 +370,29 @@ export default function LandingPage() {
           </div>
         </div>
       </RevealOnScroll>
+
+      <section className="px-5 py-16 md:px-8">
+        <div className="page-hero mx-auto max-w-[1180px] px-6 py-10 text-center text-white md:px-12 md:py-14">
+          <h2 className="font-display text-2xl font-extrabold md:text-3xl">Sẵn sàng cho sự kiện tiếp theo?</h2>
+          <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-6 text-white/85 md:text-base">
+            Đăng nhập bằng tài khoản Microsoft của trường để đăng ký sự kiện và nhận vé QR ngay khi được duyệt.
+          </p>
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              to="/login"
+              className="btn-press inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-bold text-brand-800 hover:bg-blue-50"
+            >
+              Đăng nhập ngay <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              to="/events"
+              className="btn-press inline-flex h-12 items-center justify-center rounded-xl border border-white/40 px-7 text-sm font-bold text-white hover:bg-white/10"
+            >
+              Xem sự kiện
+            </Link>
+          </div>
+        </div>
+      </section>
 
       <LandingFooter />
       <ScrollToTopButton />
@@ -408,12 +436,12 @@ function FeatureCard({ feature }: { feature: FeatureItem }) {
   const Icon = feature.icon;
 
   return (
-    <article className="hover-lift h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className={`grid h-12 w-12 place-items-center rounded-xl ${feature.tone}`}>
-        <Icon className="h-6 w-6" />
+    <article className="hover-lift h-full rounded-xl border border-slate-200 bg-white p-5">
+      <div className={`grid h-11 w-11 place-items-center rounded-xl ${feature.tone}`}>
+        <Icon className="h-5 w-5" />
       </div>
-      <h3 className="mt-5 font-display text-xl font-extrabold text-slate-900">{feature.title}</h3>
-      <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
+      <h3 className="mt-4 font-display text-base font-extrabold text-slate-900">{feature.title}</h3>
+      <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
     </article>
   );
 }
