@@ -108,7 +108,6 @@ export default function OrganizerTicketsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý vé" }]}
         title="Quản lý vé đã phát hành"
         description="Đọc attendee JSON từ ticket-service theo từng sự kiện của CLB."
       />
