@@ -40,7 +40,6 @@ export default function MyRegistrationsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student" }, { label: "Lịch sử đăng ký" }]}
         title="Tiến trình đăng ký của bạn"
         description="Theo dõi trạng thái chờ duyệt, đã duyệt và bị từ chối cho từng lượt đăng ký sự kiện."
       />

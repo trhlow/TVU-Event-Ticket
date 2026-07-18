@@ -75,7 +75,6 @@ export default function OrganizerScanPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quét QR điểm danh" }]}
         title="Quét QR điểm danh"
         description="Nhập QR payload đã được backend/notification ký. Frontend không tự ký QR hay tự xác minh kết quả — backend luôn là nơi quyết định."
       />

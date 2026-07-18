@@ -73,16 +73,10 @@ export default function TicketQRPage() {
     };
   }, [ticketId, showToast]);
 
-  const breadcrumb = [
-    { label: "Sinh viên", path: "/student" },
-    { label: "Vé của tôi", path: "/student/tickets" },
-    { label: "Chi tiết vé" },
-  ];
-
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <PageHeader breadcrumb={breadcrumb} title="Chi tiết vé QR điện tử" />
+        <PageHeader title="Chi tiết vé QR điện tử" />
         <LoadingSkeleton type="list" count={3} />
       </div>
     );
@@ -91,7 +85,7 @@ export default function TicketQRPage() {
   if (!ticket || !event) {
     return (
       <div className="space-y-6 text-left">
-        <PageHeader breadcrumb={breadcrumb} title="Chi tiết vé QR điện tử" />
+        <PageHeader title="Chi tiết vé QR điện tử" />
         <div className="enterprise-card mx-auto max-w-md p-8 text-center">
           <p className="text-sm font-bold text-slate-900">Vé không tồn tại hoặc chưa thuộc tài khoản hiện tại.</p>
           <Link to="/student/tickets" className="mt-3 inline-block text-sm font-extrabold text-brand-700">
@@ -105,11 +99,6 @@ export default function TicketQRPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[
-          { label: "Sinh viên", path: "/student" },
-          { label: "Vé của tôi", path: "/student/tickets" },
-          { label: ticket.ticketCode },
-        ]}
         title="Chi tiết vé QR điện tử"
         description="Vé chỉ có QR khi backend đã cấp signed QR payload hợp lệ."
       />

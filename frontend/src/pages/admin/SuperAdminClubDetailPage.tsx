@@ -71,7 +71,6 @@ export default function SuperAdminClubDetailPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý CLB', path: '/admin/clubs' }, { label: club.name }]}
         eyebrow={club.code}
         title={club.name}
         description={club.description || 'Chưa có mô tả.'}

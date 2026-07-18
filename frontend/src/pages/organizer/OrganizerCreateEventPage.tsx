@@ -23,7 +23,6 @@ export default function OrganizerCreateEventPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Tạo sự kiện' }]}
         title="Tạo sự kiện mới"
         description="Điền đầy đủ thông tin, cấu hình thời gian đăng ký và số vé. Sự kiện luôn được lưu ở trạng thái nháp trước khi công bố."
       />

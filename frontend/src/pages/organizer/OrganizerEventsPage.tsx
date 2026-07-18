@@ -103,7 +103,6 @@ export default function OrganizerEventsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý sự kiện" }]}
         title="Quản lý sự kiện câu lạc bộ"
         description="Dữ liệu sự kiện lấy từ /events/mine qua API Gateway."
         actions={

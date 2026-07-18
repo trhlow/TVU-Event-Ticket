@@ -9,8 +9,6 @@ import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
-const BREADCRUMB_BASE = [{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Chỉnh sửa sự kiện' }];
-
 export default function OrganizerEditEventPage() {
   const navigate = useNavigate();
   const { eventId } = useParams();
@@ -44,7 +42,7 @@ export default function OrganizerEditEventPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <PageHeader breadcrumb={BREADCRUMB_BASE} title="Chỉnh sửa sự kiện" />
+        <PageHeader title="Chỉnh sửa sự kiện" />
         <LoadingSkeleton type="list" count={4} />
       </div>
     );
@@ -53,7 +51,7 @@ export default function OrganizerEditEventPage() {
   if (!event || event.clubId !== currentUser.clubId) {
     return (
       <div className="space-y-6 text-left">
-        <PageHeader breadcrumb={BREADCRUMB_BASE} title="Chỉnh sửa sự kiện" />
+        <PageHeader title="Chỉnh sửa sự kiện" />
         <EmptyState
           title="Không tìm thấy sự kiện"
           description="Sự kiện không tồn tại hoặc không thuộc câu lạc bộ bạn đang quản lý."
@@ -73,11 +71,6 @@ export default function OrganizerEditEventPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[
-          { label: 'Ban tổ chức', path: '/organizer' },
-          { label: 'Quản lý sự kiện', path: '/organizer/events' },
-          { label: 'Chỉnh sửa sự kiện' },
-        ]}
         title="Chỉnh sửa sự kiện"
         description="Cập nhật nội dung, thời gian đăng ký, số lượng vé và trạng thái phát hành cho sự kiện của câu lạc bộ."
       />

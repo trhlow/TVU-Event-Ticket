@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Award, Calendar, CheckCircle2, ChevronLeft, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -16,8 +15,6 @@ import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";
-
-const BASE_BREADCRUMB = [{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý sự kiện", path: "/organizer/events" }];
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -91,7 +88,6 @@ export default function OrganizerEventDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[...BASE_BREADCRUMB, { label: "Chi tiết sự kiện" }]} />
         <LoadingSkeleton type="list" count={4} />
       </div>
     );
@@ -100,7 +96,6 @@ export default function OrganizerEventDetailPage() {
   if (!event) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[...BASE_BREADCRUMB, { label: "Chi tiết sự kiện" }]} />
         <div className="enterprise-card mx-auto max-w-md p-8 text-center">
           <p className="text-sm font-bold text-slate-950">Không tìm thấy sự kiện trong CLB của tài khoản hiện tại.</p>
           <Link to="/organizer/events" className="mt-3 inline-block text-xs font-bold text-brand-600 hover:underline">
@@ -113,8 +108,6 @@ export default function OrganizerEventDetailPage() {
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      <Breadcrumb items={[...BASE_BREADCRUMB, { label: event.title }]} />
-
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-2">
           <Link to="/organizer/events" className="btn-press rounded-lg p-1.5 text-slate-500 transition-all hover:bg-slate-100">

@@ -59,7 +59,6 @@ export default function SuperAdminRBACPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Phân quyền RBAC" }]}
         eyebrow="Chỉ đọc"
         icon={KeyRound}
         title="Ma trận phân quyền RBAC"

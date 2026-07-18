@@ -62,7 +62,6 @@ export default function SuperAdminStatsPage() {
   return (
     <div className="space-y-6 text-left animate-fade-in">
       <PageHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Thống kê toàn trường' }]}
         title="Thống kê toàn trường & phân tích hiệu quả"
         description="Báo cáo tổng hợp số liệu tương tác sự kiện, đăng ký, duyệt phát hành vé và tỷ lệ tham dự của sinh viên Đại học Trà Vinh."
       />

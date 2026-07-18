@@ -46,7 +46,6 @@ export default function SuperAdminLogsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Nhật ký hệ thống" }]}
         title="Nhật ký bảo mật và hoạt động"
         description="Backend hiện ghi audit log cho các thao tác quản trị nhưng chưa expose API đọc log cho frontend."
         actions={

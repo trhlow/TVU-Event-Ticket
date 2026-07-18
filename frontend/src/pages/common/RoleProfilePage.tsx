@@ -14,10 +14,6 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-left">
       <PageHeader
-        breadcrumb={[
-          { label: isAdmin ? "Quản trị hệ thống" : "Ban tổ chức", path: isAdmin ? "/admin" : "/organizer" },
-          { label: "Hồ sơ tài khoản" },
-        ]}
         eyebrow={getRoleLabel(user.role)}
         icon={ShieldCheck}
         title="Hồ sơ tài khoản"

@@ -33,7 +33,6 @@ export default function EventRegistrationResultPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-6 text-left">
         <PageHeader
-          breadcrumb={[{ label: "Sinh viên", path: "/student/home" }, { label: "Đăng ký sự kiện" }, { label: "Kết quả đăng ký" }]}
           title="Đăng ký đã được ghi nhận"
         />
 
@@ -79,7 +78,6 @@ export default function EventRegistrationResultPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student/home" }, { label: "Sự kiện" }, { label: "Kết quả đăng ký" }]}
         title="Đăng ký thành công"
       />
 

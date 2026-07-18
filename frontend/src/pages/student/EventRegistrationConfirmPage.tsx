@@ -127,12 +127,6 @@ export default function EventRegistrationConfirmPage() {
   return (
     <div className="space-y-6 text-left max-w-3xl mx-auto">
       <PageHeader
-        breadcrumb={[
-          { label: 'Sinh viên', path: '/student' },
-          { label: 'Sự kiện', path: '/student/events' },
-          { label: event.title, path: `/student/events/${event.id}` },
-          { label: 'Đăng ký vé' },
-        ]}
         title="Xác nhận đăng ký vé sự kiện"
         description="Vui lòng rà soát kỹ các thông tin định danh sinh viên dưới đây trước khi gửi yêu cầu."
       />

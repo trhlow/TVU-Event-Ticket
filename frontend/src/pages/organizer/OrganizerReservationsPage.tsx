@@ -100,7 +100,6 @@ export default function OrganizerReservationsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Duyệt đăng ký sự kiện" }]}
         title="Duyệt đăng ký sự kiện"
         description="Duyệt sẽ giữ chỗ và cấp vé theo quyết định của backend."
         actions={

@@ -93,7 +93,6 @@ export default function SuperAdminClubsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Quản lý câu lạc bộ" }]}
         title="Danh sách câu lạc bộ"
         description="Quản lý CLB qua backend Auth/Admin service."
         actions={

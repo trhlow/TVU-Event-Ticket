@@ -75,7 +75,6 @@ export default function StudentEventListPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Sinh viên', path: '/student' }, { label: 'Tất cả sự kiện' }]}
         title="Danh sách sự kiện đang diễn ra"
         description="Khám phá hoạt động, đặt chỗ trước và nhận vé QR tham dự điện tử nhanh chóng."
       />

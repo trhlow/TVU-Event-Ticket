@@ -27,7 +27,6 @@ export default function StudentProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Sinh viên', path: '/student' }, { label: 'Tài khoản' }]}
         title="Hồ sơ cá nhân sinh viên"
         description="Quản lý thông tin định danh phục vụ đăng ký và cấp vé sự kiện."
       />

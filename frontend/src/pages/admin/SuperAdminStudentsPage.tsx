@@ -81,7 +81,6 @@ export default function SuperAdminStudentsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý sinh viên' }]}
         title="Quản lý tài khoản sinh viên"
         description="Tra cứu thông tin và giám sát hồ sơ cá nhân của sinh viên trong hệ thống."
       />

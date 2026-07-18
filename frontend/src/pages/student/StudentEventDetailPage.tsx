@@ -85,14 +85,7 @@ export default function StudentEventDetailPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <PageHeader
-        breadcrumb={[
-          { label: "Sinh viên", path: "/student" },
-          { label: "Sự kiện", path: "/student/events" },
-          { label: "Chi tiết" },
-        ]}
-        title="Chi tiết sự kiện"
-      />
+      <PageHeader title="Chi tiết sự kiện" />
 
       <button
         onClick={() => navigate(-1)}

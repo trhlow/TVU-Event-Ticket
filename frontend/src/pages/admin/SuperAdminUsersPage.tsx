@@ -73,7 +73,6 @@ export default function SuperAdminUsersPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Danh bạ người dùng" }]}
         title="Danh sách người dùng hệ thống"
         description={
           <>

@@ -27,7 +27,6 @@ export default function CompleteProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student" }, { label: "Hoàn tất hồ sơ" }]}
         title="Hoàn thiện hồ sơ đăng ký vé"
         description="Cập nhật MSSV và lớp học trước khi gửi đăng ký sự kiện."
       />

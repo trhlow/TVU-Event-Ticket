@@ -63,7 +63,6 @@ export default function MyTicketsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student" }, { label: "Ví vé QR của tôi" }]}
         title="Ví vé điện tử cá nhân"
         description="Vé xuất hiện sau khi Ban tổ chức duyệt đăng ký và backend cấp mã vé."
       />

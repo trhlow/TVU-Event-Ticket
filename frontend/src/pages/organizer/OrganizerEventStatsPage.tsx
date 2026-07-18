@@ -33,7 +33,6 @@ export default function OrganizerEventStatsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Thống kê sự kiện' }]}
         title="Thống kê sự kiện"
         description={isLoading ? 'Đang tải sự kiện...' : event?.title || 'Không tìm thấy sự kiện.'}
         actions={

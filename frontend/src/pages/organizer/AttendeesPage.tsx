@@ -81,7 +81,6 @@ export default function AttendeesPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Người tham dự" }]}
         title="Danh sách sinh viên tham dự"
         description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT."
         actions={

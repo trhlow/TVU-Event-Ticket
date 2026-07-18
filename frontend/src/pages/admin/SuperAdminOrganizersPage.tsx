@@ -109,7 +109,6 @@ export default function SuperAdminOrganizersPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Quản lý Ban tổ chức" }]}
         title="Quản lý tài khoản Ban tổ chức"
         description="Chỉ tạo tài khoản khi backend hỗ trợ mật khẩu tạm thời hoặc link thiết lập mật khẩu."
         actions={
