@@ -208,7 +208,7 @@ export default function LandingPage() {
   );
 
   return (
-    <div ref={rootRef} className="landing-page relative w-full max-w-full overflow-x-hidden bg-slate-50 text-left text-slate-900">
+    <div ref={rootRef} className="landing-page subtle-gradient-bg relative w-full max-w-full overflow-x-hidden text-left text-slate-900">
       <section
         id="home"
         ref={heroRef}
@@ -235,16 +235,16 @@ export default function LandingPage() {
             </p>
             <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                to="/events"
+                to="/login"
                 className="btn-press group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-md shadow-blue-900/16 hover:bg-blue-700"
               >
-                Xem sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
               <Link
-                to="/login"
+                to="/#guide"
                 className="btn-press inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-sm backdrop-blur hover:bg-white"
               >
-                Đăng nhập
+                Xem hướng dẫn
               </Link>
             </div>
             <p className="landing-fade-up mt-5 text-xs font-semibold text-slate-500">
@@ -295,7 +295,7 @@ export default function LandingPage() {
               <EmptyState title="Chưa tải được sự kiện" description={error} icon={CalendarDays} />
             </div>
           ) : visibleEvents.length > 0 ? (
-            <EventGrid events={visibleEvents} onOpen={(eventId) => navigate(`/events/${eventId}`)} />
+            <EventGrid events={visibleEvents} onOpen={() => navigate("/login")} />
           ) : (
             <div className="mx-auto max-w-[1180px] px-5 md:px-8">
               <EmptyState
@@ -377,18 +377,12 @@ export default function LandingPage() {
           <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-6 text-white/85 md:text-base">
             Đăng nhập bằng tài khoản Microsoft của trường để đăng ký sự kiện và nhận vé QR ngay khi được duyệt.
           </p>
-          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mt-7 flex justify-center">
             <Link
               to="/login"
               className="btn-press inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-bold text-brand-800 hover:bg-blue-50"
             >
               Đăng nhập ngay <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              to="/events"
-              className="btn-press inline-flex h-12 items-center justify-center rounded-xl border border-white/40 px-7 text-sm font-bold text-white hover:bg-white/10"
-            >
-              Xem sự kiện
             </Link>
           </div>
         </div>
@@ -462,7 +456,6 @@ interface LandingEventCardProps {
 }
 
 function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
-  const isEnded = event.status === "ENDED" || event.status === "CLOSED";
   const isAvailable = event.status === "OPEN" && event.remainingTickets > 0;
 
   return (
@@ -509,7 +502,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
               : "border border-blue-200 bg-white text-blue-800 hover:bg-blue-50",
           ].join(" ")}
         >
-          {isAvailable ? "Đăng ký ngay" : isEnded ? "Xem chi tiết" : "Xem chi tiết"}
+          Đăng nhập để đăng ký
           <ArrowRight className="h-4 w-4 transition group-hover/btn:translate-x-1" />
         </button>
       </div>
@@ -538,7 +531,7 @@ function LandingFooter() {
           title="Khám phá"
           links={[
             ["Trang chủ", "/"],
-            ["Sự kiện", "/events"],
+            ["Đăng nhập", "/login"],
             ["Hướng dẫn sử dụng", "/#guide"],
             ["Câu hỏi thường gặp", "/#faq"],
           ]}

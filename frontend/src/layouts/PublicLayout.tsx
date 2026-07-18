@@ -266,7 +266,7 @@ export default function PublicLayout() {
               <p className="font-bold text-slate-900">Khám phá</p>
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
                 <Link to="/" className="hover:text-brand-800 hover:underline">Trang chủ</Link>
-                <Link to="/events" className="hover:text-brand-800 hover:underline">Sự kiện</Link>
+                <Link to="/login" className="hover:text-brand-800 hover:underline">Đăng nhập</Link>
                 <Link to="/#guide" className="hover:text-brand-800 hover:underline">Hướng dẫn</Link>
                 <Link to="/#faq" className="hover:text-brand-800 hover:underline">Hỏi đáp</Link>
               </div>
