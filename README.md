@@ -34,6 +34,6 @@ Start with the relevant guide:
 
 - [Backend guide](backend/README.md) — monolith runtime, container stack, testing and load test.
 - [Frontend guide](frontend/README.md) — environment and production-safety checks.
-- [Frontend API status](BACKEND_STATUS_FOR_FRONTEND.md) — current endpoint contracts and known gaps.
+- [Frontend API status](backend/docs/BACKEND_STATUS_FOR_FRONTEND.md) — current endpoint contracts and known gaps.
 - [Deployment guide](backend/.claude/docs/deployment.md) — free-tier topology, readiness and production config.
 - [Project close-out](docs/PROJECT_CLOSEOUT.md) — delivered scope, verification and remaining risks.

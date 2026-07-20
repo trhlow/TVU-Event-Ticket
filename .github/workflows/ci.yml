@@ -7,12 +7,12 @@ on:
     branches: [main]
 
 jobs:
-  # Determine which service modules were touched so we only build/test the
-  # affected part of the reactor (proposal §6.1) instead of all 5 every time.
+  # The backend is a single Maven module.  Keep frontend checks independent so
+  # a UI-only change does not need a Java build and vice versa.
   changes:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.backend-matrix.outputs.matrix }}
+      backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
@@ -20,42 +20,19 @@ jobs:
         id: filter
         with:
           filters: |
-            api-gateway:
+            backend:
               - 'backend/pom.xml'
               - 'backend/Dockerfile'
-              - 'backend/api-gateway/**'
-            auth-service:
-              - 'backend/pom.xml'
-              - 'backend/Dockerfile'
-              - 'backend/auth-service/**'
-            event-service:
-              - 'backend/pom.xml'
-              - 'backend/Dockerfile'
-              - 'backend/event-service/**'
-            ticket-service:
-              - 'backend/pom.xml'
-              - 'backend/Dockerfile'
-              - 'backend/ticket-service/**'
-            notification-service:
-              - 'backend/pom.xml'
-              - 'backend/Dockerfile'
-              - 'backend/notification-service/**'
+              - 'backend/monolith/**'
+              - 'backend/infra/**'
+              - 'backend/.claude/**'
             frontend:
               - 'frontend/**'
-      - name: Build backend matrix
-        id: backend-matrix
-        run: |
-          matrix="$(echo '${{ steps.filter.outputs.changes }}' | jq -c '[.[] | select(. != "frontend")]')"
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
-  build:
+  backend:
     needs: changes
-    if: needs.changes.outputs.matrix != '[]'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -66,16 +43,20 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Build & test ${{ matrix.module }}
+      - name: Build & test modular monolith
         working-directory: backend
-        run: mvn -B -pl ${{ matrix.module }} -am verify
+        run: mvn -B -pl monolith -am verify
+
+      - name: Dependency vulnerability scan
+        working-directory: backend
+        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7
 
       - name: Fail if any test was skipped
         working-directory: backend
         run: |
-          reports=$(find ${{ matrix.module }}/target/surefire-reports -name 'TEST-*.xml' 2>/dev/null || true)
+          reports=$(find monolith/target/surefire-reports -name 'TEST-*.xml' 2>/dev/null || true)
           if [ -z "$reports" ]; then
-            echo "No surefire reports found for ${{ matrix.module }} — the suite did not run."
+            echo "No surefire reports found for monolith — the suite did not run."
             exit 1
           fi
           skipped=$(grep -ho 'skipped="[0-9]*"' $reports | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
@@ -87,9 +68,16 @@ jobs:
           fi
           echo "No tests were skipped."
 
-      - name: Build Docker image for ${{ matrix.module }}
+      - name: Build deployable monolith image
         working-directory: backend
-        run: docker build --build-arg MODULE=${{ matrix.module }} -t tvu/${{ matrix.module }}:ci .
+        run: docker build -t tvu/monolith:ci .
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
 
   frontend:
     needs: changes

@@ -24,12 +24,8 @@ const cookieHeader = (jar) => Object.entries(jar).map(([k, v]) => `${k}=${v}`).j
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// DEVIATION from the brief's literal code: the gateway rate-limits /api/auth/** and the ticket-service routes
-// to replenishRate 10/burstCapacity 20 per api-gateway/src/main/resources/application.yml (spam/bot protection,
-// not identity or business logic per its own comment). The seed script's concurrent batches of 20 students each
-// fire 2 auth-service calls (login + profile patch), so 40 requests can land in the same instant and get 429s.
-// This is unrelated to the capacity-not-enforced design point under test, so 429s are retried with backoff
-// rather than failing the run.
+// The monolith can apply edge rate limits to protect login and reservation endpoints. Retrying a temporary
+// 429 keeps fixture setup reliable without weakening the concurrency assertion made by the approval phase.
 async function fetchWithRetry(url, options, label) {
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, options);
@@ -134,15 +130,8 @@ await call(`/api/events/${eventId}/status`, {
   body: { status: "OPEN" },
 });
 
-// The inventory is auto-created on the first registration, so it is not created explicitly here.
-// DEVIATION from the brief's literal code: TicketReservationService.submit() auto-creates the
-// TicketInventory row via a non-atomic find-or-save (ticket-service/.../TicketReservationService.java:110-113)
-// against a column with a UNIQUE constraint on event_id (V2__ticket_reservation_core.sql:3). Firing the very
-// first batch of registrations concurrently races every request that sees "no inventory yet" into trying to
-// insert it, and all but one fail with a generic 409 "The request conflicts with existing data"
-// (DataIntegrityViolationException). This is unrelated to the capacity-not-enforced design point under test
-// (it fires before capacity is ever consulted), so student 0 is seeded alone first to create the inventory
-// row deterministically, then the remaining students are batched concurrently as originally written.
+// The inventory is lazily created by the first registration. Seed that first student serially, then submit
+// the remaining fixture concurrently so setup does not mask the approval-time capacity race.
 const reservationIds = [await seedStudent(0)];
 process.stdout.write(`\rseeded ${reservationIds.length}/${STUDENTS} reservations`);
 const BATCH = 20;

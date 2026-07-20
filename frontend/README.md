@@ -3,8 +3,8 @@
 React + TypeScript + Vite workspace for the TVU Event & Ticketing Platform. Talks to the backend
 exclusively through the API Gateway (`VITE_API_BASE_URL`), using an HttpOnly JWT cookie +
 double-submit CSRF cookie. See the repo root [README.md](../README.md) and
-[BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md) for the backend contract, and
-[docs/BACKEND_SECURITY_REQUIREMENTS.md](../docs/BACKEND_SECURITY_REQUIREMENTS.md) /
+[BACKEND_STATUS_FOR_FRONTEND.md](../backend/docs/BACKEND_STATUS_FOR_FRONTEND.md) for the backend contract, and
+[backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md) /
 [docs/FRONTEND_IMPLEMENTATION_STATUS.md](../docs/FRONTEND_IMPLEMENTATION_STATUS.md) for what is
 still incomplete and why.
 
@@ -43,7 +43,7 @@ is bundled into the client-side JS and is publicly readable.
 - **Organizer and Super Admin accounts have no password mechanism on the backend today.** The
   "Admin / Ban tổ chức" section of the login page is permanently disabled with an explanation —
   it does not send fake credentials anywhere. See
-  [docs/BACKEND_SECURITY_REQUIREMENTS.md](../docs/BACKEND_SECURITY_REQUIREMENTS.md) item 1.
+  [backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md) item 1.
 
 ## Demo mode
 
@@ -110,7 +110,7 @@ strings in the production bundle.
 
 The following are **not frontend bugs** — the frontend is deliberately showing an honest "waiting
 on backend" state instead of fabricating data. Full detail in
-[docs/BACKEND_SECURITY_REQUIREMENTS.md](../docs/BACKEND_SECURITY_REQUIREMENTS.md):
+[backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md):
 
 - Organizer/Super Admin accounts have no password or invite mechanism — the create-organizer form and the
   internal login form are disabled by design.

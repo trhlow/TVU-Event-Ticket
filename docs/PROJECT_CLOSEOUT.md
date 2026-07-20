@@ -43,7 +43,7 @@ enforces this for changed backend services.
   design that accounts for the organizer's 10-request/second bucket.
 - Organizer credential provisioning (password or invitation), stricter production bootstrap safeguards, CSV
   formula neutralization and non-root container execution remain security hardening work; see
-  [BACKEND_SECURITY_REQUIREMENTS.md](BACKEND_SECURITY_REQUIREMENTS.md).
+  [BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md).
 - The frontend still has a few pending/demo administration pages despite the corresponding analytics/audit
   APIs now being available; this is an integration task rather than a missing backend capability.
 
@@ -52,4 +52,4 @@ enforces this for changed backend services.
 - [Root guide](../README.md)
 - [Backend guide](../backend/README.md)
 - [Deployment guide](../backend/.claude/docs/deployment.md)
-- [Frontend/backend API status](../BACKEND_STATUS_FOR_FRONTEND.md)
+- [Frontend/backend API status](../backend/docs/BACKEND_STATUS_FOR_FRONTEND.md)

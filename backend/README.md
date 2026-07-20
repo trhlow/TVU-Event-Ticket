@@ -1,15 +1,14 @@
 # Backend — TVU Event & Ticket
 
-Modular monolith built with Maven, Java 25 and Spring Boot 4.0.x. It exposes the
-same public API at `http://localhost:8080/api`; the former service modules are
-build-time feature libraries, not independently deployed applications.
+Modular monolith built with Maven, Java 25 and Spring Boot 4.0.x. It exposes
+the public API at `http://localhost:8080/api` from one deployable application.
 
 Frontend integration status is summarized in
-[../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
+[docs/BACKEND_STATUS_FOR_FRONTEND.md](docs/BACKEND_STATUS_FOR_FRONTEND.md).
 
 ## Conventions
 
-- **Layer-based packages** inside each service: `controller → service (+ impl/) → repository → domain`,
+- **Layer-based packages** inside each feature: `controller → service (+ impl/) → repository → domain`,
   with `dto/{request,response}`, `mapper` (MapStruct), `config`, `security`, `exception`. The main
   `@SpringBootApplication` class sits in the root package so component scan covers only `vn.edu.tvu.*`.
 - **Flyway** owns the DB schema (`src/main/resources/db/migration/Vn__*.sql`); Hibernate is `ddl-auto: validate`.
@@ -17,7 +16,7 @@ Frontend integration status is summarized in
 - **Profiles**: `application.yml` holds common config (default profile `dev`); `application-dev.yml` uses
   localhost, `application-prod.yml` reads everything from env vars with no fallback defaults.
 - **Shared frontend types** should eventually be generated from the OpenAPI spec (§6.7). Until that pipeline
-  is wired, keep frontend handwritten types aligned with [../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
+  is wired, keep frontend handwritten types aligned with [docs/BACKEND_STATUS_FOR_FRONTEND.md](docs/BACKEND_STATUS_FOR_FRONTEND.md).
 
 ## Runtime
 
@@ -76,6 +75,6 @@ mvn -pl monolith -am test -Dtest=TicketReservationServiceTest
 - The implemented APIs cover auth/profile/admin management, event CRUD/lifecycle, reservations, ticket
   inventory, signed QR check-in, notification email, club/admin analytics and attendee/audit-log queries.
 - The frontend currently uses handwritten API types; OpenAPI-based TypeScript generation remains a follow-up.
-- The manual approval-capacity load test is in [load-test/](load-test/README.md). It records a measured
-  500-concurrent-approval run with no overbooking; it is intentionally not part of CI.
+- The manual approval-capacity load test is in [load-test/](load-test/README.md); it is intentionally
+  not part of CI.
 - See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full set of design invariants.

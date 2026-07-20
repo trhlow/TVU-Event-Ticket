@@ -1,0 +1,95 @@
+server:
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_MAX_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:5000}
+      validation-timeout: 3000
+      max-lifetime: 1800000
+  jpa:
+    show-sql: false
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+      ssl:
+        enabled: ${SPRING_DATA_REDIS_SSL_ENABLED:false}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
+    virtual-host: ${SPRING_RABBITMQ_VHOST:/}
+  mail:
+    host: ${SPRING_MAIL_HOST}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME}
+    password: ${SPRING_MAIL_PASSWORD}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+
+management:
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: db,redis,rabbit
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: production
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  health:
+    mail:
+      enabled: false
+
+tvu:
+  auth:
+    jwt:
+      issuer: ${JWT_ISSUER_URI}
+      ttl: ${JWT_TTL:15m}
+      key-id: ${JWT_KEY_ID}
+      private-key-pem: ${JWT_PRIVATE_KEY_PEM}
+      public-key-pem: ${JWT_PUBLIC_KEY_PEM}
+    csrf:
+      signing-secret: ${CSRF_SIGNING_SECRET}
+    bootstrap:
+      email: ${BOOTSTRAP_ADMIN_EMAIL}
+    cookies:
+      secure: true
+      same-site: Lax
+    microsoft:
+      client-id: ${MICROSOFT_CLIENT_ID}
+      issuer-host: ${MICROSOFT_ISSUER_HOST:https://login.microsoftonline.com}
+      jwks-uri: ${MICROSOFT_JWKS_URI:https://login.microsoftonline.com/common/discovery/v2.0/keys}
+  notification:
+    mail:
+      from-address: ${MAIL_FROM_ADDRESS}
+      from-name: ${MAIL_FROM_NAME:TVU Events}
+    qr:
+      signing-secret: ${QR_SIGNING_SECRET}
+  ticket:
+    qr:
+      secret: ${QR_SIGNING_SECRET}

@@ -7,11 +7,9 @@ import vn.edu.tvu.ticket.client.EventSnapshot;
 
 import java.util.UUID;
 
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
-@Profile("monolith")
 class InProcessEventLookup implements EventLookup {
     private final EventService eventService;
 

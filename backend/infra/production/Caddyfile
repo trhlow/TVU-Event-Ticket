@@ -1,0 +1,28 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+
+    header {
+        -Server
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+    }
+
+    handle /api/* {
+        reverse_proxy monolith:8080 {
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+
+    # Keep the public health probe intentionally narrow; management endpoints
+    # such as /actuator/info are not routed to the application.
+    handle /actuator/health {
+        reverse_proxy monolith:8080
+    }
+
+    handle {
+        reverse_proxy frontend:80
+    }
+}

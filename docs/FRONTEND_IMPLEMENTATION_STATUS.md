@@ -2,7 +2,7 @@
 
 This tracks what changed in the frontend-only hardening pass that followed the full-project audit.
 No file under `backend/` was touched — every "Blocked by backend" item below is expanded in
-[BACKEND_SECURITY_REQUIREMENTS.md](BACKEND_SECURITY_REQUIREMENTS.md).
+[BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md).
 
 > **2026-07-17 update:** this is a historical hardening record. EPIC 6 and EPIC UI subsequently delivered
 > the SUPER_ADMIN statistics slices and paginated audit-log API; those table entries should not be read as
