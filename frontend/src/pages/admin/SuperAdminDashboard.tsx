@@ -21,17 +21,27 @@ export default function SuperAdminDashboard() {
   const [overview, setOverview] = useState<SchoolWideOverview | null>(null);
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [loadError, setLoadError] = useState(false);
+  const [auditLogUnavailable, setAuditLogUnavailable] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([statisticsService.overview(), auditLogService.listRemote({ size: 5 })])
-      .then(([overviewResult, logsResult]) => {
-        if (!mounted) return;
-        setOverview(overviewResult);
-        setRecentLogs(logsResult.items);
+    statisticsService
+      .overview()
+      .then((overviewResult) => {
+        if (mounted) setOverview(overviewResult);
       })
       .catch(() => {
         if (mounted) setLoadError(true);
+      });
+    // Audit log is a separate, independently-failing data source (some backends don't expose it
+    // yet) — its failure must not blank out the stats/charts that did load successfully.
+    auditLogService
+      .listRemote({ size: 5 })
+      .then((logsResult) => {
+        if (mounted) setRecentLogs(logsResult.items);
+      })
+      .catch(() => {
+        if (mounted) setAuditLogUnavailable(true);
       });
     return () => {
       mounted = false;
@@ -135,7 +145,13 @@ export default function SuperAdminDashboard() {
                 <h2 className="section-heading">Hoạt động gần đây</h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">Audit log mới nhất từ các vai trò trong hệ thống</p>
               </div>
-              <DataTable data={recentLogs} columns={auditColumns} searchPlaceholder="Tìm kiếm hành động..." searchField="action" pageSize={5} />
+              {auditLogUnavailable ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-xs font-semibold text-slate-500">
+                  Backend hiện chưa expose API audit log (GET /admin/audit-log).
+                </p>
+              ) : (
+                <DataTable data={recentLogs} columns={auditColumns} searchPlaceholder="Tìm kiếm hành động..." searchField="action" pageSize={5} />
+              )}
             </section>
           </div>
         </div>

@@ -11,9 +11,11 @@ import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { dashboardService, EventDashboard } from "../../services/dashboardService";
+import { ticketService } from "../../services/ticketService";
 import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
+import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -22,6 +24,9 @@ export default function OrganizerEventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
+  // Fallback for backends that don't expose GET /ticketing/events/{id}/dashboard yet — computed
+  // from the real attendee list instead of showing false zeros.
+  const [attendeesFallback, setAttendeesFallback] = useState<IssuedTicket[] | null>(null);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -38,6 +43,9 @@ export default function OrganizerEventDetailPage() {
       setEvent(events.find((item) => item.id === eventId) || null);
       setReservations(pendingReservations.filter((item) => item.eventId === eventId));
       setDashboard(eventDashboard);
+      setAttendeesFallback(
+        eventDashboard ? null : await ticketService.listAttendees(eventId).catch(() => []),
+      );
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.", "error");
     } finally {
@@ -49,12 +57,18 @@ export default function OrganizerEventDetailPage() {
     void loadEventData();
   }, [loadEventData]);
 
-  const stats = useMemo(() => ({
-    pending: reservations.filter((item) => item.status === "PENDING").length,
-    approved: dashboard?.approved ?? 0,
-    checkedIn: dashboard?.checkedIn ?? 0,
-    total: reservations.length + (dashboard?.approved ?? 0),
-  }), [reservations, dashboard]);
+  const stats = useMemo(() => {
+    const approved = dashboard?.approved ?? attendeesFallback?.length ?? 0;
+    const checkedIn = dashboard?.checkedIn
+      ?? attendeesFallback?.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length
+      ?? 0;
+    return {
+      pending: reservations.filter((item) => item.status === "PENDING").length,
+      approved,
+      checkedIn,
+      total: reservations.length + approved,
+    };
+  }, [reservations, dashboard, attendeesFallback]);
 
   const handleApprove = async (reservationId: string) => {
     setActionId(reservationId);

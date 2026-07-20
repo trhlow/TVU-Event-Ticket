@@ -151,9 +151,29 @@ export const ticketService = {
         if (status) params.set("status", status);
         if (keyword) params.set("keyword", keyword);
         if (sort) params.set("sort", sort);
-        const response = await apiRequest<AttendeePageResponse>(
+        const response = await apiRequest<AttendeePageResponse | AttendeeResponse[]>(
           `/ticketing/events/${eventId}/attendees?${params.toString()}`,
         );
+        // Older, still-deployed backends return a bare unpaginated array and ignore
+        // status/keyword/page/size entirely; apply the filtering/pagination client-side so the
+        // UI still behaves once the backend catches up and starts doing it server-side.
+        if (Array.isArray(response)) {
+          const filtered = response.filter((attendee) => {
+            const matchesStatus = !status || attendee.status === status;
+            const normalizedKeyword = keyword?.trim().toLowerCase();
+            const matchesKeyword = !normalizedKeyword
+              || attendee.studentEmail?.toLowerCase().includes(normalizedKeyword)
+              || attendee.studentMssv?.toLowerCase().includes(normalizedKeyword);
+            return matchesStatus && matchesKeyword;
+          });
+          return {
+            items: filtered.slice(page * size, page * size + size).map(mapAttendeeTicket),
+            page,
+            size,
+            totalElements: filtered.length,
+            totalPages: Math.max(1, Math.ceil(filtered.length / size)),
+          };
+        }
         return {
           items: response.content.map(mapAttendeeTicket),
           page: response.page,
