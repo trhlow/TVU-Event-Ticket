@@ -14,18 +14,17 @@ import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
-import { ticketService } from "../../services/ticketService";
+import { dashboardService, ClubDashboard } from "../../services/dashboardService";
 import { formatDateTime } from "../../utils/formatDate";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
-import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerDashboard() {
   const currentUser = requireCurrentUser();
   const { showToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [pendingReservations, setPendingReservations] = useState<Reservation[]>([]);
-  const [tickets, setTickets] = useState<IssuedTicket[]>([]);
+  const [clubDashboard, setClubDashboard] = useState<ClubDashboard | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -34,15 +33,15 @@ export default function OrganizerDashboard() {
     async function loadDashboard() {
       setIsLoading(true);
       try {
-        const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
-        const [pendingData, attendeeGroups] = await Promise.all([
+        const [eventData, pendingData, dashboard] = await Promise.all([
+          eventService.listByClubRemote(currentUser.clubId || ""),
           registrationService.listPendingForOrganizer(),
-          Promise.all(eventData.map((event) => ticketService.listAttendees(event.id).catch(() => [] as IssuedTicket[]))),
+          dashboardService.clubDashboard().catch(() => null),
         ]);
         if (!mounted) return;
         setEvents(eventData);
         setPendingReservations(pendingData);
-        setTickets(attendeeGroups.flat());
+        setClubDashboard(dashboard);
       } catch (error) {
         if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải dashboard CLB.", "error");
       } finally {
@@ -57,16 +56,26 @@ export default function OrganizerDashboard() {
   }, [currentUser.clubId, showToast]);
 
   const activeEventsCount = events.filter((event) => event.status === "OPEN").length;
-  const checkedInCount = tickets.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length;
+  const approvedCount = clubDashboard?.approved ?? 0;
+  const checkedInCount = clubDashboard?.checkedIn ?? 0;
+  const pendingCount = clubDashboard?.pending ?? pendingReservations.length;
 
-  const lineChartData = useMemo(() => ([
-    { name: "Đã cấp", "Lượt đăng ký": tickets.length, "Đã điểm danh": checkedInCount },
-    { name: "Chờ duyệt", "Lượt đăng ký": pendingReservations.length, "Đã điểm danh": 0 },
-  ]), [checkedInCount, pendingReservations.length, tickets.length]);
+  const lineChartData = useMemo(() => {
+    if (clubDashboard?.registrationsByDay?.length) {
+      return clubDashboard.registrationsByDay.map((entry) => ({
+        name: entry.date,
+        "Lượt đăng ký": entry.count,
+      }));
+    }
+    return [
+      { name: "Đã cấp", "Lượt đăng ký": approvedCount, "Đã điểm danh": checkedInCount },
+      { name: "Chờ duyệt", "Lượt đăng ký": pendingCount, "Đã điểm danh": 0 },
+    ];
+  }, [approvedCount, checkedInCount, clubDashboard, pendingCount]);
 
   const statusData = [
-    { name: "Chờ duyệt", value: pendingReservations.length },
-    { name: "Đã cấp vé", value: tickets.length },
+    { name: "Chờ duyệt", value: pendingCount },
+    { name: "Đã cấp vé", value: approvedCount },
     { name: "Đã điểm danh", value: checkedInCount },
   ];
 
@@ -111,8 +120,8 @@ export default function OrganizerDashboard() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
           <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
-          <StatisticCard label="Đăng ký chờ duyệt" value={pendingReservations.length} icon={ClipboardList} color="warning" />
-          <StatisticCard label="Vé đã phát hành" value={tickets.length} icon={Ticket} color="primary" />
+          <StatisticCard label="Đăng ký chờ duyệt" value={pendingCount} icon={ClipboardList} color="warning" />
+          <StatisticCard label="Vé đã phát hành" value={approvedCount} icon={Ticket} color="primary" />
           <StatisticCard label="Đã điểm danh" value={checkedInCount} icon={Award} color="success" />
         </div>
       )}

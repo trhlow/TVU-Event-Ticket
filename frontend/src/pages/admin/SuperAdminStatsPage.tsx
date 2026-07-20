@@ -10,34 +10,43 @@ import BarChartCard from '../../components/charts/BarChartCard';
 import DonutChartCard from '../../components/charts/DonutChartCard';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
 import DemoDataBadge from '../../components/common/DemoDataBadge';
-import { statisticsService } from '../../services/statisticsService';
+import { SchoolWideOverview, statisticsService } from '../../services/statisticsService';
 import { apiConfig } from '../../services/apiClient';
 
-const REQUIRED_ENDPOINTS = ['GET /admin/statistics/overview', 'GET /admin/statistics/clubs'];
-
 export default function SuperAdminStatsPage() {
-  const [available, setAvailable] = useState(apiConfig.useDemoData);
+  const [overview, setOverview] = useState<SchoolWideOverview | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     statisticsService
-      .assertSupported()
-      .then(() => setAvailable(true))
-      .catch(() => setAvailable(false));
+      .overview()
+      .then((result) => {
+        if (mounted) setOverview(result);
+      })
+      .catch(() => {
+        if (mounted) setLoadError(true);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  const available = apiConfig.useDemoData ? true : overview !== null;
 
   const events = useMemo(() => getEvents(), []);
   const reservations = useMemo(() => getReservations(), []);
   const tickets = useMemo(() => getTickets(), []);
 
-  const totalClubs = mockClubs.length;
-  const totalEvents = events.length;
+  const totalClubs = overview?.admin.totalClubs ?? mockClubs.length;
+  const totalEvents = overview?.events.totalEvents ?? events.length;
   const totalReservations = reservations.length;
-  const activeTicketsCount = tickets.filter(t => t.status === 'VALID').length;
-  const checkedInCount = tickets.filter(t => t.checkInStatus === 'CHECKED_IN').length;
+  const ticketsIssued = overview?.tickets.ticketsIssued ?? tickets.filter(t => t.status === 'VALID').length;
+  const checkedInCount = overview?.tickets.checkedIn ?? tickets.filter(t => t.checkInStatus === 'CHECKED_IN').length;
 
-  const checkinRate = activeTicketsCount > 0
-    ? Math.round((checkedInCount / activeTicketsCount) * 100)
-    : 0;
+  const checkinRate = overview?.tickets.checkInRate != null
+    ? Math.round(overview.tickets.checkInRate * 100)
+    : (ticketsIssued > 0 ? Math.round((checkedInCount / ticketsIssued) * 100) : 0);
 
   const clubStatsData = mockClubs.map(c => {
     const clubEvents = events.filter(e => e.clubId === c.id);
@@ -68,8 +77,12 @@ export default function SuperAdminStatsPage() {
 
       {!available ? (
         <BackendPendingNotice
-          description="Backend chưa có API thống kê toàn trường theo CLB. Trang này sẽ hiển thị số liệu thật ngay khi endpoint bên dưới sẵn sàng."
-          requiredEndpoints={REQUIRED_ENDPOINTS}
+          title={loadError ? "Không thể tải thống kê toàn trường" : "Đang tải thống kê"}
+          description={
+            loadError
+              ? "Không thể gọi API thống kê toàn trường (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend)."
+              : "Đang tải số liệu toàn trường từ backend."
+          }
         />
       ) : (
         <div className="space-y-6">
@@ -81,7 +94,7 @@ export default function SuperAdminStatsPage() {
             <StatisticCard label="CLB Hoạt Động" value={totalClubs} icon={Landmark} />
             <StatisticCard label="Tổng Sự Kiện" value={totalEvents} icon={Calendar} color="warning" />
             <StatisticCard label="Đăng ký (Lượt)" value={totalReservations} icon={Users} />
-            <StatisticCard label="Vé đã phê duyệt" value={activeTicketsCount} icon={Ticket} color="primary" />
+            <StatisticCard label="Vé đã phát hành" value={ticketsIssued} icon={Ticket} color="primary" />
             <div className="col-span-2 md:col-span-1">
               <StatisticCard label="Tỷ Lệ Check-in" value={`${checkinRate}%`} icon={ShieldCheck} color="success" />
             </div>
@@ -90,7 +103,7 @@ export default function SuperAdminStatsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <BarChartCard
-                title="Tương quan Hoạt động & Mức độ Sinh viên tham gia theo từng Câu lạc bộ"
+                title="Tương quan Hoạt động & Mức độ Sinh viên tham gia theo từng Câu lạc bộ (dữ liệu demo cục bộ — backend chưa có API tổng hợp theo từng CLB)"
                 xAxisKey="name"
                 data={clubStatsData}
                 dataKeys={[

@@ -10,11 +10,10 @@ import { formatDateTime } from "../../utils/formatDate";
 import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
-import { ticketService } from "../../services/ticketService";
+import { dashboardService, EventDashboard } from "../../services/dashboardService";
 import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
-import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -22,7 +21,7 @@ export default function OrganizerEventDetailPage() {
   const { showToast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [tickets, setTickets] = useState<IssuedTicket[]>([]);
+  const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -31,14 +30,14 @@ export default function OrganizerEventDetailPage() {
     if (!eventId) return;
     setIsLoading(true);
     try {
-      const [events, pendingReservations, issuedTickets] = await Promise.all([
+      const [events, pendingReservations, eventDashboard] = await Promise.all([
         eventService.listByClubRemote(currentUser.clubId || ""),
         registrationService.listPendingForOrganizer(),
-        ticketService.listAttendees(eventId).catch(() => [] as IssuedTicket[]),
+        dashboardService.eventDashboard(eventId).catch(() => null),
       ]);
       setEvent(events.find((item) => item.id === eventId) || null);
       setReservations(pendingReservations.filter((item) => item.eventId === eventId));
-      setTickets(issuedTickets);
+      setDashboard(eventDashboard);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.", "error");
     } finally {
@@ -52,10 +51,10 @@ export default function OrganizerEventDetailPage() {
 
   const stats = useMemo(() => ({
     pending: reservations.filter((item) => item.status === "PENDING").length,
-    approved: tickets.length,
-    checkedIn: tickets.filter((item) => item.checkInStatus === "CHECKED_IN").length,
-    total: reservations.length + tickets.length,
-  }), [reservations, tickets]);
+    approved: dashboard?.approved ?? 0,
+    checkedIn: dashboard?.checkedIn ?? 0,
+    total: reservations.length + (dashboard?.approved ?? 0),
+  }), [reservations, dashboard]);
 
   const handleApprove = async (reservationId: string) => {
     setActionId(reservationId);
@@ -153,7 +152,10 @@ export default function OrganizerEventDetailPage() {
                   <Ticket className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sức chứa</p>
-                    <p className="mt-0.5">Còn {event.remainingTickets} / {event.capacity} vé theo availability của backend.</p>
+                    <p className="mt-0.5">
+                      Còn {dashboard?.remaining ?? event.remainingTickets} / {dashboard?.totalCapacity ?? event.capacity} vé
+                      {dashboard?.checkInRate != null && ` · Tỷ lệ check-in ${Math.round(dashboard.checkInRate * 100)}%`}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -170,7 +172,7 @@ export default function OrganizerEventDetailPage() {
           <div className="enterprise-card space-y-4 p-5">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">Đăng ký chờ duyệt</h3>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Backend hiện chỉ trả danh sách pending theo CLB; vé đã duyệt xem tại danh sách attendee/vé.</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Vé đã duyệt và điểm danh xem tại danh sách attendee/vé của sự kiện.</p>
             </div>
 
             {reservations.length > 0 ? (
