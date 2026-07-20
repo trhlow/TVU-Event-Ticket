@@ -12,6 +12,8 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -25,6 +27,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import tools.jackson.databind.ObjectMapper;
+
 /** Verifies the CSRF token bound to the authenticated HttpOnly JWT cookie. */
 @Component
 public class CookieCsrfFilter extends OncePerRequestFilter {
@@ -33,6 +37,7 @@ public class CookieCsrfFilter extends OncePerRequestFilter {
     static final String CSRF_HEADER = "X-XSRF-TOKEN";
     static final String AUTH_COOKIE = "TVU_AUTH";
     private static final String HMAC_SHA256 = "HmacSHA256";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String signingSecret;
 
@@ -132,8 +137,13 @@ public class CookieCsrfFilter extends OncePerRequestFilter {
     private void forbidden(HttpServletResponse response, String path) throws IOException {
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.getWriter().write("{\"timestamp\":\"" + Instant.now() + "\",\"status\":403,"
-                + "\"code\":\"CSRF_INVALID\",\"message\":\"CSRF token is missing or invalid\","
-                + "\"path\":\"" + path + "\",\"fieldErrors\":null}");
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", Instant.now().toString());
+        body.put("status", HttpServletResponse.SC_FORBIDDEN);
+        body.put("code", "CSRF_INVALID");
+        body.put("message", "CSRF token is missing or invalid");
+        body.put("path", path);
+        body.put("fieldErrors", null);
+        response.getWriter().write(OBJECT_MAPPER.writeValueAsString(body));
     }
 }

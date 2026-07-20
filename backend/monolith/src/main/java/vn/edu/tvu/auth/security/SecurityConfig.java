@@ -30,6 +30,7 @@ public class SecurityConfig {
             JwtDecoder jwtDecoder,
             CookieCsrfFilter cookieCsrfFilter) throws Exception {
         http
+                // codeql[java/spring-disabled-csrf-protection] CookieCsrfFilter validates state-changing cookie requests.
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
