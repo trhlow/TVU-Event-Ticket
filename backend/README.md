@@ -77,4 +77,6 @@ mvn -pl monolith -am test -Dtest=TicketReservationServiceTest
 - The frontend currently uses handwritten API types; OpenAPI-based TypeScript generation remains a follow-up.
 - The manual approval-capacity load test is in [load-test/](load-test/README.md); it is intentionally
   not part of CI.
+- Production topology, deployment steps and cost guidance are in
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full set of design invariants.
