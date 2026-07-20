@@ -27,13 +27,10 @@ function mapClub(response: ClubResponse): Club {
 }
 
 async function withClubFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
+  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
+  // so the UI shows a genuine error state instead of silently masking it with fixture data.
   if (apiConfig.useDemoData) return fallback();
-  try {
-    return await request();
-  } catch (error) {
-    if (!apiConfig.enableMockFallback) throw error;
-    return fallback();
-  }
+  return request();
 }
 
 export const clubService = {

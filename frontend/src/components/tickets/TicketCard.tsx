@@ -4,6 +4,7 @@ import { Event } from "../../types/event";
 import { Calendar, MapPin, QrCode, ClipboardCheck } from "lucide-react";
 import StatusBadge from "../common/StatusBadge";
 import { formatDateTime } from "../../utils/formatDate";
+import { useCardTilt } from "../../hooks/useCardTilt";
 
 interface TicketCardProps {
   key?: React.Key;
@@ -15,9 +16,11 @@ interface TicketCardProps {
 export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps) {
   const isCheckedIn = ticket.checkInStatus === "CHECKED_IN";
   const canShowQR = ticket.status === "VALID" && !isCheckedIn;
+  const tiltRef = useCardTilt<HTMLDivElement>({ maxTilt: 2.5 });
 
   return (
-    <div className="enterprise-card hover-lift relative flex overflow-hidden text-left md:flex-row">
+    <div ref={tiltRef} className="enterprise-card tilt-card relative flex overflow-hidden text-left md:flex-row">
+      <div className="tilt-card-sheen" aria-hidden="true" />
       <div className="absolute bottom-0 left-44 top-0 hidden w-px border-l border-dashed border-slate-200 md:block" />
       <div className="flex w-full shrink-0 flex-col items-center justify-center border-b border-dashed border-slate-200 bg-gradient-to-br from-brand-50 to-white p-5 text-center md:w-44 md:border-b-0 md:border-r">
         <div className={`mb-3 grid h-11 w-11 place-items-center rounded-2xl border shadow-sm ${isCheckedIn ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-brand-100 bg-white text-brand-700"}`}>

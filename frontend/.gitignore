@@ -11,6 +11,13 @@ node_modules
 dist
 dist-ssr
 *.local
+coverage
+
+# Environment files may hold real secrets (Microsoft client IDs, API base URLs pointing at
+# internal hosts); only the checked-in template is safe to commit.
+.env
+.env.*
+!.env.example
 
 # Editor directories and files
 .vscode/*

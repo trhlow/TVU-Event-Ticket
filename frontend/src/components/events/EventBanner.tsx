@@ -12,10 +12,10 @@ interface EventBannerProps {
 
 function getCategoryIcon(category: string) {
   if (category.includes('Văn')) return Music;
-  if (category.includes('Cuá')) return Trophy;
+  if (category.includes('Cuộc')) return Trophy;
   if (category.includes('Tình')) return HandHeart;
-  if (category.includes('Ká')) return Sparkles;
-  if (category.includes('Há')) return BookOpen;
+  if (category.includes('Kỹ')) return Sparkles;
+  if (category.includes('Học')) return BookOpen;
   return ImageIcon;
 }
 

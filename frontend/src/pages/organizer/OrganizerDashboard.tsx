@@ -1,39 +1,64 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, Sparkles, Ticket } from "lucide-react";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
-import { getCurrentUser } from "../../data/mockAuth";
-import { getEvents } from "../../data/mockEvents";
-import { getReservations } from "../../data/mockReservations";
-import { getTickets } from "../../data/mockTickets";
+import Toast from "../../components/common/Toast";
+import { requireCurrentUser } from "../../state/authSession";
+import { eventService } from "../../services/eventService";
+import { registrationService } from "../../services/registrationService";
+import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
+import { Event } from "../../types/event";
+import { Reservation } from "../../types/reservation";
+import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function OrganizerDashboard() {
-  const currentUser = getCurrentUser();
-  const events = getEvents().filter((event) => event.clubId === currentUser.clubId);
-  const eventIds = useMemo(() => events.map((event) => event.id), [events]);
-  const reservations = getReservations().filter((reservation) => eventIds.includes(reservation.eventId));
-  const tickets = getTickets().filter((ticket) => eventIds.includes(ticket.eventId));
+  const currentUser = requireCurrentUser();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [pendingReservations, setPendingReservations] = useState<Reservation[]>([]);
+  const [tickets, setTickets] = useState<IssuedTicket[]>([]);
+  const [toastMsg, setToastMsg] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDashboard() {
+      try {
+        const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
+        const [pendingData, attendeeGroups] = await Promise.all([
+          registrationService.listPendingForOrganizer(),
+          Promise.all(eventData.map((event) => ticketService.listAttendees(event.id).catch(() => ({ tickets: [] as IssuedTicket[], totalElements: 0 })))),
+        ]);
+        if (!mounted) return;
+        setEvents(eventData);
+        setPendingReservations(pendingData);
+        setTickets(attendeeGroups.flatMap((group) => group.tickets));
+      } catch (error) {
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải dashboard CLB.");
+      }
+    }
+
+    void loadDashboard();
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser.clubId]);
 
   const activeEventsCount = events.filter((event) => event.status === "OPEN").length;
-  const pendingCount = reservations.filter((reservation) => reservation.status === "PENDING").length;
   const checkedInCount = tickets.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length;
 
-  const lineChartData = [
-    { name: "01/07", "Lượt đăng ký": 18, "Đã điểm danh": 8 },
-    { name: "02/07", "Lượt đăng ký": 30, "Đã điểm danh": 14 },
-    { name: "03/07", "Lượt đăng ký": 26, "Đã điểm danh": 19 },
-    { name: "04/07", "Lượt đăng ký": 42, "Đã điểm danh": 27 },
-    { name: "Hôm nay", "Lượt đăng ký": 48, "Đã điểm danh": 34 },
-  ];
+  const lineChartData = useMemo(() => ([
+    { name: "Đã cấp", "Lượt đăng ký": tickets.length, "Đã điểm danh": checkedInCount },
+    { name: "Chờ duyệt", "Lượt đăng ký": pendingReservations.length, "Đã điểm danh": 0 },
+  ]), [checkedInCount, pendingReservations.length, tickets.length]);
 
   const statusData = [
-    { name: "Chờ duyệt", value: pendingCount || 1 },
-    { name: "Đã duyệt", value: reservations.filter((item) => item.status === "APPROVED").length || 1 },
-    { name: "Từ chối", value: reservations.filter((item) => item.status === "REJECTED").length || 1 },
+    { name: "Chờ duyệt", value: pendingReservations.length },
+    { name: "Đã cấp vé", value: tickets.length },
+    { name: "Đã điểm danh", value: checkedInCount },
   ];
 
   return (
@@ -50,7 +75,7 @@ export default function OrganizerDashboard() {
             </p>
           </div>
           <Link to="/organizer/events/create" className="btn-press inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-5 text-sm font-extrabold text-brand-800 shadow-xl shadow-brand-950/10">
-            Tạo sự kiện <ArrowRight className="h-4 w-4" />
+            Tạo sự kiện <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
       </section>
@@ -58,7 +83,7 @@ export default function OrganizerDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
         <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
-        <StatisticCard label="Đăng ký chờ duyệt" value={pendingCount} icon={ClipboardList} color="warning" />
+        <StatisticCard label="Đăng ký chờ duyệt" value={pendingReservations.length} icon={ClipboardList} color="warning" />
         <StatisticCard label="Vé đã phát hành" value={tickets.length} icon={Ticket} color="primary" />
         <StatisticCard label="Đã điểm danh" value={checkedInCount} icon={Award} color="success" />
       </div>
@@ -66,7 +91,7 @@ export default function OrganizerDashboard() {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <LineChartCard
-            title="Lượt đăng ký theo thời gian"
+            title="Tổng hợp đăng ký và điểm danh"
             data={lineChartData}
             xAxisKey="name"
             dataKeys={[
@@ -75,7 +100,7 @@ export default function OrganizerDashboard() {
             ]}
           />
         </div>
-        <DonutChartCard title="Trạng thái đăng ký" data={statusData} colors={["#f59e0b", "#10b981", "#ef4444"]} />
+        <DonutChartCard title="Trạng thái ticketing" data={statusData} colors={["#f59e0b", "#10b981", "#2563eb"]} />
       </div>
 
       <section className="enterprise-card p-5">
@@ -85,7 +110,7 @@ export default function OrganizerDashboard() {
             <p className="mt-1 text-sm font-semibold text-slate-500">Danh sách sự kiện mới nhất của CLB</p>
           </div>
           <Link to="/organizer/events" className="inline-flex items-center gap-1 text-sm font-extrabold text-brand-700">
-            Xem tất cả <ArrowRight className="h-4 w-4" />
+            Xem tất cả <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
         <div className="overflow-x-auto">
@@ -109,8 +134,11 @@ export default function OrganizerDashboard() {
               ))}
             </tbody>
           </table>
+          {events.length === 0 && <div className="py-10 text-center text-sm font-bold text-slate-400">Chưa có sự kiện nào.</div>}
         </div>
       </section>
+
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

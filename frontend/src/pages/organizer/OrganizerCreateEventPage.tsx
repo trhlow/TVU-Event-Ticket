@@ -1,59 +1,35 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import PageHeader from '../../components/common/PageHeader';
 import EventForm from '../../components/events/EventForm';
 import Toast from '../../components/common/Toast';
-import { getCurrentUser } from '../../data/mockAuth';
+import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
 export default function OrganizerCreateEventPage() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
   const [toastMsg, setToastMsg] = useState('');
 
   const handleSubmit = async (data: Partial<Event>) => {
-    const newEvent: Event = {
-      id: `event_new_${Date.now()}`,
-      clubId: currentUser.clubId || 'club_it',
-      clubName: currentUser.clubName || 'CLB Trường',
-      title: data.title || '',
-      description: data.description || '',
-      category: data.category || 'Học thuật',
-      bannerUrl:
-        data.bannerUrl ||
-        'https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&auto=format&fit=crop&q=60',
-      location: data.location || '',
-      startAt: data.startAt || '',
-      endAt: data.endAt || '',
-      registrationOpenAt: data.registrationOpenAt || '',
-      registrationCloseAt: data.registrationCloseAt || '',
-      capacity: data.capacity || 100,
-      remainingTickets: data.capacity || 100,
-      status: data.status || 'UPCOMING',
-    };
-
-    await eventService.create(newEvent);
-    setToastMsg(
-      newEvent.status === 'OPEN'
-        ? 'Đã công bố sự kiện. Bạn có thể tạo QR đăng ký cho sinh viên.'
-        : 'Đã lưu nháp sự kiện mới.',
-    );
+    // POST /events always creates the event as DRAFT server-side regardless of what the form
+    // sends — the toast must reflect that, not whatever status the form happened to have set.
+    await eventService.create(data);
+    setToastMsg('Đã lưu sự kiện mới dưới dạng nháp (DRAFT). Mở đăng ký từ trang chi tiết khi sẵn sàng công bố.');
     setTimeout(() => navigate('/organizer/events'), 900);
   };
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Tạo sự kiện' }]} />
-      <div className="space-y-1">
-        <h2 className="text-2xl font-black tracking-tight text-gray-950">Tạo sự kiện mới</h2>
-        <p className="text-sm font-medium text-gray-500">
-          Điền đầy đủ thông tin, cấu hình thời gian đăng ký và số vé trước khi lưu nháp hoặc công bố.
-        </p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Tạo sự kiện' }]}
+        title="Tạo sự kiện mới"
+        description="Điền đầy đủ thông tin, cấu hình thời gian đăng ký và số vé. Sự kiện luôn được lưu ở trạng thái nháp trước khi công bố."
+      />
       <EventForm
-        clubId={currentUser.clubId || 'club_it'}
-        clubName={currentUser.clubName || 'CLB Trường'}
+        clubId={currentUser.clubId || ''}
+        clubName={currentUser.clubName || 'CLB'}
         onSubmit={handleSubmit}
         onCancel={() => navigate('/organizer/events')}
       />

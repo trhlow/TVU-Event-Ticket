@@ -1,23 +1,57 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowRight, Award, Calendar, Search, Ticket, Sparkles } from "lucide-react";
+import { AlertTriangle, ArrowRight, Award, Calendar, Search, Sparkles, Ticket } from "lucide-react";
 import EventCard from "../../components/events/EventCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
-import { getCurrentUser } from "../../data/mockAuth";
-import { mockEvents } from "../../data/mockEvents";
-import { mockReservations } from "../../data/mockReservations";
-import { mockTickets } from "../../data/mockTickets";
+import Toast from "../../components/common/Toast";
+import { requireCurrentUser } from "../../state/authSession";
+import { eventService } from "../../services/eventService";
+import { registrationService } from "../../services/registrationService";
+import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
+import { Event } from "../../types/event";
+import { Reservation } from "../../types/reservation";
+import { Ticket as IssuedTicket } from "../../types/ticket";
 
 export default function StudentHomePage() {
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [tickets, setTickets] = useState<IssuedTicket[]>([]);
+  const [toastMsg, setToastMsg] = useState("");
 
-  const myReservations = mockReservations.filter((reservation) => reservation.studentId === currentUser.id);
-  const myTickets = mockTickets.filter((ticket) => ticket.studentId === currentUser.id);
-  const pendingReservationsCount = myReservations.filter((reservation) => reservation.status === "PENDING").length;
-  const openEvents = mockEvents.filter((event) => event.status === "OPEN").slice(0, 3);
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDashboard() {
+      try {
+        const [eventData, reservationData, ticketData] = await Promise.all([
+          eventService.getFeaturedEvents(3),
+          registrationService.listByStudentRemote(currentUser.id),
+          ticketService.listByStudentRemote(currentUser.id),
+        ]);
+        if (!mounted) return;
+        setEvents(eventData);
+        setReservations(reservationData);
+        setTickets(ticketData);
+      } catch (error) {
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan.");
+      }
+    }
+
+    void loadDashboard();
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser.id]);
+
+  const pendingReservationsCount = reservations.filter((reservation) => reservation.status === "PENDING").length;
+
+  function eventTitle(eventId: string): string {
+    return events.find((item) => item.id === eventId)?.title || "Sự kiện đang cập nhật thông tin";
+  }
 
   return (
     <div className="space-y-7 text-left">
@@ -40,9 +74,9 @@ export default function StudentHomePage() {
       </section>
 
       {!currentUser.profileComplete && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
             <div>
               <h2 className="text-sm font-semibold text-amber-950">Yêu cầu hoàn tất hồ sơ</h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-amber-800">
@@ -50,15 +84,15 @@ export default function StudentHomePage() {
               </p>
             </div>
           </div>
-          <Link to="/student/profile/complete" className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 text-sm font-medium text-white">
+          <Link to="/student/profile/complete" className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-warning-600 px-4 text-sm font-medium text-white">
             Cập nhật ngay <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatisticCard label="Sự kiện đã đăng ký" value={myReservations.length} icon={Calendar} subtext="Tính tất cả trạng thái" />
-        <StatisticCard label="Vé QR đã cấp" value={myTickets.length} icon={Ticket} subtext="Vé điện tử cá nhân" color="success" />
+        <StatisticCard label="Sự kiện đã đăng ký" value={reservations.length} icon={Calendar} subtext="Tính tất cả trạng thái" />
+        <StatisticCard label="Vé QR đã cấp" value={tickets.length} icon={Ticket} subtext="Vé điện tử cá nhân" color="success" />
         <StatisticCard label="Đơn chờ duyệt" value={pendingReservationsCount} icon={Award} subtext="Ban tổ chức đang xem xét" color="warning" />
       </div>
 
@@ -93,57 +127,61 @@ export default function StudentHomePage() {
             Xem tất cả <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          {openEvents.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onViewDetails={(id) => navigate(`/student/events/${id}`)}
-              onRegister={(id) => navigate(`/student/events/${id}/register`)}
-            />
-          ))}
-        </div>
+        {events.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-3">
+            {events.map((event) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                onViewDetails={(id) => navigate(`/student/events/${id}`)}
+                onRegister={(id) => navigate(`/student/events/${id}/register`)}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center text-sm font-bold text-slate-400">
+            Chưa có sự kiện công khai đang mở đăng ký.
+          </div>
+        )}
       </section>
 
       <section className="grid gap-6 lg:grid-cols-2">
         <div className="enterprise-card p-5">
           <h3 className="section-heading">Trạng thái đăng ký gần đây</h3>
           <div className="mt-4 divide-y divide-slate-100">
-            {myReservations.slice(0, 4).map((reservation) => {
-              const event = mockEvents.find((item) => item.id === reservation.eventId);
-              return (
-                <div key={reservation.id} className="flex items-center justify-between gap-4 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">{event?.title || "Sự kiện"}</p>
-                    <p className="mt-1 text-xs font-semibold text-slate-500">{formatDateTime(reservation.createdAt)}</p>
-                  </div>
-                  <StatusBadge type="reservation" status={reservation.status} />
+            {reservations.slice(0, 4).map((reservation) => (
+              <div key={reservation.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-950">{eventTitle(reservation.eventId)}</p>
+                  <p className="mt-1 text-xs font-semibold text-slate-500">{formatDateTime(reservation.createdAt)}</p>
                 </div>
-              );
-            })}
+                <StatusBadge type="reservation" status={reservation.status} />
+              </div>
+            ))}
+            {reservations.length === 0 && <p className="py-6 text-center text-xs font-bold text-slate-400">Bạn chưa gửi đăng ký nào.</p>}
           </div>
         </div>
 
         <div className="enterprise-card p-5">
           <h3 className="section-heading">Vé điện tử của tôi</h3>
           <div className="mt-4 space-y-3">
-            {myTickets.slice(0, 3).map((ticket) => {
-              const event = mockEvents.find((item) => item.id === ticket.eventId);
-              return (
-                <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-slate-950">{event?.title || "Sự kiện"}</p>
-                    <p className="mt-1 font-mono text-xs font-bold text-slate-500">Mã vé: {ticket.ticketCode}</p>
-                  </div>
-                  <Link to={`/student/tickets/${ticket.id}`} className="btn-press inline-flex h-9 items-center rounded-lg bg-brand-600 px-3 text-xs font-medium text-white">
-                    Mở vé
-                  </Link>
+            {tickets.slice(0, 3).map((ticket) => (
+              <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-950">{eventTitle(ticket.eventId)}</p>
+                  <p className="mt-1 font-mono text-xs font-bold text-slate-500">Mã vé: {ticket.ticketCode}</p>
                 </div>
-              );
-            })}
+                <Link to={`/student/tickets/${ticket.id}`} className="btn-press inline-flex h-9 items-center rounded-lg bg-brand-600 px-3 text-xs font-medium text-white">
+                  Mở vé
+                </Link>
+              </div>
+            ))}
+            {tickets.length === 0 && <p className="py-6 text-center text-xs font-bold text-slate-400">Chưa có vé được cấp.</p>}
           </div>
         </div>
       </section>
+
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

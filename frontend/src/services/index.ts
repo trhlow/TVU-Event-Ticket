@@ -6,3 +6,4 @@ export * from './ticketService';
 export * from './clubService';
 export * from './userService';
 export * from './auditLogService';
+export * from './statisticsService';

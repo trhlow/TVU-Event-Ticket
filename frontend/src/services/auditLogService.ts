@@ -8,7 +8,7 @@ export const auditLogService = {
     return mockAuditLogs;
   },
   async listRemote(): Promise<AuditLog[]> {
-    if (apiConfig.useDemoData || apiConfig.enableMockFallback) return mockAuditLogs;
+    if (apiConfig.useDemoData) return mockAuditLogs;
     throw createUnsupportedApiError("audit logs");
   },
 };

@@ -1,51 +1,64 @@
-# Deployment — TVU Event & Ticket backend
+# Deployment — TVU Event & Ticket
 
-Reference doc (read on demand). Target: **$0 free-tier cloud** (proposal §7). Infra choices change over time —
-verify each provider's current free-tier limits before relying on them.
+The deployable runtime is a single Spring Boot modular monolith. Its production
+definition is at `backend/infra/production/compose.yaml`; do not deploy the old
+individual service compose files.
 
 ## Topology
 
-| Concern | Service | Notes |
-|---|---|---|
-| Backend + API Gateway | **Oracle Cloud Always Free**, Ampere A1 (ARM) | Runs the 4 Spring Boot containers via Docker Compose. Most volatile free tier — design for the *minimum* published resources, not the max. |
-| Transactional DB | **Neon** (PostgreSQL) | Scale-to-zero; storage-capped → metadata only, no blobs. `event-service` + `ticket-service` use separate logical DBs (`tvu_event`, `tvu_ticket`). |
-| Message broker | **CloudAMQP** — Little Lemur | ~1M msg/month, ~20 connections, ~100 queues. Consumers must keep up or the queue backs up. |
-| Atomic counter / rate-limit | **Redis** (Upstash / Redis Cloud free tier) | Ticket-remaining DECR + gateway rate-limit counters. Prod uses TLS (`REDIS_SSL: true`). |
-| Analytics warehouse | **Oracle ADW** (in Always Free) | Reporting/analytics for organizers. |
-| Frontend hosting | Cloudflare Pages | Out of this repo (backend-only workspace); listed for context. |
-| Cost guard | Oracle Cloud **Budget Alerts** | Alert threshold at ~$1 to catch any accidental spend early. |
-
-## Runtime: mandatory JVM flags (§6.5)
-
-Every Spring Boot container runs with these so it fits the minimum free-tier RAM:
-
+```text
+Internet -> Caddy (80/443, automatic TLS)
+             -> frontend (Vite static files)
+             -> /api -> monolith
+                            -> PostgreSQL
+                            -> Redis
+                            -> RabbitMQ
+                            -> SMTP provider
 ```
--XX:+UseSerialGC
--Xss256k            # (or 512k)
--XX:MaxRAMPercentage=70.0
-```
-Plus in config: `spring.main.lazy-initialization=true` and `server.tomcat.threads.max=20` (not the 200 default).
 
-## Packaging & CI/CD
+Only Caddy belongs to the public Docker network. PostgreSQL, Redis, RabbitMQ
+and the monolith have no host-published ports and remain on an internal network.
 
-- Docker + Docker Compose; images built in GitHub Actions with path filters (build/test only the changed
-  module). Base images must be ARM-compatible (Ampere A1).
-- Local dev dependencies come up with `docker compose -f infra/docker-compose.yml up -d`.
+## Runtime configuration
 
-## Config / secrets in prod
+- Activate `SPRING_PROFILES_ACTIVE=prod,monolith`.
+- `monolith/src/main/resources/application-prod.yml` has no fallback for
+  production credentials or signing material.
+- The production compose stack uses PostgreSQL 18, Redis with a password and
+  AOF persistence, RabbitMQ with a dedicated user, Docker log rotation and
+  `restart: unless-stopped`.
+- Keep the monolith JVM bounded on a 4 GB host:
+  `-XX:+UseSerialGC -Xss512k -Xms128m -Xmx768m`.
+- Build the frontend with `VITE_API_BASE_URL=/api`; it shares the browser origin
+  with the backend, so production cookies use `Secure` and `SameSite=Lax`.
 
-- Activate the prod profile: `SPRING_PROFILES_ACTIVE=prod`.
-- All connection strings and secrets come from **environment variables** (`application-prod.yml` has no
-  fallback defaults): `*_DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `REDIS_HOST/PORT/PASSWORD`,
-  `RABBITMQ_*`, `MAIL_*`, `JWT_ISSUER_URI`, `QR_SIGNING_SECRET`.
+## Secrets
 
-## Resilience (§7.2)
+Copy `infra/production/.env.example` to `infra/production/.env`, set mode 600
+and never commit it. Generate independent random values for database, Redis,
+RabbitMQ, CSRF and QR signing. Store stable RSA JWT keys in the supplied PEM
+variables; regenerating them invalidates active sessions.
 
-Oracle Always Free ARM capacity can be revoked ("Out of host capacity"). Keep a **standby VM** (another
-provider's free tier) pre-configured with the same `docker-compose.yml` for fast failover. The defensive JVM
-sizing above is what lets the system stay up on minimum resources.
+Use a transactional SMTP provider after verifying SPF, DKIM and DMARC. Mailpit
+is development-only and must never be deployed.
 
-## MVP cut lines (§9)
+## Operations
 
-If timeline slips: merge `notification-service` into `ticket-service` (one fewer container), then trim the
-Dashboard/ADW analytics. Always keep the core flow deployable: **register → QR → check-in**.
+- Bring up the stack with
+  `docker compose --env-file .env up -d --build --wait` from
+  `infra/production`.
+- Monitor `https://<domain>/actuator/health`; `/actuator/info` and all other
+  management endpoints are deliberately not reverse-proxied publicly.
+- Schedule `scripts/backup-postgres.sh` daily. It creates and validates a
+  custom-format PostgreSQL dump. Configure `BACKUP_REMOTE` with rclone to keep
+  an off-host copy; retain 7–14 days and test restores regularly.
+- `scripts/restore-postgres.sh` requires `--confirm` because it replaces the
+  live database.
+
+## CI/CD
+
+CI treats `monolith` as a first-class module: a change to any imported feature
+library triggers its reactor test/build and builds the deployable monolith
+image. `.github/workflows/deploy-production.yml` is manual-only and protected
+by the GitHub `production` environment. Configure `DEPLOY_HOST`, `DEPLOY_USER`,
+`DEPLOY_SSH_PRIVATE_KEY` and `DEPLOY_PATH` there before use.

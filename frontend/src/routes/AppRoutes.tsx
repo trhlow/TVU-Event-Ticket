@@ -10,7 +10,6 @@ const SuperAdminLayout = lazy(() => import("../layouts/SuperAdminLayout"));
 const LandingPage = lazy(() => import("../pages/public/LandingPage"));
 const PublicEventsPage = lazy(() => import("../pages/public/PublicEventsPage"));
 const PublicEventDetailPage = lazy(() => import("../pages/public/PublicEventDetailPage"));
-const GuidePage = lazy(() => import("../pages/public/GuidePage"));
 const LoginPage = lazy(() => import("../pages/public/LoginPage"));
 const ForbiddenPage = lazy(() => import("../pages/public/ForbiddenPage"));
 const ServerErrorPage = lazy(() => import("../pages/public/ServerErrorPage"));
@@ -81,10 +80,10 @@ export default function AppRoutes() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/events" element={<PublicEventsPage />} />
         <Route path="/events/:eventId" element={<PublicEventDetailPage />} />
-        <Route path="/guide" element={<GuidePage />} />
-        <Route path="/huong-dan" element={<Navigate to="/guide" replace />} />
+        <Route path="/guide" element={<Navigate to="/#guide" replace />} />
+        <Route path="/huong-dan" element={<Navigate to="/#guide" replace />} />
         <Route path="/public/events" element={<Navigate to="/events" replace />} />
-        <Route path="/public/guide" element={<Navigate to="/guide" replace />} />
+        <Route path="/public/guide" element={<Navigate to="/#guide" replace />} />
         <Route path="/complete-profile" element={<CompleteProfilePage />} />
         <Route
           path="/notifications"

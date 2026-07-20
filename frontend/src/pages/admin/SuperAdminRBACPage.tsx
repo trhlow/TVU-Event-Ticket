@@ -1,7 +1,6 @@
 import React, { useState } from "react";
-import { Check, Eye, KeyRound, Save, ShieldAlert, X } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
-import Toast from "../../components/common/Toast";
+import { Eye, KeyRound, ShieldAlert } from "lucide-react";
+import PageHeader from "../../components/common/PageHeader";
 
 interface PermissionRow {
   key: string;
@@ -12,7 +11,7 @@ interface PermissionRow {
   admin: boolean;
 }
 
-const initialPermissions: PermissionRow[] = [
+const PERMISSIONS: PermissionRow[] = [
   { key: "event_manage", group: "Quản lý sự kiện", description: "Tạo, chỉnh sửa, công bố và theo dõi sự kiện.", student: false, organizer: true, admin: true },
   { key: "registration_review", group: "Duyệt đăng ký", description: "Duyệt hoặc từ chối đăng ký tham gia sự kiện.", student: false, organizer: true, admin: true },
   { key: "qr_scan", group: "Quét QR", description: "Quét QR vé điện tử để điểm danh sinh viên.", student: false, organizer: true, admin: true },
@@ -23,36 +22,17 @@ const initialPermissions: PermissionRow[] = [
 ];
 
 export default function SuperAdminRBACPage() {
-  const [permissions, setPermissions] = useState(initialPermissions);
   const [selectedPermission, setSelectedPermission] = useState<PermissionRow | null>(null);
-  const [toastMsg, setToastMsg] = useState("");
-
-  const togglePermission = (index: number, role: "student" | "organizer" | "admin") => {
-    setPermissions((current) => current.map((permission, idx) => (idx === index ? { ...permission, [role]: !permission[role] } : permission)));
-  };
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Phân quyền RBAC" }]} />
-
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-6 w-6 text-brand-700" />
-            <h1 className="tvu-page-title text-2xl">Quản lý Phân quyền RBAC</h1>
-          </div>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-            Thiết lập ma trận quyền theo vai trò SINH_VIEN, ORGANIZER và SUPER_ADMIN. Các thay đổi hiện là cấu hình giao diện để sẵn sàng nối API.
-          </p>
-        </div>
-        <button
-          onClick={() => setToastMsg("Đã ghi nhận cấu hình phân quyền. Khi backend sẵn sàng, thao tác này sẽ gọi API RBAC.")}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700"
-        >
-          <Save className="h-4 w-4" />
-          Lưu ma trận quyền
-        </button>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Phân quyền RBAC" }]}
+        eyebrow="Chỉ đọc"
+        icon={KeyRound}
+        title="Ma trận phân quyền RBAC"
+        description="Backend hiện thực thi phân quyền bằng quy tắc cố định trong mã nguồn (@PreAuthorize theo vai trò), không phải một cấu hình có thể chỉnh sửa qua giao diện. Bảng dưới đây phản ánh đúng quy tắc hiện có, chỉ để tra cứu."
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         {[
@@ -67,11 +47,11 @@ export default function SuperAdminRBACPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+      <div className="rounded-2xl border border-info-100 bg-info-50 p-4">
         <div className="flex gap-3">
-          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" />
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" aria-hidden="true" />
           <p className="text-sm font-semibold leading-6 text-brand-900">
-            Không kích hoạt thao tác nguy hiểm khi backend RBAC chưa sẵn sàng. Giao diện này giữ đúng ma trận quyền để nối API sau.
+            Đây là bảng tra cứu, không phải công cụ chỉnh sửa quyền — thay đổi quyền thật sự đòi hỏi sửa mã nguồn backend và triển khai lại dịch vụ.
           </p>
         </div>
       </div>
@@ -90,26 +70,24 @@ export default function SuperAdminRBACPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {permissions.map((permission, index) => (
-                <tr key={permission.key} className="hover:bg-blue-50/30">
+              {PERMISSIONS.map((permission) => (
+                <tr key={permission.key} className="hover:bg-info-50/30">
                   <td className="p-4 font-extrabold text-slate-950">{permission.group}</td>
                   <td className="max-w-md p-4 font-semibold leading-6 text-slate-500">{permission.description}</td>
                   {(["student", "organizer", "admin"] as const).map((role) => (
                     <td key={role} className="p-4 text-center">
-                      <button
-                        onClick={() => togglePermission(index, role)}
-                        className={`mx-auto grid h-9 w-14 place-items-center rounded-full border transition ${
-                          permission[role] ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 bg-slate-50 text-slate-400"
+                      <span
+                        className={`mx-auto grid h-8 w-8 place-items-center rounded-full border text-xs font-black ${
+                          permission[role] ? "border-success-200 bg-success-50 text-success-700" : "border-slate-200 bg-slate-50 text-slate-400"
                         }`}
-                        aria-label={`Bật tắt quyền ${permission.group}`}
                       >
-                        {permission[role] ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                      </button>
+                        {permission[role] ? "✓" : "—"}
+                      </span>
                     </td>
                   ))}
                   <td className="p-4 text-right">
-                    <button onClick={() => setSelectedPermission(permission)} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50">
-                      <Eye className="h-4 w-4" />
+                    <button onClick={() => setSelectedPermission(permission)} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50">
+                      <Eye className="h-4 w-4" aria-hidden="true" />
                       Xem
                     </button>
                   </td>
@@ -134,19 +112,18 @@ export default function SuperAdminRBACPage() {
               ].map(([role, enabled]) => (
                 <div key={role as string} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3">
                   <span className="text-sm font-extrabold text-slate-700">{role as string}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${enabled ? "bg-emerald-50 text-emerald-700" : "bg-slate-200 text-slate-600"}`}>
-                    {enabled ? "Được phép" : "Tắt"}
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${enabled ? "bg-success-50 text-success-700" : "bg-slate-200 text-slate-600"}`}>
+                    {enabled ? "Được phép" : "Không"}
                   </span>
                 </div>
               ))}
             </div>
-            <button onClick={() => setSelectedPermission(null)} className="mt-6 min-h-11 w-full rounded-xl bg-brand-600 text-sm font-extrabold text-white">
+            <button onClick={() => setSelectedPermission(null)} className="btn-press mt-6 min-h-11 w-full rounded-xl bg-brand-600 text-sm font-extrabold text-white hover:bg-brand-700">
               Đóng
             </button>
           </div>
         </div>
       )}
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { Calendar } from 'lucide-react';
 import { mockClubs } from '../../data/mockClubs';
 import EventCard from '../../components/events/EventCard';
 import EventFilter from '../../components/events/EventFilter';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import PageHeader from '../../components/common/PageHeader';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
 
@@ -65,12 +65,11 @@ export default function StudentEventListPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Sinh viên', path: '/student' }, { label: 'Tất cả sự kiện' }]} />
-
-      <div className="space-y-1">
-        <h2 className="text-xl font-black text-gray-950 tracking-tight">Danh Sách Sự Kiện Đang Diễn Ra</h2>
-        <p className="text-xs text-gray-500 font-semibold">Khám phá hoạt động, đặt chỗ trước và nhận vé QR tham dự điện tử nhanh chóng</p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Sinh viên', path: '/student' }, { label: 'Tất cả sự kiện' }]}
+        title="Danh sách sự kiện đang diễn ra"
+        description="Khám phá hoạt động, đặt chỗ trước và nhận vé QR tham dự điện tử nhanh chóng."
+      />
 
       {/* Filter panel */}
       <EventFilter

@@ -9,7 +9,7 @@
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>TVU Event &amp; Ticket - Backend</name>
-    <description>Distributed event management and e-ticketing platform (microservices)</description>
+    <description>Modular monolith event management and e-ticketing platform</description>
 
     <!-- Spring Boot as parent so all modules inherit dependency management -->
     <parent>
@@ -20,11 +20,7 @@
     </parent>
 
     <modules>
-        <module>api-gateway</module>
-        <module>auth-service</module>
-        <module>event-service</module>
-        <module>ticket-service</module>
-        <module>notification-service</module>
+        <module>monolith</module>
     </modules>
 
     <properties>
@@ -33,6 +29,8 @@
         <flyway.version>12.10.0</flyway.version>
         <springdoc.version>3.0.3</springdoc.version>
         <testcontainers.version>1.21.4</testcontainers.version>
+        <postgresql.version>42.7.13</postgresql.version>
+        <tomcat.version>11.0.24</tomcat.version>
     </properties>
 
     <dependencyManagement>
@@ -46,4 +44,26 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.6.2</version>
+                <executions>
+                    <execution>
+                        <id>enforce-build-toolchain</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion><version>[25,26)</version></requireJavaVersion>
+                                <requireMavenVersion><version>[3.9,)</version></requireMavenVersion>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

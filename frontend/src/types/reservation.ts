@@ -1,6 +1,9 @@
 export interface Reservation {
   id: string;
   eventId: string;
+  eventTitle: string;
+  eventLocation: string;
+  eventStartAt: string;
   studentId: string;
   studentName: string;
   mssv: string;

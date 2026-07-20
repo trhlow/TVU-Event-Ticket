@@ -32,6 +32,19 @@ interface AttendeeResponse {
   checkedInAt?: string | null;
 }
 
+interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface AttendeePage {
+  tickets: Ticket[];
+  totalElements: number;
+}
+
 interface AvailabilityResponse {
   eventId: string;
   totalCapacity: number;
@@ -76,6 +89,8 @@ function mapAttendeeTicket(response: AttendeeResponse): Ticket {
     eventId: response.eventId,
     studentId: response.studentId,
     ticketCode: response.ticketId,
+    studentEmail: response.studentEmail,
+    studentMssv: response.studentMssv,
     status: response.status === "CHECKED_IN" ? "VALID" : (response.status as Ticket["status"]),
     checkInStatus: checkedIn ? "CHECKED_IN" : "PENDING",
     issuedAt: response.issuedAt,
@@ -85,13 +100,10 @@ function mapAttendeeTicket(response: AttendeeResponse): Ticket {
 }
 
 async function withTicketFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
+  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
+  // so the UI shows a genuine error state instead of silently masking it with fixture data.
   if (apiConfig.useDemoData) return fallback();
-  try {
-    return await request();
-  } catch (error) {
-    if (!apiConfig.enableMockFallback) throw error;
-    return fallback();
-  }
+  return request();
 }
 
 export const ticketService = {
@@ -122,10 +134,20 @@ export const ticketService = {
   listByEvents(eventIds: string[]): Ticket[] {
     return getTickets().filter((ticket) => eventIds.includes(ticket.eventId));
   },
-  async listAttendees(eventId: string): Promise<Ticket[]> {
+  async listAttendees(eventId: string, keyword?: string): Promise<AttendeePage> {
     return withTicketFallback(
-      async () => (await apiRequest<AttendeeResponse[]>(`/ticketing/events/${eventId}/attendees`)).map(mapAttendeeTicket),
-      () => getTickets().filter((ticket) => ticket.eventId === eventId),
+      async () => {
+        const query = new URLSearchParams({ size: "100" });
+        if (keyword?.trim()) query.set("keyword", keyword.trim());
+        const page = await apiRequest<PageResponse<AttendeeResponse>>(
+          `/ticketing/events/${eventId}/attendees?${query.toString()}`,
+        );
+        return { tickets: page.content.map(mapAttendeeTicket), totalElements: page.totalElements };
+      },
+      () => {
+        const tickets = getTickets().filter((ticket) => ticket.eventId === eventId);
+        return { tickets, totalElements: tickets.length };
+      },
     );
   },
   async availability(eventId: string): Promise<AvailabilityResponse> {

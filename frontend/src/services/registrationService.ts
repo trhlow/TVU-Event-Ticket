@@ -22,10 +22,16 @@ interface ReservationResponse {
 
 function mapReservation(response: ReservationResponse): Reservation {
   return {
+    // ReservationResponse has no student display-name or class-code field yet (see
+    // backend/docs/BACKEND_SECURITY_REQUIREMENTS.md item 15) — leave both unset rather than fabricating
+    // a name from the email; callers already fall back to showing the email when name is empty.
     id: response.id,
     eventId: response.eventId,
+    eventTitle: response.eventTitle || "",
+    eventLocation: response.eventLocation || "",
+    eventStartAt: response.eventStartAt || "",
     studentId: response.studentId,
-    studentName: response.studentEmail,
+    studentName: "",
     mssv: response.studentMssv || "",
     className: "",
     email: response.studentEmail,
@@ -35,13 +41,10 @@ function mapReservation(response: ReservationResponse): Reservation {
 }
 
 async function withReservationFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
+  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
+  // so the UI shows a genuine error state instead of silently masking it with fixture data.
   if (apiConfig.useDemoData) return fallback();
-  try {
-    return await request();
-  } catch (error) {
-    if (!apiConfig.enableMockFallback) throw error;
-    return fallback();
-  }
+  return request();
 }
 
 export const registrationService = {
@@ -96,11 +99,11 @@ export const registrationService = {
     return withReservationFallback(
       async () => {
         if (status === "APPROVED") {
-          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/approve`, { method: "PATCH" }));
+          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/approve`, { method: "POST" }));
         }
         if (status === "REJECTED") {
           void rejectReason;
-          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/reject`, { method: "PATCH" }));
+          return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/reject`, { method: "POST" }));
         }
         throw new Error("Backend chi ho tro duyet hoac tu choi dang ky.");
       },

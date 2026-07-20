@@ -1,31 +1,97 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Calendar, ChevronLeft, Mail, MapPin, UserRound } from "lucide-react";
 import Breadcrumb from "../../components/common/Breadcrumb";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import Toast from "../../components/common/Toast";
-import { getCurrentUser } from "../../data/mockAuth";
-import { mockEvents } from "../../data/mockEvents";
-import { mockTickets } from "../../data/mockTickets";
+import { requireCurrentUser } from "../../state/authSession";
+import { eventService } from "../../services/eventService";
+import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
+import { Event } from "../../types/event";
+import { Ticket } from "../../types/ticket";
+
+function fallbackEvent(ticket: Ticket): Event {
+  return {
+    id: ticket.eventId,
+    clubId: "",
+    clubName: "Chưa có thông tin CLB",
+    title: "Sự kiện đang cập nhật thông tin",
+    description: "",
+    category: "Sự kiện",
+    bannerUrl: "",
+    location: "Đang cập nhật địa điểm",
+    startAt: ticket.issuedAt,
+    endAt: ticket.issuedAt,
+    registrationOpenAt: ticket.issuedAt,
+    registrationCloseAt: ticket.issuedAt,
+    capacity: 0,
+    remainingTickets: 0,
+    status: "OPEN",
+  };
+}
 
 export default function TicketQRPage() {
   const { ticketId } = useParams<{ ticketId: string }>();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
+  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [event, setEvent] = useState<Event | null>(null);
   const [toastMsg, setToastMsg] = useState("");
-  const ticket = mockTickets.find((item) => item.id === ticketId);
-  const event = ticket ? mockEvents.find((item) => item.id === ticket.eventId) : null;
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadTicket() {
+      if (!ticketId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        const tickets = await ticketService.listRemote();
+        const currentTicket = tickets.find((item) => item.id === ticketId) || null;
+        if (!mounted) return;
+        setTicket(currentTicket);
+
+        if (currentTicket) {
+          const currentEvent = await eventService.getByIdRemote(currentTicket.eventId).catch(() => undefined);
+          if (mounted) setEvent(currentEvent || fallbackEvent(currentTicket));
+        }
+      } catch (error) {
+        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải thông tin vé.");
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    void loadTicket();
+    return () => {
+      mounted = false;
+    };
+  }, [ticketId]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 text-left">
+        <Breadcrumb items={[{ label: "Sinh viên", path: "/student" }, { label: "Vé của tôi", path: "/student/tickets" }, { label: "Chi tiết vé" }]} />
+        <div className="enterprise-card mx-auto max-w-md p-8 text-center text-sm font-bold text-slate-500">Đang tải thông tin vé...</div>
+      </div>
+    );
+  }
 
   if (!ticket || !event) {
     return (
       <div className="space-y-6 text-left">
         <Breadcrumb items={[{ label: "Sinh viên", path: "/student" }, { label: "Vé của tôi", path: "/student/tickets" }, { label: "Chi tiết vé" }]} />
         <div className="enterprise-card mx-auto max-w-md p-8 text-center">
-          <p className="text-sm font-bold text-slate-900">Vé không tồn tại hoặc đã bị hủy.</p>
+          <p className="text-sm font-bold text-slate-900">Vé không tồn tại hoặc chưa thuộc tài khoản hiện tại.</p>
           <Link to="/student/tickets" className="mt-3 inline-block text-sm font-extrabold text-brand-700">
             Quay lại vé của tôi
           </Link>
         </div>
+        {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
   }
@@ -41,12 +107,12 @@ export default function TicketQRPage() {
       />
 
       <div className="flex items-center gap-3">
-        <Link to="/student/tickets" className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600">
-          <ChevronLeft className="h-5 w-5" />
+        <Link to="/student/tickets" className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
+          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
         </Link>
         <div>
           <h1 className="tvu-page-title text-xl">Chi tiết vé QR điện tử</h1>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Xuất trình vé cá nhân này để Ban tổ chức điểm danh tại sự kiện.</p>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Vé chỉ có QR khi backend đã cấp signed QR payload hợp lệ.</p>
         </div>
       </div>
 
@@ -54,7 +120,7 @@ export default function TicketQRPage() {
         <QRDisplayCard
           ticket={ticket}
           event={event}
-          onDownload={() => setToastMsg("Đang chuẩn bị tải vé QR.")}
+          onDownload={() => setToastMsg("Backend chưa cung cấp file vé QR cho sinh viên.")}
           onPrint={() => window.print()}
         />
 
@@ -83,10 +149,10 @@ export default function TicketQRPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link to="/student/registrations" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
+            <Link to="/student/registrations" className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
               Quay lại đăng ký của tôi
             </Link>
-            <Link to="/student/tickets" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
+            <Link to="/student/tickets" className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
               Xem tất cả vé
             </Link>
           </div>

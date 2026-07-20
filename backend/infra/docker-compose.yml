@@ -1,19 +1,17 @@
 # Local development dependencies for the backend.
-# Cloud deployment uses managed free-tier equivalents (Neon, CloudAMQP, Upstash) — see proposal §7.
+# Production uses the compose stack under production/. This file is only for
+# starting the monolith's local dependencies independently.
 services:
   postgres:
     image: postgres:18.4-alpine
     environment:
       POSTGRES_USER: tvu
       POSTGRES_PASSWORD: tvu
-      # auth/event/ticket services use separate logical DBs. POSTGRES_DB creates tvu_event;
-      # init-db/01-create-databases.sql creates tvu_ticket + tvu_auth on first startup (no manual step).
-      POSTGRES_DB: tvu_event
+      POSTGRES_DB: tvu_app
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
-      - ./init-db:/docker-entrypoint-initdb.d
 
   redis:
     image: redis:7-alpine

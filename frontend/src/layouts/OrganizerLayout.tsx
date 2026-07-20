@@ -1,14 +1,22 @@
-import { useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Header from "../components/common/Header";
 import PageGreeting from "../components/common/PageGreeting";
 import Sidebar from "../components/common/Sidebar";
-import { getCurrentUser } from "../data/mockAuth";
+import ScrollToTopButton from "../components/common/ScrollToTopButton";
+import { getCurrentUser } from "../state/authSession";
 
 export default function OrganizerLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const location = useLocation();
   const user = getCurrentUser();
+  const scrollRegionRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (location.hash) return;
+    scrollRegionRef.current?.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [location.pathname, location.hash]);
 
   if (!user || user.role !== "ORGANIZER") return <Navigate to="/login" replace />;
 
@@ -31,13 +39,14 @@ export default function OrganizerLayout() {
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           onToggleCollapse={() => setCollapsed((value) => !value)}
           collapsed={collapsed}
-          title={user.clubName || "CLB Tin học TVU"}
+          title={user.clubName || "Chưa có thông tin CLB"}
         />
-        <section className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <section ref={scrollRegionRef} id="organizer-scroll-region" className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           <PageGreeting name={user.fullName} />
-          <div className="page-enter mx-auto w-full max-w-[1240px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
+          <div key={location.pathname} className="page-enter mx-auto w-full max-w-[1240px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
             <Outlet />
           </div>
+          <ScrollToTopButton scrollContainerId="organizer-scroll-region" />
         </section>
       </div>
     </main>

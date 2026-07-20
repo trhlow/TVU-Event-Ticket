@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Calendar, MapPin, CheckSquare, Square, ArrowLeft, Send } from 'lucide-react';
-import { getCurrentUser } from '../../data/mockAuth';
+import { requireCurrentUser } from '../../state/authSession';
 import { formatDateTime } from '../../utils/formatDate';
 import Breadcrumb from '../../components/common/Breadcrumb';
 import Toast from '../../components/common/Toast';
@@ -12,13 +12,14 @@ import { Event } from '../../types/event';
 export default function EventRegistrationConfirmPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const currentUser = getCurrentUser();
+  const currentUser = requireCurrentUser();
 
   const [committed, setCommitted] = useState(false);
   const [note, setNote] = useState('');
   const [toastMsg, setToastMsg] = useState('');
   const [event, setEvent] = useState<Event | undefined>();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -56,7 +57,7 @@ export default function EventRegistrationConfirmPage() {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!committed) return;
+    if (!committed || isSubmitting) return;
 
     if (!currentUser.mssv || !currentUser.className || !currentUser.email) {
       setToastMsg('Vui lòng hoàn tất MSSV, lớp và email trước khi gửi đăng ký.');
@@ -73,6 +74,7 @@ export default function EventRegistrationConfirmPage() {
       return;
     }
 
+    setIsSubmitting(true);
     try {
     const currentReservations = await registrationService.listByStudentRemote(currentUser.id);
     const duplicated = currentReservations.find(
@@ -109,6 +111,8 @@ export default function EventRegistrationConfirmPage() {
     }, 1200);
     } catch (error) {
       setToastMsg(error instanceof Error ? error.message : 'Không thể gửi đăng ký. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -218,14 +222,14 @@ export default function EventRegistrationConfirmPage() {
             </button>
             <button
               type="submit"
-              disabled={!committed}
-              className={`px-5 py-2 rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 cursor-pointer ${
-                committed 
-                  ? 'bg-brand-600 hover:bg-brand-700 text-white' 
-                  : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              disabled={!committed || isSubmitting}
+              className={`px-5 py-2 rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed ${
+                committed && !isSubmitting
+                  ? 'bg-brand-600 hover:bg-brand-700 text-white'
+                  : 'bg-gray-100 text-gray-400'
               }`}
             >
-              <Send className="w-4 h-4" /> Gửi yêu cầu đăng ký
+              <Send className="w-4 h-4" /> {isSubmitting ? 'Đang gửi...' : 'Gửi yêu cầu đăng ký'}
             </button>
           </div>
         </form>
