@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BarChart3, CheckSquare, Edit2, Eye, Plus, QrCode, Trash2 } from "lucide-react";
+import { BarChart3, CheckSquare, Edit2, Eye, Lock, Plus, QrCode, Trash2, Unlock } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import DataTable from "../../components/common/DataTable";
@@ -10,6 +10,8 @@ import { Button } from "../../components/ui/button";
 import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
+import { ticketService } from "../../services/ticketService";
+import { ApiError } from "../../services/apiClient";
 import { formatDateTime } from "../../utils/formatDate";
 import { Event } from "../../types/event";
 
@@ -20,6 +22,7 @@ export default function OrganizerEventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [statusChangingId, setStatusChangingId] = useState<string | null>(null);
 
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
@@ -48,6 +51,39 @@ export default function OrganizerEventsPage() {
         error instanceof Error ? error.message : "Chỉ có thể xóa sự kiện ở trạng thái nháp (DRAFT) theo quy định backend.",
         "error",
       );
+    }
+  };
+
+  const handleOpenRegistration = async (eventId: string) => {
+    setStatusChangingId(eventId);
+    try {
+      await eventService.changeStatus(eventId, "OPEN");
+      // Inventory can only be initialized once an event is OPEN; a 409 here just means
+      // an earlier attempt already created it, which is the desired end state either way.
+      try {
+        await ticketService.initializeInventory(eventId);
+      } catch (inventoryError) {
+        if (!(inventoryError instanceof ApiError) || inventoryError.status !== 409) throw inventoryError;
+      }
+      showToast("Đã mở đăng ký sự kiện và khởi tạo kho vé.");
+      await loadEvents();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể mở đăng ký sự kiện.", "error");
+    } finally {
+      setStatusChangingId(null);
+    }
+  };
+
+  const handleCloseRegistration = async (eventId: string) => {
+    setStatusChangingId(eventId);
+    try {
+      await eventService.changeStatus(eventId, "CLOSED");
+      showToast("Đã đóng đăng ký sự kiện.");
+      await loadEvents();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể đóng đăng ký sự kiện.", "error");
+    } finally {
+      setStatusChangingId(null);
     }
   };
 
@@ -83,6 +119,26 @@ export default function OrganizerEventsPage() {
           <Link to={`/organizer/events/${event.id}/edit`} className="rounded-lg border border-slate-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chỉnh sửa">
             <Edit2 className="h-3.5 w-3.5" />
           </Link>
+          {event.status === "DRAFT" && (
+            <button
+              onClick={() => void handleOpenRegistration(event.id)}
+              disabled={statusChangingId === event.id}
+              className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50 disabled:cursor-wait disabled:opacity-60"
+              title="Mở đăng ký"
+            >
+              <Unlock className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {event.status === "OPEN" && (
+            <button
+              onClick={() => void handleCloseRegistration(event.id)}
+              disabled={statusChangingId === event.id}
+              className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-warning-700 transition-colors hover:border-warning-200 hover:bg-warning-50 disabled:cursor-wait disabled:opacity-60"
+              title="Đóng đăng ký"
+            >
+              <Lock className="h-3.5 w-3.5" />
+            </button>
+          )}
           <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-lg border border-slate-100 p-1.5 text-sky-700 transition-colors hover:border-sky-200 hover:bg-sky-50" title="Liên kết đăng ký">
             <QrCode className="h-3.5 w-3.5" />
           </Link>
