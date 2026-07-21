@@ -82,6 +82,7 @@ tvu:
       same-site: Lax
     microsoft:
       client-id: ${MICROSOFT_CLIENT_ID}
+      tenant-id: ${MICROSOFT_TENANT_ID}
       issuer-host: ${MICROSOFT_ISSUER_HOST:https://login.microsoftonline.com}
       jwks-uri: ${MICROSOFT_JWKS_URI:https://login.microsoftonline.com/common/discovery/v2.0/keys}
   notification:

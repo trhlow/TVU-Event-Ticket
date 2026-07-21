@@ -24,6 +24,14 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
     private final MicrosoftJwkSetClient jwkSetClient;
 
     public MicrosoftIdentityProvider(MicrosoftIdentityProperties properties, MicrosoftJwkSetClient jwkSetClient) {
+        // Validated here rather than in the properties record's constructor: @ConfigurationPropertiesScan
+        // binds that record under every profile, so failing there would break dev and test contexts that
+        // never use Microsoft login at all. This class is @Profile("prod"), so the check fires exactly
+        // where a missing tenant id would be a live vulnerability.
+        if (properties.tenantId() == null || properties.tenantId().isBlank()) {
+            throw new IllegalArgumentException(
+                    "tvu.auth.microsoft.tenant-id must be set: without it every Microsoft directory is trusted");
+        }
         this.properties = properties;
         this.jwkSetClient = jwkSetClient;
     }
@@ -37,9 +45,17 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
             if (!claims.getAudience().contains(properties.clientId())) {
                 throw unauthorized("invalid Microsoft token audience");
             }
+            // Pin the tenant to the configured directory. Deriving the expected issuer from the token's
+            // own tid claim would only prove the token is self-consistent, which every genuine Microsoft
+            // token from every directory is -- so a token minted for this client in any other tenant
+            // would pass. The app registration being single-tenant is what stops those tokens today, but
+            // that is cloud config, not a server-side boundary.
             var tid = claims.getStringClaim("tid");
+            if (!properties.tenantId().equals(tid)) {
+                throw unauthorized("invalid Microsoft token tenant");
+            }
             var expectedIssuer = properties.issuerHost() + "/" + tid + "/v2.0";
-            if (tid == null || !expectedIssuer.equals(claims.getIssuer())) {
+            if (!expectedIssuer.equals(claims.getIssuer())) {
                 throw unauthorized("invalid Microsoft token issuer");
             }
             if (claims.getExpirationTime() == null || claims.getExpirationTime().toInstant().isBefore(Instant.now())) {

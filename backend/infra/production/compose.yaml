@@ -38,6 +38,7 @@ services:
         VITE_USE_DEMO_DATA: "false"
         VITE_ENABLE_MOCK_FALLBACK: "false"
         VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+        VITE_MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
         VITE_MICROSOFT_REDIRECT_URI: https://${APP_DOMAIN}
     restart: unless-stopped
     healthcheck:
