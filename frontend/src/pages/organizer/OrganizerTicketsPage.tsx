@@ -35,14 +35,14 @@ export default function OrganizerTicketsPage() {
       try {
         const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
         const attendeeGroups = await Promise.all(
-          eventData.map((event) => ticketService.listAttendees(event.id).catch(() => ({ tickets: [] as Ticket[], totalElements: 0 }))),
+          eventData.map((event) => ticketService.listAttendees(event.id).catch(() => [] as Ticket[])),
         );
         if (!mounted) return;
 
         setEvents(eventData);
         setTickets(attendeeGroups.flatMap((group, index) => {
           const event = eventData[index];
-          return group.tickets.map((ticket) => ({ ...ticket, eventTitle: event?.title || "Sự kiện đang cập nhật thông tin" }));
+          return group.map((ticket) => ({ ...ticket, eventTitle: event?.title || "Sự kiện đang cập nhật thông tin" }));
         }));
       } catch (error) {
         if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách vé.", "error");
