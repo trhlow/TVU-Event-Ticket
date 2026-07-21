@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-**TVU Event & Ticket** — microservices e-ticketing platform for TVU university clubs: event creation → registration → organizer approval (atomic) → QR-signed ticket + email → check-in → analytics. Backend capstone (3-person team, free-tier cloud, target $0).
+**TVU Event & Ticket** — modular-monolith e-ticketing platform for TVU university clubs: event creation → registration → organizer approval (atomic) → QR-signed ticket + email → check-in → analytics. Backend capstone for a 3-person team.
 
 ## Docs & References
 
@@ -9,7 +9,7 @@
 - @.claude/rules/workflow.md
 
 **On-demand reference:**
-- `.claude/docs/contracts.md` — cross-service contracts (JWT/JWKS/CSRF/QR/RabbitMQ)
+- `.claude/docs/contracts.md` — feature-boundary contracts (JWT/JWKS/CSRF/QR/RabbitMQ)
 - `.claude/docs/coding-standards.md` — package layout, DI, DTO ↔ OpenAPI
 - `.claude/docs/deployment.md` — free-tier topology, JVM flags, CI/CD
 

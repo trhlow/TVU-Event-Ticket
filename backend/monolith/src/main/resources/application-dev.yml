@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tvu_app}
+    username: ${SPRING_DATASOURCE_USERNAME:tvu}
+    password: ${SPRING_DATASOURCE_PASSWORD:tvu}
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+
+tvu:
+  auth:
+    csrf:
+      signing-secret: ${CSRF_SIGNING_SECRET:dev-csrf-signing-secret-change-me}
+    bootstrap:
+      email: ${BOOTSTRAP_ADMIN_EMAIL:admin@example.com}
+    cookies:
+      secure: false
+      same-site: Lax
+
+management:
+  health:
+    mail:
+      enabled: false

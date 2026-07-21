@@ -2,17 +2,17 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, hlow]
   pull_request:
     branches: [main]
 
 jobs:
-  # Determine which service modules were touched so we only build/test the
-  # affected part of the reactor (proposal §6.1) instead of all 5 every time.
+  # The backend is a single Maven module.  Keep frontend checks independent so
+  # a UI-only change does not need a Java build and vice versa.
   changes:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.backend-matrix.outputs.matrix }}
+      backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
@@ -20,37 +20,19 @@ jobs:
         id: filter
         with:
           filters: |
-            api-gateway:
+            backend:
               - 'backend/pom.xml'
-              - 'backend/api-gateway/**'
-            auth-service:
-              - 'backend/pom.xml'
-              - 'backend/auth-service/**'
-            event-service:
-              - 'backend/pom.xml'
-              - 'backend/event-service/**'
-            ticket-service:
-              - 'backend/pom.xml'
-              - 'backend/ticket-service/**'
-            notification-service:
-              - 'backend/pom.xml'
-              - 'backend/notification-service/**'
+              - 'backend/Dockerfile'
+              - 'backend/monolith/**'
+              - 'backend/infra/**'
+              - 'backend/.claude/**'
             frontend:
               - 'frontend/**'
-      - name: Build backend matrix
-        id: backend-matrix
-        run: |
-          matrix="$(echo '${{ steps.filter.outputs.changes }}' | jq -c '[.[] | select(. != "frontend")]')"
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
-  build:
+  backend:
     needs: changes
-    if: needs.changes.outputs.matrix != '[]'
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,9 +43,49 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Build & test ${{ matrix.module }}
+      - name: Build & test modular monolith
         working-directory: backend
-        run: mvn -B -pl ${{ matrix.module }} -am verify
+        run: mvn -B -pl monolith -am verify
+
+      - name: Cache dependency vulnerability data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: dependency-check-${{ runner.os }}-v1
+
+      - name: Dependency vulnerability scan
+        working-directory: backend
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY"
+
+      - name: Fail if any test was skipped
+        working-directory: backend
+        run: |
+          reports=$(find monolith/target/surefire-reports -name 'TEST-*.xml' 2>/dev/null || true)
+          if [ -z "$reports" ]; then
+            echo "No surefire reports found for monolith — the suite did not run."
+            exit 1
+          fi
+          skipped=$(grep -ho 'skipped="[0-9]*"' $reports | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
+          if [ "$skipped" -ne 0 ]; then
+            echo "$skipped test(s) were skipped. Testcontainers tests skip silently without Docker —"
+            echo "a skipped run is not a passing run. Failing the build."
+            grep -l 'skipped="[1-9]' $reports || true
+            exit 1
+          fi
+          echo "No tests were skipped."
+
+      - name: Build deployable monolith image
+        working-directory: backend
+        run: docker build -t tvu/monolith:ci .
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
 
   frontend:
     needs: changes

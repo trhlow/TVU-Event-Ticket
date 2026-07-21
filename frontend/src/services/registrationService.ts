@@ -23,7 +23,7 @@ interface ReservationResponse {
 function mapReservation(response: ReservationResponse): Reservation {
   return {
     // ReservationResponse has no student display-name or class-code field yet (see
-    // docs/BACKEND_SECURITY_REQUIREMENTS.md item 15) — leave both unset rather than fabricating
+    // backend/docs/BACKEND_SECURITY_REQUIREMENTS.md item 15) — leave both unset rather than fabricating
     // a name from the email; callers already fall back to showing the email when name is empty.
     id: response.id,
     eventId: response.eventId,

@@ -1,0 +1,61 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: tvu-event-ticket
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev,monolith}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  rabbitmq:
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-retries: 4
+          initial-interval: 500ms
+          multiplier: 2.0
+          max-interval: 5s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+tvu:
+  auth:
+    jwt:
+      issuer: ${JWT_ISSUER_URI:http://localhost:8080}
+      ttl: ${JWT_TTL:15m}
+      key-id: ${JWT_KEY_ID:monolith-dev}
+  notification:
+    idempotency:
+      done-ttl: P30D
+      lock-ttl: PT2M
+    mail:
+      from-address: ${MAIL_FROM_ADDRESS:no-reply@tvu.edu.vn}
+      from-name: ${MAIL_FROM_NAME:TVU Events}
+    qr:
+      signing-secret: ${QR_SIGNING_SECRET:dev-qr-signing-secret-change-me-1234567890}
+    rabbit:
+      exchange: tvu.events
+      queue: notification.reservation-approved
+      routing-key: reservation.approved
+      dead-letter-exchange: tvu.events.notification.dlx
+      dead-letter-queue: notification.reservation-approved.dlq
+  ticket:
+    qr:
+      secret: ${QR_SIGNING_SECRET:dev-qr-signing-secret-change-me-1234567890}

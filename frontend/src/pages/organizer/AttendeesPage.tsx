@@ -66,7 +66,8 @@ export default function AttendeesPage() {
       return;
     }
     try {
-      const csv = await apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv`);
+      const query = search.trim() ? `?keyword=${encodeURIComponent(search.trim())}` : "";
+      const csv = await apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${query}`);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -82,6 +83,8 @@ export default function AttendeesPage() {
   const columns = [
     { header: "Vé", accessor: (ticket: Ticket) => <span className="font-mono text-xs font-bold text-slate-900">{ticket.ticketCode}</span> },
     { header: "Student ID", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentId}</span> },
+    { header: "MSSV", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentMssv || "-"}</span> },
+    { header: "Email", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentEmail || "-"}</span> },
     {
       header: "Check-in",
       accessor: (ticket: Ticket) => (

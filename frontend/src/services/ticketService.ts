@@ -100,6 +100,8 @@ function mapAttendeeTicket(response: AttendeeResponse): Ticket {
     eventId: response.eventId,
     studentId: response.studentId,
     ticketCode: response.ticketId,
+    studentEmail: response.studentEmail,
+    studentMssv: response.studentMssv,
     status: response.status === "CHECKED_IN" ? "VALID" : (response.status as Ticket["status"]),
     checkInStatus: checkedIn ? "CHECKED_IN" : "PENDING",
     issuedAt: response.issuedAt,

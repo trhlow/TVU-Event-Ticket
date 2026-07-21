@@ -1,13 +1,14 @@
 # Backend — TVU Event & Ticket
 
-Maven multi-module project. Java 25, Spring Boot 4.0.x. Base package `vn.edu.tvu`.
+Modular monolith built with Maven, Java 25 and Spring Boot 4.0.x. It exposes
+the public API at `http://localhost:8080/api` from one deployable application.
 
 Frontend integration status is summarized in
-[../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
+[docs/BACKEND_STATUS_FOR_FRONTEND.md](docs/BACKEND_STATUS_FOR_FRONTEND.md).
 
 ## Conventions
 
-- **Layer-based packages** inside each service: `controller → service (+ impl/) → repository → domain`,
+- **Layer-based packages** inside each feature: `controller → service (+ impl/) → repository → domain`,
   with `dto/{request,response}`, `mapper` (MapStruct), `config`, `security`, `exception`. The main
   `@SpringBootApplication` class sits in the root package so component scan covers only `vn.edu.tvu.*`.
 - **Flyway** owns the DB schema (`src/main/resources/db/migration/Vn__*.sql`); Hibernate is `ddl-auto: validate`.
@@ -15,35 +16,30 @@ Frontend integration status is summarized in
 - **Profiles**: `application.yml` holds common config (default profile `dev`); `application-dev.yml` uses
   localhost, `application-prod.yml` reads everything from env vars with no fallback defaults.
 - **Shared frontend types** should eventually be generated from the OpenAPI spec (§6.7). Until that pipeline
-  is wired, keep frontend handwritten types aligned with [../BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md).
+  is wired, keep frontend handwritten types aligned with [docs/BACKEND_STATUS_FOR_FRONTEND.md](docs/BACKEND_STATUS_FOR_FRONTEND.md).
 
-## Modules
+## Runtime
 
-| Module                 | Port | Responsibility |
-|------------------------|------|----------------|
-| `api-gateway`          | 8080 | Single entry point: CORS, JWT auth, RBAC, rate limiting, routing |
-| `auth-service`         | 8084 | Dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies |
-| `event-service`        | 8081 | Public event discovery and club-scoped organizer CRUD/lifecycle APIs |
-| `ticket-service`       | 8082 | Reservations and ticket inventory; atomic reservation via Redis (§6.3) |
-| `notification-service` | 8083 | Scaffolded service for future QR/email delivery |
+| Component | Port | Responsibility |
+|---|---:|---|
+| `monolith` | 8080 | Auth/RBAC, event lifecycle, reservations, tickets, analytics, outbox and notification consumer |
+| PostgreSQL | 5432 | Single `tvu_app` schema managed by Flyway |
+| Redis | 6379 | Capacity counter and notification idempotency |
+| RabbitMQ | 5672 / 15672 | Durable outbox-to-notification boundary |
+| Mailpit | 8025 | Local mail inbox |
 
-## Prerequisites
+## Run locally
 
-Start local dependencies only (Postgres, Redis, RabbitMQ):
-
-```bash
-docker compose -f infra/docker-compose.yml up -d
-```
-
-The compose init script creates `tvu_auth`, `tvu_event`, and `tvu_ticket`.
-
-Run the full backend stack in containers:
+Run the complete local application (one Spring Boot JVM plus supporting infrastructure):
 
 ```bash
-docker compose -f infra/docker-compose.app.yml up --build
+docker compose -f infra/docker-compose.app.yml up -d --build --wait
 ```
 
-Frontend dev server should call the gateway:
+`--wait` returns only after the monolith and dependencies pass healthchecks. The API is exposed at
+`http://localhost:8080`, and Mailpit's inbox is at `http://localhost:8025`.
+
+Frontend dev server should call the monolith:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8080/api
@@ -56,26 +52,31 @@ VITE_ENABLE_MOCK_FALLBACK=false
 Run all commands from this `backend/` directory.
 
 ```bash
-# Build all modules
-mvn clean install
+# Build and verify all modules
+mvn clean verify
 
-# Build/test a single module (with its dependencies)
-mvn -pl ticket-service -am test
+# Build/test the deployable runtime (with all feature libraries)
+mvn -pl monolith -am clean test
 
-# Run one service (dev profile is the default; or run its ...Application class from the IDE)
-mvn -pl ticket-service spring-boot:run
+# Build then run the single application
+mvn -pl monolith -am package
+java -jar monolith/target/monolith-0.0.1-SNAPSHOT.jar
 
 # Run against the prod profile (expects env vars to be set)
-mvn -pl ticket-service spring-boot:run -Dspring-boot.run.profiles=prod
+SPRING_PROFILES_ACTIVE=prod java -jar monolith/target/monolith-0.0.1-SNAPSHOT.jar
 
 # Run a single test class
-mvn -pl ticket-service test -Dtest=TicketReservationServiceTest
+mvn -pl monolith -am test -Dtest=TicketReservationServiceTest
 ```
 
 ## Notes
 
-- OpenAPI-based TypeScript generation is planned; frontend types are currently handwritten.
 - The atomic ticket deduction happens at **organizer approval time**, not at student submit (§6.3, §6.11).
-- Current implemented live APIs: auth/profile/admin, event CRUD/lifecycle, reservation workflow, and ticket inventory initialization.
-- Current gaps: QR check-in and notification/email delivery are not implemented yet.
+- The implemented APIs cover auth/profile/admin management, event CRUD/lifecycle, reservations, ticket
+  inventory, signed QR check-in, notification email, club/admin analytics and attendee/audit-log queries.
+- The frontend currently uses handwritten API types; OpenAPI-based TypeScript generation remains a follow-up.
+- The manual approval-capacity load test is in [load-test/](load-test/README.md); it is intentionally
+  not part of CI.
+- Production topology, deployment steps and cost guidance are in
+  [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 - See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the full set of design invariants.

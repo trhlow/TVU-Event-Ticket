@@ -3,8 +3,8 @@
 React + TypeScript + Vite workspace for the TVU Event & Ticketing Platform. Talks to the backend
 exclusively through the API Gateway (`VITE_API_BASE_URL`), using an HttpOnly JWT cookie +
 double-submit CSRF cookie. See the repo root [README.md](../README.md) and
-[BACKEND_STATUS_FOR_FRONTEND.md](../BACKEND_STATUS_FOR_FRONTEND.md) for the backend contract, and
-[docs/BACKEND_SECURITY_REQUIREMENTS.md](../docs/BACKEND_SECURITY_REQUIREMENTS.md) /
+[BACKEND_STATUS_FOR_FRONTEND.md](../backend/docs/BACKEND_STATUS_FOR_FRONTEND.md) for the backend contract, and
+[backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md) /
 [docs/FRONTEND_IMPLEMENTATION_STATUS.md](../docs/FRONTEND_IMPLEMENTATION_STATUS.md) for what is
 still incomplete and why.
 
@@ -43,7 +43,7 @@ is bundled into the client-side JS and is publicly readable.
 - **Organizer and Super Admin accounts have no password mechanism on the backend today.** The
   "Admin / Ban tổ chức" section of the login page is permanently disabled with an explanation —
   it does not send fake credentials anywhere. See
-  [docs/BACKEND_SECURITY_REQUIREMENTS.md](../docs/BACKEND_SECURITY_REQUIREMENTS.md) item 1.
+  [backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md) item 1.
 
 ## Demo mode
 
@@ -106,17 +106,16 @@ CI (`.github/workflows/ci.yml`, job `frontend`) runs `npm ci`, lint, test, build
 `npm audit`, and two guard checks: no real `.env` file committed, and no DevStub/demo-account
 strings in the production bundle.
 
-## Known backend blockers
+## Known backend limitations
 
 The following are **not frontend bugs** — the frontend is deliberately showing an honest "waiting
 on backend" state instead of fabricating data. Full detail in
-[docs/BACKEND_SECURITY_REQUIREMENTS.md](../docs/BACKEND_SECURITY_REQUIREMENTS.md):
+[backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md):
 
-- Organizer/Super Admin accounts have no password or invite mechanism — the create-organizer form
-  and the internal login form are both disabled by design.
-- No statistics or audit-log read API exists yet — `SuperAdminDashboard`, `SuperAdminStatsPage`,
-  `SuperAdminUsersPage`, `SuperAdminStudentsPage`, `SuperAdminLogsPage`, most of
-  `SuperAdminClubDetailPage`, and `ClubReportPage` show a "chờ backend" panel instead of numbers.
+- Organizer/Super Admin accounts have no password or invite mechanism — the create-organizer form and the
+  internal login form are disabled by design.
+- Backend analytics and audit-log APIs now exist, but some frontend administration/report pages still need a
+  dedicated integration pass before they can replace their pending/demo states.
 - `EventResponse`/`ReservationResponse` don't include a club display name or a student display
   name — those fields render as a neutral placeholder rather than a fabricated value.
 - No endpoint exists for a student to re-fetch a lost ticket QR, or for a signed ticket QR to be

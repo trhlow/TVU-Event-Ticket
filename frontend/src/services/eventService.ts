@@ -41,7 +41,7 @@ interface AvailabilityResponse {
 
 type EventPayload = Partial<Event>;
 
-// EventResponse has no club display-name field (see docs/BACKEND_SECURITY_REQUIREMENTS.md item
+// EventResponse has no club display-name field (see backend/docs/BACKEND_SECURITY_REQUIREMENTS.md item
 // 15) — this must stay a neutral placeholder, never a fabricated specific club name.
 const CLUB_NAME_PLACEHOLDER = "Chưa có thông tin CLB";
 
