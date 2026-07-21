@@ -24,8 +24,8 @@ export default function OrganizerEventDetailPage() {
   const [event, setEvent] = useState<Event | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
-  // Fallback for backends that don't expose GET /ticketing/events/{id}/dashboard yet — computed
-  // from the real attendee list instead of showing false zeros.
+  // Fallback if dashboardService.eventDashboard() fails — computed from the real attendee
+  // list instead of showing false zeros.
   const [attendeesFallback, setAttendeesFallback] = useState<IssuedTicket[] | null>(null);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
