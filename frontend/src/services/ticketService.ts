@@ -181,7 +181,7 @@ export const ticketService = {
   // Fetches every page of attendees for callers that need the full list (dashboards, CSV-adjacent
   // views). Real attendee lists are club-sized, not school-sized, so this stays bounded.
   async listAttendees(eventId: string): Promise<Ticket[]> {
-    const size = 200;
+    const size = 100;
     const first = await this.listAttendeesPage(eventId, { page: 0, size });
     const pages = [first.items];
     for (let page = 1; page < first.totalPages; page += 1) {
