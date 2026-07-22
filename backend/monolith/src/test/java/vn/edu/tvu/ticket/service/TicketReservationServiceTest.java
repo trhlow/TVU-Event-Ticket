@@ -101,6 +101,65 @@ class TicketReservationServiceTest {
         verify(ticketCounterService, never()).tryReserve(eventId);
     }
 
+    /**
+     * The inventory row is created lazily by whoever registers first, but {@code findByEventId} followed by
+     * {@code save} is a read-then-write against a UNIQUE constraint on {@code ticket_inventories.event_id}.
+     * When two students hit a brand-new event at the same moment, both find nothing and both insert; the
+     * database rejects the second. That student did nothing wrong — the row they needed now exists — so
+     * they must be re-read into the normal path, not handed a conflict. This is the opening minute of every
+     * new event, not an exotic case.
+     */
+    @Test
+    void submit_recoversWhenAnotherRequestCreatesTheInventoryFirst() {
+        var student = student();
+        var eventId = UUID.randomUUID();
+        var clubId = UUID.randomUUID();
+        var winnersInventory = persistedInventory(eventId, clubId, 2);
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(eventId, student.userId(), "idem-1"))
+                .thenReturn(Optional.empty());
+        when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
+        when(eventLookup.getOpenEvent(eventId)).thenReturn(event(eventId, clubId, 2));
+        // First lookup finds nothing; the concurrent request commits in between; our insert loses.
+        when(inventoryRepository.findByEventId(eventId))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(winnersInventory));
+        when(inventoryRepository.save(any(TicketInventory.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
+                        "duplicate key value violates unique constraint \"ticket_inventories_event_id_key\""));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation ->
+                persistedReservation(invocation.getArgument(0), UUID.randomUUID()));
+
+        var response = service.submit(student, new CreateReservationRequest(eventId, clubId), "idem-1");
+
+        assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
+        verify(inventoryRepository, times(2)).findByEventId(eventId);
+    }
+
+    /**
+     * The recovery above must not become a blanket swallow. If the insert failed for a reason other than
+     * losing the race — a real constraint or data fault — the re-read finds nothing and the original
+     * exception has to surface. Silently returning a half-built reservation here would be worse than the
+     * bug being fixed.
+     */
+    @Test
+    void submit_propagatesInventoryFailureThatIsNotALostRace() {
+        var student = student();
+        var eventId = UUID.randomUUID();
+        var clubId = UUID.randomUUID();
+        var fault = new org.springframework.dao.DataIntegrityViolationException("null value in column club_id");
+        when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(eventId, student.userId(), "idem-1"))
+                .thenReturn(Optional.empty());
+        when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
+        when(eventLookup.getOpenEvent(eventId)).thenReturn(event(eventId, clubId, 2));
+        when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.empty());
+        when(inventoryRepository.save(any(TicketInventory.class))).thenThrow(fault);
+
+        assertThatThrownBy(() -> service.submit(student, new CreateReservationRequest(eventId, clubId), "idem-1"))
+                .isSameAs(fault);
+
+        verify(reservationRepository, never()).save(any());
+    }
+
     @Test
     void submit_returnsExistingReservationForSameIdempotencyKeyAndPayload() {
         var student = student();
