@@ -103,7 +103,8 @@ public class ClubStatsService {
                 .collect(Collectors.toMap(ClubMemberCount::getClubId, ClubMemberCount::getTotal));
 
         return clubs.stream().collect(Collectors.toMap(Club::getId, club -> {
-            var byStatus = eventCounts.getOrDefault(club.getId(), new EnumMap<>(EventStatus.class));
+            var byStatus = allStatusesZeroed();
+            byStatus.putAll(eventCounts.getOrDefault(club.getId(), new EnumMap<>(EventStatus.class)));
             var totals = ticketTotals.get(club.getId());
             var issued = totals == null ? 0L : totals.getIssued();
             var checkedIn = totals == null ? 0L : totals.getCheckedIn();
@@ -117,6 +118,22 @@ public class ClubStatsService {
                     checkedIn,
                     issued == 0 ? null : (double) checkedIn / issued);
         }));
+    }
+
+    /**
+     * Every status present with an explicit zero, rather than only the statuses that have rows. The two
+     * sibling statistics endpoints ({@code EventService#stats}, {@code AdminManagementService#stats}) both
+     * do this and are tested for it, so a client rendering a per-status chart can read
+     * {@code eventsByStatus.DRAFT} and get a number from every endpoint instead of {@code undefined} from
+     * this one. A brand-new club would otherwise return an empty object where the sibling shape is a full
+     * map.
+     */
+    private EnumMap<EventStatus, Long> allStatusesZeroed() {
+        var zeroed = new EnumMap<EventStatus, Long>(EventStatus.class);
+        for (var status : EventStatus.values()) {
+            zeroed.put(status, 0L);
+        }
+        return zeroed;
     }
 
     private Map<UUID, EnumMap<EventStatus, Long>> groupEvents(Collection<ClubEventCount> counts) {

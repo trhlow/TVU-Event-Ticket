@@ -3,6 +3,7 @@ package vn.edu.tvu.monolith.stats;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.event.domain.EventStatus;
 import vn.edu.tvu.event.repository.EventRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
 
@@ -66,6 +67,69 @@ class ClubStatsServiceTest {
         assertThat(summary.checkInRate())
                 .as("no tickets means no rate; 0.0 would read as 'nobody showed up'")
                 .isNull();
+        assertThat(summary.eventsByStatus())
+                .as("every status present with an explicit zero, matching the sibling stats endpoints")
+                .containsOnlyKeys(EventStatus.values())
+                .containsValue(0L);
+    }
+
+    /**
+     * Pins the composition itself. Both other tests stub all three aggregates empty, so the whole
+     * non-empty path was previously unexecuted: swapping getIssued() for getCheckedIn(), or reading
+     * organizers from the wrong map, left the entire suite green while reporting a check-in rate above
+     * 1.0 to the super-admin. Every field here comes from a different source, so a mis-wiring of any one
+     * of them fails this test.
+     */
+    @Test
+    void composesEachFigureFromItsOwnAggregate() {
+        var club = club("Busy Club");
+        // Resolved before any when(...) call: club is itself a mock, and invoking a mock inside a
+        // stubbing block makes Mockito throw UnfinishedStubbingException.
+        var clubId = club.getId();
+        when(clubRepository.findAll(any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(club), PageRequest.of(0, 20), 1));
+        when(eventRepository.countByClubAndStatus(anyCollection())).thenReturn(List.of(
+                eventCount(clubId, EventStatus.OPEN, 2L),
+                eventCount(clubId, EventStatus.DRAFT, 1L)));
+        when(ticketRepository.totalsByClub(anyCollection()))
+                .thenReturn(List.of(ticketTotals(clubId, 10L, 4L)));
+        when(userRepository.countOrganizersByClub(anyCollection()))
+                .thenReturn(List.of(memberCount(clubId, 3L)));
+
+        var summary = service.summaries(PageRequest.of(0, 20)).getContent().get(0);
+
+        assertThat(summary.ticketsIssued()).isEqualTo(10L);
+        assertThat(summary.checkedIn()).isEqualTo(4L);
+        assertThat(summary.checkInRate()).isEqualTo(0.4);
+        assertThat(summary.organizers()).isEqualTo(3L);
+        assertThat(summary.totalEvents()).isEqualTo(3L);
+        assertThat(summary.eventsByStatus())
+                .containsEntry(EventStatus.OPEN, 2L)
+                .containsEntry(EventStatus.DRAFT, 1L)
+                .containsEntry(EventStatus.CLOSED, 0L);
+    }
+
+    private vn.edu.tvu.event.repository.ClubEventCount eventCount(UUID clubId, EventStatus status, long total) {
+        return new vn.edu.tvu.event.repository.ClubEventCount() {
+            @Override public UUID getClubId() { return clubId; }
+            @Override public EventStatus getStatus() { return status; }
+            @Override public long getTotal() { return total; }
+        };
+    }
+
+    private vn.edu.tvu.ticket.repository.ClubTicketTotals ticketTotals(UUID clubId, long issued, long checkedIn) {
+        return new vn.edu.tvu.ticket.repository.ClubTicketTotals() {
+            @Override public UUID getClubId() { return clubId; }
+            @Override public long getIssued() { return issued; }
+            @Override public long getCheckedIn() { return checkedIn; }
+        };
+    }
+
+    private vn.edu.tvu.auth.repository.ClubMemberCount memberCount(UUID clubId, long total) {
+        return new vn.edu.tvu.auth.repository.ClubMemberCount() {
+            @Override public UUID getClubId() { return clubId; }
+            @Override public long getTotal() { return total; }
+        };
     }
 
     /**
