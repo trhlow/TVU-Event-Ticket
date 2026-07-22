@@ -114,8 +114,9 @@ public class CookieCsrfFilter extends OncePerRequestFilter {
     private boolean valid(HttpServletRequest request, Jwt jwt) {
         var cookie = cookie(request, CSRF_COOKIE);
         var header = request.getHeader(CSRF_HEADER);
-        if (cookie == null || header == null || jwt.getId() == null || jwt.getExpiresAt() == null
-                || jwt.getExpiresAt().isBefore(Instant.now())) {
+        var expiresAt = jwt.getExpiresAt();
+        if (cookie == null || header == null || jwt.getId() == null || expiresAt == null
+                || expiresAt.isBefore(Instant.now())) {
             return false;
         }
         try {

@@ -20,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -79,7 +80,7 @@ class TicketControllerSecurityTest {
     @Test
     void batchAvailabilityIsPublic() throws Exception {
         var ids = List.of(UUID.randomUUID(), UUID.randomUUID());
-        when(ticketingService.availability(any(List.class))).thenReturn(java.util.Map.of());
+        when(ticketingService.availability(anyList())).thenReturn(java.util.Map.of());
 
         mockMvc.perform(get("/api/ticketing/events/availability")
                         .param("ids", ids.get(0).toString(), ids.get(1).toString()))
