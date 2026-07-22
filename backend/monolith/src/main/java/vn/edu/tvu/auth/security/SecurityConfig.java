@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/ticketing/events/*/availability").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ticketing/events/availability").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ticketing/stats").hasRole("SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/admin/clubs/stats",
+                                "/api/admin/clubs/*/stats").hasRole("SUPER_ADMIN")
                         // ORGANIZER only, deliberately. A super-admin administers club accounts
                         // (/api/admin/**) and reads cross-club statistics (/api/ticketing/stats,
                         // /api/events/stats); it does not act inside a club's scope. The service layer
