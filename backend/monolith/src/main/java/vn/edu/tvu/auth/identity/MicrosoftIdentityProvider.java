@@ -61,6 +61,12 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
             if (claims.getExpirationTime() == null || claims.getExpirationTime().toInstant().isBefore(Instant.now())) {
                 throw unauthorized("expired Microsoft token");
             }
+            // nbf is how Entra marks a token that is issued but not yet active; checking only exp would
+            // accept it for the whole pre-activation window.
+            if (claims.getNotBeforeTime() != null
+                    && claims.getNotBeforeTime().toInstant().isAfter(Instant.now().plusSeconds(60))) {
+                throw unauthorized("Microsoft token is not yet valid");
+            }
             var email = firstNonBlank(
                     claims.getStringClaim("preferred_username"),
                     claims.getStringClaim("email"),
@@ -83,10 +89,11 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
             var selector = new JWKSelector(new JWKMatcher.Builder()
                     .keyID(jwt.getHeader().getKeyID())
                     .build());
-            var key = selector.select(jwkSetClient.fetch()).stream()
-                    .filter(RSAKey.class::isInstance)
-                    .map(RSAKey.class::cast)
-                    .findFirst()
+            // An unknown key id is the normal appearance of a Microsoft key rotation. Retry once against a
+            // freshly fetched set before rejecting, otherwise a cached JWKS turns every rotation into a
+            // total login outage lasting until the cache expires.
+            var key = selectRsaKey(selector, false)
+                    .or(() -> selectRsaKey(selector, true))
                     .orElseThrow(() -> unauthorized("Microsoft signing key not found"));
             JWSVerifier verifier = new RSASSAVerifier(key.toRSAPublicKey());
             if (!jwt.verify(verifier)) {
@@ -95,6 +102,13 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
         } catch (com.nimbusds.jose.JOSEException ex) {
             throw unauthorized("invalid Microsoft token signature");
         }
+    }
+
+    private java.util.Optional<RSAKey> selectRsaKey(JWKSelector selector, boolean forceRefresh) {
+        return selector.select(jwkSetClient.fetch(forceRefresh)).stream()
+                .filter(RSAKey.class::isInstance)
+                .map(RSAKey.class::cast)
+                .findFirst();
     }
 
     private String firstNonBlank(String... values) {

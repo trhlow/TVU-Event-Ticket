@@ -86,6 +86,14 @@ public class CookieCsrfFilter extends OncePerRequestFilter {
         if (HttpMethod.POST.matches(method) && "/api/auth/login".equals(request.getRequestURI())) {
             return false;
         }
+        // Logout is exempt for the same reason login is, plus one of its own: CSRF validation binds the
+        // token to the JWT's jti and exp, so once that JWT expires the check can never pass again — and
+        // the cookie is httpOnly, so the user cannot clear it client-side either. Requiring CSRF here
+        // strands people in a session they cannot end. A forged logout only ends a session, which is
+        // strictly less harmful than being unable to end one.
+        if (HttpMethod.POST.matches(method) && "/api/auth/logout".equals(request.getRequestURI())) {
+            return false;
+        }
         // CSRF is a browser-cookie concern. API clients authenticating with an
         // Authorization bearer token must retain their existing non-cookie API contract.
         return cookie(request, AUTH_COOKIE) != null;
