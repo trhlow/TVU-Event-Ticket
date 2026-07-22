@@ -57,7 +57,12 @@ jobs:
         working-directory: backend
         env:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY"
+        # ossindexAnalyzerEnabled=false: OSS Index is a separate service from the NVD and rejects
+        # unauthenticated requests with HTTP 401, which failed this step on every run regardless of the
+        # code being scanned -- and because it failed, the two steps after it never ran at all. NVD data
+        # (the actual CVE source, keyed by NVD_API_KEY) is unaffected. Re-enable with OSS Index
+        # credentials if that feed is wanted.
+        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY" -DossindexAnalyzerEnabled=false
 
       - name: Fail if any test was skipped
         working-directory: backend

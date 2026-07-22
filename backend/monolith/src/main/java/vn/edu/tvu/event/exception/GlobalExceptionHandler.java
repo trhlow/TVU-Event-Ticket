@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
  * Sample advice turning exceptions into a consistent {@link ErrorResponse} body. Intentionally
  * duplicated per service (no shared jar); each service extends it with its own domain exceptions.
  */
-@RestControllerAdvice(name = "eventGlobalExceptionHandler")
+@RestControllerAdvice(name = "eventGlobalExceptionHandler", basePackages = "vn.edu.tvu.event")
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 

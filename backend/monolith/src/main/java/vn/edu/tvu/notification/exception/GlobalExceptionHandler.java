@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = "vn.edu.tvu.notification")
 @Profile("!monolith")
 public class GlobalExceptionHandler {
 

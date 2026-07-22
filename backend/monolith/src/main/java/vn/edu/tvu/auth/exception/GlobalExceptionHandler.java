@@ -20,7 +20,13 @@ import java.util.List;
  * Sample advice turning exceptions into a consistent {@link ErrorResponse} body. Intentionally
  * duplicated per service (no shared jar); each service extends it with its own domain exceptions.
  */
-@RestControllerAdvice
+/**
+ * Scoped to this feature's controllers. Every feature advice in this monolith declares a catch-all
+ * {@code @ExceptionHandler(Exception.class)}; leaving them unscoped makes whichever one is registered
+ * first (auth, per {@code MonolithApplication}'s {@code @Import} order) answer for every other
+ * feature's domain exceptions with 500, silently disabling their handlers.
+ */
+@RestControllerAdvice(basePackages = "vn.edu.tvu.auth")
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);

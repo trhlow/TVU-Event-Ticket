@@ -74,6 +74,10 @@ services:
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
       SPRING_RABBITMQ_VHOST: /
       JAVA_TOOL_OPTIONS: -XX:+UseSerialGC -Xss512k -Xms128m -Xmx768m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       postgres:
         condition: service_healthy

@@ -41,10 +41,18 @@ public class SecurityConfig {
                         .requestMatchers("/api/events/**").hasRole("ORGANIZER")
                         .requestMatchers(HttpMethod.POST, "/api/reservations").hasRole("SINH_VIEN")
                         .requestMatchers(HttpMethod.GET, "/api/reservations/me").hasRole("SINH_VIEN")
+                        // Two matchers, not one: `*` spans exactly one path segment, so the single-event
+                        // route does not cover the zero-segment batch route the public listing calls.
                         .requestMatchers(HttpMethod.GET, "/api/ticketing/events/*/availability").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/ticketing/events/availability").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/ticketing/stats").hasRole("SUPER_ADMIN")
+                        // ORGANIZER only, deliberately. A super-admin administers club accounts
+                        // (/api/admin/**) and reads cross-club statistics (/api/ticketing/stats,
+                        // /api/events/stats); it does not act inside a club's scope. The service layer
+                        // enforces the same rule, but stating it here keeps the decision in one place
+                        // instead of relying on every future club-scoped endpoint to re-check.
                         .requestMatchers("/api/reservations/**", "/api/ticketing/**", "/api/tickets/**")
-                        .hasAnyRole("ORGANIZER", "SUPER_ADMIN")
+                        .hasRole("ORGANIZER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .bearerTokenResolver(bearerTokenResolver())
