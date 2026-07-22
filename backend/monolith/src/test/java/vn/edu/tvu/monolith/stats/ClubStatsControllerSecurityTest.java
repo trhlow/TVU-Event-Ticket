@@ -26,7 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ClubStatsController.class)
-@Import({SecurityConfig.class, CookieCsrfFilter.class, AuthSecurityTestConfiguration.class})
+@Import({SecurityConfig.class, CookieCsrfFilter.class, AuthSecurityTestConfiguration.class,
+        vn.edu.tvu.auth.exception.GlobalExceptionHandler.class})
 class ClubStatsControllerSecurityTest {
 
     @Autowired MockMvc mockMvc;
@@ -42,8 +43,15 @@ class ClubStatsControllerSecurityTest {
     }
 
     /**
-     * Asserting non-invocation, not just the status: an organizer would also be refused deeper in the
-     * stack, so a status-only assertion would pass whether or not the web layer actually holds.
+     * Asserting non-invocation, not just the status, so a refusal that happened after the service already
+     * ran would be caught.
+     *
+     * <p>What this does NOT prove: which of the two authorisation layers refused. The class-level
+     * {@code @PreAuthorize} and the {@code SecurityConfig} matcher produce the same status and the same
+     * zero invocations, and deleting the matcher leaves this test green (verified by mutation). The
+     * matcher is defence in depth against the annotation being dropped later; pinning it independently
+     * would need a context without method security, which this slice cannot build because
+     * {@code @EnableMethodSecurity} sits on {@code SecurityConfig} itself.
      */
     @Test
     void organizerIsRejectedBeforeReachingTheService() throws Exception {
@@ -70,8 +78,16 @@ class ClubStatsControllerSecurityTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * This controller sits in {@code vn.edu.tvu.monolith.stats}, which the feature advices for auth,
+     * event, ticket and notification do not cover by package. Asserting {@code $.code} as well as the
+     * status is the point: Spring's built-in resolver already answers 404 with no advice at all, but its
+     * body has no {@code code} field, and {@code code} is the stable string the frontend switches on. A
+     * status-only assertion would stay green while these routes silently returned a different error shape
+     * from every other route in the API.
+     */
     @Test
-    void unknownClubIdReturnsNotFoundNotServerError() throws Exception {
+    void unknownClubIdReturnsNotFoundInTheSharedErrorShape() throws Exception {
         var clubId = UUID.randomUUID();
         when(service.detail(clubId))
                 .thenThrow(new org.springframework.web.server.ResponseStatusException(
@@ -79,6 +95,8 @@ class ClubStatsControllerSecurityTest {
 
         mockMvc.perform(get("/api/admin/clubs/{id}/stats", clubId)
                         .with(jwt().authorities(() -> "ROLE_SUPER_ADMIN")))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.code").exists());
     }
 }
