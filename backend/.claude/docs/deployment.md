@@ -53,7 +53,12 @@ is development-only and must never be deployed.
   custom-format PostgreSQL dump. Configure `BACKUP_REMOTE` with rclone to keep
   an off-host copy; retain 7–14 days and test restores regularly.
 - `scripts/restore-postgres.sh` requires `--confirm` because it replaces the
-  live database.
+  live database. It also flushes Redis and purges the RabbitMQ notification
+  queues, because those keep their own persistent volumes: after a point-in-time
+  restore they would otherwise hold post-backup counters, dedup markers and
+  queued messages that reference tickets no longer in the database. Redis
+  re-seeds counters lazily and the PostgreSQL outbox re-drives pending
+  notifications, so wiping the volatile stores is the correct reconciliation.
 
 ## Known upgrade risk — migration V7
 
