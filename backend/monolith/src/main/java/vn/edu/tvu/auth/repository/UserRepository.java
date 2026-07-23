@@ -1,5 +1,6 @@
 package vn.edu.tvu.auth.repository;
 
+import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 
@@ -25,6 +26,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     boolean existsByExtSubjectAndIdNot(String extSubject, UUID id);
 
     List<User> findByRole(UserRole role);
+
+    @Query("""
+            select u from User u
+            where (:role is null or u.role = :role)
+              and (:mssvStatus is null or u.mssvStatus = :mssvStatus)
+            order by u.createdAt desc
+            """)
+    List<User> search(@Param("role") UserRole role, @Param("mssvStatus") MssvStatus mssvStatus);
 
     @Query("select u.role as role, count(u) as count from User u group by u.role")
     List<UserRoleCountProjection> countGroupedByRole();

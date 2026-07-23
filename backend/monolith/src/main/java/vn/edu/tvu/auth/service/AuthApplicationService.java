@@ -128,6 +128,7 @@ public class AuthApplicationService {
                 user.getClub() == null ? null : user.getClub().getId(),
                 user.getMssv(),
                 user.getClassCode(),
+                user.getMssvStatus(),
                 user.getMssv() != null && !user.getMssv().isBlank());
     }
 }

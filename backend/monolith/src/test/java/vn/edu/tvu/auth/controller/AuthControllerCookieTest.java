@@ -41,6 +41,7 @@ class AuthControllerCookieTest {
                 null,
                 null,
                 null,
+                vn.edu.tvu.auth.domain.MssvStatus.UNVERIFIED,
                 false);
         var jwt = new JwtToken("jwt-value", "jti-value", Instant.now().plusSeconds(900));
         when(appService.login(new LoginRequest("student@example.com", null)))

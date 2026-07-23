@@ -1,6 +1,6 @@
 import { mockUsers } from "../data/mockUsers";
 import { User } from "../types/user";
-import { apiConfig, apiRequest, createUnsupportedApiError } from "./apiClient";
+import { apiConfig, apiRequest } from "./apiClient";
 
 interface OrganizerResponse {
   id: string;
@@ -17,6 +17,18 @@ interface CreateOrganizerRequest {
   clubId: string;
 }
 
+interface AdminUserResponse {
+  id: string;
+  email: string;
+  displayName: string;
+  role: User["role"];
+  clubId?: string | null;
+  mssv?: string | null;
+  classCode?: string | null;
+  mssvStatus?: User["mssvStatus"];
+  status: User["status"];
+}
+
 function mapOrganizer(response: OrganizerResponse): User {
   return {
     id: response.id,
@@ -29,6 +41,21 @@ function mapOrganizer(response: OrganizerResponse): User {
   };
 }
 
+function mapAdminUser(response: AdminUserResponse): User {
+  return {
+    id: response.id,
+    fullName: response.displayName,
+    email: response.email,
+    role: response.role,
+    clubId: response.clubId || undefined,
+    mssv: response.mssv || undefined,
+    className: response.classCode || undefined,
+    mssvStatus: response.mssvStatus,
+    profileComplete: !!(response.mssv && response.mssv.trim()),
+    status: response.status,
+  };
+}
+
 async function withUserFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
   // Demo mode is the only sanctioned source of mock data; a failed real request always throws
   // so the UI shows a genuine error state instead of silently masking it with fixture data.
@@ -37,10 +64,6 @@ async function withUserFallback<T>(request: () => Promise<T>, fallback: () => T)
 }
 
 export const userService = {
-  list(): User[] {
-    if (!apiConfig.useDemoData) throw createUnsupportedApiError("danh sach tat ca nguoi dung");
-    return mockUsers;
-  },
   async listOrganizersRemote(): Promise<User[]> {
     return withUserFallback(
       async () => (await apiRequest<OrganizerResponse[]>("/admin/organizers")).map(mapOrganizer),
@@ -50,9 +73,21 @@ export const userService = {
   listOrganizers(): User[] {
     return mockUsers.filter((user) => user.role === "ORGANIZER");
   },
-  listStudents(): User[] {
-    if (!apiConfig.useDemoData) throw createUnsupportedApiError("quan ly sinh vien");
-    return mockUsers.filter((user) => user.role === "SINH_VIEN");
+  async listAllRemote(params?: { role?: User["role"]; mssvStatus?: User["mssvStatus"] }): Promise<User[]> {
+    const query = new URLSearchParams();
+    if (params?.role) query.set("role", params.role);
+    if (params?.mssvStatus) query.set("mssvStatus", params.mssvStatus);
+    const suffix = query.toString() ? `?${query.toString()}` : "";
+    return withUserFallback(
+      async () => (await apiRequest<AdminUserResponse[]>(`/admin/users${suffix}`)).map(mapAdminUser),
+      () => mockUsers.filter((user) => !params?.role || user.role === params.role),
+    );
+  },
+  async verifyMssv(userId: string): Promise<void> {
+    return withUserFallback(
+      () => apiRequest<void>(`/admin/users/${userId}/verify-mssv`, { method: "PATCH" }),
+      () => undefined,
+    );
   },
   async createOrganizer(data: CreateOrganizerRequest): Promise<User> {
     return withUserFallback(

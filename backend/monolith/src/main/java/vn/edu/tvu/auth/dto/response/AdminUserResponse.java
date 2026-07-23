@@ -1,11 +1,12 @@
 package vn.edu.tvu.auth.dto.response;
 
 import vn.edu.tvu.auth.domain.MssvStatus;
+import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.shared.domain.UserRole;
 
 import java.util.UUID;
 
-public record AuthProfileResponse(
+public record AdminUserResponse(
         UUID id,
         String email,
         String displayName,
@@ -14,5 +15,5 @@ public record AuthProfileResponse(
         String mssv,
         String classCode,
         MssvStatus mssvStatus,
-        boolean profileComplete) {
+        UserStatus status) {
 }

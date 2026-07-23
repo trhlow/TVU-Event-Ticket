@@ -1,12 +1,14 @@
 package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.Club;
+import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
 import vn.edu.tvu.auth.dto.response.AdminStatsResponse;
+import vn.edu.tvu.auth.dto.response.AdminUserResponse;
 import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
 import vn.edu.tvu.auth.repository.ClubRepository;
@@ -84,6 +86,26 @@ public class AdminManagementService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.deactivate();
         auditLogService.recordAudit(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminUserResponse> listUsers(UserRole role, MssvStatus mssvStatus) {
+        return userRepository.search(role, mssvStatus).stream()
+                .map(this::adminUserResponse)
+                .toList();
+    }
+
+    private AdminUserResponse adminUserResponse(User user) {
+        return new AdminUserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getRole(),
+                user.getClub() == null ? null : user.getClub().getId(),
+                user.getMssv(),
+                user.getClassCode(),
+                user.getMssvStatus(),
+                user.getStatus());
     }
 
     @Transactional

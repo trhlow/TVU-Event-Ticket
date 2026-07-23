@@ -121,6 +121,24 @@ class AdminManagementServiceTest {
     }
 
     @Test
+    void listUsers_mapsUsersIncludingMssvStatus() {
+        var userId = UUID.randomUUID();
+        var student = User.student("dev:student", "student@example.com", "Student");
+        student.completeProfile("110122001", "DA21CNTT");
+        ReflectionTestUtils.setField(student, "id", userId);
+        when(userRepository.search(UserRole.SINH_VIEN, MssvStatus.UNVERIFIED)).thenReturn(List.of(student));
+
+        var result = service.listUsers(UserRole.SINH_VIEN, MssvStatus.UNVERIFIED);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().id()).isEqualTo(userId);
+        assertThat(result.getFirst().mssv()).isEqualTo("110122001");
+        assertThat(result.getFirst().classCode()).isEqualTo("DA21CNTT");
+        assertThat(result.getFirst().mssvStatus()).isEqualTo(MssvStatus.UNVERIFIED);
+        assertThat(result.getFirst().role()).isEqualTo(UserRole.SINH_VIEN);
+    }
+
+    @Test
     void verifyMssv_marksUserVerifiedAndRecordsAudit() {
         var actorId = UUID.randomUUID();
         var userId = UUID.randomUUID();

@@ -3,6 +3,7 @@ package vn.edu.tvu.auth.repository;
 import vn.edu.tvu.auth.domain.AuditLog;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.ClubStatus;
+import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.domain.UserStatus;
@@ -160,6 +161,24 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
 
         assertThat(auditLogRepository.countByMessageId(messageId)).isEqualTo(1);
         assertThat(auditLogRepository.count()).isEqualTo(3);
+    }
+
+    @Test
+    void searchFiltersByOptionalRoleAndMssvStatus() {
+        var verified = User.student("ext-search-v", "search-v@example.com", "Verified Student");
+        verified.completeProfile("110900001", "DA21CNTT");
+        verified.verifyMssv();
+        userRepository.saveAndFlush(verified);
+        var unverified = User.student("ext-search-u", "search-u@example.com", "Unverified Student");
+        unverified.completeProfile("110900002", "DA21CNTT");
+        userRepository.saveAndFlush(unverified);
+
+        assertThat(userRepository.search(UserRole.SINH_VIEN, MssvStatus.UNVERIFIED))
+                .extracting(User::getId).contains(unverified.getId()).doesNotContain(verified.getId());
+        assertThat(userRepository.search(UserRole.SINH_VIEN, null))
+                .extracting(User::getId).contains(verified.getId(), unverified.getId());
+        assertThat(userRepository.search(null, null))
+                .extracting(User::getId).contains(verified.getId(), unverified.getId());
     }
 
     @Test
