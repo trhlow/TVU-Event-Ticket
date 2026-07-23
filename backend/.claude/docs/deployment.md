@@ -57,8 +57,14 @@ is development-only and must never be deployed.
   queues, because those keep their own persistent volumes: after a point-in-time
   restore they would otherwise hold post-backup counters, dedup markers and
   queued messages that reference tickets no longer in the database. Redis
-  re-seeds counters lazily and the PostgreSQL outbox re-drives pending
-  notifications, so wiping the volatile stores is the correct reconciliation.
+  re-seeds counters lazily, so wiping the volatile stores is the correct
+  reconciliation. Purging the queue would strand any message already delivered to
+  the broker (its outbox row is `SENT`, which the relay never re-claims), so the
+  script rewinds `SENT` outbox rows to `NEW` for at-least-once replay — a
+  duplicate ticket email is preferable to a missing one. The Redis dedup markers
+  were just flushed, so a notification genuinely delivered before the backup can
+  be re-sent; per-delivery idempotency still suppresses redelivery storms during
+  the replay itself.
 
 ## Known upgrade risk — migration V7
 

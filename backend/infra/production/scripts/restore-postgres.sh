@@ -32,8 +32,7 @@ docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
 # Reconcile the volatile stores to match the restored database before the app comes back up.
 #   - Redis is safe to wipe: TicketCounterService re-seeds each counter lazily from the inventory row on
 #     first access, and dedup markers are best-effort.
-#   - RabbitMQ queues are purged so no stale message replays; the transactional outbox in PostgreSQL is
-#     the source of truth and re-drives whatever is still pending.
+#   - RabbitMQ queues are purged so no stale message replays.
 # Queue names mirror tvu.notification.rabbit.* in application.yml.
 docker compose --env-file "$env_file" -f "$compose_file" exec -T redis \
   sh -c 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli FLUSHALL'
@@ -42,7 +41,21 @@ docker compose --env-file "$env_file" -f "$compose_file" exec -T rabbitmq \
 docker compose --env-file "$env_file" -f "$compose_file" exec -T rabbitmq \
   rabbitmqctl purge_queue notification.reservation-approved.dlq
 
+# Purging the queue drops any message that the broker had already accepted but the consumer had not yet
+# processed. Those rows are SENT in the restored outbox, and the relay only ever re-claims NEW/PROCESSING,
+# so their email/QR would be lost forever. This is a ticketing system, so choose at-least-once: rewind the
+# SENT rows to NEW and let the relay re-publish them. The Redis dedup markers were just flushed, so a
+# notification delivered before the backup may be re-sent; that duplicate is preferable to a silently
+# missing ticket email, and per-delivery idempotency still suppresses redelivery storms during replay.
+docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' <<'SQL'
+UPDATE outbox_messages
+   SET status = 'NEW', sent_at = NULL, next_attempt_at = NULL,
+       locked_at = NULL, locked_by = NULL, locked_until = NULL
+ WHERE status = 'SENT';
+SQL
+
 docker compose --env-file "$env_file" -f "$compose_file" up -d monolith --wait
 
-echo "Restore completed. Redis flushed and RabbitMQ queues purged to match the restored database."
+echo "Restore completed. Redis flushed, RabbitMQ queues purged, SENT outbox rows requeued for at-least-once replay."
 echo "Verify login, registration, email and check-in before reopening traffic."
