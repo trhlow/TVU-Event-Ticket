@@ -140,6 +140,15 @@ class MicrosoftIdentityProviderTest {
     }
 
     @Test
+    void verify_normalizesEmailToLowercaseAtTheBoundary() throws Exception {
+        var token = token(TENANT_ID, "org-subject", "Student@Contoso.Edu", "Student Org", List.of("client-id"));
+
+        var identity = provider.verify(token);
+
+        assertThat(identity.email()).isEqualTo("student@contoso.edu");
+    }
+
+    @Test
     void verify_rejectsWrongAudience() throws Exception {
         var token = token(TENANT_ID, "org-subject", "student@contoso.edu", "Student Org", List.of("other-client"));
 

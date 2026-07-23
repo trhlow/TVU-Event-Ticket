@@ -10,6 +10,7 @@ import com.nimbusds.jwt.SignedJWT;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.Locale;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
@@ -67,13 +68,18 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
                     && claims.getNotBeforeTime().toInstant().isAfter(Instant.now().plusSeconds(60))) {
                 throw unauthorized("Microsoft token is not yet valid");
             }
-            var email = firstNonBlank(
+            var rawEmail = firstNonBlank(
                     claims.getStringClaim("preferred_username"),
                     claims.getStringClaim("email"),
                     claims.getStringClaim("upn"));
-            if (email == null) {
+            if (rawEmail == null) {
                 throw unauthorized("missing Microsoft account email");
             }
+            // Normalize at the identity boundary: admin-provisioned accounts store email lowercased and the
+            // unique index is on lower(email), so a token carrying Student@tvu.edu.vn must resolve to the
+            // same account as student@tvu.edu.vn -- otherwise it fails to claim its pending organizer slot
+            // and a duplicate student account is created instead.
+            var email = rawEmail.trim().toLowerCase(Locale.ROOT);
             var displayName = firstNonBlank(claims.getStringClaim("name"), email);
             return new ExternalIdentity("ms:" + tid + ":" + claims.getSubject(), email, displayName);
         } catch (ParseException ex) {
