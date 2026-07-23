@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import vn.edu.tvu.MonolithApplication;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.server.ResponseStatusException;
@@ -38,8 +39,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = MonolithApplication.class, properties = "spring.task.scheduling.enabled=false")
+// This suite exercises the reservation/approval path only; it needs no messaging. Rabbit listener
+// auto-startup is disabled so the app does not spawn a listener that reconnects to a non-existent broker,
+// and the scheduled outbox worker is off. @DirtiesContext drops the context (Hikari pool, Redis client)
+// after the class so its workers do not keep reconnecting to containers stopped by the next test class.
+@SpringBootTest(classes = MonolithApplication.class, properties = {
+        "spring.task.scheduling.enabled=false",
+        "spring.rabbitmq.listener.simple.auto-startup=false"})
 @Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ApprovalConcurrencyIntegrationTest {
 
     @Container
