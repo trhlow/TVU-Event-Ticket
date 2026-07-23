@@ -60,11 +60,14 @@ is development-only and must never be deployed.
   re-seeds counters lazily, so wiping the volatile stores is the correct
   reconciliation. Purging the queue would strand any message already delivered to
   the broker (its outbox row is `SENT`, which the relay never re-claims), so the
-  script rewinds `SENT` outbox rows to `NEW` for at-least-once replay — a
-  duplicate ticket email is preferable to a missing one. The Redis dedup markers
-  were just flushed, so a notification genuinely delivered before the backup can
-  be re-sent; per-delivery idempotency still suppresses redelivery storms during
-  the replay itself.
+  script requeues `SENT` outbox rows to `NEW` for at-least-once replay — a
+  duplicate ticket email is preferable to a missing one. It requeues only a
+  window near the backup moment (anchored to the newest `SENT` row, default one
+  hour, overridable via `RESTORE_REQUEUE_WINDOW`), **not** the whole `SENT`
+  history: restoring an old database must not re-blast every ticket email/QR ever
+  sent, and the flushed Redis dedup markers would no longer suppress them. A
+  durable per-`message_id` delivery record (requeue only `SENT`-but-not-
+  `DELIVERED`) would be the precise fix if replay volume ever justifies it.
 
 ## Known upgrade risk — migration V7
 

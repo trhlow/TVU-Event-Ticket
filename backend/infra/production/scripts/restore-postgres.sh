@@ -18,6 +18,9 @@ deployment_dir="$(cd -- "$script_dir/.." && pwd)"
 compose_file="$deployment_dir/compose.yaml"
 env_file="$deployment_dir/.env"
 
+# How far back from the backup moment to requeue already-sent notifications (see the SENT block below).
+requeue_window="${RESTORE_REQUEUE_WINDOW:-60 minutes}"
+
 docker run --rm -i postgres:18.4-alpine pg_restore --list - < "$backup_file" > /dev/null
 docker compose --env-file "$env_file" -f "$compose_file" stop monolith
 docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
@@ -43,19 +46,27 @@ docker compose --env-file "$env_file" -f "$compose_file" exec -T rabbitmq \
 
 # Purging the queue drops any message that the broker had already accepted but the consumer had not yet
 # processed. Those rows are SENT in the restored outbox, and the relay only ever re-claims NEW/PROCESSING,
-# so their email/QR would be lost forever. This is a ticketing system, so choose at-least-once: rewind the
-# SENT rows to NEW and let the relay re-publish them. The Redis dedup markers were just flushed, so a
-# notification delivered before the backup may be re-sent; that duplicate is preferable to a silently
-# missing ticket email, and per-delivery idempotency still suppresses redelivery storms during replay.
-docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
-  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' <<'SQL'
+# so their email/QR would be lost forever. This is a ticketing system, so choose at-least-once and requeue
+# the affected SENT rows to NEW.
+#
+# Only messages still in the queue at backup time are at risk, i.e. sent just before the snapshot. Requeue
+# only a window near the backup moment, NOT the entire SENT history: a restore of an old database must not
+# re-blast every ticket email/QR ever sent (the Redis dedup markers were just flushed, so there is nothing
+# left to suppress those). The window is anchored to the newest SENT row (~backup time), not to the restore
+# clock which is arbitrarily later. Widen it with RESTORE_REQUEUE_WINDOW (a Postgres interval) if the
+# consumer was known to be lagging when the backup was taken.
+docker compose --env-file "$env_file" -f "$compose_file" exec -T \
+  -e REQUEUE_WINDOW="$requeue_window" postgres \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v win="$REQUEUE_WINDOW"' <<'SQL'
 UPDATE outbox_messages
    SET status = 'NEW', sent_at = NULL, next_attempt_at = NULL,
        locked_at = NULL, locked_by = NULL, locked_until = NULL
- WHERE status = 'SENT';
+ WHERE status = 'SENT'
+   AND sent_at >= (SELECT max(sent_at) FROM outbox_messages WHERE status = 'SENT') - (:'win')::interval;
 SQL
 
 docker compose --env-file "$env_file" -f "$compose_file" up -d monolith --wait
 
-echo "Restore completed. Redis flushed, RabbitMQ queues purged, SENT outbox rows requeued for at-least-once replay."
+echo "Restore completed. Redis flushed, RabbitMQ queues purged, SENT outbox rows within the last"
+echo "'$requeue_window' before the backup requeued for at-least-once replay."
 echo "Verify login, registration, email and check-in before reopening traffic."
