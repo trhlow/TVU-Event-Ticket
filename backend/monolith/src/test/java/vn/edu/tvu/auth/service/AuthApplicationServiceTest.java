@@ -29,6 +29,8 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -100,6 +102,22 @@ class AuthApplicationServiceTest {
         assertThat(result.profile().role()).isEqualTo(UserRole.SUPER_ADMIN);
         assertThat(seeded.getExtSubject()).isEqualTo("dev:admin@example.com");
         assertThat(seeded.getDisplayName()).isEqualTo("Admin");
+    }
+
+    @Test
+    void login_rejectsExtSubjectAlreadyLinkedToAnotherAccount() {
+        var existing = persisted(
+                User.student("dev:old-subject", "student@example.com", "Student"), UUID.randomUUID());
+        when(identityProvider.verify("student@example.com"))
+                .thenReturn(new ExternalIdentity("dev:conflicting-subject", "student@example.com", "Student"));
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(existing));
+        when(userRepository.existsByExtSubjectAndIdNot("dev:conflicting-subject", existing.getId()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("student@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("already linked");
+        verify(userRepository, never()).save(any());
     }
 
     @Test

@@ -81,6 +81,10 @@ public class AuthApplicationService {
     }
 
     private User updateExisting(User user, ExternalIdentity identity) {
+        if (userRepository.existsByExtSubjectAndIdNot(identity.subject(), user.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "External identity already linked to another account");
+        }
         user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
         if (isBootstrapAdmin(identity.email())) {
             user.promoteToSuperAdmin();

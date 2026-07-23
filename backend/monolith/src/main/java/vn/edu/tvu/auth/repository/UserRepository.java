@@ -22,6 +22,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByMssvAndIdNot(String mssv, UUID id);
 
+    boolean existsByExtSubjectAndIdNot(String extSubject, UUID id);
+
     List<User> findByRole(UserRole role);
 
     @Query("select u.role as role, count(u) as count from User u group by u.role")
