@@ -28,6 +28,11 @@ public class RedisTicketCounterService implements TicketCounterService {
     }
 
     @Override
+    public void reconcile(UUID eventId, int remainingTickets) {
+        redisTemplate.opsForValue().set(key(eventId), Integer.toString(Math.max(0, remainingTickets)));
+    }
+
+    @Override
     public boolean tryReserve(UUID eventId) {
         Long remaining = redisTemplate.execute(RESERVE_SCRIPT, java.util.List.of(key(eventId)));
         return remaining != null && remaining >= 0;
