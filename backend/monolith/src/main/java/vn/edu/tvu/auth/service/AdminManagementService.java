@@ -94,6 +94,9 @@ public class AdminManagementService {
         }
         var club = clubRepository.findById(request.clubId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
+        if (!club.isActive()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Club is inactive");
+        }
         var organizer = userRepository.save(User.organizer("pending:" + email, email, request.displayName().trim(), club));
         auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
                 "{\"email\":\"" + organizer.getEmail() + "\"}");

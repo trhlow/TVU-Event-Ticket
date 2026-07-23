@@ -52,6 +52,9 @@ public class AuthApplicationService {
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is locked");
         }
+        if (user.getClub() != null && !user.getClub().isActive()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Club is inactive");
+        }
         var saved = userRepository.save(user);
         return sessionFor(saved);
     }

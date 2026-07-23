@@ -1,6 +1,7 @@
 package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.config.BootstrapAdminProperties;
+import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
@@ -132,6 +133,24 @@ class AuthApplicationServiceTest {
         assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Account is locked");
+    }
+
+    @Test
+    void login_rejectsOrganizerWhoseClubIsDeactivated() {
+        var club = new Club("CLB Tin hoc", null);
+        ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
+        club.deactivate();
+        var organizer = persisted(
+                User.organizer("dev:organizer@example.com", "organizer@example.com", "Organizer", club),
+                UUID.randomUUID());
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("dev:organizer@example.com", "organizer@example.com", "Organizer"));
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Club is inactive");
+        verify(userRepository, never()).save(any());
     }
 
     @Test

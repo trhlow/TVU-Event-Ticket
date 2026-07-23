@@ -25,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -100,6 +101,21 @@ class AdminManagementServiceTest {
         verify(auditLogRepository).save(auditCaptor.capture());
         assertThat(auditCaptor.getValue().getAction()).isEqualTo("auth.organizer.create");
         assertThat(auditCaptor.getValue().getTargetId()).isEqualTo(organizerId);
+    }
+
+    @Test
+    void createOrganizer_rejectsInactiveClub() {
+        var clubId = UUID.randomUUID();
+        var club = persistedClub(new Club("CLB Tin hoc", "Hoc thuat CNTT"), clubId);
+        club.deactivate();
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.empty());
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club));
+
+        assertThatThrownBy(() -> service.createOrganizer(UUID.randomUUID(),
+                new CreateOrganizerRequest("organizer@example.com", "Organizer", clubId)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("inactive");
+        verify(userRepository, never()).save(any());
     }
 
     @Test
