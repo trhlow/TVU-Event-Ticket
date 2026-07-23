@@ -109,11 +109,11 @@ public class TicketingService {
                 .getContent();
         var csv = new StringBuilder(
                 "ticket_id,event_id,student_id,student_email,student_mssv,status,issued_at,checked_in_at\r\n");
-        rows.forEach(row -> csv.append(csv(row.ticketId())).append(',')
-                .append(csv(row.eventId())).append(',').append(csv(row.studentId())).append(',')
-                .append(csv(row.studentEmail())).append(',').append(csv(row.studentMssv())).append(',')
-                .append(csv(row.status())).append(',').append(csv(row.issuedAt())).append(',')
-                .append(csv(row.checkedInAt())).append("\r\n"));
+        rows.forEach(row -> csv.append(csvCell(row.ticketId())).append(',')
+                .append(csvCell(row.eventId())).append(',').append(csvCell(row.studentId())).append(',')
+                .append(csvCell(row.studentEmail())).append(',').append(csvCell(row.studentMssv())).append(',')
+                .append(csvCell(row.status())).append(',').append(csvCell(row.issuedAt())).append(',')
+                .append(csvCell(row.checkedInAt())).append("\r\n"));
         return csv.toString();
     }
 
@@ -152,11 +152,19 @@ public class TicketingService {
         }
     }
 
-    private String csv(Object value) {
+    /**
+     * Quoting alone is not enough: spreadsheets evaluate a cell beginning with {@code = + - @} (or a tab
+     * or CR) as a formula even when the value is quoted, so an attendee-supplied field such as MSSV could
+     * run in the organizer's spreadsheet. Prefixing with an apostrophe forces literal text.
+     */
+    static String csvCell(Object value) {
         if (value == null) {
             return "";
         }
         var text = value.toString();
+        if (!text.isEmpty() && "=+-@\t\r".indexOf(text.charAt(0)) >= 0) {
+            text = "'" + text;
+        }
         return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 }

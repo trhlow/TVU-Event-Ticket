@@ -26,7 +26,9 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
     private static final int RESERVATION_LIMIT = 20;
 
     private final Clock clock;
-    private final Map<String, Window> windows = new ConcurrentHashMap<>();
+    /** Package-private so the eviction test can observe that elapsed windows are actually dropped. */
+    final Map<String, Window> windows = new ConcurrentHashMap<>();
+    private final java.util.concurrent.atomic.AtomicLong purgedWindow = new java.util.concurrent.atomic.AtomicLong(-1);
 
     public SensitiveFlowRateLimitFilter() {
         this(Clock.systemUTC());
@@ -51,6 +53,7 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
         var now = clock.millis();
         var windowStart = now - now % WINDOW_MILLIS;
         var limit = "/api/auth/login".equals(request.getRequestURI()) ? LOGIN_LIMIT : RESERVATION_LIMIT;
+        purgeElapsedWindows(windowStart);
         var key = request.getRequestURI() + ':' + clientAddress(request);
         var next = windows.compute(key, (ignored, current) -> current == null || current.windowStart() != windowStart
                 ? new Window(windowStart, 1)
@@ -64,6 +67,18 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
             return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Drops counters whose window has elapsed. Runs at most once per window: the CAS makes the first
+     * request of a new window pay the sweep and every later request in that window skip it, so the cost
+     * is one pass per minute rather than one per request.
+     */
+    private void purgeElapsedWindows(long windowStart) {
+        var previous = purgedWindow.get();
+        if (previous != windowStart && purgedWindow.compareAndSet(previous, windowStart)) {
+            windows.values().removeIf(window -> window.windowStart() != windowStart);
+        }
     }
 
     private String clientAddress(HttpServletRequest request) {

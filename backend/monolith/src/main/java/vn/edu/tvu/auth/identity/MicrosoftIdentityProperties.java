@@ -5,6 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "tvu.auth.microsoft")
 public record MicrosoftIdentityProperties(
         String clientId,
+        String tenantId,
         String issuerHost,
         String jwksUri) {
 

@@ -31,6 +31,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,10 +108,7 @@ public class TicketReservationService {
 
         var event = eventLookup.getOpenEvent(request.eventId());
         validateRegistrationWindow(event);
-        var inventory = inventoryRepository.findByEventId(event.id())
-                .orElseGet(() -> inventoryRepository.save(TicketInventory.create(
-                        event.id(), event.clubId(), event.capacity(), event.title(), event.startAt(),
-                        event.endAt(), event.location())));
+        var inventory = findOrCreateInventory(event);
         ticketCounterService.seedIfMissing(event.id(), inventory.getTotalCapacity() - inventory.getApprovedCount());
 
         var reservation = Reservation.pending(
@@ -241,6 +239,29 @@ public class TicketReservationService {
             return Optional.empty();
         }
         return ticket.map(Ticket::getId);
+    }
+
+    /**
+     * The inventory row is created lazily by whichever student registers first. That makes this a
+     * read-then-write against the UNIQUE constraint on {@code ticket_inventories.event_id}: when two
+     * students hit a brand-new event simultaneously, both see nothing and both insert, and the database
+     * rejects the loser. The loser's request is perfectly valid — the row they needed exists now — so the
+     * violation is absorbed and the committed row is re-read, rather than surfacing as a conflict that
+     * blames the student. Anything other than a lost insert (a genuinely missing row) still fails loudly.
+     */
+    private TicketInventory findOrCreateInventory(EventSnapshot event) {
+        var existing = inventoryRepository.findByEventId(event.id());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        try {
+            return inventoryRepository.save(TicketInventory.create(
+                    event.id(), event.clubId(), event.capacity(), event.title(), event.startAt(),
+                    event.endAt(), event.location()));
+        } catch (DataIntegrityViolationException lostTheRace) {
+            return inventoryRepository.findByEventId(event.id())
+                    .orElseThrow(() -> lostTheRace);
+        }
     }
 
     private void validateRegistrationWindow(EventSnapshot event) {

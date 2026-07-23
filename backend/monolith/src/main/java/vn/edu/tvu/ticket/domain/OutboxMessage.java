@@ -64,6 +64,10 @@ public class OutboxMessage {
     @Column(name = "sent_at")
     private Instant sentAt;
 
+    /** Earliest time the relay may claim this row again; null means immediately. */
+    @Column(name = "next_attempt_at")
+    private Instant nextAttemptAt;
+
     protected OutboxMessage() {
     }
 
@@ -147,6 +151,10 @@ public class OutboxMessage {
 
     public Instant getLockedUntil() {
         return lockedUntil;
+    }
+
+    public Instant getNextAttemptAt() {
+        return nextAttemptAt;
     }
 
     public Instant getSentAt() {

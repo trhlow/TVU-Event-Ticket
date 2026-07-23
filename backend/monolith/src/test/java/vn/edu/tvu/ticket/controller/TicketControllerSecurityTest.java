@@ -20,6 +20,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +38,54 @@ class TicketControllerSecurityTest {
     @MockitoBean TicketingService ticketingService;
     @MockitoBean DashboardService dashboardService;
     @MockitoBean JwtDecoder jwtDecoder;
+
+    /**
+     * The public event listing fetches remaining-ticket counts for many events in one call. The single-event
+     * matcher uses {@code /events/*&#47;availability}, and {@code *} spans exactly one path segment, so it does
+     * not cover the zero-segment batch route. Anonymous access has to be asserted separately or the batch
+     * route silently falls through to the ORGANIZER rule.
+     */
+    /**
+     * A super-admin manages club accounts and reads cross-club statistics; it never operates inside a
+     * club's scope. The service layer already refuses ({@code requireOrganizer}), so both the old and new
+     * configuration answer 403 — what changes is where. Asserting the service is never reached is the only
+     * way to pin that down, and it matters: letting the request through to the service means every future
+     * club-scoped endpoint has to remember to re-check, instead of the rule being stated once.
+     */
+    @Test
+    void superAdminIsRejectedBeforeReachingClubScopedTicketing() throws Exception {
+        mockMvc.perform(post("/api/ticketing/check-in")
+                        .with(jwt().authorities(() -> "ROLE_SUPER_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"qrPayload\":\"signed-payload\"}"))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/ticketing/events/{id}/dashboard", UUID.randomUUID())
+                        .with(jwt().authorities(() -> "ROLE_SUPER_ADMIN")))
+                .andExpect(status().isForbidden());
+
+        verify(ticketingService, org.mockito.Mockito.never()).checkIn(any(), anyString());
+        verify(dashboardService, org.mockito.Mockito.never()).eventDashboard(any(), any());
+    }
+
+    @Test
+    void superAdminStillReadsCrossClubStatistics() throws Exception {
+        when(dashboardService.ticketStats())
+                .thenReturn(new vn.edu.tvu.ticket.dto.response.TicketStatsResponse(0L, 0L, null));
+
+        mockMvc.perform(get("/api/ticketing/stats").with(jwt().authorities(() -> "ROLE_SUPER_ADMIN")))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void batchAvailabilityIsPublic() throws Exception {
+        var ids = List.of(UUID.randomUUID(), UUID.randomUUID());
+        when(ticketingService.availability(anyList())).thenReturn(java.util.Map.of());
+
+        mockMvc.perform(get("/api/ticketing/events/availability")
+                        .param("ids", ids.get(0).toString(), ids.get(1).toString()))
+                .andExpect(status().isOk());
+    }
 
     @Test
     void availabilityIsPublicButCheckInRequiresOrganizer() throws Exception {

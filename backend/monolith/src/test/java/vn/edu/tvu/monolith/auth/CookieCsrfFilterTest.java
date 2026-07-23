@@ -40,6 +40,25 @@ class CookieCsrfFilterTest {
         assertThat(response.getStatus()).isEqualTo(200);
     }
 
+    /**
+     * The CSRF token is an HMAC over the JWT's jti and exp, so once that JWT expires no token the browser
+     * holds can ever validate again. The auth cookie is httpOnly, so the user cannot clear it themselves
+     * either — requiring CSRF on logout leaves them holding a session they have no way to end.
+     */
+    @Test
+    void allowsLogoutWithAnExpiredSessionAndNoCsrfToken() throws Exception {
+        // No authentication in the context: that is exactly the state an expired TVU_AUTH cookie produces,
+        // and it is why the CSRF check can no longer succeed.
+        var request = request("POST", "/api/auth/logout", null, null);
+        var response = new MockHttpServletResponse();
+        var chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertThat(chain.getRequest()).as("logout must reach the controller that clears the cookies").isNotNull();
+        assertThat(response.getStatus()).isEqualTo(200);
+    }
+
     @Test
     void rejectsMissingOrMismatchedCsrfTokenForAuthenticatedBrowserRequest() throws Exception {
         var jwt = jwt("current-jti", Instant.now().plusSeconds(300));

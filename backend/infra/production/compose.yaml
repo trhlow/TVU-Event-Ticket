@@ -38,6 +38,7 @@ services:
         VITE_USE_DEMO_DATA: "false"
         VITE_ENABLE_MOCK_FALLBACK: "false"
         VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+        VITE_MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
         VITE_MICROSOFT_REDIRECT_URI: https://${APP_DOMAIN}
     restart: unless-stopped
     healthcheck:
@@ -73,6 +74,10 @@ services:
       SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS}
       SPRING_RABBITMQ_VHOST: /
       JAVA_TOOL_OPTIONS: -XX:+UseSerialGC -Xss512k -Xms128m -Xmx768m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     depends_on:
       postgres:
         condition: service_healthy
