@@ -11,11 +11,16 @@ import DonutChartCard from '../../components/charts/DonutChartCard';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
 import DemoDataBadge from '../../components/common/DemoDataBadge';
 import { SchoolWideOverview, statisticsService } from '../../services/statisticsService';
+import { clubStatsService } from '../../services/clubStatsService';
+import { ClubStatsSummary } from '../../types/clubStats';
 import { apiConfig } from '../../services/apiClient';
+
+const CLUB_STATS_PAGE_SIZE = 100;
 
 export default function SuperAdminStatsPage() {
   const [overview, setOverview] = useState<SchoolWideOverview | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [clubStats, setClubStats] = useState<ClubStatsSummary[] | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -26,6 +31,21 @@ export default function SuperAdminStatsPage() {
       })
       .catch(() => {
         if (mounted) setLoadError(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    clubStatsService
+      .listSummaries({ page: 0, size: CLUB_STATS_PAGE_SIZE })
+      .then((result) => {
+        if (mounted) setClubStats(result.items);
+      })
+      .catch(() => {
+        // Falls back to the demo per-club chart below when the per-club endpoint is unreachable.
       });
     return () => {
       mounted = false;
@@ -48,19 +68,26 @@ export default function SuperAdminStatsPage() {
     ? Math.round(overview.tickets.checkInRate * 100)
     : (ticketsIssued > 0 ? Math.round((checkedInCount / ticketsIssued) * 100) : 0);
 
-  const clubStatsData = mockClubs.map(c => {
-    const clubEvents = events.filter(e => e.clubId === c.id);
-    const clubEventIds = clubEvents.map(e => e.id);
-    const clubRes = reservations.filter(r => clubEventIds.includes(r.eventId));
-    const clubTickets = tickets.filter(t => clubEventIds.includes(t.eventId));
+  const clubStatsData = clubStats
+    ? clubStats.map((c) => ({
+        name: c.clubName.replace('Câu lạc bộ', 'CLB'),
+        'Sự kiện': c.totalEvents,
+        'Vé phát hành': c.ticketsIssued,
+        'Đã check-in': c.checkedIn,
+      }))
+    : mockClubs.map(c => {
+        const clubEvents = events.filter(e => e.clubId === c.id);
+        const clubEventIds = clubEvents.map(e => e.id);
+        const clubRes = reservations.filter(r => clubEventIds.includes(r.eventId));
+        const clubTickets = tickets.filter(t => clubEventIds.includes(t.eventId));
 
-    return {
-      name: c.name.replace('Câu lạc bộ', 'CLB'),
-      'Sự kiện': clubEvents.length,
-      'Đăng ký': clubRes.length,
-      'Đã check-in': clubTickets.filter(t => t.checkInStatus === 'CHECKED_IN').length
-    };
-  });
+        return {
+          name: c.name.replace('Câu lạc bộ', 'CLB'),
+          'Sự kiện': clubEvents.length,
+          'Đăng ký': clubRes.length,
+          'Đã check-in': clubTickets.filter(t => t.checkInStatus === 'CHECKED_IN').length
+        };
+      });
 
   const categories = Array.from(new Set(events.map(e => e.category)));
   const categoryStats = categories.map(cat => ({
@@ -103,14 +130,26 @@ export default function SuperAdminStatsPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
               <BarChartCard
-                title="Tương quan Hoạt động & Mức độ Sinh viên tham gia theo từng Câu lạc bộ (dữ liệu demo cục bộ — backend chưa có API tổng hợp theo từng CLB)"
+                title={
+                  clubStats
+                    ? "Tương quan Hoạt động & Mức độ Sinh viên tham gia theo từng Câu lạc bộ"
+                    : "Tương quan Hoạt động & Mức độ Sinh viên tham gia theo từng Câu lạc bộ (dữ liệu demo cục bộ)"
+                }
                 xAxisKey="name"
                 data={clubStatsData}
-                dataKeys={[
-                  { key: 'Sự kiện', name: 'Số sự kiện', color: '#3b82f6' },
-                  { key: 'Đăng ký', name: 'Đăng ký nhận vé', color: '#f59e0b' },
-                  { key: 'Đã check-in', name: 'Điểm danh check-in', color: '#10b981' }
-                ]}
+                dataKeys={
+                  clubStats
+                    ? [
+                        { key: 'Sự kiện', name: 'Số sự kiện', color: '#3b82f6' },
+                        { key: 'Vé phát hành', name: 'Vé phát hành', color: '#f59e0b' },
+                        { key: 'Đã check-in', name: 'Điểm danh check-in', color: '#10b981' },
+                      ]
+                    : [
+                        { key: 'Sự kiện', name: 'Số sự kiện', color: '#3b82f6' },
+                        { key: 'Đăng ký', name: 'Đăng ký nhận vé', color: '#f59e0b' },
+                        { key: 'Đã check-in', name: 'Điểm danh check-in', color: '#10b981' },
+                      ]
+                }
               />
             </div>
 
