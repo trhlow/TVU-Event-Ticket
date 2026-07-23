@@ -112,6 +112,10 @@ public class User {
         this.mssvStatus = MssvStatus.UNVERIFIED;
     }
 
+    public void verifyMssv() {
+        this.mssvStatus = MssvStatus.VERIFIED;
+    }
+
     @PrePersist
     void prePersist() {
         var now = Instant.now();

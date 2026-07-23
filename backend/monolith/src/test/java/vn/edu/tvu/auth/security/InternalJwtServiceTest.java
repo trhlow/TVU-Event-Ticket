@@ -30,7 +30,8 @@ class InternalJwtServiceTest {
                 "organizer@example.com",
                 UserRole.ORGANIZER,
                 clubId,
-                "110122001");
+                "110122001",
+                true);
 
         var first = service.mint(subject);
         var second = service.mint(subject);
@@ -68,7 +69,8 @@ class InternalJwtServiceTest {
                 "student@example.com",
                 UserRole.SINH_VIEN,
                 null,
-                null);
+                null,
+                false);
 
         var decoded = NimbusJwtDecoder.withPublicKey(keyManager.publicKey())
                 .build()

@@ -50,6 +50,7 @@ public class InternalJwtService {
         if (subject.mssv() != null && !subject.mssv().isBlank()) {
             claims.claim("mssv", subject.mssv());
         }
+        claims.claim("mssv_verified", subject.mssvVerified());
 
         var header = JwsHeader.with(SignatureAlgorithm.RS256)
                 .keyId(properties.keyId())

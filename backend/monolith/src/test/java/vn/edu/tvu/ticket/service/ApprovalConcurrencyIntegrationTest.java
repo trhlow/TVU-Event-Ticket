@@ -267,13 +267,13 @@ class ApprovalConcurrencyIntegrationTest {
 
     private CurrentUser organizer(UUID clubId) {
         var id = ParentRows.user(jdbc, UUID.randomUUID(), clubId, "ORGANIZER");
-        return new CurrentUser(id, "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+        return new CurrentUser(id, "organizer@example.com", UserRole.ORGANIZER, clubId, null, false);
     }
 
     /** A distinct real student. student_id is FK-constrained to users(id) by V7, so the row must exist. */
     private CurrentUser student() {
         var id = ParentRows.user(jdbc, UUID.randomUUID());
-        return new CurrentUser(id, "student-" + id + "@example.com", UserRole.SINH_VIEN, null, "110122001");
+        return new CurrentUser(id, "student-" + id + "@example.com", UserRole.SINH_VIEN, null, "110122001", true);
     }
 
     private boolean tryCheckIn(UUID clubId, String qr) {

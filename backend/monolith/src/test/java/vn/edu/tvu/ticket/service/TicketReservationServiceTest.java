@@ -191,12 +191,25 @@ class TicketReservationServiceTest {
     @Test
     void submit_rejectsIncompleteStudentProfileBeforeCallingDependencies() {
         var incomplete = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN,
-                null, null);
+                null, null, false);
 
         assertThatThrownBy(() -> service.submit(incomplete,
                 new CreateReservationRequest(UUID.randomUUID()), "idem"))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("profile must be completed");
+
+        verify(eventLookup, never()).getOpenEvent(any());
+    }
+
+    @Test
+    void submit_rejectsUnverifiedMssvBeforeCallingDependencies() {
+        var unverified = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN,
+                null, "110122001", false);
+
+        assertThatThrownBy(() -> service.submit(unverified,
+                new CreateReservationRequest(UUID.randomUUID()), "idem"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("verified");
 
         verify(eventLookup, never()).getOpenEvent(any());
     }
@@ -356,7 +369,8 @@ class TicketReservationServiceTest {
                 "student@example.com",
                 UserRole.SINH_VIEN,
                 null,
-                "110122001");
+                "110122001",
+                true);
     }
 
     private static EventSnapshot event(UUID eventId, UUID clubId, int capacity) {
@@ -379,7 +393,8 @@ class TicketReservationServiceTest {
                 "organizer@example.com",
                 UserRole.ORGANIZER,
                 clubId,
-                null);
+                null,
+                false);
     }
 
     private static TicketInventory persistedInventory(UUID eventId, UUID clubId, int capacity) {

@@ -1,6 +1,7 @@
 package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.config.BootstrapAdminProperties;
+import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.domain.UserStatus;
@@ -113,7 +114,8 @@ public class AuthApplicationService {
                 user.getEmail(),
                 user.getRole(),
                 user.getClub() == null ? null : user.getClub().getId(),
-                user.getMssv()));
+                user.getMssv(),
+                user.getMssvStatus() == MssvStatus.VERIFIED));
         return new LoginResult(profile(user), jwt, csrfTokenService.sign(jwt.jti(), jwt.expiresAt()));
     }
 

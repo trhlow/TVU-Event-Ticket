@@ -75,6 +75,9 @@ public class TicketReservationService {
         if (actor.mssv() == null || actor.mssv().isBlank()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Student profile must be completed");
         }
+        if (!actor.mssvVerified()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Student MSSV must be verified before reserving");
+        }
         var normalizedKey = normalizeIdempotencyKey(idempotencyKey);
         var existing = reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(
                 request.eventId(), actor.userId(), normalizedKey);

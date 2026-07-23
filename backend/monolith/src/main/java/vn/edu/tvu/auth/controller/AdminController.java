@@ -118,6 +118,13 @@ public class AdminController {
         adminManagementService.deleteOrganizer(actorId(jwt), organizerId);
     }
 
+    @PatchMapping("/users/{userId}/verify-mssv")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Verify a student's MSSV so they can reserve tickets")
+    public void verifyMssv(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID userId) {
+        adminManagementService.verifyMssv(actorId(jwt), userId);
+    }
+
     @GetMapping("/audit-log")
     @Operation(summary = "Search the audit log, paginated")
     public PageResponse<AuditLogResponse> auditLog(

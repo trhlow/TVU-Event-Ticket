@@ -87,6 +87,17 @@ public class AdminManagementService {
     }
 
     @Transactional
+    public void verifyMssv(UUID actorId, UUID userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getMssv() == null || user.getMssv().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User has no MSSV to verify");
+        }
+        user.verifyMssv();
+        auditLogService.recordAudit(actorId, "auth.user.verify-mssv", "user", user.getId(), "{}");
+    }
+
+    @Transactional
     public OrganizerResponse createOrganizer(UUID actorId, CreateOrganizerRequest request) {
         var email = request.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.findByEmail(email).isPresent()) {

@@ -9,5 +9,6 @@ public record JwtSubject(
         String email,
         UserRole role,
         UUID clubId,
-        String mssv) {
+        String mssv,
+        boolean mssvVerified) {
 }

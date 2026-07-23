@@ -2,6 +2,8 @@ package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.AuditLog;
 import vn.edu.tvu.auth.domain.Club;
+import vn.edu.tvu.auth.domain.MssvStatus;
+import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
@@ -116,6 +118,36 @@ class AdminManagementServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("inactive");
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void verifyMssv_marksUserVerifiedAndRecordsAudit() {
+        var actorId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var student = User.student("dev:student", "student@example.com", "Student");
+        student.completeProfile("110122001", "DA21CNTT");
+        ReflectionTestUtils.setField(student, "id", userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(student));
+
+        service.verifyMssv(actorId, userId);
+
+        assertThat(student.getMssvStatus()).isEqualTo(MssvStatus.VERIFIED);
+        var auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().getAction()).isEqualTo("auth.user.verify-mssv");
+        assertThat(auditCaptor.getValue().getTargetId()).isEqualTo(userId);
+    }
+
+    @Test
+    void verifyMssv_rejectsUserWithoutMssv() {
+        var userId = UUID.randomUUID();
+        var organizer = User.organizer("dev:organizer", "organizer@example.com", "Organizer", null);
+        ReflectionTestUtils.setField(organizer, "id", userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.verifyMssv(UUID.randomUUID(), userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("no MSSV");
     }
 
     @Test

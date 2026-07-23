@@ -44,7 +44,7 @@ class DashboardServiceTest {
     @Test
     void clubDashboardComputesCheckInRateAndZeroFillsThirtyDayWindow() {
         var clubId = UUID.randomUUID();
-        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null, false);
         when(reservationRepository.countByClubIdAndStatus(clubId, ReservationStatus.PENDING)).thenReturn(3L);
         when(reservationRepository.countByClubIdAndStatus(clubId, ReservationStatus.APPROVED)).thenReturn(10L);
         when(ticketRepository.countByClubIdAndStatus(clubId, TicketStatus.CHECKED_IN)).thenReturn(4L);
@@ -70,7 +70,7 @@ class DashboardServiceTest {
     @Test
     void clubDashboardReturnsNullCheckInRateWhenNoApprovals() {
         var clubId = UUID.randomUUID();
-        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null, false);
         when(reservationRepository.countByClubIdAndStatus(clubId, ReservationStatus.PENDING)).thenReturn(0L);
         when(reservationRepository.countByClubIdAndStatus(clubId, ReservationStatus.APPROVED)).thenReturn(0L);
         when(ticketRepository.countByClubIdAndStatus(clubId, TicketStatus.CHECKED_IN)).thenReturn(0L);
@@ -84,7 +84,7 @@ class DashboardServiceTest {
 
     @Test
     void clubDashboardRejectsNonOrganizer() {
-        var actor = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN, null, "110122001");
+        var actor = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN, null, "110122001", false);
 
         assertThatThrownBy(() -> dashboardService().clubDashboard(actor))
                 .isInstanceOf(ResponseStatusException.class);
@@ -94,7 +94,7 @@ class DashboardServiceTest {
     void eventDashboardCombinesInventoryCapacityWithLiveRemainingAndCheckIns() {
         var clubId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
-        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null, false);
         when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.of(inventory(eventId, clubId, 50, 20)));
         when(ticketingService.availability(eventId))
                 .thenReturn(new AvailabilityResponse(eventId, 50, 20, 30));
@@ -115,7 +115,7 @@ class DashboardServiceTest {
     void eventDashboardReturnsNullCheckInRateWhenNothingApproved() {
         var clubId = UUID.randomUUID();
         var eventId = UUID.randomUUID();
-        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+        var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null, false);
         when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.of(inventory(eventId, clubId, 50, 0)));
         when(ticketingService.availability(eventId))
                 .thenReturn(new AvailabilityResponse(eventId, 50, 0, 50));
@@ -128,7 +128,7 @@ class DashboardServiceTest {
     void eventDashboardRejectsEventOutsideOrganizerClub() {
         var eventId = UUID.randomUUID();
         var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER,
-                UUID.randomUUID(), null);
+                UUID.randomUUID(), null, false);
         when(inventoryRepository.findByEventId(eventId))
                 .thenReturn(Optional.of(inventory(eventId, UUID.randomUUID(), 50, 1)));
 
@@ -139,7 +139,7 @@ class DashboardServiceTest {
 
     @Test
     void eventDashboardRejectsNonOrganizer() {
-        var actor = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN, null, "110122001");
+        var actor = new CurrentUser(UUID.randomUUID(), "student@example.com", UserRole.SINH_VIEN, null, "110122001", false);
 
         assertThatThrownBy(() -> dashboardService().eventDashboard(actor, UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class)
@@ -150,7 +150,7 @@ class DashboardServiceTest {
     void eventDashboardReturns404WhenInventoryMissing() {
         var eventId = UUID.randomUUID();
         var actor = new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER,
-                UUID.randomUUID(), null);
+                UUID.randomUUID(), null, false);
         when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> dashboardService().eventDashboard(actor, eventId))

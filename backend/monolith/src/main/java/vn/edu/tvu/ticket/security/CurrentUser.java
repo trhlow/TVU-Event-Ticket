@@ -12,7 +12,8 @@ public record CurrentUser(
         String email,
         UserRole role,
         UUID clubId,
-        String mssv) {
+        String mssv,
+        boolean mssvVerified) {
 
     public static CurrentUser from(Jwt jwt) {
         var roles = jwt.getClaimAsStringList("roles");
@@ -26,6 +27,7 @@ public record CurrentUser(
                 jwt.getClaimAsString("email"),
                 role,
                 clubId == null || clubId.isBlank() ? null : UUID.fromString(clubId),
-                jwt.getClaimAsString("mssv"));
+                jwt.getClaimAsString("mssv"),
+                Boolean.TRUE.equals(jwt.getClaimAsBoolean("mssv_verified")));
     }
 }
