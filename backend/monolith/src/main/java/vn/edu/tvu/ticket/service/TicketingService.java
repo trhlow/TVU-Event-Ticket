@@ -75,7 +75,17 @@ public class TicketingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At most 100 event IDs are allowed");
         }
         var result = new LinkedHashMap<UUID, AvailabilityResponse>();
-        eventIds.stream().distinct().forEach(id -> result.put(id, availability(id)));
+        eventIds.stream().distinct().forEach(id -> {
+            try {
+                result.put(id, availability(id));
+            } catch (ResponseStatusException ex) {
+                // The organizer listing mixes OPEN, DRAFT and CLOSED events. A DRAFT/CLOSED event that
+                // nobody has registered for has no inventory row and is rejected by getOpenEvent, so
+                // reporting it per-event would fail the whole batch. Skip it instead: its id is simply
+                // absent from the map and the caller keeps its own capacity fallback for that one event,
+                // while every OPEN event with inventory still returns its true remaining count.
+            }
+        });
         return result;
     }
 
