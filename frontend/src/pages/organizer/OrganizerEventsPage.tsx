@@ -9,7 +9,6 @@ import StatusBadge from "../../components/common/StatusBadge";
 import Toast from "../../components/common/Toast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
-import { ticketService } from "../../services/ticketService";
 import { formatDateTime } from "../../utils/formatDate";
 import { Event } from "../../types/event";
 
@@ -53,9 +52,8 @@ export default function OrganizerEventsPage() {
         await eventService.update(editingEvent.id, data);
         setToastMsg("Cập nhật sự kiện thành công.");
       } else {
-        const created = await eventService.create(data);
-        await ticketService.initializeInventory(created.id).catch(() => undefined);
-        setToastMsg("Đã lưu sự kiện mới dưới dạng nháp. Khởi tạo kho vé nếu backend cho phép.");
+        await eventService.create(data);
+        setToastMsg("Đã lưu sự kiện mới dưới dạng nháp.");
       }
       setIsFormOpen(false);
       setEditingEvent(undefined);
