@@ -14,7 +14,6 @@ import vn.edu.tvu.auth.repository.UserRepository;
 import vn.edu.tvu.auth.security.CsrfTokenService;
 import vn.edu.tvu.auth.security.JwtSubject;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -47,9 +46,7 @@ public class AuthApplicationService {
     @Transactional
     public LoginResult login(LoginRequest request) {
         var identity = identityProvider.verify(request.credential());
-        var user = findExistingUser(identity)
-                .map(existing -> updateExisting(existing, identity))
-                .orElseGet(() -> createUser(identity));
+        var user = resolveUser(identity);
         if (user.getStatus() == UserStatus.LOCKED) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is locked");
         }
@@ -79,16 +76,32 @@ public class AuthApplicationService {
         return sessionFor(userRepository.save(user));
     }
 
-    private Optional<User> findExistingUser(ExternalIdentity identity) {
-        return userRepository.findByEmail(identity.email())
-                .or(() -> userRepository.findByExtSubject(identity.subject()));
+    /**
+     * The Entra subject is the stable, non-reassignable identifier, so match on it first. Email is only a
+     * fallback for claiming an account that was provisioned but never signed in — admin-created/reset
+     * organizers and the seeded bootstrap super admin, which carry a placeholder subject. Matching a live
+     * privileged account by email and overwriting its subject (the previous behaviour) let a reissued Entra
+     * email — same address, brand-new subject — take the account over and bypass the deliberate organizer
+     * reset flow. An email that already belongs to a claimed identity is therefore rejected, not merged.
+     */
+    private User resolveUser(ExternalIdentity identity) {
+        var bySubject = userRepository.findByExtSubject(identity.subject());
+        if (bySubject.isPresent()) {
+            return refreshIdentity(bySubject.get(), identity);
+        }
+        var byEmail = userRepository.findByEmail(identity.email());
+        if (byEmail.isPresent()) {
+            var existing = byEmail.get();
+            if (!existing.hasUnclaimedPlaceholderSubject()) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Email is already linked to another identity");
+            }
+            return refreshIdentity(existing, identity);
+        }
+        return createUser(identity);
     }
 
-    private User updateExisting(User user, ExternalIdentity identity) {
-        if (userRepository.existsByExtSubjectAndIdNot(identity.subject(), user.getId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "External identity already linked to another account");
-        }
+    private User refreshIdentity(User user, ExternalIdentity identity) {
         user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
         if (isBootstrapAdmin(identity.email())) {
             user.promoteToSuperAdmin();

@@ -77,6 +77,25 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
                 Integer.class, organizer.getId())).isEqualTo(1);
     }
 
+    /**
+     * H1: login() re-saves the whole user row from a snapshot it read earlier. If an admin locks the account
+     * in between, the losing write must fail instead of reverting the lock. The @Version column makes
+     * Hibernate's UPDATE match on the old version and affect zero rows once another writer has moved it.
+     */
+    @Test
+    void staleUserWriteLosesToConcurrentVersionBump() {
+        var user = userRepository.saveAndFlush(
+                User.student("ext-optlock-1", "optlock@example.com", "Opt Lock"));
+
+        // Stand in for a concurrent admin lock committing on a fresh copy of the row.
+        jdbc.update("update users set version = version + 1, status = 'LOCKED' where id = ?", user.getId());
+
+        user.updateIdentity("ext-optlock-1b", "optlock@example.com", "Opt Lock");
+
+        assertThatThrownBy(() -> userRepository.saveAndFlush(user))
+                .isInstanceOf(org.springframework.dao.OptimisticLockingFailureException.class);
+    }
+
     @Test
     void clubRepositorySavesActiveClubAndFindsByName() {
         var saved = clubRepository.saveAndFlush(new Club("CLB Tin hoc", "Sinh hoat hoc thuat CNTT"));

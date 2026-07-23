@@ -13,6 +13,7 @@ import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -31,14 +32,17 @@ public class AdminManagementService {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final TokenRevocationService tokenRevocationService;
 
     public AdminManagementService(
             ClubRepository clubRepository,
             UserRepository userRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            TokenRevocationService tokenRevocationService) {
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.tokenRevocationService = tokenRevocationService;
     }
 
     @Transactional(readOnly = true)
@@ -130,7 +134,8 @@ public class AdminManagementService {
         if (!club.isActive()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Club is inactive");
         }
-        var organizer = userRepository.save(User.organizer("pending:" + email, email, request.displayName().trim(), club));
+        var organizer = userRepository.save(
+                User.organizer(User.PENDING_SUBJECT_PREFIX + email, email, request.displayName().trim(), club));
         auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
                 "{\"email\":\"" + organizer.getEmail() + "\"}");
         return organizerResponse(organizer);
@@ -147,6 +152,8 @@ public class AdminManagementService {
     public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         organizer.lock();
+        // Locking must take effect now, not whenever the organizer's current JWT happens to expire.
+        tokenRevocationService.revoke(organizer.getId());
         auditLogService.recordAudit(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }
@@ -154,7 +161,7 @@ public class AdminManagementService {
     @Transactional
     public OrganizerResponse resetOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
-        organizer.resetExternalSubject("pending:" + organizer.getEmail());
+        organizer.resetExternalSubject(User.PENDING_SUBJECT_PREFIX + organizer.getEmail());
         auditLogService.recordAudit(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }

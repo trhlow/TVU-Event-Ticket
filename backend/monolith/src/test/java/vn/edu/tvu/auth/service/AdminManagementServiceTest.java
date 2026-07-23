@@ -7,9 +7,11 @@ import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
+import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.repository.AuditLogRepository;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.List;
 import java.util.Optional;
@@ -43,11 +45,28 @@ class AdminManagementServiceTest {
     @Mock
     private AuditLogRepository auditLogRepository;
 
+    @Mock
+    private TokenRevocationService tokenRevocationService;
+
     private AdminManagementService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminManagementService(clubRepository, userRepository, new AuditLogService(auditLogRepository));
+        service = new AdminManagementService(clubRepository, userRepository,
+                new AuditLogService(auditLogRepository), tokenRevocationService);
+    }
+
+    @Test
+    void lockOrganizer_locksAccountAndRevokesOutstandingTokens() {
+        var organizerId = UUID.randomUUID();
+        var organizer = User.organizer("entra:org", "organizer@example.com", "Organizer", null);
+        ReflectionTestUtils.setField(organizer, "id", organizerId);
+        when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
+
+        service.lockOrganizer(UUID.randomUUID(), organizerId);
+
+        assertThat(organizer.getStatus()).isEqualTo(UserStatus.LOCKED);
+        verify(tokenRevocationService).revoke(organizerId);
     }
 
     @Test
@@ -171,7 +190,8 @@ class AdminManagementServiceTest {
     @Test
     void statsReturnsTotalsAndZeroFilledRoleBreakdown() {
         var auditLogService = new AuditLogService(auditLogRepository);
-        var service = new AdminManagementService(clubRepository, userRepository, auditLogService);
+        var service = new AdminManagementService(clubRepository, userRepository, auditLogService,
+                tokenRevocationService);
         when(clubRepository.count()).thenReturn(4L);
         when(userRepository.count()).thenReturn(50L);
         when(userRepository.countGroupedByRole()).thenReturn(List.of(

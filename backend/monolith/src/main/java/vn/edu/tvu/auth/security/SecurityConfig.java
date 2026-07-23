@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -94,9 +95,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(RsaKeyManager keyManager, JwtProperties properties) {
+    JwtDecoder jwtDecoder(RsaKeyManager keyManager, JwtProperties properties,
+                          TokenRevocationService tokenRevocationService) {
         var decoder = NimbusJwtDecoder.withPublicKey(keyManager.publicKey()).build();
-        decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(properties.issuer()));
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(properties.issuer()),
+                new RevokedTokenValidator(tokenRevocationService)));
         return decoder;
     }
 

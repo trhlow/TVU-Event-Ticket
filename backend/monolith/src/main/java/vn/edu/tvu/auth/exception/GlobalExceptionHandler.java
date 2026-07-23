@@ -4,6 +4,7 @@ import vn.edu.tvu.shared.web.ErrorResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -76,6 +77,19 @@ public class GlobalExceptionHandler {
                                                              HttpServletRequest request) {
         return build(HttpStatus.CONFLICT, "DATA_INTEGRITY_CONFLICT",
                 "The record is still referenced by other data and cannot be modified", request, null);
+    }
+
+    /**
+     * A concurrent writer moved the row between our read and our write (JPA {@code @Version} mismatch) — e.g.
+     * an admin locking an account while that account is signing in. Losing the race is a transient conflict,
+     * not a server fault: the other transaction's change stands and the client can simply retry against fresh
+     * state. Surfacing 409 is what keeps login from silently reverting a lock.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex,
+                                                              HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+                "The record was modified by another request; please retry", request, null);
     }
 
     @ExceptionHandler(Exception.class)

@@ -1,0 +1,12 @@
+-- Optimistic locking for users.
+--
+-- login() refreshes identity on every sign-in and re-saves the WHOLE user row (updateExisting -> save).
+-- Without a version column, an admin action that commits between login's read and login's write is lost:
+-- the login transaction still holds the pre-lock snapshot and writes status = ACTIVE back over it, silently
+-- unlocking a just-locked account (and still minting a JWT). The same lost-update discards a concurrent
+-- resetOrganizer (ext_subject) or verifyMssv (mssv_status).
+--
+-- A @Version column makes Hibernate add "AND version = ?" to every UPDATE. The transaction that commits
+-- second finds the row already moved and fails with an optimistic-lock error instead of overwriting, so the
+-- admin change wins and login is retried against fresh state.
+ALTER TABLE users ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

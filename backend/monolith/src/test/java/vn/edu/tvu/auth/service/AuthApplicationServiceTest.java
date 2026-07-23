@@ -106,29 +106,69 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void login_rejectsExtSubjectAlreadyLinkedToAnotherAccount() {
+    void login_rejectsEmailAlreadyLinkedToADifferentClaimedIdentity() {
+        // A privileged/claimed account owns this email with a real subject. A brand-new subject presenting
+        // the same email (reissued Entra account) must be refused, not merged over the existing identity.
         var existing = persisted(
-                User.student("dev:old-subject", "student@example.com", "Student"), UUID.randomUUID());
-        when(identityProvider.verify("student@example.com"))
-                .thenReturn(new ExternalIdentity("dev:conflicting-subject", "student@example.com", "Student"));
-        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(existing));
-        when(userRepository.existsByExtSubjectAndIdNot("dev:conflicting-subject", existing.getId()))
-                .thenReturn(true);
+                User.organizer("entra:old-subject", "organizer@example.com", "Organizer", null), UUID.randomUUID());
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("entra:new-subject", "organizer@example.com", "Impostor"));
+        when(userRepository.findByExtSubject("entra:new-subject")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("student@example.com", null)))
+        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("already linked");
+                .hasMessageContaining("already linked to another identity");
+        assertThat(existing.getExtSubject()).isEqualTo("entra:old-subject");
+        assertThat(existing.getRole()).isEqualTo(UserRole.ORGANIZER);
+        assertThat(existing.getDisplayName()).isEqualTo("Organizer");
         verify(userRepository, never()).save(any());
     }
 
     @Test
+    void login_claimsAdminResetOrganizerByEmailWhenSubjectIsAPendingPlaceholder() {
+        var club = new Club("CLB Tin hoc", null);
+        ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
+        var organizer = persisted(
+                User.organizer(User.PENDING_SUBJECT_PREFIX + "organizer@example.com", "organizer@example.com",
+                        "Organizer", club),
+                UUID.randomUUID());
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("entra:new-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubject("entra:new-subject")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(organizer));
+        when(userRepository.save(organizer)).thenReturn(organizer);
+
+        var result = service.login(new LoginRequest("organizer@example.com", null));
+
+        assertThat(result.profile().role()).isEqualTo(UserRole.ORGANIZER);
+        assertThat(organizer.getExtSubject()).isEqualTo("entra:new-subject");
+    }
+
+    @Test
+    void login_matchesReturningUserBySubjectAndNeverFallsBackToEmail() {
+        var userId = UUID.randomUUID();
+        var student = persisted(User.student("entra:stable-subject", "student@example.com", "Student"), userId);
+        when(identityProvider.verify("student@example.com"))
+                .thenReturn(new ExternalIdentity("entra:stable-subject", "student@example.com", "Student Renamed"));
+        when(userRepository.findByExtSubject("entra:stable-subject")).thenReturn(Optional.of(student));
+        when(userRepository.save(student)).thenReturn(student);
+
+        var result = service.login(new LoginRequest("student@example.com", null));
+
+        assertThat(result.profile().id()).isEqualTo(userId);
+        assertThat(student.getDisplayName()).isEqualTo("Student Renamed");
+        verify(userRepository, never()).findByEmail(any());
+    }
+
+    @Test
     void login_rejectsLockedAccount() {
-        var locked = persisted(User.organizer("dev:organizer@example.com", "organizer@example.com", "Organizer", null),
+        var locked = persisted(User.organizer("entra:organizer-subject", "organizer@example.com", "Organizer", null),
                 UUID.randomUUID());
         locked.lock();
         when(identityProvider.verify("organizer@example.com"))
-                .thenReturn(new ExternalIdentity("dev:organizer@example.com", "organizer@example.com", "Organizer"));
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(locked));
+                .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubject("entra:organizer-subject")).thenReturn(Optional.of(locked));
 
         assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
                 .isInstanceOf(ResponseStatusException.class)
@@ -141,11 +181,11 @@ class AuthApplicationServiceTest {
         ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
         club.deactivate();
         var organizer = persisted(
-                User.organizer("dev:organizer@example.com", "organizer@example.com", "Organizer", club),
+                User.organizer("entra:organizer-subject", "organizer@example.com", "Organizer", club),
                 UUID.randomUUID());
         when(identityProvider.verify("organizer@example.com"))
-                .thenReturn(new ExternalIdentity("dev:organizer@example.com", "organizer@example.com", "Organizer"));
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(organizer));
+                .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubject("entra:organizer-subject")).thenReturn(Optional.of(organizer));
 
         assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
                 .isInstanceOf(ResponseStatusException.class)
