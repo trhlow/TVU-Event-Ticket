@@ -6,7 +6,7 @@ on:
       ref:
         description: Commit SHA or branch to deploy
         required: true
-        default: hlow
+        default: main
 
 permissions:
   contents: read
