@@ -55,6 +55,18 @@ is development-only and must never be deployed.
 - `scripts/restore-postgres.sh` requires `--confirm` because it replaces the
   live database.
 
+## Known upgrade risk — migration V7
+
+`V7__foreign_keys_across_features.sql` adds cross-feature foreign keys and
+validates them immediately. Before V7 the schema allowed structural orphans, so
+upgrading a database that already holds pre-V7 rows referencing a missing club,
+event or user will make Flyway fail and the application will not start. This is
+an accepted risk: no environment holds real pre-V7 data yet — every database is
+created fresh through V1→V7. If that ever changes, do **not** edit the immutable
+V7; add a later migration that recreates the constraints as `NOT VALID`, cleans
+or quarantines the orphans, then `VALIDATE CONSTRAINT`, and add an upgrade
+integration test seeded from a V6 fixture containing an orphan.
+
 ## CI/CD
 
 CI treats `monolith` as a first-class module: a change to any imported feature
