@@ -64,6 +64,11 @@ tvu:
       routing-key: reservation.approved
       dead-letter-exchange: tvu.events.notification.dlx
       dead-letter-queue: notification.reservation-approved.dlq
+      retry-queue: notification.reservation-approved.retry
+      # Must exceed idempotency.lock-ttl: a locked delivery is parked here until the lock expires, then
+      # dead-letters back to the main queue for another attempt (see ReservationApprovedListener).
+      retry-delay: PT3M
+      max-retries: 5
   ticket:
     qr:
       secret: ${QR_SIGNING_SECRET:dev-qr-signing-secret-change-me-1234567890}
