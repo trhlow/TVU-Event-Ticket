@@ -14,9 +14,8 @@ import vn.edu.tvu.ticket.repository.ReservationRepository;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.security.CurrentUser;
-import vn.edu.tvu.ticket.security.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.ticket.mapper.ReservationMapper;
-import vn.edu.tvu.ticket.mapper.TicketInventoryMapper;
 
 import tools.jackson.databind.ObjectMapper;
 
@@ -38,6 +37,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -64,6 +66,9 @@ class TicketReservationServiceTest {
     @Mock
     private EventLookup eventLookup;
 
+    @Mock
+    private vn.edu.tvu.shared.audit.AuditRecorder auditRecorder;
+
     private TicketReservationService service;
 
     @BeforeEach
@@ -76,8 +81,8 @@ class TicketReservationServiceTest {
                 ticketCounterService,
                 eventLookup,
                 new ReservationMapper(),
-                new TicketInventoryMapper(),
-                new ObjectMapper());
+                new ObjectMapper(),
+                auditRecorder);
     }
 
     @Test
@@ -102,15 +107,14 @@ class TicketReservationServiceTest {
     }
 
     /**
-     * The inventory row is created lazily by whoever registers first, but {@code findByEventId} followed by
-     * {@code save} is a read-then-write against a UNIQUE constraint on {@code ticket_inventories.event_id}.
-     * When two students hit a brand-new event at the same moment, both find nothing and both insert; the
-     * database rejects the second. That student did nothing wrong — the row they needed now exists — so
-     * they must be re-read into the normal path, not handed a conflict. This is the opening minute of every
-     * new event, not an exotic case.
+     * The inventory row is created lazily by whoever registers first. Creation goes through
+     * {@code insertIfAbsent} ({@code ON CONFLICT DO NOTHING}), so losing the race raises nothing: the insert
+     * is a no-op and the re-read returns the winner's row. This unit test pins the wiring — read, then
+     * conditional insert, then re-read — but it cannot prove the database-level concurrency guarantee itself;
+     * {@code TicketInventoryUpsertConcurrencyTest} does that against a real PostgreSQL.
      */
     @Test
-    void submit_recoversWhenAnotherRequestCreatesTheInventoryFirst() {
+    void submit_readsInsertsThenRereadsWhenInventoryIsMissing() {
         var student = student();
         var eventId = UUID.randomUUID();
         var clubId = UUID.randomUUID();
@@ -119,43 +123,46 @@ class TicketReservationServiceTest {
                 .thenReturn(Optional.empty());
         when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
         when(eventLookup.getOpenEvent(eventId)).thenReturn(event(eventId, clubId, 2));
-        // First lookup finds nothing; the concurrent request commits in between; our insert loses.
+        // First read finds nothing; a concurrent request commits in between; our ON CONFLICT insert is a
+        // no-op (returns 0); the re-read returns the surviving row.
         when(inventoryRepository.findByEventId(eventId))
                 .thenReturn(Optional.empty())
                 .thenReturn(Optional.of(winnersInventory));
-        when(inventoryRepository.save(any(TicketInventory.class)))
-                .thenThrow(new org.springframework.dao.DataIntegrityViolationException(
-                        "duplicate key value violates unique constraint \"ticket_inventories_event_id_key\""));
+        when(inventoryRepository.insertIfAbsent(any(), eq(eventId), eq(clubId), anyInt(), any(), any(), any(), any()))
+                .thenReturn(0);
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation ->
                 persistedReservation(invocation.getArgument(0), UUID.randomUUID()));
 
         var response = service.submit(student, new CreateReservationRequest(eventId, clubId), "idem-1");
 
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
+        verify(inventoryRepository).insertIfAbsent(any(), eq(eventId), eq(clubId), anyInt(), any(), any(), any(), any());
         verify(inventoryRepository, times(2)).findByEventId(eventId);
+        // save() must never be used for inventory again — that was the path that could not catch the race.
+        verify(inventoryRepository, never()).save(any());
     }
 
     /**
-     * The recovery above must not become a blanket swallow. If the insert failed for a reason other than
-     * losing the race — a real constraint or data fault — the re-read finds nothing and the original
-     * exception has to surface. Silently returning a half-built reservation here would be worse than the
-     * bug being fixed.
+     * {@code ON CONFLICT} only absorbs a duplicate event_id. If the row is still absent after the upsert —
+     * which can only mean the insert did nothing for a reason other than the row already existing — the
+     * method must fail loudly rather than continue with no inventory. This is the guard against silently
+     * building a half-formed reservation.
      */
     @Test
-    void submit_propagatesInventoryFailureThatIsNotALostRace() {
+    void submit_failsLoudlyWhenInventoryStillAbsentAfterUpsert() {
         var student = student();
         var eventId = UUID.randomUUID();
         var clubId = UUID.randomUUID();
-        var fault = new org.springframework.dao.DataIntegrityViolationException("null value in column club_id");
         when(reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(eventId, student.userId(), "idem-1"))
                 .thenReturn(Optional.empty());
         when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
         when(eventLookup.getOpenEvent(eventId)).thenReturn(event(eventId, clubId, 2));
         when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.empty());
-        when(inventoryRepository.save(any(TicketInventory.class))).thenThrow(fault);
+        when(inventoryRepository.insertIfAbsent(any(), eq(eventId), eq(clubId), anyInt(), any(), any(), any(), any()))
+                .thenReturn(0);
 
         assertThatThrownBy(() -> service.submit(student, new CreateReservationRequest(eventId, clubId), "idem-1"))
-                .isSameAs(fault);
+                .isInstanceOf(IllegalStateException.class);
 
         verify(reservationRepository, never()).save(any());
     }
@@ -228,8 +235,10 @@ class TicketReservationServiceTest {
                 .thenReturn(Optional.empty());
         when(reservationRepository.existsByEventIdAndStudentId(eventId, student.userId())).thenReturn(false);
         when(eventLookup.getOpenEvent(eventId)).thenReturn(event(eventId, authoritativeClub, 2));
-        when(inventoryRepository.findByEventId(eventId)).thenReturn(Optional.empty());
-        when(inventoryRepository.save(any(TicketInventory.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        // No inventory on first read; the upsert creates it; the re-read returns it with the authoritative club.
+        when(inventoryRepository.findByEventId(eventId))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(persistedInventory(eventId, authoritativeClub, 2)));
         when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation ->
                 persistedReservation(invocation.getArgument(0), UUID.randomUUID()));
 
@@ -262,11 +271,16 @@ class TicketReservationServiceTest {
         assertThat(response.status()).isEqualTo(ReservationStatus.APPROVED);
         assertThat(response.ticketId()).isNotNull();
         assertThat(inventory.getApprovedCount()).isEqualTo(1);
+        // Exactly one outbox row, not two. The audit entry no longer travels through the broker: it is
+        // written directly inside this transaction, so only the notification the outbox actually exists
+        // for is queued. A second row here would mean the audit path had crept back onto RabbitMQ.
         var outboxCaptor = ArgumentCaptor.forClass(OutboxMessage.class);
-        verify(outboxRepository, times(2)).save(outboxCaptor.capture());
+        verify(outboxRepository, times(1)).save(outboxCaptor.capture());
         assertThat(outboxCaptor.getAllValues())
                 .extracting(OutboxMessage::getRoutingKey)
-                .contains("reservation.approved", "audit.ticket.approve");
+                .containsExactly("reservation.approved");
+        verify(auditRecorder).recordAudit(eq(organizer.userId()), eq("audit.ticket.approve"),
+                eq("reservation"), eq(reservation.getId()), anyString());
     }
 
     @Test

@@ -4,14 +4,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "tvu.notification.rabbit")
 public record NotificationRabbitProperties(
-        String exchange,
         String queue,
         String routingKey,
         String deadLetterExchange,
         String deadLetterQueue) {
 
     public NotificationRabbitProperties {
-        require(exchange, "RabbitMQ exchange");
         require(queue, "RabbitMQ queue");
         require(routingKey, "RabbitMQ routing key");
         require(deadLetterExchange, "RabbitMQ dead-letter exchange");

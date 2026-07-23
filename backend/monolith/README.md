@@ -8,5 +8,5 @@ Run the current compact runtime with:
 
 ```bash
 cd backend/infra
-docker compose -f docker-compose.app.yml up -d --build --wait
+docker compose -f docker-compose.monolith.yml up -d --build --wait
 ```

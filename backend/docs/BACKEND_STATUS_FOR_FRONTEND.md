@@ -1,8 +1,15 @@
 # Backend status for frontend integration
 
-Last updated: 2026-07-13
+Last updated: 2026-07-22
 
 This page is the quick frontend-facing view of the backend. Use it before wiring UI screens to live APIs.
+
+> **2026-07-22 — the backend is now a single application.** The five services and the API gateway were
+> merged into one Spring Boot deployable. **Nothing about the URLs the frontend calls has changed** —
+> everything still answers on `http://localhost:8080/api`, with the same paths, cookies and status codes.
+> What changed is that there is one process behind them instead of six. Historical notes further down
+> still name `auth-service`, `ticket-service` and so on; read those as the package that inherited the
+> code (`vn.edu.tvu.auth`, `vn.edu.tvu.ticket`, …), not as something you can deploy or reach separately.
 
 ## Current runtime
 
@@ -10,14 +17,11 @@ This page is the quick frontend-facing view of the backend. Use it before wiring
 | --- | --- |
 | Java | 25 |
 | Spring Boot | 4.0.7 |
-| Spring Cloud | 2025.1.2 |
 | Database | PostgreSQL 18.4 Alpine |
 | Local dependencies | PostgreSQL, Redis, RabbitMQ, Mailpit |
-| Main entry point for frontend | API Gateway |
+| Main entry point for frontend | the application itself, port 8080 |
 
 ## How frontend should call backend
-
-Use the gateway, not individual services:
 
 ```bash
 VITE_API_BASE_URL=http://localhost:8080/api
@@ -25,14 +29,14 @@ VITE_USE_DEMO_DATA=false
 VITE_ENABLE_MOCK_FALLBACK=false
 ```
 
-If local port `8080` is already occupied, run the gateway on another host port and point `VITE_API_BASE_URL`
-there. During the last smoke test the gateway was exposed as `http://localhost:18080/api`.
+If local port `8080` is occupied, map the container to another host port and point `VITE_API_BASE_URL`
+there.
 
 Cookies are enabled. Login sets:
 
 | Cookie | Purpose |
 | --- | --- |
-| `TVU_AUTH` | HTTP-only JWT used by gateway and services |
+| `TVU_AUTH` | HTTP-only JWT |
 | `XSRF-TOKEN` | signed double-submit CSRF token; send the same value as `X-XSRF-TOKEN` on mutating requests |
 
 Frontend requests must keep `credentials: "include"`.
@@ -43,22 +47,20 @@ The shared API client already adds `X-XSRF-TOKEN` for `POST`, `PUT`, `PATCH`, an
 From `backend/`:
 
 ```bash
-docker compose -f infra/docker-compose.app.yml up --build
+docker compose -f infra/docker-compose.monolith.yml up --build
 ```
 
-Default service ports:
+Exposed ports:
 
-| Service | Port | Health |
+| Container | Port | Health |
 | --- | --- | --- |
-| API Gateway | 8080 | `GET /actuator/health` |
-| event-service | 8081 | `GET /actuator/health` |
-| ticket-service | 8082 | `GET /actuator/health` |
-| notification-service | 8083 | `GET /actuator/health` |
-| auth-service | 8084 | `GET /actuator/health` |
+| application | 8080 | `GET /actuator/health` |
+| Mailpit (inbox UI) | 8025 | — |
+| RabbitMQ management | 15672 | — |
 
 ## Available API surface
 
-All paths below are called through the gateway with the `/api` base.
+All paths below are served by the one application on the `/api` base.
 
 ### Auth and profile
 
@@ -114,6 +116,13 @@ Requires role `SUPER_ADMIN`.
 | `PATCH` | `/admin/organizers/{organizerId}/lock` | Ready | Lock organizer. |
 | `POST` | `/admin/organizers/{organizerId}/reset` | Ready | Reset organizer external identity binding. |
 | `DELETE` | `/admin/organizers/{organizerId}` | Ready | Delete organizer. |
+| `GET` | `/admin/clubs/stats` | Ready | Per-club summary for every club: events by status, organizer count, tickets issued/checked in. Paginated. |
+| `GET` | `/admin/clubs/{clubId}/stats` | Ready | One club's detail, plus daily issued/checked-in series for the last 30 days. |
+
+A super-admin is deliberately **read-only** across club scope: these two endpoints and the three aggregate
+slices are all it gets. Every club-scoped action (`/api/events/**`, `/api/reservations/**`,
+`/api/ticketing/**`) answers `403` for `SUPER_ADMIN`, enforced in `SecurityConfig` and again in the
+services. Do not build super-admin UI that acts inside a club.
 
 ### Events
 
@@ -139,7 +148,7 @@ The current frontend adapter supplies display-only defaults for legacy fields su
 | `GET` | `/reservations/pending` | Ready | `ORGANIZER` | Pending reservations for organizer club. |
 | `POST` or `PATCH` | `/reservations/{reservationId}/approve` | Ready | `ORGANIZER` | Approves and atomically reserves a ticket; POST is the master-contract method and PATCH remains compatible. |
 | `POST` or `PATCH` | `/reservations/{reservationId}/reject` | Ready | `ORGANIZER` | Rejects pending reservation; POST is the master-contract method and PATCH remains compatible. |
-| `POST` | `/tickets/inventories` | Ready | `ORGANIZER` or `SUPER_ADMIN` | Initializes ticket inventory for an event. |
+| `POST` | `/tickets/inventories` | **Removed 2026-07-22** | — | Ticket inventory is created lazily on first registration; see the note below. |
 | `GET` | `/ticketing/events/{eventId}/availability` | Ready | Public | Returns total, approved and remaining capacity. |
 | `GET` | `/ticketing/events/availability?ids=...` | Ready | Public | Batch availability for up to 100 events. |
 | `POST` | `/ticketing/check-in` | Ready | `ORGANIZER` | Verifies the signed QR and atomically checks in once. |
@@ -162,15 +171,46 @@ Inventory request:
 }
 ```
 
-## Backend progress by module
+## Backend progress by feature package
 
-| Module | Progress | Frontend impact |
+| Package | Progress | Frontend impact |
 | --- | --- | --- |
-| `api-gateway` | Ready for auth, strict credentialed CORS, JWT cookie auth, signed CSRF, RBAC, rate limiting, and routing. | Frontend can call gateway directly with credentials and the shared API client. |
-| `auth-service` | Ready for dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies. | Login/profile/admin screens can start live integration. |
-| `ticket-service` | Ready for validated reservation, atomic approval, availability, QR check-in and attendee export. | Student registration and organizer ticket workflows can use live APIs. |
-| `event-service` | Event schema, public discovery, organizer CRUD/lifecycle, club scoping, OpenAPI and audit publishing are ready. | Public and organizer event screens can use live APIs. |
-| `notification-service` | Ready: consumes approved reservations, produces ticket-service-compatible signed QR PNGs, sends localized email, deduplicates by outbox message ID, and exposes DLQ metrics. | No frontend endpoint. After an organizer approves a reservation, the existing approval flow asynchronously sends the student's ticket email. Keep status UI based on reservation state, never on email delivery. |
+| `vn.edu.tvu.auth` | Ready for dev login, profile, SUPER_ADMIN club/organizer management, JWT/JWKS, cookies. Also owns the app-wide security config: strict credentialed CORS, JWT cookie auth, signed CSRF, RBAC. | Login/profile/admin screens can use live APIs with credentials and the shared API client. |
+| `vn.edu.tvu.ticket` | Ready for validated reservation, atomic approval, availability, QR check-in and attendee export. | Student registration and organizer ticket workflows can use live APIs. |
+| `vn.edu.tvu.event` | Event schema, public discovery, organizer CRUD/lifecycle, club scoping and OpenAPI are ready. | Public and organizer event screens can use live APIs. |
+| `vn.edu.tvu.notification` | Ready: consumes approved reservations, produces signed QR PNGs the ticket side verifies, sends localized email, deduplicates by outbox message ID, and exposes DLQ metrics. | No frontend endpoint. After an organizer approves a reservation, the approval flow asynchronously sends the student's ticket email. Keep status UI based on reservation state, never on email delivery. |
+| `vn.edu.tvu.monolith` | Composition root. Holds the cross-club statistics endpoints (`/api/admin/clubs/stats`, `/api/admin/clubs/{clubId}/stats`) and the rate-limit filter. | SUPER_ADMIN per-club statistics screens. |
+
+## REMOVED (2026-07-22, on `hlow`): `POST /api/tickets/inventories`
+
+**This is not a behaviour change — the endpoint never once succeeded.** Nothing needs to be fixed
+urgently; there is dead code to delete on the frontend when convenient.
+
+The only caller is `OrganizerEventsPage.tsx`, immediately after creating an event:
+
+```ts
+const created = await eventService.create(data);            // creates a DRAFT event
+await ticketService.initializeInventory(created.id).catch(() => undefined);
+```
+
+`initializeInventory` resolved the event through the **public** lookup, which only returns `OPEN`
+events. A freshly created event is `DRAFT`, so the call returned `404` every time and the
+`.catch(() => undefined)` swallowed it. The toast copy ("Khởi tạo kho vé nếu backend cho phép") had
+already half-noticed.
+
+**Ticket inventory has never needed initialising.** It is created lazily, inside the transaction, by
+whichever student registers first — including the case where two students hit a brand-new event at the
+same moment. So the working path was always the implicit one.
+
+Frontend action, when convenient:
+
+- delete the `ticketService.initializeInventory` call in `OrganizerEventsPage.tsx`
+- delete `initializeInventory` from `frontend/src/services/ticketService.ts`
+- reword the success toast: creating an event is all that is required; drop "Khởi tạo kho vé nếu backend
+  cho phép"
+
+Capacity still comes from the event's own `capacity` field, unchanged. `GET
+/api/ticketing/events/{eventId}/availability` and the batch variant are unaffected.
 
 ## BREAKING CHANGE (2026-07-17, on `hlow`): the attendee endpoint is now paginated
 
@@ -199,7 +239,7 @@ The same pagination envelope and rules apply to `GET /api/admin/audit-log`.
 ## Known gaps for frontend
 
 - Ticket availability, organizer QR check-in, attendee JSON and CSV APIs are available under `/api/ticketing/**`.
-- Notification/email delivery is asynchronous after a successful organizer approval. It has no gateway route and should not be polled from the UI.
+- Notification/email delivery is asynchronous after a successful organizer approval. It exposes no HTTP endpoint and should not be polled from the UI.
 - OpenAPI-based TypeScript generation is planned, but frontend currently still has handwritten service/types.
 - Internal password is not validated in dev auth; `credential` is the source of identity in the dev profile.
 - There is no backend aggregate endpoint for the SUPER_ADMIN overview by design: compose it from the three

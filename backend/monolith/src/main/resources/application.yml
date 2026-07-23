@@ -41,6 +41,10 @@ management:
         include: health,info
 
 tvu:
+  messaging:
+    # One exchange, declared once. The audit path no longer goes through the broker at all — it is a
+    # direct in-process call — so what remains on RabbitMQ is the reservation-approved notification.
+    exchange: tvu.events
   auth:
     jwt:
       issuer: ${JWT_ISSUER_URI:http://localhost:8080}
@@ -56,7 +60,6 @@ tvu:
     qr:
       signing-secret: ${QR_SIGNING_SECRET:dev-qr-signing-secret-change-me-1234567890}
     rabbit:
-      exchange: tvu.events
       queue: notification.reservation-approved
       routing-key: reservation.approved
       dead-letter-exchange: tvu.events.notification.dlx

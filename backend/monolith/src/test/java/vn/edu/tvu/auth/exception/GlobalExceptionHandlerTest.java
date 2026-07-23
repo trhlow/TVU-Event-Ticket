@@ -1,5 +1,7 @@
 package vn.edu.tvu.auth.exception;
 
+import vn.edu.tvu.shared.web.ErrorResponse;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;

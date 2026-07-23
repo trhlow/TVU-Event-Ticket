@@ -1,4 +1,4 @@
-package vn.edu.tvu.ticket.web;
+package vn.edu.tvu.shared.web;
 
 import java.util.Map;
 

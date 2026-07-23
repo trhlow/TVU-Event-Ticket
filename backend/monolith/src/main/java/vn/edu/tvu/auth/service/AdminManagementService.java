@@ -2,7 +2,7 @@ package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
@@ -56,7 +56,7 @@ public class AdminManagementService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Club name already exists");
         }
         var club = clubRepository.save(new Club(name, trimToNull(request.description())));
-        auditLogService.recordLocal(actorId, "auth.club.create", "club", club.getId(),
+        auditLogService.recordAudit(actorId, "auth.club.create", "club", club.getId(),
                 "{\"name\":\"" + club.getName() + "\"}");
         return clubResponse(club);
     }
@@ -73,7 +73,7 @@ public class AdminManagementService {
         var club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.update(request.name().trim(), trimToNull(request.description()));
-        auditLogService.recordLocal(actorId, "auth.club.update", "club", club.getId(),
+        auditLogService.recordAudit(actorId, "auth.club.update", "club", club.getId(),
                 "{\"name\":\"" + club.getName() + "\"}");
         return clubResponse(club);
     }
@@ -83,7 +83,7 @@ public class AdminManagementService {
         var club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.deactivate();
-        auditLogService.recordLocal(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
+        auditLogService.recordAudit(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
     }
 
     @Transactional
@@ -95,7 +95,7 @@ public class AdminManagementService {
         var club = clubRepository.findById(request.clubId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         var organizer = userRepository.save(User.organizer("pending:" + email, email, request.displayName().trim(), club));
-        auditLogService.recordLocal(actorId, "auth.organizer.create", "user", organizer.getId(),
+        auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
                 "{\"email\":\"" + organizer.getEmail() + "\"}");
         return organizerResponse(organizer);
     }
@@ -111,7 +111,7 @@ public class AdminManagementService {
     public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         organizer.lock();
-        auditLogService.recordLocal(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
+        auditLogService.recordAudit(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }
 
@@ -119,7 +119,7 @@ public class AdminManagementService {
     public OrganizerResponse resetOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         organizer.resetExternalSubject("pending:" + organizer.getEmail());
-        auditLogService.recordLocal(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
+        auditLogService.recordAudit(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }
 
@@ -127,7 +127,7 @@ public class AdminManagementService {
     public void deleteOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         userRepository.delete(organizer);
-        auditLogService.recordLocal(actorId, "auth.organizer.delete", "user", organizerId, "{}");
+        auditLogService.recordAudit(actorId, "auth.organizer.delete", "user", organizerId, "{}");
     }
 
     private User organizer(UUID organizerId) {

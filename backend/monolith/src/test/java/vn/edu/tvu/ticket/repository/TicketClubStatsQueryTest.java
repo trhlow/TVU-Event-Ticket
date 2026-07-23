@@ -4,6 +4,7 @@ import vn.edu.tvu.ticket.domain.Reservation;
 import vn.edu.tvu.ticket.domain.Ticket;
 import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.support.AbstractPostgresIntegrationTest;
+import vn.edu.tvu.testsupport.ParentRows;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -87,9 +88,11 @@ class TicketClubStatsQueryTest extends AbstractPostgresIntegrationTest {
      * SQL here rather than by adding a test-only method to the entity or repository.
      */
     private void save(UUID clubId, TicketStatus status, Instant issuedAt, Instant checkedInAt) {
-        var reservation = Reservation.pending(UUID.randomUUID(), clubId, UUID.randomUUID(),
+        var eventId = ParentRows.event(jdbcTemplate, UUID.randomUUID(), clubId, 100);
+        var studentId = ParentRows.user(jdbcTemplate, UUID.randomUUID());
+        var reservation = Reservation.pending(eventId, clubId, studentId,
                 "student@example.com", "110122001", UUID.randomUUID().toString());
-        reservation.approve(UUID.randomUUID());
+        reservation.approve(ParentRows.user(jdbcTemplate, UUID.randomUUID(), null, "ORGANIZER"));
         reservationRepository.saveAndFlush(reservation);
         var ticket = repository.saveAndFlush(Ticket.issue(reservation));
         jdbcTemplate.update("update tickets set status = ?, issued_at = ?, checked_in_at = ? where id = ?",

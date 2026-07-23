@@ -1,5 +1,7 @@
 package vn.edu.tvu.ticket.security;
 
+import vn.edu.tvu.shared.domain.UserRole;
+
 import java.util.List;
 import java.util.UUID;
 

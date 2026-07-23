@@ -1,7 +1,7 @@
 package vn.edu.tvu.auth.repository;
 
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 
 import java.util.Collection;
 import java.util.List;
@@ -31,7 +31,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("""
             select u.club.id as clubId, count(u.id) as total
             from User u
-            where u.club.id in :clubIds and u.role = vn.edu.tvu.auth.domain.UserRole.ORGANIZER
+            where u.club.id in :clubIds and u.role = vn.edu.tvu.shared.domain.UserRole.ORGANIZER
             group by u.club.id
             """)
     List<ClubMemberCount> countOrganizersByClub(@Param("clubIds") Collection<UUID> clubIds);

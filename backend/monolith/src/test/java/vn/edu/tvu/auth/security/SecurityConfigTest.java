@@ -3,7 +3,7 @@ package vn.edu.tvu.auth.security;
 import vn.edu.tvu.auth.controller.AdminController;
 import vn.edu.tvu.auth.controller.AuthController;
 import vn.edu.tvu.auth.controller.WellKnownController;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.service.AdminManagementService;
 import vn.edu.tvu.auth.service.AuditLogService;
 import vn.edu.tvu.auth.service.AuthApplicationService;
@@ -123,7 +123,7 @@ class SecurityConfigTest {
         when(auditLogService.search(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new vn.edu.tvu.auth.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+                .thenReturn(new vn.edu.tvu.shared.web.PageResponse<>(List.of(), 0, 20, 0, 0));
         var token = token(UserRole.SUPER_ADMIN);
 
         mockMvc.perform(get("/api/admin/audit-log")
@@ -167,7 +167,7 @@ class SecurityConfigTest {
                 org.mockito.ArgumentMatchers.eq(java.time.Instant.parse("2026-01-01T00:00:00Z")),
                 org.mockito.ArgumentMatchers.eq(java.time.Instant.parse("2026-02-01T00:00:00Z")),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new vn.edu.tvu.auth.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+                .thenReturn(new vn.edu.tvu.shared.web.PageResponse<>(List.of(), 0, 20, 0, 0));
         var token = token(UserRole.SUPER_ADMIN);
 
         mockMvc.perform(get("/api/admin/audit-log")

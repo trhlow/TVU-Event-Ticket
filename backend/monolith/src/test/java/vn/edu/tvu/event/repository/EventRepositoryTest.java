@@ -7,6 +7,8 @@ import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabas
 import vn.edu.tvu.event.domain.Event;
 import vn.edu.tvu.event.domain.EventStatus;
 import vn.edu.tvu.event.support.AbstractPostgresIntegrationTest;
+import vn.edu.tvu.testsupport.ParentRows;
+
 import java.time.Instant;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -15,11 +17,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 class EventRepositoryTest extends AbstractPostgresIntegrationTest {
     @Autowired EventRepository repository;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    /** V7 constrains events.club_id and events.created_by, so the parents have to exist. */
+    private UUID organizerIn(UUID clubId) {
+        return ParentRows.user(jdbcTemplate, UUID.randomUUID(), clubId, "ORGANIZER");
+    }
 
     @Test
     void scopesByClubAndFindsEventsOpenForRegistration() {
         UUID clubId = UUID.randomUUID();
-        Event event = Event.draft(clubId, UUID.randomUUID(), "Open Day", null, 50,
+        Event event = Event.draft(clubId, organizerIn(clubId), "Open Day", null, 50,
                 Instant.parse("2026-07-01T00:00:00Z"), Instant.parse("2026-07-20T00:00:00Z"),
                 Instant.parse("2026-07-21T00:00:00Z"), Instant.parse("2026-07-21T04:00:00Z"), "TVU");
         event.open();
@@ -34,10 +42,12 @@ class EventRepositoryTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void repositoryGroupsCountsByStatus() {
-        Event draft = Event.draft(UUID.randomUUID(), UUID.randomUUID(), "Draft Event", null, 10,
+        UUID draftClub = ParentRows.club(jdbcTemplate, UUID.randomUUID());
+        Event draft = Event.draft(draftClub, organizerIn(draftClub), "Draft Event", null, 10,
                 Instant.parse("2026-08-01T00:00:00Z"), Instant.parse("2026-08-10T00:00:00Z"),
                 Instant.parse("2026-08-11T00:00:00Z"), Instant.parse("2026-08-11T04:00:00Z"), "TVU");
-        Event open = Event.draft(UUID.randomUUID(), UUID.randomUUID(), "Open Event", null, 20,
+        UUID openClub = ParentRows.club(jdbcTemplate, UUID.randomUUID());
+        Event open = Event.draft(openClub, organizerIn(openClub), "Open Event", null, 20,
                 Instant.parse("2026-08-01T00:00:00Z"), Instant.parse("2026-08-10T00:00:00Z"),
                 Instant.parse("2026-08-11T00:00:00Z"), Instant.parse("2026-08-11T04:00:00Z"), "TVU");
         open.open();

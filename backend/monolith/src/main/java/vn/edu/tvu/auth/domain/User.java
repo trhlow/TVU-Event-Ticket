@@ -1,5 +1,7 @@
 package vn.edu.tvu.auth.domain;
 
+import vn.edu.tvu.shared.domain.UserRole;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

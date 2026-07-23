@@ -7,10 +7,10 @@ description: Quy tắc phát triển backend — commands, git conventions, ngô
 ## Commands (chạy từ `backend/`)
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d   # Postgres, Redis, RabbitMQ cho dev
-mvn clean install                                   # build toàn reactor
-mvn -pl ticket-service -am spring-boot:run          # chạy 1 service (profile dev)
-mvn -pl ticket-service test -Dtest=SomeTest         # chạy 1 test class
+docker compose -f infra/docker-compose.monolith.yml up -d   # Postgres, Redis, RabbitMQ, Mailpit + app
+mvn clean install                                           # build toàn reactor
+mvn -pl monolith -am spring-boot:run                        # chạy app (profile dev,monolith)
+mvn -pl monolith test -Dtest=SomeTest                       # chạy 1 test class
 ```
 
 ## Ngôn ngữ

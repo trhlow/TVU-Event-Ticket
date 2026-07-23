@@ -1,5 +1,6 @@
 package vn.edu.tvu.ticket.messaging;
 
+import vn.edu.tvu.shared.messaging.MessagingProperties;
 import vn.edu.tvu.ticket.domain.OutboxMessage;
 
 import java.nio.charset.StandardCharsets;
@@ -17,12 +18,15 @@ public class ConfirmedRabbitPublisher {
 
     private final RabbitTemplate rabbitTemplate;
     private final long confirmTimeoutMillis;
+    private final String exchange;
 
     public ConfirmedRabbitPublisher(
             RabbitTemplate rabbitTemplate,
-            @Value("${tvu.ticket.outbox.confirm-timeout:5000}") long confirmTimeoutMillis) {
+            @Value("${tvu.ticket.outbox.confirm-timeout:5000}") long confirmTimeoutMillis,
+            MessagingProperties messaging) {
         this.rabbitTemplate = rabbitTemplate;
         this.confirmTimeoutMillis = confirmTimeoutMillis;
+        this.exchange = messaging.exchange();
     }
 
     public void publish(OutboxMessage message) {
@@ -36,7 +40,7 @@ public class ConfirmedRabbitPublisher {
                 .build();
         var amqpMessage = new Message(message.getPayload().getBytes(StandardCharsets.UTF_8), properties);
         rabbitTemplate.invoke(operations -> {
-            operations.send(TicketRabbitConfig.EXCHANGE, message.getRoutingKey(), amqpMessage);
+            operations.send(exchange, message.getRoutingKey(), amqpMessage);
             operations.waitForConfirmsOrDie(confirmTimeoutMillis);
             return null;
         });

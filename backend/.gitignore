@@ -37,5 +37,12 @@ application-local.yaml
 Thumbs.db
 
 # ---- GitNexus local index (graph DB + parse cache) ----
-# Regenerate with: npx gitnexus analyze . --skip-git --name TVU-Event-Ticket-backend  (run from backend/)
+# The repository is indexed once from its root as TVU-Event-Ticket; there is no separate backend index.
+# This entry only guards against a stray index created by running analyze from inside backend/.
 .gitnexus/
+
+# ---- Eclipse / VSCode-Java per-machine metadata ----
+# org.eclipse.jdt.core.prefs is committed on purpose (it narrows the null analysis; see that file's header).
+# The rest of .settings/ is IDE-generated and personal.
+.settings/org.eclipse.core.resources.prefs
+.settings/org.eclipse.m2e.core.prefs

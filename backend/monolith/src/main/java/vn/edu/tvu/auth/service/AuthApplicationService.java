@@ -2,7 +2,7 @@ package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.config.BootstrapAdminProperties;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;

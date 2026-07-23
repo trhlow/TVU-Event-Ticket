@@ -3,6 +3,8 @@ package vn.edu.tvu.event.repository;
 import vn.edu.tvu.event.domain.EventStatus;
 import vn.edu.tvu.event.support.AbstractPostgresIntegrationTest;
 
+import vn.edu.tvu.testsupport.ParentRows;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -47,6 +49,7 @@ class EventClubStatsQueryTest extends AbstractPostgresIntegrationTest {
     }
 
     private void insert(UUID clubId, EventStatus status) {
+        ParentRows.club(jdbcTemplate, clubId);
         jdbcTemplate.update("""
                 INSERT INTO events (id, club_id, title, description, capacity,
                                     reg_open_at, reg_close_at, start_at, end_at, location,
@@ -54,6 +57,7 @@ class EventClubStatsQueryTest extends AbstractPostgresIntegrationTest {
                 VALUES (?, ?, 'Test event', '', 100,
                         now() - interval '2 day', now() - interval '1 day', now() + interval '1 day', now() + interval '2 day', 'Hall',
                         ?, ?, now(), now())
-                """, UUID.randomUUID(), clubId, status.name(), UUID.randomUUID());
+                """, UUID.randomUUID(), clubId, status.name(),
+                ParentRows.user(jdbcTemplate, UUID.randomUUID(), clubId, "ORGANIZER"));
     }
 }

@@ -1,6 +1,6 @@
 package vn.edu.tvu.auth.security;
 
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 
 import java.util.UUID;
 

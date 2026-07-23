@@ -1,4 +1,4 @@
-package vn.edu.tvu.notification.messaging;
+package vn.edu.tvu.shared.messaging;
 
 import java.util.UUID;
 

@@ -15,7 +15,14 @@
 
 ## GitNexus — Code Intelligence
 
-Indexed as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships). **Always run impact analysis before editing** (`impact({target: "symbolName", direction: "upstream"})`) and **detect_changes() before commit** to verify scope.
+There is **one** index, `TVU-Event-Ticket`, covering the whole repository from its root — backend and
+frontend together. A separate `TVU-Event-Ticket-backend` index used to live in `backend/.gitnexus/`; it was
+deleted on 2026-07-22 because `backend/` is not a git root, so it could never be refreshed and went on
+answering with paths from the retired five-service layout (`ticket-service/src/...`) long after the
+monolith migration. If a GitNexus answer names a service directory, the index is wrong, not the code.
+
+**Always run impact analysis before editing** (`impact({target: "symbolName", direction: "upstream"})`)
+and **`detect_changes()` before commit** to verify scope.
 
 **Skills (use when needed):**
 - **Understand code:** `/gitnexus-exploring`
@@ -24,7 +31,8 @@ Indexed as **TVU-Event-Ticket-backend** (101 symbols, 94 relationships). **Alway
 - **Refactor/rename:** `/gitnexus-refactoring`
 - **Index/status:** `/gitnexus-cli`
 
-**Stale index?** Run `node .gitnexus/run.cjs analyze` from project root (or `npx gitnexus analyze` if missing).
+**Stale index?** Run `node .gitnexus/run.cjs analyze` from the repository root. If it fails with
+`FTS index ... is inconsistent`, run `node .gitnexus/run.cjs analyze --repair-fts` first, then re-run.
 
 ## Commit Message Convention
 

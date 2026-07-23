@@ -1,7 +1,7 @@
 package vn.edu.tvu.monolith.stats;
 
-import vn.edu.tvu.ticket.dto.response.PageResponse;
-import vn.edu.tvu.ticket.web.PageableFactory;
+import vn.edu.tvu.shared.web.PageResponse;
+import vn.edu.tvu.shared.web.PageableFactory;
 
 import java.util.Map;
 import java.util.UUID;

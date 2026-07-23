@@ -123,7 +123,7 @@ class TicketControllerSecurityTest {
     void organizerCanCheckInAndReadAttendeesWithClubClaim() throws Exception {
         var eventId = UUID.randomUUID();
         when(ticketingService.attendees(any(), any(), any(), any(), any()))
-                .thenReturn(new vn.edu.tvu.ticket.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+                .thenReturn(new vn.edu.tvu.shared.web.PageResponse<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(post("/api/ticketing/check-in")
                         .with(organizerJwt())
@@ -141,7 +141,7 @@ class TicketControllerSecurityTest {
     void attendeesRejectsOversizedPageAndUnknownSortField() throws Exception {
         var eventId = UUID.randomUUID();
         when(ticketingService.attendees(any(), any(), any(), any(), any()))
-                .thenReturn(new vn.edu.tvu.ticket.dto.response.PageResponse<>(List.of(), 0, 20, 0, 0));
+                .thenReturn(new vn.edu.tvu.shared.web.PageResponse<>(List.of(), 0, 20, 0, 0));
 
         mockMvc.perform(get("/api/ticketing/events/{eventId}/attendees", eventId)
                         .param("size", "101")

@@ -2,7 +2,7 @@ package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.AuditLog;
 import vn.edu.tvu.auth.domain.Club;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.repository.AuditLogRepository;

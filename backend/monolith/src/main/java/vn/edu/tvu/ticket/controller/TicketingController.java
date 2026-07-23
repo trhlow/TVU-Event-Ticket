@@ -6,12 +6,12 @@ import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
 import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
 import vn.edu.tvu.ticket.dto.response.ClubDashboardResponse;
 import vn.edu.tvu.ticket.dto.response.EventDashboardResponse;
-import vn.edu.tvu.ticket.dto.response.PageResponse;
+import vn.edu.tvu.shared.web.PageResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.service.DashboardService;
 import vn.edu.tvu.ticket.service.TicketingService;
-import vn.edu.tvu.ticket.web.PageableFactory;
+import vn.edu.tvu.shared.web.PageableFactory;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

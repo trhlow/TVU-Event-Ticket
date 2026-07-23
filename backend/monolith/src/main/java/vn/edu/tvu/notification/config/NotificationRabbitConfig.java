@@ -7,6 +7,8 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
+import vn.edu.tvu.shared.messaging.MessagingProperties;
+
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,19 +19,23 @@ import org.springframework.context.annotation.Configuration;
         NotificationRabbitProperties.class,
         NotificationQrProperties.class,
         NotificationMailProperties.class,
-        NotificationIdempotencyProperties.class
+        NotificationIdempotencyProperties.class,
+        MessagingProperties.class
 })
 public class NotificationRabbitConfig {
 
     private final NotificationRabbitProperties properties;
+    private final MessagingProperties messaging;
 
-    public NotificationRabbitConfig(NotificationRabbitProperties properties) {
+    public NotificationRabbitConfig(NotificationRabbitProperties properties, MessagingProperties messaging) {
         this.properties = properties;
+        this.messaging = messaging;
     }
 
+    /** The single {@code tvu.events} exchange. Every feature that publishes or binds uses this bean. */
     @Bean
-    TopicExchange notificationEventsExchange() {
-        return new TopicExchange(properties.exchange(), true, false);
+    TopicExchange tvuEventsExchange() {
+        return new TopicExchange(messaging.exchange(), true, false);
     }
 
     @Bean
@@ -51,9 +57,9 @@ public class NotificationRabbitConfig {
     }
 
     @Bean
-    Binding notificationBinding(Queue notificationQueue, TopicExchange notificationEventsExchange) {
+    Binding notificationBinding(Queue notificationQueue, TopicExchange tvuEventsExchange) {
         return BindingBuilder.bind(notificationQueue)
-                .to(notificationEventsExchange)
+                .to(tvuEventsExchange)
                 .with(properties.routingKey());
     }
 

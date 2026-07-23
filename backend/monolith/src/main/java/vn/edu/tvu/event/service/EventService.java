@@ -8,7 +8,7 @@ import vn.edu.tvu.event.dto.response.EventResponse;
 import vn.edu.tvu.event.dto.response.EventStatsResponse;
 import vn.edu.tvu.event.exception.*;
 import vn.edu.tvu.event.mapper.EventMapper;
-import vn.edu.tvu.event.messaging.EventAuditPublisher;
+import vn.edu.tvu.shared.audit.AuditRecorder;
 import vn.edu.tvu.event.repository.EventRepository;
 import vn.edu.tvu.event.security.CurrentUser;
 import java.time.Clock;
@@ -23,13 +23,13 @@ import java.util.UUID;
 public class EventService {
     private final EventRepository repository;
     private final EventMapper mapper;
-    private final EventAuditPublisher auditPublisher;
+    private final AuditRecorder auditRecorder;
     private final Clock clock;
 
-    public EventService(EventRepository repository, EventMapper mapper, EventAuditPublisher auditPublisher, Clock clock) {
+    public EventService(EventRepository repository, EventMapper mapper, AuditRecorder auditRecorder, Clock clock) {
         this.repository = repository;
         this.mapper = mapper;
-        this.auditPublisher = auditPublisher;
+        this.auditRecorder = auditRecorder;
         this.clock = clock;
     }
 
@@ -41,7 +41,7 @@ public class EventService {
                 request.capacity(), request.registrationOpenAt(), request.registrationCloseAt(),
                 request.startAt(), request.endAt(), request.location());
         repository.save(event);
-        auditPublisher.publish(user.id(), event.getId(), "CREATED", event.getTitle());
+        auditRecorder.recordAudit(user.id(), "CREATED", "EVENT", event.getId(), event.getTitle());
         return mapper.toResponse(event);
     }
 
@@ -55,7 +55,7 @@ public class EventService {
         event.updateDetails(request.title(), request.description(), request.capacity(),
                 request.registrationOpenAt(), request.registrationCloseAt(), request.startAt(),
                 request.endAt(), request.location());
-        auditPublisher.publish(user.id(), event.getId(), "UPDATED", event.getTitle());
+        auditRecorder.recordAudit(user.id(), "UPDATED", "EVENT", event.getId(), event.getTitle());
         return mapper.toResponse(event);
     }
 
@@ -65,7 +65,7 @@ public class EventService {
         if (event.getStatus() == EventStatus.DRAFT && target == EventStatus.OPEN) event.open();
         else if (event.getStatus() == EventStatus.OPEN && target == EventStatus.CLOSED) event.close();
         else throw new EventConflictException("Invalid event status transition");
-        auditPublisher.publish(user.id(), event.getId(), "STATUS_CHANGED", target.name());
+        auditRecorder.recordAudit(user.id(), "STATUS_CHANGED", "EVENT", event.getId(), target.name());
         return mapper.toResponse(event);
     }
 
@@ -76,7 +76,7 @@ public class EventService {
             throw new EventConflictException("Only draft events can be deleted");
         }
         repository.delete(event);
-        auditPublisher.publish(user.id(), event.getId(), "DELETED", event.getTitle());
+        auditRecorder.recordAudit(user.id(), "DELETED", "EVENT", event.getId(), event.getTitle());
     }
 
     public List<EventResponse> listOwned(CurrentUser user) {

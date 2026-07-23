@@ -8,9 +8,14 @@ Frontend integration status is summarized in
 
 ## Conventions
 
-- **Layer-based packages** inside each feature: `controller → service (+ impl/) → repository → domain`,
-  with `dto/{request,response}`, `mapper` (MapStruct), `config`, `security`, `exception`. The main
-  `@SpringBootApplication` class sits in the root package so component scan covers only `vn.edu.tvu.*`.
+- **Layer-based packages** inside each feature (`auth`, `event`, `ticket`, `notification`):
+  `controller → service (+ impl/) → repository → domain`, with `dto/{request,response}`, `mapper`
+  (MapStruct), `config`, `security`, `exception`. `MonolithApplication` scans only `vn.edu.tvu.monolith`
+  and pulls each feature in through its `*FeatureConfiguration`.
+- **Two packages sit outside the features.** `vn.edu.tvu.shared` holds beanless types more than one
+  feature needs (`web.ErrorResponse`, `web.PageResponse`, `web.PageableFactory`, `domain.UserRole`,
+  `audit.AuditRecorder`, `messaging.*`); `vn.edu.tvu.monolith` is the composition root and the only place
+  allowed to depend on two features at once.
 - **Flyway** owns the DB schema (`src/main/resources/db/migration/Vn__*.sql`); Hibernate is `ddl-auto: validate`.
   Migration files are immutable once applied — add a new version, never edit a shipped one.
 - **Profiles**: `application.yml` holds common config (default profile `dev`); `application-dev.yml` uses
@@ -25,7 +30,7 @@ Frontend integration status is summarized in
 | `monolith` | 8080 | Auth/RBAC, event lifecycle, reservations, tickets, analytics, outbox and notification consumer |
 | PostgreSQL | 5432 | Single `tvu_app` schema managed by Flyway |
 | Redis | 6379 | Capacity counter and notification idempotency |
-| RabbitMQ | 5672 / 15672 | Durable outbox-to-notification boundary |
+| RabbitMQ | 5672 / 15672 | Durable outbox-to-notification boundary — carries `reservation.approved` only; audit is a direct in-process call |
 | Mailpit | 8025 | Local mail inbox |
 
 ## Run locally
@@ -33,7 +38,7 @@ Frontend integration status is summarized in
 Run the complete local application (one Spring Boot JVM plus supporting infrastructure):
 
 ```bash
-docker compose -f infra/docker-compose.app.yml up -d --build --wait
+docker compose -f infra/docker-compose.monolith.yml up -d --build --wait
 ```
 
 `--wait` returns only after the monolith and dependencies pass healthchecks. The API is exposed at
@@ -73,7 +78,17 @@ mvn -pl monolith -am test -Dtest=TicketReservationServiceTest
 
 - The atomic ticket deduction happens at **organizer approval time**, not at student submit (§6.3, §6.11).
 - The implemented APIs cover auth/profile/admin management, event CRUD/lifecycle, reservations, ticket
-  inventory, signed QR check-in, notification email, club/admin analytics and attendee/audit-log queries.
+  inventory, signed QR check-in, notification email, club/admin analytics and attendee/audit-log queries,
+  plus read-only per-club statistics for super-admin (`/api/admin/clubs/stats`,
+  `/api/admin/clubs/{clubId}/stats`, backed by the indexes in `V5`/`V6`).
+- **Super-admin is read-only across club scope by design.** It administers club and organizer accounts and
+  reads aggregates; every club-scoped route answers `403`. Enforced in `SecurityConfig` and again in the
+  services.
+- **Audit is written in-process and transactionally** through `shared.audit.AuditRecorder`, not published
+  to RabbitMQ. The broker carries `reservation.approved` and nothing else.
+- **`V7` adds the foreign keys** that the old database-per-service split had made impossible. No
+  `ON DELETE` behaviour is declared: deleting a referenced row fails loudly rather than cascading away
+  ticket history.
 - The frontend currently uses handwritten API types; OpenAPI-based TypeScript generation remains a follow-up.
 - The manual approval-capacity load test is in [load-test/](load-test/README.md); it is intentionally
   not part of CI.

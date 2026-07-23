@@ -9,9 +9,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationRabbitConfigTest {
 
     private final NotificationRabbitProperties properties = new NotificationRabbitProperties(
-            "tvu.events", "notification.reservation-approved", "reservation.approved",
+            "notification.reservation-approved", "reservation.approved",
             "tvu.events.notification.dlx", "notification.reservation-approved.dlq");
-    private final NotificationRabbitConfig config = new NotificationRabbitConfig(properties);
+    private final NotificationRabbitConfig config = new NotificationRabbitConfig(properties,
+            new vn.edu.tvu.shared.messaging.MessagingProperties("tvu.events"));
 
     @Test
     void declaresDurableMainQueueWithDeadLetterRouting() {

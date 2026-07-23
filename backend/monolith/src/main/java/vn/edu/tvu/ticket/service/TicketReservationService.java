@@ -8,19 +8,16 @@ import vn.edu.tvu.ticket.domain.ReservationStatus;
 import vn.edu.tvu.ticket.domain.Ticket;
 import vn.edu.tvu.ticket.domain.TicketInventory;
 import vn.edu.tvu.ticket.dto.request.CreateReservationRequest;
-import vn.edu.tvu.ticket.dto.request.InitializeTicketInventoryRequest;
 import vn.edu.tvu.ticket.dto.response.ReservationResponse;
-import vn.edu.tvu.ticket.dto.response.TicketInventoryResponse;
-import vn.edu.tvu.ticket.messaging.AuditEventMessage;
-import vn.edu.tvu.ticket.messaging.ReservationApprovedMessage;
+import vn.edu.tvu.shared.audit.AuditRecorder;
+import vn.edu.tvu.shared.messaging.ReservationApprovedMessage;
 import vn.edu.tvu.ticket.mapper.ReservationMapper;
-import vn.edu.tvu.ticket.mapper.TicketInventoryMapper;
 import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
 import vn.edu.tvu.ticket.repository.ReservationRepository;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.security.CurrentUser;
-import vn.edu.tvu.ticket.security.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -31,7 +28,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,8 +45,8 @@ public class TicketReservationService {
     private final TicketCounterService ticketCounterService;
     private final EventLookup eventLookup;
     private final ReservationMapper reservationMapper;
-    private final TicketInventoryMapper inventoryMapper;
     private final ObjectMapper objectMapper;
+    private final AuditRecorder auditRecorder;
 
     public TicketReservationService(
             ReservationRepository reservationRepository,
@@ -60,8 +56,8 @@ public class TicketReservationService {
             TicketCounterService ticketCounterService,
             EventLookup eventLookup,
             ReservationMapper reservationMapper,
-            TicketInventoryMapper inventoryMapper,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            AuditRecorder auditRecorder) {
         this.reservationRepository = reservationRepository;
         this.ticketRepository = ticketRepository;
         this.inventoryRepository = inventoryRepository;
@@ -69,25 +65,8 @@ public class TicketReservationService {
         this.ticketCounterService = ticketCounterService;
         this.eventLookup = eventLookup;
         this.reservationMapper = reservationMapper;
-        this.inventoryMapper = inventoryMapper;
         this.objectMapper = objectMapper;
-    }
-
-    @Transactional
-    public TicketInventoryResponse initializeInventory(CurrentUser actor, InitializeTicketInventoryRequest request) {
-        requireOrganizerOrAdmin(actor);
-        var event = eventLookup.getOpenEvent(request.eventId());
-        requireClubScope(actor, event.clubId(), "Inventory is outside organizer club scope");
-        if (inventoryRepository.existsByEventId(request.eventId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ticket inventory already exists");
-        }
-
-        var inventory = TicketInventory.create(
-                event.id(), event.clubId(), event.capacity(), event.title(), event.startAt(), event.endAt(),
-                event.location());
-        var saved = inventoryRepository.save(inventory);
-        ticketCounterService.seedIfMissing(saved.getEventId(), saved.getTotalCapacity());
-        return inventoryMapper.toResponse(saved);
+        this.auditRecorder = auditRecorder;
     }
 
     @Transactional
@@ -225,8 +204,7 @@ public class TicketReservationService {
     }
 
     private void recordAudit(UUID actorId, String action, String targetType, UUID targetId, String detail) {
-        var message = new AuditEventMessage(actorId, action, targetType, targetId, detail, Instant.now().toString());
-        outboxRepository.save(OutboxMessage.pending("audit", targetId, action, json(message)));
+        auditRecorder.recordAudit(actorId, action, targetType, targetId, detail);
     }
 
     private ReservationResponse reservationResponse(Reservation reservation, UUID ticketId) {
@@ -242,26 +220,22 @@ public class TicketReservationService {
     }
 
     /**
-     * The inventory row is created lazily by whichever student registers first. That makes this a
-     * read-then-write against the UNIQUE constraint on {@code ticket_inventories.event_id}: when two
-     * students hit a brand-new event simultaneously, both see nothing and both insert, and the database
-     * rejects the loser. The loser's request is perfectly valid — the row they needed exists now — so the
-     * violation is absorbed and the committed row is re-read, rather than surfacing as a conflict that
-     * blames the student. Anything other than a lost insert (a genuinely missing row) still fails loudly.
+     * The inventory row is created lazily by whichever student registers first. Two students hitting a
+     * brand-new event at the same moment both find nothing, so the creation has to be safe under that race.
+     * {@link TicketInventoryRepository#insertIfAbsent} does it in the database with
+     * {@code ON CONFLICT DO NOTHING}: it never raises a violation and never aborts the transaction, so the
+     * re-read below always returns the surviving row — ours or the winner's. See that method for why the
+     * previous {@code save()}-and-catch could not work.
      */
     private TicketInventory findOrCreateInventory(EventSnapshot event) {
         var existing = inventoryRepository.findByEventId(event.id());
         if (existing.isPresent()) {
             return existing.get();
         }
-        try {
-            return inventoryRepository.save(TicketInventory.create(
-                    event.id(), event.clubId(), event.capacity(), event.title(), event.startAt(),
-                    event.endAt(), event.location()));
-        } catch (DataIntegrityViolationException lostTheRace) {
-            return inventoryRepository.findByEventId(event.id())
-                    .orElseThrow(() -> lostTheRace);
-        }
+        inventoryRepository.insertIfAbsent(UUID.randomUUID(), event.id(), event.clubId(), event.capacity(),
+                event.title(), event.startAt(), event.endAt(), event.location());
+        return inventoryRepository.findByEventId(event.id()).orElseThrow(() -> new IllegalStateException(
+                "Ticket inventory missing immediately after upsert for event " + event.id()));
     }
 
     private void validateRegistrationWindow(EventSnapshot event) {

@@ -6,10 +6,10 @@ import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
 import vn.edu.tvu.auth.dto.response.AuditLogResponse;
 import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
-import vn.edu.tvu.auth.dto.response.PageResponse;
+import vn.edu.tvu.shared.web.PageResponse;
 import vn.edu.tvu.auth.service.AdminManagementService;
 import vn.edu.tvu.auth.service.AuditLogService;
-import vn.edu.tvu.auth.web.PageableFactory;
+import vn.edu.tvu.shared.web.PageableFactory;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;

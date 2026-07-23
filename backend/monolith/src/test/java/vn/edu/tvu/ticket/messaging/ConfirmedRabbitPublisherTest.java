@@ -30,7 +30,8 @@ class ConfirmedRabbitPublisherTest {
             RabbitOperations.OperationsCallback<?> callback = invocation.getArgument(0);
             return callback.doInRabbit(operations);
         });
-        var publisher = new ConfirmedRabbitPublisher(template, 3210);
+        var publisher = new ConfirmedRabbitPublisher(template, 3210,
+                new vn.edu.tvu.shared.messaging.MessagingProperties("tvu.events"));
         var outbox = OutboxMessage.pending("reservation", UUID.randomUUID(), "reservation.approved",
                 "{\"eventId\":\"abc\"}");
 
@@ -40,7 +41,7 @@ class ConfirmedRabbitPublisherTest {
         // the latter would run the already-serialized JSON payload through the MessageConverter a second
         // time and double-encode it into a quoted JSON string the consumer cannot deserialize.
         var messageCaptor = ArgumentCaptor.forClass(Message.class);
-        verify(operations).send(eq(TicketRabbitConfig.EXCHANGE), eq("reservation.approved"), messageCaptor.capture());
+        verify(operations).send(eq("tvu.events"), eq("reservation.approved"), messageCaptor.capture());
         verify(operations).waitForConfirmsOrDie(3210);
 
         var message = messageCaptor.getValue();

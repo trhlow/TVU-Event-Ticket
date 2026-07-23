@@ -1,6 +1,9 @@
 package vn.edu.tvu.auth.exception;
 
+import vn.edu.tvu.shared.web.ErrorResponse;
+
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,10 +19,6 @@ import org.slf4j.LoggerFactory;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Sample advice turning exceptions into a consistent {@link ErrorResponse} body. Intentionally
- * duplicated per service (no shared jar); each service extends it with its own domain exceptions.
- */
 /**
  * Scoped to this feature's controllers. Every feature advice in this monolith declares a catch-all
  * {@code @ExceptionHandler(Exception.class)}; leaving them unscoped makes whichever one is registered
@@ -64,6 +63,19 @@ public class GlobalExceptionHandler {
                                                               HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
                 "Invalid value for parameter '" + ex.getName() + "'", request, null);
+    }
+
+    /**
+     * A structural foreign key (V7) refused a delete — e.g. removing a student who still has reservations
+     * or tickets. That is a conflict with existing data, not a server fault, so it must not fall through to
+     * the 500 below. Actor references (events.created_by, reservations.reviewed_by) are intentionally
+     * unconstrained, so deleting an organizer does not reach here.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex,
+                                                             HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "DATA_INTEGRITY_CONFLICT",
+                "The record is still referenced by other data and cannot be modified", request, null);
     }
 
     @ExceptionHandler(Exception.class)

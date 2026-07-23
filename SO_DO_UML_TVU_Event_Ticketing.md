@@ -79,7 +79,7 @@ flowchart TD
     I -- "Không" --> I1["Trả lỗi 409 Hết vé, Reservation vẫn PENDING"] --> END1
     I -- "Có" --> J["Transaction DB: Reservation=APPROVED, tạo Ticket=VALID, ghi Outbox"]
     J --> K["Relay publish message lên RabbitMQ"]
-    K --> L["Notification-Service sinh mã QR (HMAC), gửi email vé"]
+    K --> L["Gói notification sinh mã QR (HMAC), gửi email vé"]
     L --> M["Sinh viên nhận vé điện tử"]
     M --> N["Sinh viên đến sự kiện, Organizer quét mã QR"]
     N --> O{"Chữ ký hợp lệ và vé còn VALID?"}
@@ -131,11 +131,16 @@ classDiagram
     class Ticket {
         +UUID ticket_id
         +UUID reservation_id
-        +String qr_signature
+        +UUID event_id
+        +UUID student_id
         +TicketStatus status
         +DateTime issued_at
+        +DateTime checked_in_at
         +checkIn()
     }
+    note for Ticket "Chữ ký QR không được lưu: payload được ký HMAC-SHA256 lúc gửi email và xác minh lại lúc check-in."
+    note for User "profile_complete là thuộc tính dẫn xuất (true khi có mssv), không phải cột trong CSDL."
+
     class OutboxMessage {
         +UUID message_id
         +UUID aggregate_id
@@ -196,13 +201,12 @@ classDiagram
 sequenceDiagram
     actor SV as Sinh viên
     participant FE as Frontend
-    participant GW as API Gateway
-    participant TS as Ticket-Service
-    participant DB as PostgreSQL (tvu_ticket)
+    participant TS as Monolith — gói ticket
+    participant DB as PostgreSQL (tvu_app)
 
     SV->>FE: Chọn sự kiện, bấm "Đăng ký"
-    FE->>GW: POST /api/reservations (Idempotency-Key)
-    GW->>TS: forward request + xác thực JWT
+    FE->>TS: POST /api/reservations (cookie JWT + Idempotency-Key)
+    TS->>TS: SecurityConfig xác thực JWT và vai trò SINH_VIEN
     TS->>DB: Kiểm tra profile_complete và UNIQUE(event_id, student_id)
     alt Hồ sơ chưa hoàn thiện
         TS-->>FE: 400 Yêu cầu hoàn thiện hồ sơ
@@ -222,11 +226,11 @@ sequenceDiagram
 sequenceDiagram
     actor BTC as Ban tổ chức
     participant FE as Frontend
-    participant TS as Ticket-Service
+    participant TS as Monolith — gói ticket
     participant R as Redis
-    participant DB as PostgreSQL (tvu_ticket)
+    participant DB as PostgreSQL (tvu_app)
     participant MQ as RabbitMQ
-    participant NS as Notification-Service
+    participant NS as Monolith — gói notification
     actor SVN as Sinh viên (email)
 
     BTC->>FE: Bấm "Duyệt" đăng ký
@@ -257,8 +261,8 @@ sequenceDiagram
 sequenceDiagram
     actor BTC as Ban tổ chức
     participant FE as Frontend (camera)
-    participant TS as Ticket-Service
-    participant DB as PostgreSQL (tvu_ticket)
+    participant TS as Monolith — gói ticket
+    participant DB as PostgreSQL (tvu_app)
 
     BTC->>FE: Quét mã QR của sinh viên
     FE->>TS: POST /api/tickets/checkin (payload đã ký)
@@ -362,7 +366,10 @@ erDiagram
     USER ||--o{ RESERVATION : "gửi"
     EVENT ||--o{ RESERVATION : "nhận"
     RESERVATION ||--o| TICKET : "phát hành"
-    TICKET ||--o| OUTBOX_MESSAGE : "sinh ra"
+    EVENT ||--|| TICKET_INVENTORY : "có kho vé"
+    CLUB ||--o{ TICKET_INVENTORY : "sở hữu"
+    EVENT ||--o{ TICKET : "cấp cho"
+    USER ||--o{ TICKET : "sở hữu"
     USER ||--o{ AUDIT_LOG : "thực hiện"
 
     CLUB {
@@ -376,7 +383,8 @@ erDiagram
         string role
         string mssv
         uuid club_id FK
-        boolean profile_complete
+        string mssv_status
+        string status
     }
     EVENT {
         uuid event_id PK
@@ -397,9 +405,21 @@ erDiagram
     TICKET {
         uuid ticket_id PK
         uuid reservation_id FK
-        string qr_signature
+        uuid event_id FK
+        uuid club_id FK
+        uuid student_id FK
         string status
         datetime issued_at
+        datetime checked_in_at
+        bigint version
+    }
+    TICKET_INVENTORY {
+        uuid inventory_id PK
+        uuid event_id FK
+        uuid club_id FK
+        int total_capacity
+        int approved_count
+        bigint version
     }
     OUTBOX_MESSAGE {
         uuid message_id PK
@@ -410,9 +430,12 @@ erDiagram
     }
     AUDIT_LOG {
         uuid log_id PK
-        uuid actor_user_id FK
+        uuid message_id
+        uuid actor_id
         string action
-        uuid club_id
+        string target_type
+        uuid target_id
+        string detail
         datetime created_at
     }
 ```
@@ -421,58 +444,54 @@ erDiagram
 
 ## 7. Sơ đồ Thành phần & Triển khai (Component/Deployment Diagram)
 
-_Ánh xạ các microservice lên hạ tầng đám mây thực tế (0 đồng)._
+_Ánh xạ các thành phần đã bàn giao lên một máy chủ duy nhất chạy Docker Compose. Bản trước của sơ đồ này
+vẽ năm microservice trên nhiều dịch vụ đám mây rời; kiến trúc đã hợp nhất thành một khối modular monolith
+(xem `backend/monolith`) nên sơ đồ được vẽ lại theo `backend/infra/production/compose.yaml`._
 
 ```mermaid
 flowchart TB
-    subgraph CF["Cloudflare Pages"]
-        FE["Frontend: React + TypeScript"]
+    NET[["Internet"]]
+
+    subgraph VM["Máy chủ Linux (Docker Compose)"]
+        subgraph PUBNET["mạng public"]
+            CADDY["Caddy 2.10 — HTTPS, reverse proxy"]
+            FE["Frontend: React + TypeScript (Nginx)"]
+        end
+        subgraph APPNET["mạng application (không ra Internet)"]
+            MONO["Monolith — Spring Boot 4 / Java 25
+gói auth · event · ticket · notification"]
+            PG[("PostgreSQL 18.4
+một schema: tvu_app")]
+            R[("Redis 7.4
+bộ đếm sức chứa")]
+            MQ{{"RabbitMQ 4.2
+reservation.approved + DLQ"}}
+        end
     end
 
-    subgraph OCI["Oracle Cloud Always Free (ARM)"]
-        GW["API Gateway: Spring Cloud Gateway"]
-        AUTH["Auth-Service :8084"]
-        EVT["Event-Service :8081"]
-        TCK["Ticket-Service :8082"]
-        NOTI["Notification-Service :8083"]
-    end
+    MS[["Microsoft Identity Platform (Entra ID)"]]
+    SMTP[["SMTP (nhà cung cấp email)"]]
 
-    subgraph REDIS["Upstash / Redis Cloud"]
-        R[("Redis: giữ chỗ nguyên tử")]
-    end
+    NET --> CADDY
+    CADDY --> FE
+    CADDY -- "/api" --> MONO
+    MONO --> PG
+    MONO --> R
+    MONO -- "outbox relay" --> MQ
+    MQ -- "gói notification tiêu thụ" --> MONO
+    MONO -. "OIDC xác minh token" .-> MS
+    MONO -. "gửi email vé" .-> SMTP
 
-    subgraph MQCLOUD["CloudAMQP"]
-        MQ{{"RabbitMQ: Topic Exchange + DLQ"}}
-    end
-
-    subgraph NEON["Neon"]
-        PG[("PostgreSQL: tvu_auth / tvu_event / tvu_ticket")]
-    end
-
-    subgraph ORACLEADW["Oracle ADW (tùy chọn)"]
-        ADW[("Data Warehouse")]
-    end
-
-    MS[["Microsoft Identity Platform"]]
-
-    FE --> GW
-    GW --> AUTH
-    GW --> EVT
-    GW --> TCK
-    GW -.-> NOTI
-    AUTH --> PG
-    EVT --> PG
-    TCK --> PG
-    TCK --> R
-    TCK --> MQ
-    MQ --> NOTI
-    AUTH -. "OIDC" .-> MS
-    PG -. "ETL tùy chọn" .-> ADW
-
-    style CF fill:#E0F7FA,stroke:#00838F,stroke-width:1px
-    style OCI fill:#E3F2E1,stroke:#3C7A3C,stroke-width:1px
-    style REDIS fill:#FDECEC,stroke:#B03A2E,stroke-width:1px
-    style MQCLOUD fill:#F0E6F6,stroke:#6C3483,stroke-width:1px
-    style NEON fill:#EAF2FB,stroke:#2E5A8C,stroke-width:1px
-    style ORACLEADW fill:#F4F6F8,stroke:#66788A,stroke-width:1px
+    style VM fill:#E3F2E1,stroke:#3C7A3C,stroke-width:1px
+    style PUBNET fill:#E0F7FA,stroke:#00838F,stroke-width:1px
+    style APPNET fill:#EAF2FB,stroke:#2E5A8C,stroke-width:1px
 ```
+
+**Ghi chú triển khai**
+
+- Chỉ Caddy lộ ra Internet. PostgreSQL (5432), Redis (6379) và RabbitMQ (5672 / 15672) nằm trong mạng
+  `application` và không publish cổng ra ngoài.
+- Frontend và API dùng **cùng một origin** (`VITE_API_BASE_URL=/api`) nên cookie JWT `HttpOnly` hoạt động
+  mà không cần cấu hình CORS liên miền.
+- RabbitMQ chỉ còn mang `reservation.approved`. Nhật ký kiểm toán (audit) là lời gọi trong tiến trình,
+  ghi cùng transaction với thao tác sinh ra nó — không đi qua broker.

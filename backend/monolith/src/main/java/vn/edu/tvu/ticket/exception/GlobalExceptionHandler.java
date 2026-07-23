@@ -1,5 +1,7 @@
 package vn.edu.tvu.ticket.exception;
 
+import vn.edu.tvu.shared.web.ErrorResponse;
+
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

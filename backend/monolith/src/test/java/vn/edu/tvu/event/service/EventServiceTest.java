@@ -14,7 +14,7 @@ import vn.edu.tvu.event.exception.EventAccessDeniedException;
 import vn.edu.tvu.event.exception.EventNotFoundException;
 import vn.edu.tvu.event.exception.EventValidationException;
 import vn.edu.tvu.event.mapper.EventMapper;
-import vn.edu.tvu.event.messaging.EventAuditPublisher;
+import vn.edu.tvu.shared.audit.AuditRecorder;
 import vn.edu.tvu.event.repository.EventRepository;
 import vn.edu.tvu.event.security.CurrentUser;
 import java.time.*;
@@ -29,14 +29,14 @@ import static org.mockito.Mockito.*;
 class EventServiceTest {
     @Mock EventRepository repository;
     @Mock EventMapper mapper;
-    @Mock EventAuditPublisher auditPublisher;
+    @Mock AuditRecorder auditRecorder;
     private EventService service;
     private UUID clubId;
     private CurrentUser organizer;
 
     @BeforeEach
     void setUp() {
-        service = new EventService(repository, mapper, auditPublisher,
+        service = new EventService(repository, mapper, auditRecorder,
                 Clock.fixed(Instant.parse("2026-07-11T00:00:00Z"), ZoneOffset.UTC));
         clubId = UUID.randomUUID();
         organizer = new CurrentUser(UUID.randomUUID(), clubId);
@@ -49,7 +49,7 @@ class EventServiceTest {
         assertThat(response.status()).isEqualTo(EventStatus.DRAFT);
         assertThat(response.clubId()).isEqualTo(clubId);
         verify(repository).save(any(Event.class));
-        verify(auditPublisher).publish(eq(organizer.id()), eq(response.id()), eq("CREATED"), anyString());
+        verify(auditRecorder).recordAudit(eq(organizer.id()), eq("CREATED"), eq("EVENT"), eq(response.id()), anyString());
     }
 
     @Test
@@ -58,7 +58,7 @@ class EventServiceTest {
                 Instant.parse("2026-08-02T00:00:00Z"), Instant.parse("2026-08-01T00:00:00Z"),
                 Instant.parse("2026-08-03T00:00:00Z"), Instant.parse("2026-08-04T00:00:00Z"), "TVU");
         assertThatThrownBy(() -> service.create(organizer, invalid)).isInstanceOf(EventValidationException.class);
-        verifyNoInteractions(repository, auditPublisher);
+        verifyNoInteractions(repository, auditRecorder);
     }
 
     @Test
@@ -100,7 +100,7 @@ class EventServiceTest {
         when(repository.findById(draft.getId())).thenReturn(Optional.of(draft));
         service.delete(organizer, draft.getId());
         verify(repository).delete(draft);
-        verify(auditPublisher).publish(organizer.id(), draft.getId(), "DELETED", draft.getTitle());
+        verify(auditRecorder).recordAudit(organizer.id(), "DELETED", "EVENT", draft.getId(), draft.getTitle());
 
         Event open = event(100);
         open.open();

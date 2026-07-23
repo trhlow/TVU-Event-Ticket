@@ -25,25 +25,17 @@
 
     <properties>
         <java.version>25</java.version>
-        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <!-- Not managed by the Spring Boot BOM. It used to come from the Spring Cloud release
+             train, which was imported solely for this one version once the gateway was deleted.
+             Nothing imports spring-retry directly; Spring AMQP needs it on the classpath for
+             spring.rabbitmq.listener.simple.retry.* to work. -->
+        <spring-retry.version>2.0.13</spring-retry.version>
         <flyway.version>12.10.0</flyway.version>
         <springdoc.version>3.0.3</springdoc.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <postgresql.version>42.7.13</postgresql.version>
         <tomcat.version>11.0.24</tomcat.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>${spring-cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <build>
         <plugins>
