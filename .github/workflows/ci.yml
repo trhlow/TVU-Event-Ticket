@@ -81,6 +81,15 @@ jobs:
           fi
           echo "No tests were skipped."
 
+      - name: Fail if demo credentials reached production config
+        working-directory: backend
+        run: |
+          if grep -rniE "sadminevt|123456" monolith/src/main/resources/application-prod.yml; then
+            echo "Demo sign-in credentials must never appear in production configuration."
+            exit 1
+          fi
+          echo "No demo credentials in production config."
+
       - name: Build deployable monolith image
         working-directory: backend
         run: docker build -t tvu/monolith:ci .
