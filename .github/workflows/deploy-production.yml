@@ -1,12 +1,13 @@
 name: Deploy production
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       ref:
-        description: Commit SHA or branch to deploy
-        required: true
-        default: main
+        description: Commit SHA or branch to deploy (defaults to the triggering commit)
+        required: false
 
 permissions:
   contents: read
@@ -23,7 +24,7 @@ jobs:
     steps:
       - name: Validate deploy ref
         env:
-          DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_REF: ${{ inputs.ref || github.sha }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           # The ref is interpolated into a remote shell command, so restrict it to a safe charset
@@ -57,7 +58,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_REF: ${{ inputs.ref || github.sha }}
         run: |
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REF='$DEPLOY_REF' bash -s" <<'REMOTE'
