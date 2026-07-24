@@ -1,4 +1,4 @@
-# Triển khai production và chi phí
+# Triển khai production và chi phí backend
 
 Tài liệu này dành cho nhóm 3 người vận hành TVU Event & Ticket ở giai đoạn
 đầu. Nhóm đã sở hữu tên miền, nên không tính phí gia hạn tên miền ở đây.
