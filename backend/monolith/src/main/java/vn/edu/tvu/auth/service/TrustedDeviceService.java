@@ -45,16 +45,19 @@ public class TrustedDeviceService {
 
     @Transactional
     public Optional<UUID> exchange(String rawToken) {
-        var device = repository.findByTokenHash(hash(rawToken)).orElse(null);
+        var hash = hash(rawToken);
+        var device = repository.findByTokenHash(hash).orElse(null);
         if (device == null || device.getExpiresAt().isBefore(Instant.now())) {
             return Optional.empty();
         }
-        if (device.getRevokedAt() != null) {
-            revokeAll(device.getUserId());
-            return Optional.empty();
+        // Winning the rotation is decided by the database, not by the null we read above: only the caller
+        // whose atomic UPDATE flips revoked_at gets a count of 1. A count of 0 means the token was already
+        // spent -- a replayed cookie -- so drop every device on the account.
+        if (repository.revokeIfActive(hash, Instant.now()) == 1) {
+            return Optional.of(device.getUserId());
         }
-        device.revoke(Instant.now());
-        return Optional.of(device.getUserId());
+        revokeAll(device.getUserId());
+        return Optional.empty();
     }
 
     @Transactional
