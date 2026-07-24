@@ -190,10 +190,39 @@ someone will read it as a switch that can disable admin login.
 
 Both endpoints are documented in OpenAPI, which `AuthOpenApiIntegrationTest` enforces.
 
+## The first super admin
+
+`BootstrapSuperAdminRunner` answers the chicken-and-egg problem: the super admin creates
+every other account, so the first one is created from configuration at startup. Today
+`tvu.auth.bootstrap.email` holds a single address.
+
+Once the password is gone, that address is the only way into the account, which makes a
+typo in it unrecoverable through the application. Three independent layers guard against
+that, at three different moments:
+
+**At configuration time**, `tvu.auth.bootstrap.email` accepts a comma-separated list, and
+the runner ensures a `SUPER_ADMIN` row for each. A deployment names both the institutional
+address and a personal fallback, so one unreachable mailbox does not lock anyone out.
+
+**These addresses are supplied at deploy time through the environment, never committed.**
+This repository is public. An address baked into it is a published super-admin login, and
+since sign-in is passwordless, the security of the whole system would reduce to the
+security of that one mailbox — with attackers told exactly which one to target.
+`application-prod.yml` therefore keeps `${BOOTSTRAP_ADMIN_EMAIL}` with no default.
+
+**After a failure**, `backend/docs/OPERATIONS.md` carries a break-glass procedure: the SQL
+to insert or repair a `SUPER_ADMIN` row directly. The operators control the host and the
+database — the deployment scripts already reach Postgres — so a lockout is recoverable
+without a code change or a redeploy. This layer needs no new code, only the runbook.
+
+**Before migrating**, mail delivery to each address is confirmed. See deploy blockers.
+
 ## Demo super admin — development only
 
-`sadminevt@tvu.edu.vn` signs in with a fixed code `123456`, for local work until deploy
-preparation begins.
+In `dev` and `test`, the bootstrap address is `sadminevt@tvu.edu.vn` and it signs in with a
+fixed code `123456`. This is the same mechanism as above rather than a parallel one: the
+runner creates the account because it is the configured bootstrap address, and only the
+code issuance is special-cased.
 
 It is built the way `DevStubIdentityProvider` already is, so that it cannot reach
 production by accident:
@@ -212,8 +241,13 @@ needs the equivalent check.
 
 ## Deploy blockers
 
-1. Remove the demo account and its fixed code.
-2. Point `tvu.auth.bootstrap.email` at a real mailbox and **confirm mail arrives before
-   running V10** — a wrong address locks the super admin out permanently, and no other
-   account can restore it.
-3. Warn existing organizers that Entra sign-in stops working.
+1. Remove the demo account and its fixed code. Confirm `sadminevt@tvu.edu.vn` and `123456`
+   appear nowhere outside `dev` and `test` configuration.
+2. Set `BOOTSTRAP_ADMIN_EMAIL` from the deployment secret to at least two real mailboxes,
+   one institutional and one personal fallback. Not in `application-prod.yml`, not in git.
+3. **Send a test code to each address and confirm it arrives, before running V10.** A
+   mailbox that does not receive mail is indistinguishable from a correct one until it is
+   the only way in.
+4. Verify the break-glass procedure in `backend/docs/OPERATIONS.md` against the production
+   database — a runbook nobody has executed is not a recovery plan.
+5. Warn existing organizers that Entra sign-in stops working.
