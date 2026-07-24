@@ -30,12 +30,12 @@ public class RestMicrosoftJwkSetClient implements MicrosoftJwkSetClient {
     private final RestClient restClient;
     private final AtomicReference<CachedJwkSet> cached = new AtomicReference<>();
 
-    public RestMicrosoftJwkSetClient(MicrosoftIdentityProperties properties, RestClient.Builder restClientBuilder) {
+    public RestMicrosoftJwkSetClient(MicrosoftIdentityProperties properties) {
         this.properties = properties;
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout((int) CONNECT_TIMEOUT.toMillis());
         factory.setReadTimeout((int) READ_TIMEOUT.toMillis());
-        this.restClient = restClientBuilder.requestFactory(factory).build();
+        this.restClient = RestClient.builder().requestFactory(factory).build();
     }
 
     @Override
