@@ -24,12 +24,17 @@ jobs:
       - name: Validate deploy ref
         env:
           DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
           # The ref is interpolated into a remote shell command, so restrict it to a safe charset
           # (git ref names plus SHAs). This rejects quotes, spaces and shell metacharacters that could
           # otherwise break out of the quoting and inject commands on the production host.
           if ! printf '%s' "$DEPLOY_REF" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
             echo "Invalid ref '$DEPLOY_REF': only letters, digits and . _ / - are allowed" >&2
+            exit 1
+          fi
+          if ! printf '%s' "$DEPLOY_PATH" | grep -Eq '^/[A-Za-z0-9._/-]+$'; then
+            echo "DEPLOY_PATH must be an absolute path using letters, digits and . _ / -" >&2
             exit 1
           fi
 
@@ -55,10 +60,15 @@ jobs:
           DEPLOY_REF: ${{ inputs.ref }}
         run: |
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            "cd '$DEPLOY_PATH' && \
-             git fetch --prune origin '$DEPLOY_REF' && \
-             git checkout --detach FETCH_HEAD && \
-             docker compose --env-file backend/infra/production/.env \
-               -f backend/infra/production/compose.yaml up -d --build --wait --remove-orphans && \
-             docker compose --env-file backend/infra/production/.env \
-               -f backend/infra/production/compose.yaml ps --status running --services | grep -qx monolith"
+            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REF='$DEPLOY_REF' bash -s" <<'REMOTE'
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+            echo "Production checkout has modified tracked files; refusing to overwrite them" >&2
+            exit 1
+          fi
+          previous_ref="$(git rev-parse HEAD)"
+          git fetch --prune origin "$DEPLOY_REF"
+          git checkout --detach FETCH_HEAD
+          PREVIOUS_REF="$previous_ref" bash backend/infra/production/scripts/deploy.sh
+          REMOTE

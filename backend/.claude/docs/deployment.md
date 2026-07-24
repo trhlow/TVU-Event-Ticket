@@ -87,4 +87,12 @@ CI treats `monolith` as a first-class module: a change to any imported feature
 library triggers its reactor test/build and builds the deployable monolith
 image. `.github/workflows/deploy-production.yml` is manual-only and protected
 by the GitHub `production` environment. Configure `DEPLOY_HOST`, `DEPLOY_USER`,
-`DEPLOY_SSH_PRIVATE_KEY` and `DEPLOY_PATH` there before use.
+`DEPLOY_SSH_PRIVATE_KEY`, `DEPLOY_KNOWN_HOSTS` and `DEPLOY_PATH` there before
+use. The workflow delegates to `infra/production/scripts/deploy.sh`, so manual
+and CI deployments share the same preflight, pre-deploy backup, health wait and
+public smoke test. Use `infra/production/scripts/rollback.sh --confirm` only
+after checking whether forward Flyway migrations remain compatible with the old
+application code; code rollback deliberately does not reverse the database.
+
+The step-by-step Vietnamese operator runbook is
+`backend/docs/PRODUCTION_DEPLOYMENT_VI.md`.
