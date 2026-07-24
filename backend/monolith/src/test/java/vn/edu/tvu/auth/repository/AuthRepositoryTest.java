@@ -1,6 +1,7 @@
 package vn.edu.tvu.auth.repository;
 
 import vn.edu.tvu.auth.domain.AuditLog;
+import vn.edu.tvu.auth.domain.AuthMethod;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.ClubStatus;
 import vn.edu.tvu.auth.domain.MssvStatus;
@@ -37,6 +38,17 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @Test
+    void findByEmailAndAuthMethod_ignoresAccountsOnTheOtherMethod() {
+        var student = userRepository.save(User.student("entra:s1", "shared@tvu.edu.vn", "Student"));
+
+        var asOtp = userRepository.findByEmailAndAuthMethod("shared@tvu.edu.vn", AuthMethod.EMAIL_OTP);
+        var asMicrosoft = userRepository.findByEmailAndAuthMethod("shared@tvu.edu.vn", AuthMethod.MICROSOFT);
+
+        assertThat(asOtp).isEmpty();
+        assertThat(asMicrosoft).contains(student);
+    }
 
     /**
      * V7 leaves {@code events.created_by} and {@code reservations.reviewed_by} unconstrained on purpose:

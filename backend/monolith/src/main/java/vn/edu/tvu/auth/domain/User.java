@@ -41,8 +41,12 @@ public class User {
     @Column(nullable = false)
     private long version;
 
-    @Column(name = "ext_subject", nullable = false, unique = true)
+    @Column(name = "ext_subject", unique = true)
     private String extSubject;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_method", nullable = false, length = 20)
+    private AuthMethod authMethod = AuthMethod.MICROSOFT;
 
     @Column(nullable = false, unique = true, length = 320)
     private String email;
@@ -99,6 +103,18 @@ public class User {
 
     public static User superAdmin(String extSubject, String email, String displayName) {
         return new User(extSubject, email, displayName, UserRole.SUPER_ADMIN, null);
+    }
+
+    public static User emailOtpOrganizer(String email, String displayName, Club club) {
+        var user = new User(null, email, displayName, UserRole.ORGANIZER, club);
+        user.authMethod = AuthMethod.EMAIL_OTP;
+        return user;
+    }
+
+    public static User emailOtpSuperAdmin(String email, String displayName) {
+        var user = new User(null, email, displayName, UserRole.SUPER_ADMIN, null);
+        user.authMethod = AuthMethod.EMAIL_OTP;
+        return user;
     }
 
     public void updateIdentity(String extSubject, String email, String displayName) {
@@ -175,6 +191,10 @@ public class User {
 
     public String getExtSubject() {
         return extSubject;
+    }
+
+    public AuthMethod getAuthMethod() {
+        return authMethod;
     }
 
     public String getEmail() {

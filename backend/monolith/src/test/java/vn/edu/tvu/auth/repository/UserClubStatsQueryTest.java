@@ -45,8 +45,8 @@ class UserClubStatsQueryTest extends AbstractPostgresIntegrationTest {
 
     private void insertNonOrganizerInClub(java.util.UUID clubId, String role, String email) {
         jdbcTemplate.update("""
-                INSERT INTO users (id, ext_subject, email, display_name, role, club_id)
-                VALUES (?, ?, ?, 'Not an organizer', ?, ?)
-                """, java.util.UUID.randomUUID(), "ext-" + email, email, role, clubId);
+                INSERT INTO users (id, ext_subject, email, display_name, role, club_id, auth_method)
+                VALUES (?, NULL, ?, 'Not an organizer', ?, ?, 'EMAIL_OTP')
+                """, java.util.UUID.randomUUID(), email, role, clubId);
     }
 }
