@@ -29,6 +29,6 @@ public class BootstrapSuperAdminRunner implements ApplicationRunner {
         if (userRepository.findByEmail(email).isPresent()) {
             return;
         }
-        userRepository.save(User.superAdmin("bootstrap:" + email, email, "Bootstrap Admin"));
+        userRepository.save(User.superAdmin(User.BOOTSTRAP_SUBJECT_PREFIX + email, email, "Bootstrap Admin"));
     }
 }

@@ -8,6 +8,7 @@ import vn.edu.tvu.ticket.domain.Ticket;
 import vn.edu.tvu.ticket.domain.TicketInventory;
 import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.support.AbstractPostgresIntegrationTest;
+import vn.edu.tvu.testsupport.ParentRows;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -51,6 +52,9 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
     @Test
     void inventoryRepositoryPersistsEventSnapshotAndVersionColumn() {
         var inventory = inventoryRepository.saveAndFlush(inventory(UUID.randomUUID(), UUID.randomUUID(), 2));
@@ -93,7 +97,7 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
     void ticketRepositoryFindsIssuedTicketByReservation() {
         var reservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), UUID.randomUUID(),
                 UUID.randomUUID(), "idem-1"));
-        reservation.approve(UUID.randomUUID());
+        reservation.approve(reviewer());
 
         var ticket = ticketRepository.saveAndFlush(Ticket.issue(reservation));
 
@@ -162,7 +166,7 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
                 UUID.randomUUID(), "idem-pending"));
         var approved = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), clubId,
                 UUID.randomUUID(), "idem-approved"));
-        approved.approve(UUID.randomUUID());
+        approved.approve(reviewer());
         reservationRepository.saveAndFlush(approved);
         reservationRepository.saveAndFlush(reservation(UUID.randomUUID(), otherClubId, UUID.randomUUID(),
                 "idem-other-club"));
@@ -201,12 +205,12 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
     void ticketRepositoryCountsAllTicketsByStatusAcrossClubs() {
         var firstReservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), "idem-status-1"));
-        firstReservation.approve(UUID.randomUUID());
+        firstReservation.approve(reviewer());
         reservationRepository.saveAndFlush(firstReservation);
         var firstTicket = ticketRepository.saveAndFlush(Ticket.issue(firstReservation));
         var secondReservation = reservationRepository.saveAndFlush(reservation(UUID.randomUUID(),
                 UUID.randomUUID(), UUID.randomUUID(), "idem-status-2"));
-        secondReservation.approve(UUID.randomUUID());
+        secondReservation.approve(reviewer());
         reservationRepository.saveAndFlush(secondReservation);
         ticketRepository.saveAndFlush(Ticket.issue(secondReservation));
         var before = ticketRepository.countByStatus(TicketStatus.VALID);
@@ -276,11 +280,18 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
     }
 
     private void issueTicket(UUID eventId, UUID clubId, String email, String mssv, String idempotencyKey) {
-        var reservation = Reservation.pending(eventId, clubId, UUID.randomUUID(), email, mssv, idempotencyKey);
+        ParentRows.event(jdbc, eventId, clubId, 100);
+        var reservation = Reservation.pending(eventId, clubId, ParentRows.user(jdbc, UUID.randomUUID()),
+                email, mssv, idempotencyKey);
         reservationRepository.saveAndFlush(reservation);
-        reservation.approve(UUID.randomUUID());
+        reservation.approve(reviewer());
         reservationRepository.saveAndFlush(reservation);
         ticketRepository.saveAndFlush(Ticket.issue(reservation));
+    }
+
+    /** A real organizer row for {@code reservations.reviewed_by}, which V7 constrains to users(id). */
+    private UUID reviewer() {
+        return ParentRows.user(jdbc, UUID.randomUUID(), null, "ORGANIZER");
     }
 
     private void backdateRequestedAt(UUID reservationId, Instant requestedAt) {
@@ -293,7 +304,8 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         entityManager.clear();
     }
 
-    private static TicketInventory inventory(UUID eventId, UUID clubId, int capacity) {
+    private TicketInventory inventory(UUID eventId, UUID clubId, int capacity) {
+        ParentRows.event(jdbc, eventId, clubId, capacity);
         return TicketInventory.create(
                 eventId,
                 clubId,
@@ -304,7 +316,9 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
                 "TVU Hall");
     }
 
-    private static Reservation reservation(UUID eventId, UUID clubId, UUID studentId, String idempotencyKey) {
+    private Reservation reservation(UUID eventId, UUID clubId, UUID studentId, String idempotencyKey) {
+        ParentRows.event(jdbc, eventId, clubId, 100);
+        ParentRows.user(jdbc, studentId);
         var reservation = Reservation.pending(eventId, clubId, studentId, "student@example.com", "110122001",
                 idempotencyKey);
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PENDING);

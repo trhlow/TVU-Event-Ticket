@@ -3,8 +3,9 @@ package vn.edu.tvu.auth.repository;
 import vn.edu.tvu.auth.domain.AuditLog;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.ClubStatus;
+import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.support.AbstractPostgresIntegrationTest;
 
@@ -33,6 +34,67 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
 
     @Autowired
     private AuditLogRepository auditLogRepository;
+
+    @Autowired
+    private org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /**
+     * V7 leaves {@code events.created_by} and {@code reservations.reviewed_by} unconstrained on purpose:
+     * they are actor references, like {@code audit_log.actor_id}. So an organizer who has created events
+     * and approved reservations is still deletable — the account goes, its historical actor references
+     * simply point at an absent user. Before this was settled, those columns had foreign keys and the
+     * delete raised {@link DataIntegrityViolationException}, which the auth advice turns into HTTP 500.
+     */
+    @Test
+    void organizerWhoActedInTheSystemCanStillBeDeleted() {
+        var club = clubRepository.saveAndFlush(new Club("CLB Su kien", "Ban to chuc su kien"));
+        var organizer = userRepository.saveAndFlush(
+                User.organizer("ext-org-1", "organizer@example.com", "Organizer One", club));
+        var student = userRepository.saveAndFlush(
+                User.student("ext-stu-1", "student@example.com", "Student One"));
+        var eventId = UUID.randomUUID();
+        jdbc.update("""
+                insert into events (id, club_id, title, capacity, reg_open_at, reg_close_at, start_at,
+                                    end_at, location, status, created_by, created_at, updated_at)
+                values (?, ?, 'E', 10, now() - interval '1 day', now() + interval '1 day',
+                        now() + interval '2 day', now() + interval '3 day', 'Hall', 'OPEN', ?, now(), now())
+                """, eventId, club.getId(), organizer.getId());
+        jdbc.update("""
+                insert into reservations (id, event_id, club_id, student_id, student_email, student_mssv,
+                                          status, idempotency_key, reviewed_by, event_title, event_start_at,
+                                          event_end_at, event_location)
+                values (?, ?, ?, ?, 'student@example.com', '110122001', 'APPROVED', 'idem-1', ?, 'E',
+                        now() + interval '2 day', now() + interval '3 day', 'Hall')
+                """, UUID.randomUUID(), eventId, club.getId(), student.getId(), organizer.getId());
+
+        userRepository.delete(organizer);
+        userRepository.flush();
+
+        assertThat(userRepository.findById(organizer.getId())).isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from events where created_by = ?",
+                Integer.class, organizer.getId())).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from reservations where reviewed_by = ?",
+                Integer.class, organizer.getId())).isEqualTo(1);
+    }
+
+    /**
+     * H1: login() re-saves the whole user row from a snapshot it read earlier. If an admin locks the account
+     * in between, the losing write must fail instead of reverting the lock. The @Version column makes
+     * Hibernate's UPDATE match on the old version and affect zero rows once another writer has moved it.
+     */
+    @Test
+    void staleUserWriteLosesToConcurrentVersionBump() {
+        var user = userRepository.saveAndFlush(
+                User.student("ext-optlock-1", "optlock@example.com", "Opt Lock"));
+
+        // Stand in for a concurrent admin lock committing on a fresh copy of the row.
+        jdbc.update("update users set version = version + 1, status = 'LOCKED' where id = ?", user.getId());
+
+        user.updateIdentity("ext-optlock-1b", "optlock@example.com", "Opt Lock");
+
+        assertThatThrownBy(() -> userRepository.saveAndFlush(user))
+                .isInstanceOf(org.springframework.dao.OptimisticLockingFailureException.class);
+    }
 
     @Test
     void clubRepositorySavesActiveClubAndFindsByName() {
@@ -118,6 +180,24 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
 
         assertThat(auditLogRepository.countByMessageId(messageId)).isEqualTo(1);
         assertThat(auditLogRepository.count()).isEqualTo(3);
+    }
+
+    @Test
+    void searchFiltersByOptionalRoleAndMssvStatus() {
+        var verified = User.student("ext-search-v", "search-v@example.com", "Verified Student");
+        verified.completeProfile("110900001", "DA21CNTT");
+        verified.verifyMssv();
+        userRepository.saveAndFlush(verified);
+        var unverified = User.student("ext-search-u", "search-u@example.com", "Unverified Student");
+        unverified.completeProfile("110900002", "DA21CNTT");
+        userRepository.saveAndFlush(unverified);
+
+        assertThat(userRepository.search(UserRole.SINH_VIEN, MssvStatus.UNVERIFIED))
+                .extracting(User::getId).contains(unverified.getId()).doesNotContain(verified.getId());
+        assertThat(userRepository.search(UserRole.SINH_VIEN, null))
+                .extracting(User::getId).contains(verified.getId(), unverified.getId());
+        assertThat(userRepository.search(null, null))
+                .extracting(User::getId).contains(verified.getId(), unverified.getId());
     }
 
     @Test

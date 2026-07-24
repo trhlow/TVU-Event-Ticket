@@ -1,6 +1,10 @@
 package vn.edu.tvu.auth.exception;
 
+import vn.edu.tvu.shared.web.ErrorResponse;
+
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,10 +21,18 @@ import java.time.Instant;
 import java.util.List;
 
 /**
- * Sample advice turning exceptions into a consistent {@link ErrorResponse} body. Intentionally
- * duplicated per service (no shared jar); each service extends it with its own domain exceptions.
+ * Scoped to this feature's controllers. Every feature advice in this monolith declares a catch-all
+ * {@code @ExceptionHandler(Exception.class)}; leaving them unscoped makes whichever one is registered
+ * first (auth, per {@code MonolithApplication}'s {@code @Import} order) answer for every other
+ * feature's domain exceptions with 500, silently disabling their handlers.
+ *
+ * <p>{@code vn.edu.tvu.monolith} is included because that package holds controllers composed across
+ * features (currently the cross-club statistics endpoints) and no feature advice covers it. Without it
+ * those endpoints fall through to Spring Boot's default error body, which carries no {@code code} field
+ * — the field the frontend switches on — so a client reading {@code .code} would get {@code undefined}
+ * from these routes and a stable string from every other route.
  */
-@RestControllerAdvice
+@RestControllerAdvice(basePackages = {"vn.edu.tvu.auth", "vn.edu.tvu.monolith"})
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
@@ -52,6 +64,32 @@ public class GlobalExceptionHandler {
                                                               HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
                 "Invalid value for parameter '" + ex.getName() + "'", request, null);
+    }
+
+    /**
+     * A structural foreign key (V7) refused a delete — e.g. removing a student who still has reservations
+     * or tickets. That is a conflict with existing data, not a server fault, so it must not fall through to
+     * the 500 below. Actor references (events.created_by, reservations.reviewed_by) are intentionally
+     * unconstrained, so deleting an organizer does not reach here.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex,
+                                                             HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "DATA_INTEGRITY_CONFLICT",
+                "The record is still referenced by other data and cannot be modified", request, null);
+    }
+
+    /**
+     * A concurrent writer moved the row between our read and our write (JPA {@code @Version} mismatch) — e.g.
+     * an admin locking an account while that account is signing in. Losing the race is a transient conflict,
+     * not a server fault: the other transaction's change stands and the client can simply retry against fresh
+     * state. Surfacing 409 is what keeps login from silently reverting a lock.
+     */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException ex,
+                                                              HttpServletRequest request) {
+        return build(HttpStatus.CONFLICT, "CONCURRENT_MODIFICATION",
+                "The record was modified by another request; please retry", request, null);
     }
 
     @ExceptionHandler(Exception.class)

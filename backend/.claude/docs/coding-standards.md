@@ -4,21 +4,33 @@ Reference doc (read on demand, not auto-loaded). The authoritative invariants li
 file covers day-to-day code style.
 
 > **Overrides the `java-springboot` skill.** That skill recommends *feature-based* packaging. This project
-> deliberately uses **layer-based** packaging (each microservice is already a single bounded context, so the
-> service boundary gives the "easy to split later" benefit). When the two conflict, follow this document.
+> uses **both**: feature-based at the top level (`vn.edu.tvu.auth`, `.event`, `.ticket`, `.notification` —
+> each a bounded context, and the seam to split along if the monolith is ever broken up again), and
+> layer-based *inside* each feature. When the skill and this document conflict, follow this document.
 
 ## Package layout (layer-based)
 
-Under `vn.edu.tvu.<svc>` (`event`, `ticket`, `notification`, `gateway`):
+Under `vn.edu.tvu.<feature>` (`auth`, `event`, `ticket`, `notification`):
 
 ```
 controller/   service/  (+ impl/)   repository/   domain/        # @Entity
 dto/  ├── request/  └── response/    mapper/        # MapStruct
-config/   security/   exception/     messaging/     # ticket-service only (RabbitMQ publisher)
+config/   security/   exception/     messaging/     # ticket only (RabbitMQ publisher)
 ```
 
-The main `@SpringBootApplication` class sits in the **root** package (`vn.edu.tvu.<svc>`) so component scan
-covers only our code.
+Two packages sit outside that scheme:
+
+- `vn.edu.tvu.shared` — types more than one feature needs (`web.ErrorResponse`, `web.PageResponse`,
+  `web.PageableFactory`, `domain.UserRole`, `audit.AuditRecorder`, `messaging.*`). Beanless types only;
+  it is deliberately **not** component-scanned. Put something here when a second feature needs it, not
+  in anticipation.
+- `vn.edu.tvu.monolith` — the composition root, and the only place allowed to depend on two features at
+  once (`stats` composes across auth/event/ticket; `ticket.InProcessEventLookup` implements ticket's
+  `EventLookup` by calling `EventService`). A feature reaching directly into another feature's package
+  belongs here instead.
+
+`MonolithApplication` sits in `vn.edu.tvu` and scans only `vn.edu.tvu.monolith`; each feature is pulled
+in explicitly by `@Import` of its `*FeatureConfiguration`, which owns that feature's component scan.
 
 ## Dependency injection
 

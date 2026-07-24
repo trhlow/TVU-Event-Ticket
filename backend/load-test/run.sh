@@ -13,7 +13,7 @@ BASE="${BASE_URL:-http://localhost:8080}"
 cd "$HERE"
 
 echo "==> bringing the stack up"
-docker compose -f "$INFRA/docker-compose.app.yml" up -d --build --wait
+docker compose -f "$INFRA/docker-compose.monolith.yml" up -d --build --wait
 
 echo "==> seeding the fixture"
 node seed.mjs

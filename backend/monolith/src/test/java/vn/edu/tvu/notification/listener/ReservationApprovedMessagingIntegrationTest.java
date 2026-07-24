@@ -1,7 +1,7 @@
 package vn.edu.tvu.notification.listener;
 
 import vn.edu.tvu.notification.config.NotificationRabbitProperties;
-import vn.edu.tvu.notification.messaging.ReservationApprovedMessage;
+import vn.edu.tvu.shared.messaging.ReservationApprovedMessage;
 import vn.edu.tvu.notification.service.TicketMailSender;
 import vn.edu.tvu.notification.support.AbstractRabbitIntegrationTest;
 
@@ -38,6 +38,7 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
     @org.springframework.beans.factory.annotation.Autowired RabbitTemplate rabbitTemplate;
     @org.springframework.beans.factory.annotation.Autowired StringRedisTemplate redisTemplate;
     @org.springframework.beans.factory.annotation.Autowired NotificationRabbitProperties properties;
+    @org.springframework.beans.factory.annotation.Autowired vn.edu.tvu.shared.messaging.MessagingProperties messaging;
     @org.springframework.beans.factory.annotation.Autowired MeterRegistry meterRegistry;
     @org.springframework.beans.factory.annotation.Autowired ObjectMapper objectMapper;
 
@@ -89,7 +90,7 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
                 .setContentType("application/json")
                 .setMessageId(messageId.toString())
                 .build();
-        rabbitTemplate.send(properties.exchange(), properties.routingKey(), amqpMessage);
+        rabbitTemplate.send(messaging.exchange(), properties.routingKey(), amqpMessage);
     }
 
     private void awaitDlqMetric() throws InterruptedException {

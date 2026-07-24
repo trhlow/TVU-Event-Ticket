@@ -1,5 +1,7 @@
 package vn.edu.tvu.ticket.exception;
 
+import vn.edu.tvu.shared.web.ErrorResponse;
+
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +19,7 @@ import java.util.List;
  * Sample advice turning exceptions into a consistent {@link ErrorResponse} body. Intentionally
  * duplicated per service (no shared jar); each service extends it with its own domain exceptions.
  */
-@RestControllerAdvice(name = "ticketGlobalExceptionHandler")
+@RestControllerAdvice(name = "ticketGlobalExceptionHandler", basePackages = "vn.edu.tvu.ticket")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

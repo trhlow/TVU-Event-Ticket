@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
-import BackendPendingNotice from "../../components/common/BackendPendingNotice";
-import DemoDataBadge from "../../components/common/DemoDataBadge";
+import Toast from "../../components/common/Toast";
 import { User } from "../../types/user";
 import { userService } from "../../services/userService";
 
-const REQUIRED_ENDPOINTS = ["GET /admin/users", "PATCH /admin/users/{id}/role"];
-
 export default function SuperAdminUsersPage() {
-  const [users, setUsers] = useState<User[] | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
-    try {
-      setUsers(userService.list());
-    } catch {
-      setUsers(null);
-    }
+    void (async () => {
+      try {
+        setUsers(await userService.listAllRemote());
+      } catch (error) {
+        setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách người dùng.");
+      }
+    })();
   }, []);
 
   const columns = [
@@ -61,12 +61,16 @@ export default function SuperAdminUsersPage() {
       ),
     },
     {
-      header: "Xác thực",
-      accessor: (user: User) => (
-        <span className={`text-[10px] font-bold ${user.profileComplete ? "text-emerald-600" : "text-gray-400"}`}>
-          {user.profileComplete ? "Đã xác thực" : "Chờ hoàn thiện"}
-        </span>
-      ),
+      header: "Xác minh MSSV",
+      accessor: (user: User) => {
+        if (user.role !== "SINH_VIEN") return <span className="text-[10px] font-bold text-gray-300">—</span>;
+        if (!user.mssv) return <span className="text-[10px] font-bold text-gray-400">Chưa có MSSV</span>;
+        return (
+          <span className={`text-[10px] font-bold ${user.mssvStatus === "VERIFIED" ? "text-emerald-600" : "text-amber-600"}`}>
+            {user.mssvStatus === "VERIFIED" ? "Đã duyệt" : "Chờ duyệt"}
+          </span>
+        );
+      },
     },
   ];
 
@@ -83,21 +87,11 @@ export default function SuperAdminUsersPage() {
         }
       />
 
-      {users === null ? (
-        <BackendPendingNotice
-          description="Backend chưa có API liệt kê toàn bộ người dùng hệ thống hoặc đổi vai trò tài khoản. Trang này sẽ hiển thị dữ liệu thật ngay khi API sẵn sàng."
-          requiredEndpoints={REQUIRED_ENDPOINTS}
-        />
-      ) : (
-        <div className="space-y-4">
-          <div className="flex justify-end">
-            <DemoDataBadge />
-          </div>
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <DataTable data={users} columns={columns} searchPlaceholder="Tìm kiếm tên, email, MSSV..." searchField="fullName" />
-          </div>
-        </div>
-      )}
+      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <DataTable data={users} columns={columns} searchPlaceholder="Tìm kiếm tên, email, MSSV..." searchField="fullName" />
+      </div>
+
+      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

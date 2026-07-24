@@ -1,7 +1,7 @@
 package vn.edu.tvu.notification.service;
 
 import vn.edu.tvu.notification.config.NotificationMailProperties;
-import vn.edu.tvu.notification.messaging.ReservationApprovedMessage;
+import vn.edu.tvu.shared.messaging.ReservationApprovedMessage;
 
 import java.time.Instant;
 import java.util.Properties;

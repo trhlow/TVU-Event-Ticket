@@ -1,6 +1,6 @@
 package vn.edu.tvu.auth.security;
 
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 
 import java.util.UUID;
 
@@ -9,5 +9,6 @@ public record JwtSubject(
         String email,
         UserRole role,
         UUID clubId,
-        String mssv) {
+        String mssv,
+        boolean mssvVerified) {
 }

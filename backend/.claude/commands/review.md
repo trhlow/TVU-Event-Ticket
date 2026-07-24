@@ -6,7 +6,7 @@ allowed-tools: Read, Grep, Glob, Bash(git diff:*), Bash(git status:*), Task
 
 Review the backend changes for correctness and convention compliance.
 
-**Scope:** `$ARGUMENTS` if provided (a module like `ticket-service` or a path); otherwise the current
+**Scope:** `$ARGUMENTS` if provided (a feature package like `vn.edu.tvu.ticket` or a path); otherwise the current
 uncommitted changes.
 
 Steps:

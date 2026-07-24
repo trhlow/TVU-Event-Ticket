@@ -153,15 +153,6 @@ export const ticketService = {
   async availability(eventId: string): Promise<AvailabilityResponse> {
     return apiRequest<AvailabilityResponse>(`/ticketing/events/${eventId}/availability`);
   },
-  async initializeInventory(eventId: string): Promise<void> {
-    await withTicketFallback(
-      () => apiRequest<unknown>("/tickets/inventories", {
-        method: "POST",
-        body: JSON.stringify({ eventId }),
-      }),
-      () => undefined,
-    );
-  },
   async checkIn(qrPayload: string): Promise<Ticket> {
     return withTicketFallback(
       async () => mapTicket(await apiRequest<TicketResponse>("/ticketing/check-in", {

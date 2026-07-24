@@ -11,7 +11,7 @@ Prerequisites: Docker Desktop, Java 25, Maven, Node.js 22+.
 ```bash
 # Terminal 1: start the single backend runtime and its local dependencies.
 cd backend/infra
-docker compose -f docker-compose.app.yml up -d --build --wait
+docker compose -f docker-compose.monolith.yml up -d --build --wait
 
 # Terminal 2: start the frontend against the monolith.
 cd ../../frontend
@@ -20,7 +20,7 @@ VITE_API_BASE_URL=http://localhost:8080/api npm run dev
 ```
 
 The monolith API is at `http://localhost:8080`; Mailpit is available at `http://localhost:8025` in the local
-Compose stack. Stop the stack with `cd backend/infra && docker compose -f docker-compose.app.yml down`.
+Compose stack. Stop the stack with `cd backend/infra && docker compose -f docker-compose.monolith.yml down`.
 
 ## Repository layout
 

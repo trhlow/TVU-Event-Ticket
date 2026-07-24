@@ -1,17 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import SuperAdminUsersPage from "../SuperAdminUsersPage";
+
+vi.mock("../../../services/userService", () => ({
+  userService: { listAllRemote: vi.fn().mockResolvedValue([]) },
+}));
+
+async function renderPage() {
+  const { default: SuperAdminUsersPage } = await import("../SuperAdminUsersPage");
+  return render(
+    <MemoryRouter>
+      <SuperAdminUsersPage />
+    </MemoryRouter>,
+  );
+}
 
 describe("SuperAdminUsersPage", () => {
-  it("shows an honest 'waiting on backend' state instead of fake role-escalation controls", () => {
-    render(
-      <MemoryRouter>
-        <SuperAdminUsersPage />
-      </MemoryRouter>,
-    );
+  it("renders the real user directory without fake role-escalation controls", async () => {
+    await renderPage();
 
-    expect(screen.getByText(/Tính năng đang chờ API backend/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Danh sách người dùng hệ thống/i)).toBeInTheDocument();
     expect(screen.queryByText(/Cấp quyền BTC/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Hạ quyền SV/i)).not.toBeInTheDocument();
   });

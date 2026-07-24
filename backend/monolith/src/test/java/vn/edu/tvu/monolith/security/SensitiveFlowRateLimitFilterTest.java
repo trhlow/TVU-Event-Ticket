@@ -29,6 +29,46 @@ class SensitiveFlowRateLimitFilterTest {
         assertThat(rejected.getContentAsString()).contains("RATE_LIMITED");
     }
 
+    /**
+     * The counter map is keyed by URI + client address and lives for the process lifetime. Entries whose
+     * window has already elapsed can never be read again — they only ever get overwritten if that exact
+     * client returns. On a public login endpoint the distinct-address population is unbounded, so without
+     * eviction the map grows monotonically inside a 768 MB heap.
+     */
+    @Test
+    void countersFromElapsedWindowsAreEvicted() throws Exception {
+        var clock = new MutableClock(Instant.parse("2026-07-17T00:00:00Z"));
+        var filter = new SensitiveFlowRateLimitFilter(clock);
+
+        for (var i = 0; i < 500; i++) {
+            send(filter, "/api/auth/login", "198.51.100." + i);
+        }
+        assertThat(filter.windows).hasSize(500);
+
+        clock.advanceMinutes(2);
+        send(filter, "/api/auth/login", "203.0.113.9");
+
+        assertThat(filter.windows)
+                .as("only the current window's counters are still reachable")
+                .hasSize(1);
+    }
+
+    private static final class MutableClock extends Clock {
+        private Instant instant;
+
+        private MutableClock(Instant instant) {
+            this.instant = instant;
+        }
+
+        void advanceMinutes(int minutes) {
+            instant = instant.plusSeconds(minutes * 60L);
+        }
+
+        @Override public java.time.ZoneId getZone() { return ZoneOffset.UTC; }
+        @Override public Clock withZone(java.time.ZoneId zone) { return this; }
+        @Override public Instant instant() { return instant; }
+    }
+
     @Test
     void doesNotThrottleAReadOnlyRequest() throws Exception {
         var filter = new SensitiveFlowRateLimitFilter(Clock.systemUTC());

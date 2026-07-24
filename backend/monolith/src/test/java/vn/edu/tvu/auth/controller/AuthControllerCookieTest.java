@@ -1,6 +1,6 @@
 package vn.edu.tvu.auth.controller;
 
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.security.AuthCookieProperties;
@@ -41,6 +41,7 @@ class AuthControllerCookieTest {
                 null,
                 null,
                 null,
+                vn.edu.tvu.auth.domain.MssvStatus.UNVERIFIED,
                 false);
         var jwt = new JwtToken("jwt-value", "jti-value", Instant.now().plusSeconds(900));
         when(appService.login(new LoginRequest("student@example.com", null)))

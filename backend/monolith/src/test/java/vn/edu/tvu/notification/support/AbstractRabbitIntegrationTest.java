@@ -1,13 +1,22 @@
 package vn.edu.tvu.notification.support;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.annotation.DirtiesContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.RabbitMQContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+/**
+ * {@code @DirtiesContext} is load-bearing here, mirroring the ticket and auth Postgres bases. JUnit's
+ * Testcontainers extension stops the static {@code @Container}s after this class and the next class starts
+ * fresh ones on new ports; without closing the context in between, the cached context's Rabbit listener,
+ * Redis client and Hikari pool keep reconnecting to the stopped containers, flooding logs and forcing
+ * Surefire to force-kill the fork. Dropping the context after the class stops those workers.
+ */
 @Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public abstract class AbstractRabbitIntegrationTest {
 
     @Container

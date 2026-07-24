@@ -3,13 +3,16 @@ package vn.edu.tvu.auth.controller;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
+import vn.edu.tvu.auth.domain.MssvStatus;
+import vn.edu.tvu.auth.dto.response.AdminUserResponse;
 import vn.edu.tvu.auth.dto.response.AuditLogResponse;
 import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
-import vn.edu.tvu.auth.dto.response.PageResponse;
+import vn.edu.tvu.shared.domain.UserRole;
+import vn.edu.tvu.shared.web.PageResponse;
 import vn.edu.tvu.auth.service.AdminManagementService;
 import vn.edu.tvu.auth.service.AuditLogService;
-import vn.edu.tvu.auth.web.PageableFactory;
+import vn.edu.tvu.shared.web.PageableFactory;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -116,6 +119,21 @@ public class AdminController {
     @Operation(summary = "Delete an organizer account")
     public void deleteOrganizer(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID organizerId) {
         adminManagementService.deleteOrganizer(actorId(jwt), organizerId);
+    }
+
+    @GetMapping("/users")
+    @Operation(summary = "List users, optionally filtered by role and MSSV verification status")
+    public List<AdminUserResponse> listUsers(
+            @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) MssvStatus mssvStatus) {
+        return adminManagementService.listUsers(role, mssvStatus);
+    }
+
+    @PatchMapping("/users/{userId}/verify-mssv")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Verify a student's MSSV so they can reserve tickets")
+    public void verifyMssv(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID userId) {
+        adminManagementService.verifyMssv(actorId(jwt), userId);
     }
 
     @GetMapping("/audit-log")

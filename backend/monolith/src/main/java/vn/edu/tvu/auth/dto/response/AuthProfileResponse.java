@@ -1,6 +1,7 @@
 package vn.edu.tvu.auth.dto.response;
 
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.auth.domain.MssvStatus;
+import vn.edu.tvu.shared.domain.UserRole;
 
 import java.util.UUID;
 
@@ -12,5 +13,6 @@ public record AuthProfileResponse(
         UUID clubId,
         String mssv,
         String classCode,
+        MssvStatus mssvStatus,
         boolean profileComplete) {
 }

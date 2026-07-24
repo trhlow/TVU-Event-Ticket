@@ -1,7 +1,7 @@
 package vn.edu.tvu.auth.config;
 
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.repository.UserRepository;
 
 import java.util.Optional;

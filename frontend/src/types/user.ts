@@ -8,6 +8,7 @@ export interface User {
   phone?: string; // For contact
   mssv?: string; // For students
   className?: string; // For students
+  mssvStatus?: 'UNVERIFIED' | 'VERIFIED'; // For students
   profileComplete: boolean;
   status: 'ACTIVE' | 'LOCKED';
 }

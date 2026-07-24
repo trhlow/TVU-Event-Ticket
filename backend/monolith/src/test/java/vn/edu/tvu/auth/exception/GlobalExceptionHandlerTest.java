@@ -1,5 +1,7 @@
 package vn.edu.tvu.auth.exception;
 
+import vn.edu.tvu.shared.web.ErrorResponse;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +55,13 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void optimisticLock_returns409_withConcurrentModificationCode() throws Exception {
+        mockMvc.perform(post("/probe/optlock"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("CONCURRENT_MODIFICATION"));
+    }
+
+    @Test
     void unhandledException_returns500() throws Exception {
         mockMvc.perform(post("/probe/boom"))
                 .andExpect(status().isInternalServerError())
@@ -67,6 +76,11 @@ class GlobalExceptionHandlerTest {
         @PostMapping("/probe/conflict")
         void conflict() {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "already exists");
+        }
+
+        @PostMapping("/probe/optlock")
+        void optlock() {
+            throw new org.springframework.orm.ObjectOptimisticLockingFailureException(Payload.class, "id");
         }
 
         @PostMapping("/probe/boom")

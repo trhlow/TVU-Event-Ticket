@@ -1,6 +1,6 @@
 package vn.edu.tvu.notification.service;
 
-import vn.edu.tvu.notification.messaging.ReservationApprovedMessage;
+import vn.edu.tvu.shared.messaging.ReservationApprovedMessage;
 
 public interface TicketMailSender {
 

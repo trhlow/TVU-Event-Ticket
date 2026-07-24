@@ -53,7 +53,33 @@ is development-only and must never be deployed.
   custom-format PostgreSQL dump. Configure `BACKUP_REMOTE` with rclone to keep
   an off-host copy; retain 7–14 days and test restores regularly.
 - `scripts/restore-postgres.sh` requires `--confirm` because it replaces the
-  live database.
+  live database. It also flushes Redis and purges the RabbitMQ notification
+  queues, because those keep their own persistent volumes: after a point-in-time
+  restore they would otherwise hold post-backup counters, dedup markers and
+  queued messages that reference tickets no longer in the database. Redis
+  re-seeds counters lazily, so wiping the volatile stores is the correct
+  reconciliation. Purging the queue would strand any message already delivered to
+  the broker (its outbox row is `SENT`, which the relay never re-claims), so the
+  script requeues `SENT` outbox rows to `NEW` for at-least-once replay — a
+  duplicate ticket email is preferable to a missing one. It requeues only a
+  window near the backup moment (anchored to the newest `SENT` row, default one
+  hour, overridable via `RESTORE_REQUEUE_WINDOW`), **not** the whole `SENT`
+  history: restoring an old database must not re-blast every ticket email/QR ever
+  sent, and the flushed Redis dedup markers would no longer suppress them. A
+  durable per-`message_id` delivery record (requeue only `SENT`-but-not-
+  `DELIVERED`) would be the precise fix if replay volume ever justifies it.
+
+## Known upgrade risk — migration V7
+
+`V7__foreign_keys_across_features.sql` adds cross-feature foreign keys and
+validates them immediately. Before V7 the schema allowed structural orphans, so
+upgrading a database that already holds pre-V7 rows referencing a missing club,
+event or user will make Flyway fail and the application will not start. This is
+an accepted risk: no environment holds real pre-V7 data yet — every database is
+created fresh through V1→V7. If that ever changes, do **not** edit the immutable
+V7; add a later migration that recreates the constraints as `NOT VALID`, cleans
+or quarantines the orphans, then `VALIDATE CONSTRAINT`, and add an upgrade
+integration test seeded from a V6 fixture containing an orphan.
 
 ## CI/CD
 

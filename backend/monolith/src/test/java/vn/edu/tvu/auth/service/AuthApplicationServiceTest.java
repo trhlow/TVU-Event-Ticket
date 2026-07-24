@@ -1,8 +1,9 @@
 package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.config.BootstrapAdminProperties;
+import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
@@ -29,6 +30,8 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -103,17 +106,91 @@ class AuthApplicationServiceTest {
     }
 
     @Test
+    void login_rejectsEmailAlreadyLinkedToADifferentClaimedIdentity() {
+        // A privileged/claimed account owns this email with a real subject. A brand-new subject presenting
+        // the same email (reissued Entra account) must be refused, not merged over the existing identity.
+        var existing = persisted(
+                User.organizer("entra:old-subject", "organizer@example.com", "Organizer", null), UUID.randomUUID());
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("entra:new-subject", "organizer@example.com", "Impostor"));
+        when(userRepository.findByExtSubject("entra:new-subject")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("already linked to another identity");
+        assertThat(existing.getExtSubject()).isEqualTo("entra:old-subject");
+        assertThat(existing.getRole()).isEqualTo(UserRole.ORGANIZER);
+        assertThat(existing.getDisplayName()).isEqualTo("Organizer");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void login_claimsAdminResetOrganizerByEmailWhenSubjectIsAPendingPlaceholder() {
+        var club = new Club("CLB Tin hoc", null);
+        ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
+        var organizer = persisted(
+                User.organizer(User.PENDING_SUBJECT_PREFIX + "organizer@example.com", "organizer@example.com",
+                        "Organizer", club),
+                UUID.randomUUID());
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("entra:new-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubject("entra:new-subject")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(organizer));
+        when(userRepository.save(organizer)).thenReturn(organizer);
+
+        var result = service.login(new LoginRequest("organizer@example.com", null));
+
+        assertThat(result.profile().role()).isEqualTo(UserRole.ORGANIZER);
+        assertThat(organizer.getExtSubject()).isEqualTo("entra:new-subject");
+    }
+
+    @Test
+    void login_matchesReturningUserBySubjectAndNeverFallsBackToEmail() {
+        var userId = UUID.randomUUID();
+        var student = persisted(User.student("entra:stable-subject", "student@example.com", "Student"), userId);
+        when(identityProvider.verify("student@example.com"))
+                .thenReturn(new ExternalIdentity("entra:stable-subject", "student@example.com", "Student Renamed"));
+        when(userRepository.findByExtSubject("entra:stable-subject")).thenReturn(Optional.of(student));
+        when(userRepository.save(student)).thenReturn(student);
+
+        var result = service.login(new LoginRequest("student@example.com", null));
+
+        assertThat(result.profile().id()).isEqualTo(userId);
+        assertThat(student.getDisplayName()).isEqualTo("Student Renamed");
+        verify(userRepository, never()).findByEmail(any());
+    }
+
+    @Test
     void login_rejectsLockedAccount() {
-        var locked = persisted(User.organizer("dev:organizer@example.com", "organizer@example.com", "Organizer", null),
+        var locked = persisted(User.organizer("entra:organizer-subject", "organizer@example.com", "Organizer", null),
                 UUID.randomUUID());
         locked.lock();
         when(identityProvider.verify("organizer@example.com"))
-                .thenReturn(new ExternalIdentity("dev:organizer@example.com", "organizer@example.com", "Organizer"));
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(locked));
+                .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubject("entra:organizer-subject")).thenReturn(Optional.of(locked));
 
         assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Account is locked");
+    }
+
+    @Test
+    void login_rejectsOrganizerWhoseClubIsDeactivated() {
+        var club = new Club("CLB Tin hoc", null);
+        ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
+        club.deactivate();
+        var organizer = persisted(
+                User.organizer("entra:organizer-subject", "organizer@example.com", "Organizer", club),
+                UUID.randomUUID());
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubject("entra:organizer-subject")).thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Club is inactive");
+        verify(userRepository, never()).save(any());
     }
 
     @Test

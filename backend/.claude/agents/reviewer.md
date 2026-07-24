@@ -35,7 +35,7 @@ packaging) conflicts with the project rules below, the project rules win.
    payloads or non-atomic check-in.
 6. **Generated DTOs.** Shared types come from the OpenAPI spec (`springdoc-openapi`); never hand-write DTOs
    meant for the frontend contract.
-7. **Centralized CORS/JWT** at the gateway only — `allowCredentials: true`, explicit origins (never `*`), JWT
+7. **Centralized CORS/JWT** in the single `SecurityConfig` (`vn.edu.tvu.auth.security`) only — `allowCredentials: true`, explicit origins (never `*`), JWT
    in HTTP-only cookie. Flag per-controller CORS or wildcard origins.
 8. **Resource-constrained.** No blobs/images in Postgres (metadata only). Consumers must keep up with the
    CloudAMQP free-tier limits.

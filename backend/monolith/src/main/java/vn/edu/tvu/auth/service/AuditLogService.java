@@ -2,8 +2,8 @@ package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.AuditLog;
 import vn.edu.tvu.auth.dto.response.AuditLogResponse;
-import vn.edu.tvu.auth.dto.response.PageResponse;
-import vn.edu.tvu.auth.messaging.AuditEventMessage;
+import vn.edu.tvu.shared.audit.AuditRecorder;
+import vn.edu.tvu.shared.web.PageResponse;
 import vn.edu.tvu.auth.repository.AuditLogRepository;
 
 import java.time.Instant;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class AuditLogService {
+public class AuditLogService implements AuditRecorder {
 
     public static final Map<String, String> AUDIT_SORT_FIELDS = Map.of(
             "createdAt", "a.createdAt",
@@ -29,23 +29,14 @@ public class AuditLogService {
         this.auditLogRepository = auditLogRepository;
     }
 
+    /**
+     * Joins the caller's transaction ({@code REQUIRED} is the default), which is the whole point of
+     * recording in-process: the audit row and the change it describes commit together or not at all.
+     */
+    @Override
     @Transactional
-    public void recordLocal(UUID actorId, String action, String targetType, UUID targetId, String detail) {
+    public void recordAudit(UUID actorId, String action, String targetType, UUID targetId, String detail) {
         auditLogRepository.save(AuditLog.local(actorId, action, targetType, targetId, detail));
-    }
-
-    @Transactional
-    public void recordMessage(UUID messageId, AuditEventMessage event) {
-        if (auditLogRepository.countByMessageId(messageId) > 0) {
-            return;
-        }
-        auditLogRepository.save(AuditLog.fromMessage(
-                messageId,
-                event.actorId(),
-                event.action(),
-                event.targetType(),
-                event.targetId(),
-                event.detail()));
     }
 
     @Transactional(readOnly = true)

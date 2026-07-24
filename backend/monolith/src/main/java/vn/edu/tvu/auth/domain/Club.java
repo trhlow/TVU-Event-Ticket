@@ -52,6 +52,10 @@ public class Club {
         this.status = ClubStatus.INACTIVE;
     }
 
+    public boolean isActive() {
+        return status == ClubStatus.ACTIVE;
+    }
+
     @PrePersist
     void prePersist() {
         if (createdAt == null) {

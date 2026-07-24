@@ -1,16 +1,19 @@
 package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.Club;
+import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
 import vn.edu.tvu.auth.dto.request.UpdateClubRequest;
 import vn.edu.tvu.auth.dto.response.AdminStatsResponse;
+import vn.edu.tvu.auth.dto.response.AdminUserResponse;
 import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -29,14 +32,17 @@ public class AdminManagementService {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final TokenRevocationService tokenRevocationService;
 
     public AdminManagementService(
             ClubRepository clubRepository,
             UserRepository userRepository,
-            AuditLogService auditLogService) {
+            AuditLogService auditLogService,
+            TokenRevocationService tokenRevocationService) {
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.tokenRevocationService = tokenRevocationService;
     }
 
     @Transactional(readOnly = true)
@@ -56,7 +62,7 @@ public class AdminManagementService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Club name already exists");
         }
         var club = clubRepository.save(new Club(name, trimToNull(request.description())));
-        auditLogService.recordLocal(actorId, "auth.club.create", "club", club.getId(),
+        auditLogService.recordAudit(actorId, "auth.club.create", "club", club.getId(),
                 "{\"name\":\"" + club.getName() + "\"}");
         return clubResponse(club);
     }
@@ -73,7 +79,7 @@ public class AdminManagementService {
         var club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.update(request.name().trim(), trimToNull(request.description()));
-        auditLogService.recordLocal(actorId, "auth.club.update", "club", club.getId(),
+        auditLogService.recordAudit(actorId, "auth.club.update", "club", club.getId(),
                 "{\"name\":\"" + club.getName() + "\"}");
         return clubResponse(club);
     }
@@ -83,7 +89,38 @@ public class AdminManagementService {
         var club = clubRepository.findById(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.deactivate();
-        auditLogService.recordLocal(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
+        auditLogService.recordAudit(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminUserResponse> listUsers(UserRole role, MssvStatus mssvStatus) {
+        return userRepository.search(role, mssvStatus).stream()
+                .map(this::adminUserResponse)
+                .toList();
+    }
+
+    private AdminUserResponse adminUserResponse(User user) {
+        return new AdminUserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getDisplayName(),
+                user.getRole(),
+                user.getClub() == null ? null : user.getClub().getId(),
+                user.getMssv(),
+                user.getClassCode(),
+                user.getMssvStatus(),
+                user.getStatus());
+    }
+
+    @Transactional
+    public void verifyMssv(UUID actorId, UUID userId) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getMssv() == null || user.getMssv().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User has no MSSV to verify");
+        }
+        user.verifyMssv();
+        auditLogService.recordAudit(actorId, "auth.user.verify-mssv", "user", user.getId(), "{}");
     }
 
     @Transactional
@@ -94,8 +131,12 @@ public class AdminManagementService {
         }
         var club = clubRepository.findById(request.clubId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
-        var organizer = userRepository.save(User.organizer("pending:" + email, email, request.displayName().trim(), club));
-        auditLogService.recordLocal(actorId, "auth.organizer.create", "user", organizer.getId(),
+        if (!club.isActive()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Club is inactive");
+        }
+        var organizer = userRepository.save(
+                User.organizer(User.PENDING_SUBJECT_PREFIX + email, email, request.displayName().trim(), club));
+        auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
                 "{\"email\":\"" + organizer.getEmail() + "\"}");
         return organizerResponse(organizer);
     }
@@ -111,15 +152,17 @@ public class AdminManagementService {
     public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         organizer.lock();
-        auditLogService.recordLocal(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
+        // Locking must take effect now, not whenever the organizer's current JWT happens to expire.
+        tokenRevocationService.revoke(organizer.getId());
+        auditLogService.recordAudit(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }
 
     @Transactional
     public OrganizerResponse resetOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
-        organizer.resetExternalSubject("pending:" + organizer.getEmail());
-        auditLogService.recordLocal(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
+        organizer.resetExternalSubject(User.PENDING_SUBJECT_PREFIX + organizer.getEmail());
+        auditLogService.recordAudit(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }
 
@@ -127,7 +170,7 @@ public class AdminManagementService {
     public void deleteOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         userRepository.delete(organizer);
-        auditLogService.recordLocal(actorId, "auth.organizer.delete", "user", organizerId, "{}");
+        auditLogService.recordAudit(actorId, "auth.organizer.delete", "user", organizerId, "{}");
     }
 
     private User organizer(UUID organizerId) {

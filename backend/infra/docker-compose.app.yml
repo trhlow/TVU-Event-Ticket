@@ -1,5 +1,0 @@
-# Backwards-compatible entry point for local application runtime.
-# The former gateway + five-service topology has been retired; this includes
-# the single modular-monolith runtime and only its supporting infrastructure.
-include:
-  - path: docker-compose.monolith.yml

@@ -1,20 +1,17 @@
 package vn.edu.tvu.ticket.service;
 
-import vn.edu.tvu.ticket.domain.OutboxMessage;
+import vn.edu.tvu.ticket.client.EventLookup;
 import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
 import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
-import vn.edu.tvu.ticket.dto.response.PageResponse;
+import vn.edu.tvu.shared.web.PageResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
-import vn.edu.tvu.ticket.messaging.AuditEventMessage;
-import vn.edu.tvu.ticket.repository.OutboxMessageRepository;
+import vn.edu.tvu.shared.audit.AuditRecorder;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.security.CurrentUser;
-import vn.edu.tvu.ticket.security.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -38,28 +35,37 @@ public class TicketingService {
     private final TicketRepository ticketRepository;
     private final TicketCounterService counterService;
     private final QrPayloadVerifier qrVerifier;
-    private final OutboxMessageRepository outboxRepository;
-    private final ObjectMapper objectMapper;
+    private final AuditRecorder auditRecorder;
+    private final EventLookup eventLookup;
 
     public TicketingService(TicketInventoryRepository inventoryRepository, TicketRepository ticketRepository,
             TicketCounterService counterService, QrPayloadVerifier qrVerifier,
-            OutboxMessageRepository outboxRepository, ObjectMapper objectMapper) {
+            AuditRecorder auditRecorder, EventLookup eventLookup) {
         this.inventoryRepository = inventoryRepository;
         this.ticketRepository = ticketRepository;
         this.counterService = counterService;
         this.qrVerifier = qrVerifier;
-        this.outboxRepository = outboxRepository;
-        this.objectMapper = objectMapper;
+        this.auditRecorder = auditRecorder;
+        this.eventLookup = eventLookup;
     }
 
     @Transactional(readOnly = true)
     public AvailabilityResponse availability(UUID eventId) {
-        var inventory = inventoryRepository.findByEventId(eventId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket inventory not found"));
-        var calculated = Math.max(0, inventory.getTotalCapacity() - inventory.getApprovedCount());
+        var inventory = inventoryRepository.findByEventId(eventId);
+        if (inventory.isEmpty()) {
+            // The inventory row is created lazily on the first registration, so a brand-new OPEN event has
+            // none yet. Fall back to the event's own capacity — all of it still available — instead of 404.
+            // Otherwise the public listing's batch availability call fails the moment it includes an event
+            // nobody has registered for. getOpenEvent still raises 404 for an event that is not OPEN, so a
+            // genuinely unknown id is still rejected.
+            var event = eventLookup.getOpenEvent(eventId);
+            return new AvailabilityResponse(eventId, event.capacity(), 0, event.capacity());
+        }
+        var inv = inventory.get();
+        var calculated = Math.max(0, inv.getTotalCapacity() - inv.getApprovedCount());
         counterService.seedIfMissing(eventId, calculated);
         var remaining = counterService.remaining(eventId);
-        return new AvailabilityResponse(eventId, inventory.getTotalCapacity(), inventory.getApprovedCount(),
+        return new AvailabilityResponse(eventId, inv.getTotalCapacity(), inv.getApprovedCount(),
                 remaining < 0 ? calculated : remaining);
     }
 
@@ -69,7 +75,17 @@ public class TicketingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At most 100 event IDs are allowed");
         }
         var result = new LinkedHashMap<UUID, AvailabilityResponse>();
-        eventIds.stream().distinct().forEach(id -> result.put(id, availability(id)));
+        eventIds.stream().distinct().forEach(id -> {
+            try {
+                result.put(id, availability(id));
+            } catch (ResponseStatusException ex) {
+                // The organizer listing mixes OPEN, DRAFT and CLOSED events. A DRAFT/CLOSED event that
+                // nobody has registered for has no inventory row and is rejected by getOpenEvent, so
+                // reporting it per-event would fail the whole batch. Skip it instead: its id is simply
+                // absent from the map and the caller keeps its own capacity fallback for that one event,
+                // while every OPEN event with inventory still returns its true remaining count.
+            }
+        });
         return result;
     }
 
@@ -109,11 +125,11 @@ public class TicketingService {
                 .getContent();
         var csv = new StringBuilder(
                 "ticket_id,event_id,student_id,student_email,student_mssv,status,issued_at,checked_in_at\r\n");
-        rows.forEach(row -> csv.append(csv(row.ticketId())).append(',')
-                .append(csv(row.eventId())).append(',').append(csv(row.studentId())).append(',')
-                .append(csv(row.studentEmail())).append(',').append(csv(row.studentMssv())).append(',')
-                .append(csv(row.status())).append(',').append(csv(row.issuedAt())).append(',')
-                .append(csv(row.checkedInAt())).append("\r\n"));
+        rows.forEach(row -> csv.append(csvCell(row.ticketId())).append(',')
+                .append(csvCell(row.eventId())).append(',').append(csvCell(row.studentId())).append(',')
+                .append(csvCell(row.studentEmail())).append(',').append(csvCell(row.studentMssv())).append(',')
+                .append(csvCell(row.status())).append(',').append(csvCell(row.issuedAt())).append(',')
+                .append(csvCell(row.checkedInAt())).append("\r\n"));
         return csv.toString();
     }
 
@@ -136,14 +152,7 @@ public class TicketingService {
 
     private void recordAudit(UUID actorId, UUID ticketId, UUID eventId) {
         var detail = "{\"eventId\":\"" + eventId + "\"}";
-        var message = new AuditEventMessage(actorId, "audit.ticket.check-in", "ticket", ticketId,
-                detail, Instant.now().toString());
-        try {
-            outboxRepository.save(OutboxMessage.pending("audit", ticketId, "audit.ticket.check-in",
-                    objectMapper.writeValueAsString(message)));
-        } catch (JacksonException ex) {
-            throw new IllegalStateException("Failed to serialize audit message", ex);
-        }
+        auditRecorder.recordAudit(actorId, "audit.ticket.check-in", "ticket", ticketId, detail);
     }
 
     private void requireOrganizer(CurrentUser actor) {
@@ -152,11 +161,19 @@ public class TicketingService {
         }
     }
 
-    private String csv(Object value) {
+    /**
+     * Quoting alone is not enough: spreadsheets evaluate a cell beginning with {@code = + - @} (or a tab
+     * or CR) as a formula even when the value is quoted, so an attendee-supplied field such as MSSV could
+     * run in the organizer's spreadsheet. Prefixing with an apostrophe forces literal text.
+     */
+    static String csvCell(Object value) {
         if (value == null) {
             return "";
         }
         var text = value.toString();
+        if (!text.isEmpty() && "=+-@\t\r".indexOf(text.charAt(0)) >= 0) {
+            text = "'" + text;
+        }
         return "\"" + text.replace("\"", "\"\"") + "\"";
     }
 }

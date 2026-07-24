@@ -11,10 +11,10 @@ to run tests and report evidence — never claim "passing" without showing the c
 ## How to work
 
 1. Identify the affected module(s) from the change. Run the narrowest useful scope first:
-   - single class: `mvn -pl ticket-service test -Dtest=SomeTest`
-   - one module + deps: `mvn -pl ticket-service -am test`
+   - single class: `mvn -pl monolith test -Dtest=SomeTest`
+   - one module + deps: `mvn -pl monolith -am test`
    - everything: `mvn test`
-2. Some tests need infra: `docker compose -f infra/docker-compose.yml up -d` (Postgres, Redis, RabbitMQ).
+2. Some tests need infra: `docker compose -f infra/docker-compose.monolith.yml up -d` (Postgres, Redis, RabbitMQ).
    Testcontainers is preferred where used. Note if a failure is environmental vs a real defect.
 3. Report: what you ran, pass/fail counts, and for failures the actual assertion + stack trace. Suggest the
    gap; do not fix code yourself.

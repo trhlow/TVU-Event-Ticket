@@ -9,7 +9,7 @@ import vn.edu.tvu.ticket.repository.ReservationRepository;
 import vn.edu.tvu.ticket.repository.TicketInventoryRepository;
 import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.security.CurrentUser;
-import vn.edu.tvu.ticket.security.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
 
 import java.time.LocalDate;
 import java.time.ZoneOffset;

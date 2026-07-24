@@ -2,12 +2,16 @@ package vn.edu.tvu.auth.service;
 
 import vn.edu.tvu.auth.domain.AuditLog;
 import vn.edu.tvu.auth.domain.Club;
-import vn.edu.tvu.auth.domain.UserRole;
+import vn.edu.tvu.auth.domain.MssvStatus;
+import vn.edu.tvu.auth.domain.User;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.CreateClubRequest;
 import vn.edu.tvu.auth.dto.request.CreateOrganizerRequest;
+import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.repository.AuditLogRepository;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,11 +45,28 @@ class AdminManagementServiceTest {
     @Mock
     private AuditLogRepository auditLogRepository;
 
+    @Mock
+    private TokenRevocationService tokenRevocationService;
+
     private AdminManagementService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminManagementService(clubRepository, userRepository, new AuditLogService(auditLogRepository));
+        service = new AdminManagementService(clubRepository, userRepository,
+                new AuditLogService(auditLogRepository), tokenRevocationService);
+    }
+
+    @Test
+    void lockOrganizer_locksAccountAndRevokesOutstandingTokens() {
+        var organizerId = UUID.randomUUID();
+        var organizer = User.organizer("entra:org", "organizer@example.com", "Organizer", null);
+        ReflectionTestUtils.setField(organizer, "id", organizerId);
+        when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
+
+        service.lockOrganizer(UUID.randomUUID(), organizerId);
+
+        assertThat(organizer.getStatus()).isEqualTo(UserStatus.LOCKED);
+        verify(tokenRevocationService).revoke(organizerId);
     }
 
     @Test
@@ -103,9 +125,73 @@ class AdminManagementServiceTest {
     }
 
     @Test
+    void createOrganizer_rejectsInactiveClub() {
+        var clubId = UUID.randomUUID();
+        var club = persistedClub(new Club("CLB Tin hoc", "Hoc thuat CNTT"), clubId);
+        club.deactivate();
+        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.empty());
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club));
+
+        assertThatThrownBy(() -> service.createOrganizer(UUID.randomUUID(),
+                new CreateOrganizerRequest("organizer@example.com", "Organizer", clubId)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("inactive");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void listUsers_mapsUsersIncludingMssvStatus() {
+        var userId = UUID.randomUUID();
+        var student = User.student("dev:student", "student@example.com", "Student");
+        student.completeProfile("110122001", "DA21CNTT");
+        ReflectionTestUtils.setField(student, "id", userId);
+        when(userRepository.search(UserRole.SINH_VIEN, MssvStatus.UNVERIFIED)).thenReturn(List.of(student));
+
+        var result = service.listUsers(UserRole.SINH_VIEN, MssvStatus.UNVERIFIED);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().id()).isEqualTo(userId);
+        assertThat(result.getFirst().mssv()).isEqualTo("110122001");
+        assertThat(result.getFirst().classCode()).isEqualTo("DA21CNTT");
+        assertThat(result.getFirst().mssvStatus()).isEqualTo(MssvStatus.UNVERIFIED);
+        assertThat(result.getFirst().role()).isEqualTo(UserRole.SINH_VIEN);
+    }
+
+    @Test
+    void verifyMssv_marksUserVerifiedAndRecordsAudit() {
+        var actorId = UUID.randomUUID();
+        var userId = UUID.randomUUID();
+        var student = User.student("dev:student", "student@example.com", "Student");
+        student.completeProfile("110122001", "DA21CNTT");
+        ReflectionTestUtils.setField(student, "id", userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(student));
+
+        service.verifyMssv(actorId, userId);
+
+        assertThat(student.getMssvStatus()).isEqualTo(MssvStatus.VERIFIED);
+        var auditCaptor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(auditCaptor.capture());
+        assertThat(auditCaptor.getValue().getAction()).isEqualTo("auth.user.verify-mssv");
+        assertThat(auditCaptor.getValue().getTargetId()).isEqualTo(userId);
+    }
+
+    @Test
+    void verifyMssv_rejectsUserWithoutMssv() {
+        var userId = UUID.randomUUID();
+        var organizer = User.organizer("dev:organizer", "organizer@example.com", "Organizer", null);
+        ReflectionTestUtils.setField(organizer, "id", userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.verifyMssv(UUID.randomUUID(), userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("no MSSV");
+    }
+
+    @Test
     void statsReturnsTotalsAndZeroFilledRoleBreakdown() {
         var auditLogService = new AuditLogService(auditLogRepository);
-        var service = new AdminManagementService(clubRepository, userRepository, auditLogService);
+        var service = new AdminManagementService(clubRepository, userRepository, auditLogService,
+                tokenRevocationService);
         when(clubRepository.count()).thenReturn(4L);
         when(userRepository.count()).thenReturn(50L);
         when(userRepository.countGroupedByRole()).thenReturn(List.of(

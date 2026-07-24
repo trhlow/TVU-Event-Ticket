@@ -1,0 +1,19 @@
+package vn.edu.tvu.auth.dto.response;
+
+import vn.edu.tvu.auth.domain.MssvStatus;
+import vn.edu.tvu.auth.domain.UserStatus;
+import vn.edu.tvu.shared.domain.UserRole;
+
+import java.util.UUID;
+
+public record AdminUserResponse(
+        UUID id,
+        String email,
+        String displayName,
+        UserRole role,
+        UUID clubId,
+        String mssv,
+        String classCode,
+        MssvStatus mssvStatus,
+        UserStatus status) {
+}

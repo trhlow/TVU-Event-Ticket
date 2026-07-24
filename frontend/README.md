@@ -1,8 +1,9 @@
 # TVU Event & Ticket — Frontend
 
-React + TypeScript + Vite workspace for the TVU Event & Ticketing Platform. Talks to the backend
-exclusively through the API Gateway (`VITE_API_BASE_URL`), using an HttpOnly JWT cookie +
-double-submit CSRF cookie. See the repo root [README.md](../README.md) and
+React + TypeScript + Vite workspace for the TVU Event & Ticketing Platform. Talks to the backend at a single
+base URL (`VITE_API_BASE_URL`), using an HttpOnly JWT cookie + double-submit CSRF cookie. The backend is
+one modular-monolith application — the API gateway it used to sit behind was removed in the 2026-07
+migration, and no URL the frontend calls changed. See the repo root [README.md](../README.md) and
 [BACKEND_STATUS_FOR_FRONTEND.md](../backend/docs/BACKEND_STATUS_FOR_FRONTEND.md) for the backend contract, and
 [backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md) /
 [docs/FRONTEND_IMPLEMENTATION_STATUS.md](../docs/FRONTEND_IMPLEMENTATION_STATUS.md) for what is
@@ -20,7 +21,7 @@ npm run dev
 
 | Variable | Purpose | Notes |
 | --- | --- | --- |
-| `VITE_API_BASE_URL` | Base URL of the API Gateway (must include `/api`) | Never point production at `localhost` |
+| `VITE_API_BASE_URL` | Base URL of the backend API (must include `/api`) | Never point production at `localhost` |
 | `VITE_APP_ENV` | `development` \| `production` | Defaults to Vite's own build mode if unset. When `production`, the app refuses to start if `VITE_AUTH_PROVIDER=devstub` |
 | `VITE_AUTH_PROVIDER` | `microsoft` \| `devstub` | `devstub` maps to the backend's dev-only, password-less identity stub. The DevStub login panel only exists in non-production builds (`import.meta.env.DEV`) — it is dead-code-eliminated from `npm run build` output regardless of this variable |
 | `VITE_USE_DEMO_DATA` | `true` \| `false` | When `true`, service layers serve fixture data instead of calling the real API — used for offline UI demos only |

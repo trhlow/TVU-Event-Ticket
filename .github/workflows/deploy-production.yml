@@ -21,15 +21,31 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     steps:
+      - name: Validate deploy ref
+        env:
+          DEPLOY_REF: ${{ inputs.ref }}
+        run: |
+          # The ref is interpolated into a remote shell command, so restrict it to a safe charset
+          # (git ref names plus SHAs). This rejects quotes, spaces and shell metacharacters that could
+          # otherwise break out of the quoting and inject commands on the production host.
+          if ! printf '%s' "$DEPLOY_REF" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
+            echo "Invalid ref '$DEPLOY_REF': only letters, digits and . _ / - are allowed" >&2
+            exit 1
+          fi
+
       - name: Configure SSH
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
+          # Pin the host key from a protected secret instead of trusting whatever ssh-keyscan returns at
+          # run time (trust-on-first-use is not identity verification and is open to MITM). Populate the
+          # secret once with the host's known public key, e.g. `ssh-keyscan host` verified out of band.
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Update and verify production stack
         env:
@@ -38,7 +54,7 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_REF: ${{ inputs.ref }}
         run: |
-          ssh -o BatchMode=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
             "cd '$DEPLOY_PATH' && \
              git fetch --prune origin '$DEPLOY_REF' && \
              git checkout --detach FETCH_HEAD && \

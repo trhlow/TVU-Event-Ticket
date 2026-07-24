@@ -11,6 +11,13 @@ can rely on.
 
 Status legend: items are **Blocked by backend** unless marked **Resolved**.
 
+> **Naming note (2026-07-22).** Findings below were written while the backend was five services behind an
+> API gateway. It is now one Spring Boot application: `auth-service` → the `vn.edu.tvu.auth` package,
+> `ticket-service` → `vn.edu.tvu.ticket`, and so on, with the gateway's CORS/CSRF/RBAC responsibilities
+> now in the single `SecurityConfig` (`vn.edu.tvu.auth.security`). The findings themselves are unchanged
+> and deliberately left in their original wording — this is a record of what was found and when, not a
+> description of the current layout.
+
 ---
 
 ## 1. Organizer accounts have no credential of their own
@@ -240,9 +247,12 @@ execution, the attacker gets root inside the container rather than an unprivileg
 
 ## 10. Docker Compose healthchecks
 
-**Status: Resolved in EPIC 7.** `backend/infra/docker-compose.app.yml` now health-checks Postgres, Redis,
-RabbitMQ, Mailpit and all five Spring services. Service dependencies use `condition: service_healthy`; bring
-the stack up with `docker compose -f infra/docker-compose.app.yml up -d --build --wait`.
+**Status: Resolved in EPIC 7.** The Compose stack health-checks Postgres, Redis, RabbitMQ, Mailpit and the
+application. Service dependencies use `condition: service_healthy`; bring the stack up with
+`docker compose -f infra/docker-compose.monolith.yml up -d --build --wait`. (The two files named further
+down — `docker-compose.app.yml` and `docker-compose.yml` — were the five-service stack and its
+dependency-only base; both were removed when the backend became one deployable. The single
+`docker-compose.monolith.yml` replaces them.)
 
 **Historical finding.**
 
@@ -301,6 +311,13 @@ rule for this route, matching the pattern used for other organizer-only endpoint
 
 **Priority.** Low (functionally safe today; this closes a consistency/defense-in-depth gap).
 **Frontend today.** Not applicable.
+
+**Status: Moot as of 2026-07-22 — the endpoint was deleted.** It resolved the event through the
+public lookup, which only returns `OPEN` events, while its one caller invoked it on a just-created
+`DRAFT` event; it returned `404` on every call it ever received. Ticket inventory is created lazily
+on first registration instead. The route is gone, so there is no rule to add. Note that
+`/api/tickets/**` is still covered by an explicit `hasRole('ORGANIZER')` matcher for the check-in
+alias, so the fall-through described above no longer exists on any surviving path either.
 
 ---
 
@@ -377,7 +394,7 @@ but does not block the core registration → approval → ticket → check-in fl
 **Frontend today.** `SuperAdminDashboard`, `SuperAdminStatsPage`, `SuperAdminUsersPage`,
 `SuperAdminStudentsPage`, and `SuperAdminLogsPage` now show an honest "waiting on backend" state
 instead of presenting fixture data as if it were live. See
-[FRONTEND_IMPLEMENTATION_STATUS.md](FRONTEND_IMPLEMENTATION_STATUS.md).
+[FRONTEND_IMPLEMENTATION_STATUS.md](../../docs/FRONTEND_IMPLEMENTATION_STATUS.md).
 
 ---
 
@@ -419,7 +436,7 @@ values wherever these fields are missing.
 | 9 | Backend container runs as root | High | Blocked by backend |
 | 10 | Docker Compose healthchecks | Medium | Resolved (EPIC 7) |
 | 11 | Notification DLQ has no re-drive path | Medium | Blocked by backend |
-| 12 | `/tickets/inventories` missing explicit role rule | Low | Blocked by backend |
+| 12 | `/tickets/inventories` missing explicit role rule | Low | Moot — endpoint deleted 2026-07-22 |
 | 13 | No endpoint to re-fetch a ticket's QR | Medium | Blocked by backend |
 | 14 | Super Admin statistics/audit-log APIs | Medium | Resolved (EPIC 6/UI) |
 | 15 | Reservation/Event DTOs missing display fields | Medium | Blocked by backend |

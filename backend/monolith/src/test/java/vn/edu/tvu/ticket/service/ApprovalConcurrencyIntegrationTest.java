@@ -1,5 +1,6 @@
 package vn.edu.tvu.ticket.service;
 
+import vn.edu.tvu.ticket.dto.request.CreateReservationRequest;
 import vn.edu.tvu.ticket.domain.Reservation;
 import vn.edu.tvu.ticket.domain.ReservationStatus;
 import vn.edu.tvu.ticket.domain.TicketInventory;
@@ -10,7 +11,8 @@ import vn.edu.tvu.ticket.repository.TicketRepository;
 import vn.edu.tvu.ticket.domain.OutboxMessage;
 import vn.edu.tvu.ticket.messaging.OutboxClaimService;
 import vn.edu.tvu.ticket.security.CurrentUser;
-import vn.edu.tvu.ticket.security.UserRole;
+import vn.edu.tvu.shared.domain.UserRole;
+import vn.edu.tvu.testsupport.ParentRows;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import vn.edu.tvu.MonolithApplication;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.web.server.ResponseStatusException;
@@ -36,8 +39,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(classes = MonolithApplication.class, properties = "spring.task.scheduling.enabled=false")
+// This suite exercises the reservation/approval path only; it needs no messaging. Rabbit listener
+// auto-startup is disabled so the app does not spawn a listener that reconnects to a non-existent broker,
+// and the scheduled outbox worker is off. @DirtiesContext drops the context (Hikari pool, Redis client)
+// after the class so its workers do not keep reconnecting to containers stopped by the next test class.
+@SpringBootTest(classes = MonolithApplication.class, properties = {
+        "spring.task.scheduling.enabled=false",
+        "spring.rabbitmq.listener.simple.auto-startup=false"})
 @Testcontainers(disabledWithoutDocker = true)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ApprovalConcurrencyIntegrationTest {
 
     @Container
@@ -63,6 +73,7 @@ class ApprovalConcurrencyIntegrationTest {
     @Autowired TicketCounterService counterService;
     @Autowired TicketingService ticketingService;
     @Autowired OutboxClaimService outboxClaimService;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     @BeforeEach
     void clean() {
@@ -70,6 +81,44 @@ class ApprovalConcurrencyIntegrationTest {
         ticketRepository.deleteAll();
         reservationRepository.deleteAll();
         inventoryRepository.deleteAll();
+    }
+
+    /**
+     * The real proof for the inventory race. Eight different students register for a brand-new event at the
+     * same moment, each in its own transaction, so all eight reach {@code findOrCreateInventory} with no
+     * inventory yet. The old {@code save()}-and-catch could not survive this against a real database — the
+     * violation surfaced at commit, outside the catch, and aborted the transaction. With
+     * {@code insertIfAbsent}'s {@code ON CONFLICT DO NOTHING} the database serialises the inserts: exactly
+     * one row is created, no request fails, and all eight reservations are written.
+     */
+    @Test
+    void concurrentFirstRegistrationsCreateExactlyOneInventory() throws Exception {
+        var clubId = ParentRows.club(jdbc, UUID.randomUUID());
+        var eventId = ParentRows.event(jdbc, UUID.randomUUID(), clubId, 50);
+        var students = new ArrayList<CurrentUser>();
+        for (int i = 0; i < 8; i++) {
+            students.add(student());
+        }
+
+        try (var executor = Executors.newFixedThreadPool(8)) {
+            var tasks = students.stream().<java.util.concurrent.Callable<Boolean>>map(s -> () -> {
+                try {
+                    service.submit(s, new CreateReservationRequest(eventId, clubId), "idem-" + s.userId());
+                    return true;
+                } catch (RuntimeException ex) {
+                    return false;
+                }
+            }).toList();
+            var succeeded = executor.invokeAll(tasks).stream().filter(future -> {
+                try { return future.get(); } catch (Exception ex) { throw new RuntimeException(ex); }
+            }).count();
+            assertThat(succeeded).isEqualTo(8);
+        }
+
+        assertThat(inventoryRepository.findAll().stream().filter(inv -> inv.getEventId().equals(eventId)))
+                .hasSize(1);
+        assertThat(reservationRepository.findAll().stream().filter(r -> r.getEventId().equals(eventId)))
+                .hasSize(8);
     }
 
     @Test
@@ -173,9 +222,13 @@ class ApprovalConcurrencyIntegrationTest {
             assertThat(successes).isOne();
         }
 
-        assertThat(outboxRepository.findAll().stream()
-                .filter(message -> "audit.ticket.check-in".equals(message.getRoutingKey())))
-                .hasSize(1);
+        // The losing thread must leave no trace. Audit is written straight to audit_log inside the
+        // check-in transaction now rather than queued to the outbox, so the row count is the assertion —
+        // and because it shares that transaction, the rejected check-in's audit row rolls back with it.
+        var auditRows = jdbc.queryForObject(
+                "select count(*) from audit_log where action = ? and target_id = ?",
+                Integer.class, "audit.ticket.check-in", ticket.getId());
+        assertThat(auditRows).isOne();
     }
 
     @Test
@@ -197,20 +250,30 @@ class ApprovalConcurrencyIntegrationTest {
     }
 
     private void createInventory(UUID eventId, UUID clubId, int capacity) {
+        ParentRows.event(jdbc, eventId, clubId, capacity);
         var now = Instant.now();
         inventoryRepository.saveAndFlush(TicketInventory.create(eventId, clubId, capacity, "Event",
                 now.plusSeconds(3600), now.plusSeconds(7200), "TVU Hall"));
     }
 
     private Reservation createReservation(UUID eventId, UUID clubId, String key) {
+        ParentRows.event(jdbc, eventId, clubId, 100);
         var now = Instant.now();
-        return reservationRepository.saveAndFlush(Reservation.pending(eventId, clubId, UUID.randomUUID(),
+        return reservationRepository.saveAndFlush(Reservation.pending(eventId, clubId,
+                ParentRows.user(jdbc, UUID.randomUUID()),
                 "student@example.com", UUID.randomUUID().toString().substring(0, 10), "Event",
                 now.plusSeconds(3600), now.plusSeconds(7200), "TVU Hall", key));
     }
 
     private CurrentUser organizer(UUID clubId) {
-        return new CurrentUser(UUID.randomUUID(), "organizer@example.com", UserRole.ORGANIZER, clubId, null);
+        var id = ParentRows.user(jdbc, UUID.randomUUID(), clubId, "ORGANIZER");
+        return new CurrentUser(id, "organizer@example.com", UserRole.ORGANIZER, clubId, null, false);
+    }
+
+    /** A distinct real student. student_id is FK-constrained to users(id) by V7, so the row must exist. */
+    private CurrentUser student() {
+        var id = ParentRows.user(jdbc, UUID.randomUUID());
+        return new CurrentUser(id, "student-" + id + "@example.com", UserRole.SINH_VIEN, null, "110122001", true);
     }
 
     private boolean tryCheckIn(UUID clubId, String qr) {
