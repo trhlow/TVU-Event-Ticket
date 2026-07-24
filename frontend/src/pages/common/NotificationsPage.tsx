@@ -3,13 +3,13 @@ import BackendPendingNotice from "../../components/common/BackendPendingNotice";
 import PageHeader from "../../components/common/PageHeader";
 import { requireCurrentUser } from "../../state/authSession";
 
-type NotificationScope = "student" | "organizer" | "admin";
+export type NotificationScope = "student" | "organizer" | "admin";
 
 interface NotificationsPageProps {
   scope: NotificationScope;
 }
 
-const notificationCopy: Record<NotificationScope, { title: string; description: string; endpoints: string[] }> = {
+export const notificationCopy: Record<NotificationScope, { title: string; description: string; endpoints: string[] }> = {
   student: {
     title: "Thông báo của tôi",
     description: "Theo dõi trạng thái đăng ký, lịch sự kiện và vé QR đã được Ban tổ chức phát hành.",
