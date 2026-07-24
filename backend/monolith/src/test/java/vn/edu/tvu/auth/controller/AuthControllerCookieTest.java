@@ -6,6 +6,7 @@ import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.security.AuthCookieProperties;
 import vn.edu.tvu.auth.security.AuthCookieService;
 import vn.edu.tvu.auth.security.JwtToken;
+import vn.edu.tvu.auth.service.AdminOtpService;
 import vn.edu.tvu.auth.service.AuthApplicationService;
 import vn.edu.tvu.auth.service.LoginResult;
 
@@ -26,7 +27,8 @@ class AuthControllerCookieTest {
     @Test
     void login_setsHttpOnlyJwtCookieAndReadableXsrfCookie() {
         var appService = mock(AuthApplicationService.class);
-        var controller = new AuthController(appService, new AuthCookieService(new AuthCookieProperties(
+        var controller = new AuthController(appService, mock(AdminOtpService.class),
+                new AuthCookieService(new AuthCookieProperties(
                 "TVU_AUTH",
                 "XSRF-TOKEN",
                 false,
@@ -65,7 +67,8 @@ class AuthControllerCookieTest {
     @Test
     void logout_expiresJwtAndXsrfCookies() {
         var appService = mock(AuthApplicationService.class);
-        var controller = new AuthController(appService, new AuthCookieService(new AuthCookieProperties(
+        var controller = new AuthController(appService, mock(AdminOtpService.class),
+                new AuthCookieService(new AuthCookieProperties(
                 "TVU_AUTH",
                 "XSRF-TOKEN",
                 false,

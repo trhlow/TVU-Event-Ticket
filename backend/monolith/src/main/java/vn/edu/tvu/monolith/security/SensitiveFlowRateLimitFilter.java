@@ -43,8 +43,14 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
         if (!HttpMethod.POST.matches(request.getMethod())) {
             return true;
         }
-        return !"/api/auth/login".equals(request.getRequestURI())
+        return !isLoginLike(request.getRequestURI())
                 && !"/api/reservations".equals(request.getRequestURI());
+    }
+
+    private boolean isLoginLike(String uri) {
+        return "/api/auth/login".equals(uri)
+                || "/api/auth/otp/request".equals(uri)
+                || "/api/auth/otp/verify".equals(uri);
     }
 
     @Override
@@ -52,7 +58,7 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         var now = clock.millis();
         var windowStart = now - now % WINDOW_MILLIS;
-        var limit = "/api/auth/login".equals(request.getRequestURI()) ? LOGIN_LIMIT : RESERVATION_LIMIT;
+        var limit = isLoginLike(request.getRequestURI()) ? LOGIN_LIMIT : RESERVATION_LIMIT;
         purgeElapsedWindows(windowStart);
         var key = request.getRequestURI() + ':' + clientAddress(request);
         var next = windows.compute(key, (ignored, current) -> current == null || current.windowStart() != windowStart

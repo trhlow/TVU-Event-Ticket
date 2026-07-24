@@ -61,8 +61,7 @@ class AuthApplicationServiceTest {
         service = new AuthApplicationService(
                 identityProvider,
                 userRepository,
-                jwtService,
-                csrfTokenService);
+                new SessionMinter(jwtService, csrfTokenService));
     }
 
     @Test

@@ -1,8 +1,6 @@
 package vn.edu.tvu.auth.service;
 
-import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
@@ -10,8 +8,6 @@ import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
 import vn.edu.tvu.auth.identity.IdentityProvider;
 import vn.edu.tvu.auth.repository.UserRepository;
-import vn.edu.tvu.auth.security.CsrfTokenService;
-import vn.edu.tvu.auth.security.JwtSubject;
 
 import java.util.UUID;
 
@@ -25,18 +21,15 @@ public class AuthApplicationService {
 
     private final IdentityProvider identityProvider;
     private final UserRepository userRepository;
-    private final InternalJwtService jwtService;
-    private final CsrfTokenService csrfTokenService;
+    private final SessionMinter sessionMinter;
 
     public AuthApplicationService(
             IdentityProvider identityProvider,
             UserRepository userRepository,
-            InternalJwtService jwtService,
-            CsrfTokenService csrfTokenService) {
+            SessionMinter sessionMinter) {
         this.identityProvider = identityProvider;
         this.userRepository = userRepository;
-        this.jwtService = jwtService;
-        this.csrfTokenService = csrfTokenService;
+        this.sessionMinter = sessionMinter;
     }
 
     @Transactional
@@ -50,13 +43,13 @@ public class AuthApplicationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Club is inactive");
         }
         var saved = userRepository.save(user);
-        return sessionFor(saved);
+        return sessionMinter.mint(saved);
     }
 
     @Transactional(readOnly = true)
     public AuthProfileResponse me(UUID userId) {
         return userRepository.findById(userId)
-                .map(this::profile)
+                .map(sessionMinter::profile)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -69,7 +62,7 @@ public class AuthApplicationService {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.completeProfile(mssv, request.classCode().trim());
-        return sessionFor(userRepository.save(user));
+        return sessionMinter.mint(userRepository.save(user));
     }
 
     /**
@@ -86,27 +79,4 @@ public class AuthApplicationService {
                 .orElseGet(() -> User.student(identity.subject(), identity.email(), identity.displayName()));
     }
 
-    private LoginResult sessionFor(User user) {
-        var jwt = jwtService.mint(new JwtSubject(
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                user.getClub() == null ? null : user.getClub().getId(),
-                user.getMssv(),
-                user.getMssvStatus() == MssvStatus.VERIFIED));
-        return new LoginResult(profile(user), jwt, csrfTokenService.sign(jwt.jti(), jwt.expiresAt()));
-    }
-
-    private AuthProfileResponse profile(User user) {
-        return new AuthProfileResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getDisplayName(),
-                user.getRole(),
-                user.getClub() == null ? null : user.getClub().getId(),
-                user.getMssv(),
-                user.getClassCode(),
-                user.getMssvStatus(),
-                user.getMssv() != null && !user.getMssv().isBlank());
-    }
 }

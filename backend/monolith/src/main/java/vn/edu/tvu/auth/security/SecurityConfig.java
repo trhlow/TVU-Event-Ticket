@@ -34,7 +34,8 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.requireCsrfProtectionMatcher(request -> false))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/login", "/.well-known/**", "/actuator/health",
+                        .requestMatchers("/api/auth/login", "/api/auth/otp/request",
+                                "/api/auth/otp/verify", "/.well-known/**", "/actuator/health",
                                 "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/mine").hasRole("ORGANIZER")
                         .requestMatchers(HttpMethod.GET, "/api/events/stats").hasRole("SUPER_ADMIN")
