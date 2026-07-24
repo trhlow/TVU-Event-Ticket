@@ -112,6 +112,15 @@ public class User {
         this.club = null;
     }
 
+    /**
+     * Puts an already-signed-in student in charge of a club. Their {@code ext_subject} stays untouched,
+     * so the Entra identity they have been logging in with keeps working.
+     */
+    public void promoteToOrganizer(Club club) {
+        this.role = UserRole.ORGANIZER;
+        this.club = club;
+    }
+
     public void lock() {
         this.status = UserStatus.LOCKED;
     }
