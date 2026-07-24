@@ -108,12 +108,6 @@ public class AdminController {
         return adminManagementService.lockOrganizer(actorId(jwt), organizerId);
     }
 
-    @PostMapping("/organizers/{organizerId}/reset")
-    @Operation(summary = "Reset organizer external identity binding")
-    public OrganizerResponse resetOrganizer(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID organizerId) {
-        return adminManagementService.resetOrganizer(actorId(jwt), organizerId);
-    }
-
     @DeleteMapping("/organizers/{organizerId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete an organizer account")

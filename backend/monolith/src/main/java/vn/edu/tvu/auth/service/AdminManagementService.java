@@ -126,10 +126,7 @@ public class AdminManagementService {
     @Transactional
     public OrganizerResponse createOrganizer(UUID actorId, CreateOrganizerRequest request) {
         var email = request.email().trim().toLowerCase(Locale.ROOT);
-        // Someone who signed in before being appointed already exists as a plain student. Refusing them
-        // here would strand them: no other endpoint can change a role, so they could never run a club.
-        var existing = userRepository.findByEmail(email);
-        if (existing.isPresent() && !isUnassignedStudent(existing.get())) {
+        if (userRepository.findByEmail(email).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
         }
         var club = clubRepository.findById(request.clubId())
@@ -137,15 +134,8 @@ public class AdminManagementService {
         if (!club.isActive()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Club is inactive");
         }
-        if (existing.isPresent()) {
-            var promoted = existing.get();
-            promoted.promoteToOrganizer(club);
-            auditLogService.recordAudit(actorId, "auth.organizer.promote", "user", promoted.getId(),
-                    "{\"email\":\"" + promoted.getEmail() + "\"}");
-            return organizerResponse(promoted);
-        }
         var organizer = userRepository.save(
-                User.organizer(User.PENDING_SUBJECT_PREFIX + email, email, request.displayName().trim(), club));
+                User.emailOtpOrganizer(email, request.displayName().trim(), club));
         auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
                 "{\"email\":\"" + organizer.getEmail() + "\"}");
         return organizerResponse(organizer);
@@ -169,22 +159,10 @@ public class AdminManagementService {
     }
 
     @Transactional
-    public OrganizerResponse resetOrganizer(UUID actorId, UUID organizerId) {
-        var organizer = organizer(organizerId);
-        organizer.resetExternalSubject(User.PENDING_SUBJECT_PREFIX + organizer.getEmail());
-        auditLogService.recordAudit(actorId, "auth.organizer.reset", "user", organizer.getId(), "{}");
-        return organizerResponse(organizer);
-    }
-
-    @Transactional
     public void deleteOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         userRepository.delete(organizer);
         auditLogService.recordAudit(actorId, "auth.organizer.delete", "user", organizerId, "{}");
-    }
-
-    private boolean isUnassignedStudent(User user) {
-        return user.getRole() == UserRole.SINH_VIEN && user.getClub() == null;
     }
 
     private User organizer(UUID organizerId) {

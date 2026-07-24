@@ -1,6 +1,5 @@
 package vn.edu.tvu.auth.service;
 
-import vn.edu.tvu.auth.config.BootstrapAdminProperties;
 import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
@@ -28,19 +27,16 @@ public class AuthApplicationService {
     private final UserRepository userRepository;
     private final InternalJwtService jwtService;
     private final CsrfTokenService csrfTokenService;
-    private final BootstrapAdminProperties bootstrapAdminProperties;
 
     public AuthApplicationService(
             IdentityProvider identityProvider,
             UserRepository userRepository,
             InternalJwtService jwtService,
-            CsrfTokenService csrfTokenService,
-            BootstrapAdminProperties bootstrapAdminProperties) {
+            CsrfTokenService csrfTokenService) {
         this.identityProvider = identityProvider;
         this.userRepository = userRepository;
         this.jwtService = jwtService;
         this.csrfTokenService = csrfTokenService;
-        this.bootstrapAdminProperties = bootstrapAdminProperties;
     }
 
     @Transactional
@@ -77,48 +73,17 @@ public class AuthApplicationService {
     }
 
     /**
-     * The Entra subject is the stable, non-reassignable identifier, so match on it first. Email is only a
-     * fallback for claiming an account that was provisioned but never signed in — admin-created/reset
-     * organizers and the seeded bootstrap super admin, which carry a placeholder subject. Matching a live
-     * privileged account by email and overwriting its subject (the previous behaviour) let a reissued Entra
-     * email — same address, brand-new subject — take the account over and bypass the deliberate organizer
-     * reset flow. An email that already belongs to a claimed identity is therefore rejected, not merged.
+     * The Entra subject is the stable, non-reassignable identifier and is now the only thing this flow
+     * matches on. Admin accounts live on the emailed-code path and carry no subject, so Entra cannot reach
+     * them by address — a reissued email pointing at a brand-new subject simply becomes a new student.
      */
     private User resolveUser(ExternalIdentity identity) {
-        var bySubject = userRepository.findByExtSubject(identity.subject());
-        if (bySubject.isPresent()) {
-            return refreshIdentity(bySubject.get(), identity);
-        }
-        var byEmail = userRepository.findByEmail(identity.email());
-        if (byEmail.isPresent()) {
-            var existing = byEmail.get();
-            if (!existing.hasUnclaimedPlaceholderSubject()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Email is already linked to another identity");
-            }
-            return refreshIdentity(existing, identity);
-        }
-        return createUser(identity);
-    }
-
-    private User refreshIdentity(User user, ExternalIdentity identity) {
-        user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
-        if (isBootstrapAdmin(identity.email())) {
-            user.promoteToSuperAdmin();
-        }
-        return user;
-    }
-
-    private User createUser(ExternalIdentity identity) {
-        if (isBootstrapAdmin(identity.email())) {
-            return User.superAdmin(identity.subject(), identity.email(), identity.displayName());
-        }
-        return User.student(identity.subject(), identity.email(), identity.displayName());
-    }
-
-    private boolean isBootstrapAdmin(String email) {
-        return bootstrapAdminProperties.hasEmail()
-                && bootstrapAdminProperties.normalizedEmail().equalsIgnoreCase(email);
+        return userRepository.findByExtSubject(identity.subject())
+                .map(user -> {
+                    user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
+                    return user;
+                })
+                .orElseGet(() -> User.student(identity.subject(), identity.email(), identity.displayName()));
     }
 
     private LoginResult sessionFor(User user) {

@@ -1,6 +1,5 @@
 package vn.edu.tvu.auth.service;
 
-import vn.edu.tvu.auth.config.BootstrapAdminProperties;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
@@ -30,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,8 +62,30 @@ class AuthApplicationServiceTest {
                 identityProvider,
                 userRepository,
                 jwtService,
-                csrfTokenService,
-                new BootstrapAdminProperties("admin@example.com"));
+                csrfTokenService);
+    }
+
+    @Test
+    void login_doesNotClaimAnAdminAccountThatSharesTheEmail() {
+        // An Entra login presenting a club account's address must create a brand-new student and leave the
+        // club account untouched. The stub is lenient because the fixed code never consults it: matching by
+        // subject only is exactly what closes the takeover path.
+        var club = new Club("CLB Tin hoc", "Hoc thuat CNTT");
+        ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
+        var clubAccount = persisted(
+                User.emailOtpOrganizer("clbtinhoc@tvu.edu.vn", "CLB Tin hoc", club), UUID.randomUUID());
+        when(identityProvider.verify("token"))
+                .thenReturn(new ExternalIdentity("entra:attacker", "clbtinhoc@tvu.edu.vn", "Nguoi La"));
+        when(userRepository.findByExtSubject("entra:attacker")).thenReturn(Optional.empty());
+        lenient().when(userRepository.findByEmail("clbtinhoc@tvu.edu.vn")).thenReturn(Optional.of(clubAccount));
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
+
+        var result = service.login(new LoginRequest("token", null));
+
+        assertThat(result.profile().role()).isEqualTo(UserRole.SINH_VIEN);
+        assertThat(clubAccount.getRole()).isEqualTo(UserRole.ORGANIZER);
+        assertThat(clubAccount.getExtSubject()).isNull();
     }
 
     @Test
@@ -71,7 +93,6 @@ class AuthApplicationServiceTest {
         var userId = UUID.randomUUID();
         when(identityProvider.verify("student@example.com"))
                 .thenReturn(new ExternalIdentity("dev:student@example.com", "student@example.com", "Student"));
-        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.empty());
         when(userRepository.findByExtSubject("dev:student@example.com")).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> persisted(invocation.getArgument(0), userId));
 
@@ -85,64 +106,6 @@ class AuthApplicationServiceTest {
         assertThat(decoded.getSubject()).isEqualTo(userId.toString());
         assertThat(decoded.getClaimAsStringList("roles")).containsExactly("SINH_VIEN");
         assertThat(result.csrfToken()).isEqualTo(csrfTokenService.sign(result.jwt().jti(), result.jwt().expiresAt()));
-    }
-
-    @Test
-    void login_withBootstrapEmailKeepsSeededSuperAdminInsteadOfCreatingStudent() {
-        var adminId = UUID.randomUUID();
-        var seeded = persisted(User.superAdmin("bootstrap:admin@example.com", "admin@example.com", "Bootstrap Admin"),
-                adminId);
-        when(identityProvider.verify("admin@example.com"))
-                .thenReturn(new ExternalIdentity("dev:admin@example.com", "admin@example.com", "Admin"));
-        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(seeded));
-        when(userRepository.save(seeded)).thenReturn(seeded);
-
-        var result = service.login(new LoginRequest("admin@example.com", null));
-
-        assertThat(result.profile().id()).isEqualTo(adminId);
-        assertThat(result.profile().role()).isEqualTo(UserRole.SUPER_ADMIN);
-        assertThat(seeded.getExtSubject()).isEqualTo("dev:admin@example.com");
-        assertThat(seeded.getDisplayName()).isEqualTo("Admin");
-    }
-
-    @Test
-    void login_rejectsEmailAlreadyLinkedToADifferentClaimedIdentity() {
-        // A privileged/claimed account owns this email with a real subject. A brand-new subject presenting
-        // the same email (reissued Entra account) must be refused, not merged over the existing identity.
-        var existing = persisted(
-                User.organizer("entra:old-subject", "organizer@example.com", "Organizer", null), UUID.randomUUID());
-        when(identityProvider.verify("organizer@example.com"))
-                .thenReturn(new ExternalIdentity("entra:new-subject", "organizer@example.com", "Impostor"));
-        when(userRepository.findByExtSubject("entra:new-subject")).thenReturn(Optional.empty());
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(existing));
-
-        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("already linked to another identity");
-        assertThat(existing.getExtSubject()).isEqualTo("entra:old-subject");
-        assertThat(existing.getRole()).isEqualTo(UserRole.ORGANIZER);
-        assertThat(existing.getDisplayName()).isEqualTo("Organizer");
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void login_claimsAdminResetOrganizerByEmailWhenSubjectIsAPendingPlaceholder() {
-        var club = new Club("CLB Tin hoc", null);
-        ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
-        var organizer = persisted(
-                User.organizer(User.PENDING_SUBJECT_PREFIX + "organizer@example.com", "organizer@example.com",
-                        "Organizer", club),
-                UUID.randomUUID());
-        when(identityProvider.verify("organizer@example.com"))
-                .thenReturn(new ExternalIdentity("entra:new-subject", "organizer@example.com", "Organizer"));
-        when(userRepository.findByExtSubject("entra:new-subject")).thenReturn(Optional.empty());
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(organizer));
-        when(userRepository.save(organizer)).thenReturn(organizer);
-
-        var result = service.login(new LoginRequest("organizer@example.com", null));
-
-        assertThat(result.profile().role()).isEqualTo(UserRole.ORGANIZER);
-        assertThat(organizer.getExtSubject()).isEqualTo("entra:new-subject");
     }
 
     @Test

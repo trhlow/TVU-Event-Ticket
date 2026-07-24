@@ -24,15 +24,6 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
-    /**
-     * Placeholder {@code ext_subject} prefixes for accounts provisioned before their owner has ever logged
-     * in: {@link #PENDING_SUBJECT_PREFIX} for admin-created/reset organizers, {@link #BOOTSTRAP_SUBJECT_PREFIX}
-     * for the seeded super admin. A real Entra subject never carries these, so they mark the one slot that
-     * login may legitimately claim by email. See {@link #hasUnclaimedPlaceholderSubject()}.
-     */
-    public static final String PENDING_SUBJECT_PREFIX = "pending:";
-    public static final String BOOTSTRAP_SUBJECT_PREFIX = "bootstrap:";
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -123,36 +114,8 @@ public class User {
         this.displayName = displayName;
     }
 
-    public void promoteToSuperAdmin() {
-        this.role = UserRole.SUPER_ADMIN;
-        this.club = null;
-    }
-
-    /**
-     * Puts an already-signed-in student in charge of a club. Their {@code ext_subject} stays untouched,
-     * so the Entra identity they have been logging in with keeps working.
-     */
-    public void promoteToOrganizer(Club club) {
-        this.role = UserRole.ORGANIZER;
-        this.club = club;
-    }
-
     public void lock() {
         this.status = UserStatus.LOCKED;
-    }
-
-    public void resetExternalSubject(String extSubject) {
-        this.extSubject = extSubject;
-    }
-
-    /**
-     * True while {@code ext_subject} is still a provisioning placeholder that no real Entra login has
-     * claimed. Only such an account may be matched and claimed by email; every other account must be
-     * matched by its stable subject, so a reissued email cannot take it over.
-     */
-    public boolean hasUnclaimedPlaceholderSubject() {
-        return extSubject != null
-                && (extSubject.startsWith(PENDING_SUBJECT_PREFIX) || extSubject.startsWith(BOOTSTRAP_SUBJECT_PREFIX));
     }
 
     public void completeProfile(String mssv, String classCode) {

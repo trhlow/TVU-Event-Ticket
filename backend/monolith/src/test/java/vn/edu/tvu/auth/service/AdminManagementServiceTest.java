@@ -125,40 +125,6 @@ class AdminManagementServiceTest {
     }
 
     @Test
-    void createOrganizer_promotesStudentWhoAlreadySignedIn() {
-        var actorId = UUID.randomUUID();
-        var clubId = UUID.randomUUID();
-        var studentId = UUID.randomUUID();
-        var club = persistedClub(new Club("CLB Tin hoc", "Hoc thuat CNTT"), clubId);
-        var student = User.student("entra:doan", "organizer@example.com", "Doan Vien");
-        ReflectionTestUtils.setField(student, "id", studentId);
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(student));
-        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club));
-
-        var response = service.createOrganizer(actorId,
-                new CreateOrganizerRequest("organizer@example.com", "Doan Vien", clubId));
-
-        assertThat(response.id()).isEqualTo(studentId);
-        assertThat(response.role()).isEqualTo(UserRole.ORGANIZER);
-        assertThat(response.clubId()).isEqualTo(clubId);
-        assertThat(student.getExtSubject()).isEqualTo("entra:doan");
-    }
-
-    @Test
-    void createOrganizer_rejectsEmailAlreadyRunningAnotherClub() {
-        var clubId = UUID.randomUUID();
-        var otherClub = persistedClub(new Club("CLB Van nghe", "Van the my"), UUID.randomUUID());
-        var existing = User.organizer("entra:org", "organizer@example.com", "Organizer", otherClub);
-        when(userRepository.findByEmail("organizer@example.com")).thenReturn(Optional.of(existing));
-
-        assertThatThrownBy(() -> service.createOrganizer(UUID.randomUUID(),
-                new CreateOrganizerRequest("organizer@example.com", "Organizer", clubId)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Email already exists");
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
     void createOrganizer_rejectsInactiveClub() {
         var clubId = UUID.randomUUID();
         var club = persistedClub(new Club("CLB Tin hoc", "Hoc thuat CNTT"), clubId);
