@@ -3,21 +3,19 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
-import Toast from '../../components/common/Toast';
 import EventForm from '../../components/events/EventForm';
+import { useToast } from '../../components/common/ToastProvider';
 import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
-
-const BREADCRUMB_BASE = [{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Chỉnh sửa sự kiện' }];
 
 export default function OrganizerEditEventPage() {
   const navigate = useNavigate();
   const { eventId } = useParams();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [event, setEvent] = useState<Event | undefined>();
   const [isLoading, setIsLoading] = useState(true);
-  const [toastMsg, setToastMsg] = useState('');
 
   useEffect(() => {
     let mounted = true;
@@ -44,7 +42,7 @@ export default function OrganizerEditEventPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <PageHeader breadcrumb={BREADCRUMB_BASE} title="Chỉnh sửa sự kiện" />
+        <PageHeader title="Chỉnh sửa sự kiện" />
         <LoadingSkeleton type="list" count={4} />
       </div>
     );
@@ -53,7 +51,7 @@ export default function OrganizerEditEventPage() {
   if (!event || event.clubId !== currentUser.clubId) {
     return (
       <div className="space-y-6 text-left">
-        <PageHeader breadcrumb={BREADCRUMB_BASE} title="Chỉnh sửa sự kiện" />
+        <PageHeader title="Chỉnh sửa sự kiện" />
         <EmptyState
           title="Không tìm thấy sự kiện"
           description="Sự kiện không tồn tại hoặc không thuộc câu lạc bộ bạn đang quản lý."
@@ -66,18 +64,13 @@ export default function OrganizerEditEventPage() {
 
   const handleSubmit = async (data: Partial<Event>) => {
     await eventService.update(event.id, data);
-    setToastMsg(data.status === 'OPEN' ? 'Đã cập nhật và công bố sự kiện.' : 'Đã cập nhật sự kiện thành công.');
+    showToast(data.status === 'OPEN' ? 'Đã cập nhật và công bố sự kiện.' : 'Đã cập nhật sự kiện thành công.');
     setTimeout(() => navigate(`/organizer/events/${event.id}`), 850);
   };
 
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[
-          { label: 'Ban tổ chức', path: '/organizer' },
-          { label: 'Quản lý sự kiện', path: '/organizer/events' },
-          { label: 'Chỉnh sửa sự kiện' },
-        ]}
         title="Chỉnh sửa sự kiện"
         description="Cập nhật nội dung, thời gian đăng ký, số lượng vé và trạng thái phát hành cho sự kiện của câu lạc bộ."
       />
@@ -88,7 +81,6 @@ export default function OrganizerEditEventPage() {
         onSubmit={handleSubmit}
         onCancel={() => navigate(`/organizer/events/${event.id}`)}
       />
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg('')} />}
     </div>
   );
 }

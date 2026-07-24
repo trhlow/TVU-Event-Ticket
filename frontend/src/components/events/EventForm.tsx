@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Event } from '../../types/event';
-import { Save, Info } from 'lucide-react';
+import { Save, Info, FileText, MapPin, Users } from 'lucide-react';
+import { Input } from '../ui/input';
+import { Button } from '../ui/button';
 
 interface EventFormProps {
   initialData?: Event;
@@ -8,6 +10,24 @@ interface EventFormProps {
   clubName: string;
   onSubmit: (data: Partial<Event>) => void | Promise<void>;
   onCancel: () => void;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-[10px] text-rose-600 font-bold">{message}</p>;
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">{children}</label>;
+}
+
+function SectionHeading({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
+  return (
+    <div className="flex items-center gap-2 pb-1">
+      <Icon className="w-4 h-4 text-brand-600" />
+      <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">{title}</h4>
+    </div>
+  );
 }
 
 export default function EventForm({
@@ -95,202 +115,195 @@ export default function EventForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Title */}
-        <div className="md:col-span-2 space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Tên sự kiện *</label>
-          <input
-            type="text"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Ví dụ: Hội thảo công nghệ phần mềm CLB Tin học..."
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.title ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.title && <p className="text-[10px] text-rose-600 font-bold">{errors.title}</p>}
-        </div>
+      {/* Section: Thông tin cơ bản */}
+      <section className="space-y-4">
+        <SectionHeading icon={FileText} title="Thông tin cơ bản" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="md:col-span-2 space-y-1.5">
+            <FieldLabel>Tên sự kiện *</FieldLabel>
+            <Input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Ví dụ: Hội thảo công nghệ phần mềm CLB Tin học..."
+              className={errors.title ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.title} />
+          </div>
 
-        {/* Category & Status */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Thể loại sự kiện</label>
-          <select
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-500 focus:bg-white cursor-pointer"
-          >
-            <option value="Học thuật">Học thuật</option>
-            <option value="Văn nghệ">Văn nghệ</option>
-            <option value="Cuộc thi">Cuộc thi</option>
-            <option value="Tình nguyện">Tình nguyện</option>
-            <option value="Kỹ năng">Kỹ năng</option>
-          </select>
-        </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Thể loại sự kiện</FieldLabel>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="tvu-input cursor-pointer"
+            >
+              <option value="Học thuật">Học thuật</option>
+              <option value="Văn nghệ">Văn nghệ</option>
+              <option value="Cuộc thi">Cuộc thi</option>
+              <option value="Tình nguyện">Tình nguyện</option>
+              <option value="Kỹ năng">Kỹ năng</option>
+            </select>
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Trạng thái phát hành</label>
-          <select
-            name="status"
-            value={formData.status}
-            onChange={handleChange}
-            className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-500 focus:bg-white cursor-pointer"
-          >
-            <option value="UPCOMING">Sắp mở đăng ký (Ẩn)</option>
-            <option value="OPEN">Mở đăng ký ngay (Công khai)</option>
-            <option value="CLOSED">Đóng đăng ký</option>
-            <option value="ENDED">Kết thúc sự kiện</option>
-          </select>
-        </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Trạng thái phát hành</FieldLabel>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              className="tvu-input cursor-pointer"
+            >
+              <option value="UPCOMING">Sắp mở đăng ký (Ẩn)</option>
+              <option value="OPEN">Mở đăng ký ngay (Công khai)</option>
+              <option value="CLOSED">Đóng đăng ký</option>
+              <option value="ENDED">Kết thúc sự kiện</option>
+            </select>
+          </div>
 
-        {/* Description */}
-        <div className="md:col-span-2 space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Mô tả chi tiết *</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            rows={5}
-            placeholder="Nêu rõ mục đích, nội dung chương trình, quyền lợi của sinh viên khi tham gia (ví dụ: điểm rèn luyện)..."
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.description ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          ></textarea>
-          {errors.description && <p className="text-[10px] text-rose-600 font-bold">{errors.description}</p>}
+          <div className="md:col-span-2 space-y-1.5">
+            <FieldLabel>Mô tả chi tiết *</FieldLabel>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows={5}
+              placeholder="Nêu rõ mục đích, nội dung chương trình, quyền lợi của sinh viên khi tham gia (ví dụ: điểm rèn luyện)..."
+              className={`w-full bg-gray-50/50 border rounded-xl px-4 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
+                errors.description ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
+              }`}
+            ></textarea>
+            <FieldError message={errors.description} />
+          </div>
         </div>
+      </section>
 
-        {/* Location & Banner URL */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Địa điểm tổ chức *</label>
-          <input
-            type="text"
-            name="location"
-            value={formData.location}
-            onChange={handleChange}
-            placeholder="Ví dụ: Hội trường E24, Đại học Trà Vinh..."
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.location ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.location && <p className="text-[10px] text-rose-600 font-bold">{errors.location}</p>}
-        </div>
+      {/* Section: Thời gian & địa điểm */}
+      <section className="space-y-4 pt-4 border-t border-gray-100">
+        <SectionHeading icon={MapPin} title="Thời gian & địa điểm" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1.5">
+            <FieldLabel>Địa điểm tổ chức *</FieldLabel>
+            <Input
+              type="text"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              placeholder="Ví dụ: Hội trường E24, Đại học Trà Vinh..."
+              className={errors.location ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.location} />
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Banner minh họa (URL URL)</label>
-          <input
-            type="text"
-            name="bannerUrl"
-            value={formData.bannerUrl}
-            onChange={handleChange}
-            placeholder="Nhập liên kết ảnh banner..."
-            className="w-full bg-gray-50/50 border border-gray-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white"
-          />
-        </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Banner minh họa (URL)</FieldLabel>
+            <Input
+              type="text"
+              name="bannerUrl"
+              value={formData.bannerUrl}
+              onChange={handleChange}
+              placeholder="Nhập liên kết ảnh banner..."
+            />
+          </div>
 
-        {/* Time settings */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Thời gian bắt đầu *</label>
-          <input
-            type="datetime-local"
-            name="startAt"
-            value={formData.startAt}
-            onChange={handleChange}
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.startAt ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.startAt && <p className="text-[10px] text-rose-600 font-bold">{errors.startAt}</p>}
-        </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Thời gian bắt đầu *</FieldLabel>
+            <Input
+              type="datetime-local"
+              name="startAt"
+              value={formData.startAt}
+              onChange={handleChange}
+              className={errors.startAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.startAt} />
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Thời gian kết thúc *</label>
-          <input
-            type="datetime-local"
-            name="endAt"
-            value={formData.endAt}
-            onChange={handleChange}
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.endAt ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.endAt && <p className="text-[10px] text-rose-600 font-bold">{errors.endAt}</p>}
-        </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Thời gian kết thúc *</FieldLabel>
+            <Input
+              type="datetime-local"
+              name="endAt"
+              value={formData.endAt}
+              onChange={handleChange}
+              className={errors.endAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.endAt} />
+          </div>
 
-        {/* Registration range */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Mở đăng ký vé từ ngày *</label>
-          <input
-            type="datetime-local"
-            name="registrationOpenAt"
-            value={formData.registrationOpenAt}
-            onChange={handleChange}
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.registrationOpenAt ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.registrationOpenAt && <p className="text-[10px] text-rose-600 font-bold">{errors.registrationOpenAt}</p>}
-        </div>
+          <div className="space-y-1.5">
+            <FieldLabel>Mở đăng ký vé từ ngày *</FieldLabel>
+            <Input
+              type="datetime-local"
+              name="registrationOpenAt"
+              value={formData.registrationOpenAt}
+              onChange={handleChange}
+              className={errors.registrationOpenAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.registrationOpenAt} />
+          </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Đóng đăng ký vé vào ngày *</label>
-          <input
-            type="datetime-local"
-            name="registrationCloseAt"
-            value={formData.registrationCloseAt}
-            onChange={handleChange}
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.registrationCloseAt ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.registrationCloseAt && <p className="text-[10px] text-rose-600 font-bold">{errors.registrationCloseAt}</p>}
+          <div className="space-y-1.5">
+            <FieldLabel>Đóng đăng ký vé vào ngày *</FieldLabel>
+            <Input
+              type="datetime-local"
+              name="registrationCloseAt"
+              value={formData.registrationCloseAt}
+              onChange={handleChange}
+              className={errors.registrationCloseAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.registrationCloseAt} />
+          </div>
         </div>
+      </section>
 
-        {/* Capacity */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">Số lượng vé phát hành (Sức chứa) *</label>
-          <input
-            type="number"
-            name="capacity"
-            value={formData.capacity}
-            onChange={handleChange}
-            min={1}
-            className={`w-full bg-gray-50/50 border rounded-xl px-4 py-2.5 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-              errors.capacity ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
-            }`}
-          />
-          {errors.capacity && <p className="text-[10px] text-rose-600 font-bold">{errors.capacity}</p>}
+      {/* Section: Sức chứa */}
+      <section className="space-y-4 pt-4 border-t border-gray-100">
+        <SectionHeading icon={Users} title="Sức chứa" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-1.5">
+            <FieldLabel>Số lượng vé phát hành (Sức chứa) *</FieldLabel>
+            <Input
+              type="number"
+              name="capacity"
+              value={formData.capacity}
+              onChange={handleChange}
+              min={1}
+              className={errors.capacity ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+            />
+            <FieldError message={errors.capacity} />
+          </div>
         </div>
-      </div>
+      </section>
 
       <div className="p-4 bg-brand-50/50 border border-brand-100 rounded-xl flex gap-3 mt-4 text-left">
         <Info className="w-5 h-5 text-brand-600 flex-shrink-0" />
         <div className="space-y-1">
           <p className="text-xs font-extrabold text-brand-900">Quy trình cấp phát vé</p>
           <p className="text-[10px] text-brand-800 leading-relaxed font-semibold">
-            Đăng ký của sinh viên ban đầu sẽ được đưa vào hàng đợi phê duyệt (Trạng thái: Chờ duyệt). 
+            Đăng ký của sinh viên ban đầu sẽ được đưa vào hàng đợi phê duyệt (Trạng thái: Chờ duyệt).
             Khi bạn duyệt đăng ký thành công, hệ thống mới chính thức trừ vào số lượng vé còn lại và tự động gửi mã QR vé hợp lệ tới tài khoản sinh viên.
           </p>
         </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4 border-t border-gray-100">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={onCancel}
           disabled={isSubmitting}
-          className="px-4 py-2 border border-gray-200 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-50 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
           Hủy bỏ
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
           disabled={isSubmitting}
-          className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Save className="w-4 h-4" />
           {isSubmitting ? "Đang lưu..." : "Lưu sự kiện"}
-        </button>
+        </Button>
       </div>
     </form>
   );

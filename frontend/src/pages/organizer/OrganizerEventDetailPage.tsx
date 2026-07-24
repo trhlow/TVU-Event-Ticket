@@ -1,30 +1,32 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Award, Calendar, CheckCircle2, ChevronLeft, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
-import Toast from "../../components/common/Toast";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import { useToast } from "../../components/common/ToastProvider";
 import { formatDateTime } from "../../utils/formatDate";
 import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
+import { dashboardService, EventDashboard } from "../../services/dashboardService";
 import { ticketService } from "../../services/ticketService";
 import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";
 
-const BASE_BREADCRUMB = [{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý sự kiện", path: "/organizer/events" }];
-
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [event, setEvent] = useState<Event | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [tickets, setTickets] = useState<IssuedTicket[]>([]);
-  const [toastMsg, setToastMsg] = useState("");
+  const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
+  // Fallback if dashboardService.eventDashboard() fails — computed from the real attendee
+  // list instead of showing false zeros.
+  const [attendeesFallback, setAttendeesFallback] = useState<IssuedTicket[] | null>(null);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [actionId, setActionId] = useState<string | null>(null);
@@ -33,40 +35,49 @@ export default function OrganizerEventDetailPage() {
     if (!eventId) return;
     setIsLoading(true);
     try {
-      const [events, pendingReservations, attendeePage] = await Promise.all([
+      const [events, pendingReservations, eventDashboard] = await Promise.all([
         eventService.listByClubRemote(currentUser.clubId || ""),
         registrationService.listPendingForOrganizer(),
-        ticketService.listAttendees(eventId).catch(() => ({ tickets: [] as IssuedTicket[], totalElements: 0 })),
+        dashboardService.eventDashboard(eventId).catch(() => null),
       ]);
       setEvent(events.find((item) => item.id === eventId) || null);
       setReservations(pendingReservations.filter((item) => item.eventId === eventId));
-      setTickets(attendeePage.tickets);
+      setDashboard(eventDashboard);
+      setAttendeesFallback(
+        eventDashboard ? null : await ticketService.listAttendees(eventId).catch(() => []),
+      );
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.");
+      showToast(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.", "error");
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser.clubId, eventId]);
+  }, [currentUser.clubId, eventId, showToast]);
 
   useEffect(() => {
     void loadEventData();
   }, [loadEventData]);
 
-  const stats = useMemo(() => ({
-    pending: reservations.filter((item) => item.status === "PENDING").length,
-    approved: tickets.length,
-    checkedIn: tickets.filter((item) => item.checkInStatus === "CHECKED_IN").length,
-    total: reservations.length + tickets.length,
-  }), [reservations, tickets]);
+  const stats = useMemo(() => {
+    const approved = dashboard?.approved ?? attendeesFallback?.length ?? 0;
+    const checkedIn = dashboard?.checkedIn
+      ?? attendeesFallback?.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length
+      ?? 0;
+    return {
+      pending: reservations.filter((item) => item.status === "PENDING").length,
+      approved,
+      checkedIn,
+      total: reservations.length + approved,
+    };
+  }, [reservations, dashboard, attendeesFallback]);
 
   const handleApprove = async (reservationId: string) => {
     setActionId(reservationId);
     try {
       await registrationService.updateStatus(reservationId, "APPROVED");
-      setToastMsg("Đã duyệt đăng ký. Backend sẽ cấp vé và gửi email QR bất đồng bộ nếu notification đã sẵn sàng.");
+      showToast("Đã duyệt đăng ký. Backend sẽ cấp vé và gửi email QR bất đồng bộ nếu notification đã sẵn sàng.");
       await loadEventData();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể duyệt đăng ký.");
+      showToast(error instanceof Error ? error.message : "Không thể duyệt đăng ký.", "error");
     } finally {
       setActionId(null);
     }
@@ -77,11 +88,11 @@ export default function OrganizerEventDetailPage() {
     setActionId(rejectTargetId);
     try {
       await registrationService.updateStatus(rejectTargetId, "REJECTED");
-      setToastMsg("Đã từ chối đăng ký.");
+      showToast("Đã từ chối đăng ký.");
       setRejectTargetId(null);
       await loadEventData();
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể từ chối đăng ký.");
+      showToast(error instanceof Error ? error.message : "Không thể từ chối đăng ký.", "error");
     } finally {
       setActionId(null);
     }
@@ -90,8 +101,7 @@ export default function OrganizerEventDetailPage() {
   if (isLoading) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[...BASE_BREADCRUMB, { label: "Chi tiết sự kiện" }]} />
-        <div className="enterprise-card p-8 text-center text-sm font-bold text-slate-500">Đang tải chi tiết sự kiện...</div>
+        <LoadingSkeleton type="list" count={4} />
       </div>
     );
   }
@@ -99,22 +109,18 @@ export default function OrganizerEventDetailPage() {
   if (!event) {
     return (
       <div className="space-y-6 text-left">
-        <Breadcrumb items={[...BASE_BREADCRUMB, { label: "Chi tiết sự kiện" }]} />
         <div className="enterprise-card mx-auto max-w-md p-8 text-center">
           <p className="text-sm font-bold text-slate-950">Không tìm thấy sự kiện trong CLB của tài khoản hiện tại.</p>
           <Link to="/organizer/events" className="mt-3 inline-block text-xs font-bold text-brand-600 hover:underline">
             Quay lại danh sách sự kiện
           </Link>
         </div>
-        {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
       </div>
     );
   }
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      <Breadcrumb items={[...BASE_BREADCRUMB, { label: event.title }]} />
-
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div className="flex items-center gap-2">
           <Link to="/organizer/events" className="btn-press rounded-lg p-1.5 text-slate-500 transition-all hover:bg-slate-100">
@@ -160,7 +166,10 @@ export default function OrganizerEventDetailPage() {
                   <Ticket className="h-4 w-4 shrink-0 text-slate-400" aria-hidden="true" />
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Sức chứa</p>
-                    <p className="mt-0.5">Còn {event.remainingTickets} / {event.capacity} vé theo availability của backend.</p>
+                    <p className="mt-0.5">
+                      Còn {dashboard?.remaining ?? event.remainingTickets} / {dashboard?.totalCapacity ?? event.capacity} vé
+                      {dashboard?.checkInRate != null && ` · Tỷ lệ check-in ${Math.round(dashboard.checkInRate * 100)}%`}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -177,7 +186,7 @@ export default function OrganizerEventDetailPage() {
           <div className="enterprise-card space-y-4 p-5">
             <div>
               <h3 className="text-sm font-extrabold text-slate-900">Đăng ký chờ duyệt</h3>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Backend hiện chỉ trả danh sách pending theo CLB; vé đã duyệt xem tại danh sách attendee/vé.</p>
+              <p className="mt-1 text-xs font-semibold text-slate-500">Vé đã duyệt và điểm danh xem tại danh sách attendee/vé của sự kiện.</p>
             </div>
 
             {reservations.length > 0 ? (
@@ -246,8 +255,6 @@ export default function OrganizerEventDetailPage() {
           type="danger"
         />
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

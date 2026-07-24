@@ -63,17 +63,17 @@ export default function EventCard({
         <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/55 p-3">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
             <span>Tỷ lệ đăng ký</span>
-            <span className={isSoldOut ? "text-orange-600" : "text-brand-700"}>{fillRate}%</span>
+            <span className={isSoldOut ? "text-amber-700" : "text-brand-700"}>{fillRate}%</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
-            <div className={`h-full rounded-full ${isSoldOut ? "bg-orange-500" : "bg-gradient-to-r from-brand-600 via-indigo-500 to-accent-500"}`} style={{ width: `${fillRate}%` }} />
+            <div className={`h-full rounded-full ${isSoldOut ? "bg-amber-500" : "bg-brand-600"}`} style={{ width: `${fillRate}%` }} />
           </div>
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3 border-t border-blue-50 pt-3">
           <div>
             <p className="text-[10px] font-bold uppercase text-slate-400">Trạng thái vé</p>
-            <p className={`mt-1 text-sm font-bold ${isSoldOut ? "text-orange-600" : "text-emerald-600"}`}>
+            <p className={`mt-1 text-sm font-bold ${isSoldOut ? "text-amber-700" : "text-emerald-600"}`}>
               {isSoldOut ? "Hết vé" : `${event.remainingTickets} vé còn lại`}
             </p>
           </div>

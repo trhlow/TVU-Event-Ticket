@@ -5,7 +5,7 @@ export default function NotFound404Page() {
   return (
     <div className="flex min-h-[70vh] flex-1 flex-col items-center justify-center p-6 text-center">
       <div className="enterprise-card flex w-full max-w-md flex-col items-center gap-6 p-8">
-        <div className="icon-float grid h-16 w-16 place-items-center rounded-full border border-info-100 bg-info-50 text-brand-700 shadow-inner">
+        <div className="grid h-16 w-16 place-items-center rounded-full border border-info-100 bg-info-50 text-brand-700">
           <Compass className="h-8 w-8" aria-hidden="true" />
         </div>
         <div className="space-y-2">

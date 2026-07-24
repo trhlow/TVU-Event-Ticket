@@ -4,7 +4,7 @@ import { requireCurrentUser } from "../../state/authSession";
 import StatusBadge from "../../components/common/StatusBadge";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import Toast from "../../components/common/Toast";
+import { useToast } from "../../components/common/ToastProvider";
 import { formatDateTime } from "../../utils/formatDate";
 import { Reservation } from "../../types/reservation";
 import { registrationService } from "../../services/registrationService";
@@ -13,9 +13,9 @@ const TABS = ["ALL", "PENDING", "APPROVED", "REJECTED"] as const;
 
 export default function MyRegistrationsPage() {
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("ALL");
-  const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -24,11 +24,12 @@ export default function MyRegistrationsPage() {
         if (mounted) setReservations(items);
       })
       .catch((error) => {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách đăng ký.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách đăng ký.", "error");
       });
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id]);
 
   const filtered = useMemo(() => {
@@ -39,7 +40,6 @@ export default function MyRegistrationsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student" }, { label: "Lịch sử đăng ký" }]}
         title="Tiến trình đăng ký của bạn"
         description="Theo dõi trạng thái chờ duyệt, đã duyệt và bị từ chối cho từng lượt đăng ký sự kiện."
       />
@@ -97,8 +97,6 @@ export default function MyRegistrationsPage() {
           description="Backend chưa trả về đăng ký phù hợp với bộ lọc này."
         />
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

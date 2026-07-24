@@ -49,7 +49,7 @@ export default function LoadingSkeleton({ type = 'card', count = 3 }: LoadingSke
   };
 
   if (type === 'banner') {
-    return <div className="h-full w-full animate-pulse bg-gradient-to-r from-slate-100 via-brand-50 to-slate-100" />;
+    return <div className="h-full w-full animate-pulse bg-slate-100" />;
   }
 
   if (type === 'table') {

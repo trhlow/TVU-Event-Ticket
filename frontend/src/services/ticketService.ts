@@ -32,8 +32,8 @@ interface AttendeeResponse {
   checkedInAt?: string | null;
 }
 
-interface PageResponse<T> {
-  content: T[];
+interface AttendeePageResponse {
+  content: AttendeeResponse[];
   page: number;
   size: number;
   totalElements: number;
@@ -41,8 +41,19 @@ interface PageResponse<T> {
 }
 
 export interface AttendeePage {
-  tickets: Ticket[];
+  items: Ticket[];
+  page: number;
+  size: number;
   totalElements: number;
+  totalPages: number;
+}
+
+export interface AttendeeQuery {
+  status?: "VALID" | "CHECKED_IN" | "CANCELLED";
+  keyword?: string;
+  page?: number;
+  size?: number;
+  sort?: string;
 }
 
 interface AvailabilityResponse {
@@ -134,21 +145,50 @@ export const ticketService = {
   listByEvents(eventIds: string[]): Ticket[] {
     return getTickets().filter((ticket) => eventIds.includes(ticket.eventId));
   },
-  async listAttendees(eventId: string, keyword?: string): Promise<AttendeePage> {
+  async listAttendeesPage(eventId: string, query: AttendeeQuery = {}): Promise<AttendeePage> {
     return withTicketFallback(
       async () => {
-        const query = new URLSearchParams({ size: "100" });
-        if (keyword?.trim()) query.set("keyword", keyword.trim());
-        const page = await apiRequest<PageResponse<AttendeeResponse>>(
-          `/ticketing/events/${eventId}/attendees?${query.toString()}`,
+        const { status, keyword, page = 0, size = 20, sort } = query;
+        const params = new URLSearchParams({ page: String(page), size: String(size) });
+        if (status) params.set("status", status);
+        if (keyword) params.set("keyword", keyword);
+        if (sort) params.set("sort", sort);
+        const response = await apiRequest<AttendeePageResponse>(
+          `/ticketing/events/${eventId}/attendees?${params.toString()}`,
         );
-        return { tickets: page.content.map(mapAttendeeTicket), totalElements: page.totalElements };
+        return {
+          items: response.content.map(mapAttendeeTicket),
+          page: response.page,
+          size: response.size,
+          totalElements: response.totalElements,
+          totalPages: response.totalPages,
+        };
       },
       () => {
-        const tickets = getTickets().filter((ticket) => ticket.eventId === eventId);
-        return { tickets, totalElements: tickets.length };
+        const all = getTickets().filter((ticket) => ticket.eventId === eventId);
+        const size = query.size ?? 20;
+        const page = query.page ?? 0;
+        return {
+          items: all.slice(page * size, page * size + size),
+          page,
+          size,
+          totalElements: all.length,
+          totalPages: Math.max(1, Math.ceil(all.length / size)),
+        };
       },
     );
+  },
+  // Fetches every page of attendees for callers that need the full list (dashboards, CSV-adjacent
+  // views). Real attendee lists are club-sized, not school-sized, so this stays bounded.
+  async listAttendees(eventId: string): Promise<Ticket[]> {
+    const size = 100;
+    const first = await this.listAttendeesPage(eventId, { page: 0, size });
+    const pages = [first.items];
+    for (let page = 1; page < first.totalPages; page += 1) {
+      const next = await this.listAttendeesPage(eventId, { page, size });
+      pages.push(next.items);
+    }
+    return pages.flat();
   },
   async availability(eventId: string): Promise<AvailabilityResponse> {
     return apiRequest<AvailabilityResponse>(`/ticketing/events/${eventId}/availability`);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, FlaskConical, ShieldCheck, TicketCheck } from "lucide-react";
+import { AlertCircle, FlaskConical, ShieldCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -78,11 +78,13 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#fbf8ff] px-4 py-8 text-slate-950">
-      <section className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] sm:px-8 sm:py-9">
-        <div className="mx-auto grid h-[72px] w-[72px] place-items-center rounded-full bg-brand-700 text-white shadow-lg shadow-brand-700/20">
-          <TicketCheck className="h-8 w-8" aria-hidden="true" />
-        </div>
+    <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-8 text-slate-950">
+      <section className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-8 sm:py-9">
+        <img
+          src="/tvu_logo_1783065060265.jpg"
+          alt="Logo Trường Đại học Trà Vinh"
+          className="mx-auto h-[72px] w-[72px] rounded-full border border-blue-100 bg-white object-contain p-1.5 shadow-sm"
+        />
 
         <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
         <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
@@ -102,7 +104,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleMicrosoftLogin}
             disabled={isSubmitting}
-            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white shadow-sm shadow-blue-900/15 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
           >
             <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
               <span className="bg-[#f25022]" />

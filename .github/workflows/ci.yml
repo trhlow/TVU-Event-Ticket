@@ -150,3 +150,7 @@ jobs:
             exit 1
           fi
           echo "Production bundle is clean."
+
+      - name: Build deployable frontend image
+        working-directory: frontend
+        run: docker build -t tvu/frontend:ci .
