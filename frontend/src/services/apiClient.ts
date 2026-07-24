@@ -23,7 +23,19 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function tryRefreshSession(): Promise<boolean> {
+  try {
+    const response = await fetch(buildApiUrl("/auth/session/refresh"), {
+      method: "POST",
+      credentials: "include",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function apiRequest<T>(path: string, init: RequestInit = {}, retryOnAuthFailure = true): Promise<T> {
   const headers = new Headers(init.headers);
   const hasBody = init.body !== undefined && init.body !== null;
   if (hasBody && !headers.has("Content-Type")) {
@@ -48,6 +60,17 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 
   if (!response.ok) {
+    // A remembered admin browser holds a device cookie but only a 15-minute session. On the first 401,
+    // trade the cookie for a fresh session and replay the request once. The refresh endpoint answers 401
+    // for anyone without a valid device cookie (every student), so this is a no-op for them.
+    if (
+      response.status === 401 &&
+      retryOnAuthFailure &&
+      !path.includes("/auth/session/refresh") &&
+      (await tryRefreshSession())
+    ) {
+      return apiRequest<T>(path, init, false);
+    }
     throw await createApiError(response);
   }
 
