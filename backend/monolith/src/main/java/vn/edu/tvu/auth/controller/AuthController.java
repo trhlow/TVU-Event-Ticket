@@ -8,6 +8,7 @@ import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.dto.response.LoginResponse;
 import vn.edu.tvu.auth.security.AuthCookieService;
 import vn.edu.tvu.auth.service.AdminOtpService;
+import vn.edu.tvu.auth.service.AdminSession;
 import vn.edu.tvu.auth.service.AuthApplicationService;
 import vn.edu.tvu.auth.service.LoginResult;
 
@@ -22,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -62,7 +64,14 @@ public class AuthController {
     @PostMapping("/otp/verify")
     @Operation(summary = "Verify an emailed sign-in code and start a session")
     public ResponseEntity<LoginResponse> verifyOtp(@Valid @RequestBody OtpVerifyRequest request) {
-        return withSession(adminOtpService.verify(request.email(), request.code()));
+        return withSession(adminOtpService.verify(request.email(), request.code(), request.rememberDevice()));
+    }
+
+    @PostMapping("/session/refresh")
+    @Operation(summary = "Exchange a remembered-device cookie for a fresh session")
+    public ResponseEntity<LoginResponse> refreshSession(
+            @CookieValue(name = AuthCookieService.DEVICE_COOKIE, required = false) String deviceToken) {
+        return withSession(adminOtpService.refresh(deviceToken));
     }
 
     @GetMapping("/me")
@@ -96,6 +105,18 @@ public class AuthController {
         return ResponseEntity.ok()
                 .headers(headers)
                 .body(new LoginResponse(result.profile()));
+    }
+
+    private ResponseEntity<LoginResponse> withSession(AdminSession session) {
+        var headers = new HttpHeaders();
+        cookieService.loginCookies(session.session().jwt(), session.session().csrfToken())
+                .forEach(cookie -> headers.add(HttpHeaders.SET_COOKIE, cookie));
+        if (session.deviceToken() != null) {
+            headers.add(HttpHeaders.SET_COOKIE, cookieService.deviceCookie(session.deviceToken()));
+        }
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(new LoginResponse(session.session().profile()));
     }
 
     public record LogoutResponse(String code) {

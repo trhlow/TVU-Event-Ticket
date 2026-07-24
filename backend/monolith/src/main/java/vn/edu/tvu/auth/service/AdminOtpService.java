@@ -33,18 +33,21 @@ public class AdminOtpService {
     private final OtpStore otpStore;
     private final OtpMailSender mailSender;
     private final SessionMinter sessionMinter;
+    private final TrustedDeviceService trustedDeviceService;
 
     public AdminOtpService(
             UserRepository userRepository,
             OtpCodeIssuer otpCodeIssuer,
             OtpStore otpStore,
             OtpMailSender mailSender,
-            SessionMinter sessionMinter) {
+            SessionMinter sessionMinter,
+            TrustedDeviceService trustedDeviceService) {
         this.userRepository = userRepository;
         this.otpCodeIssuer = otpCodeIssuer;
         this.otpStore = otpStore;
         this.mailSender = mailSender;
         this.sessionMinter = sessionMinter;
+        this.trustedDeviceService = trustedDeviceService;
     }
 
     @Transactional(readOnly = true)
@@ -64,13 +67,32 @@ public class AdminOtpService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public LoginResult verify(String email, String code) {
+    @Transactional
+    public AdminSession verify(String email, String code, boolean rememberDevice) {
         var user = activeAdmin(email).orElseThrow(this::rejected);
         if (otpStore.verify(user.getId(), code) != OtpStore.Result.OK) {
             throw rejected();
         }
-        return sessionMinter.mint(user);
+        var deviceToken = rememberDevice ? trustedDeviceService.remember(user.getId()) : null;
+        return new AdminSession(sessionMinter.mint(user), deviceToken);
+    }
+
+    /**
+     * Exchanges a remembered-device cookie for a fresh session without a code. The token rotates on every
+     * call; a replayed one is caught inside {@link TrustedDeviceService#exchange}.
+     */
+    @Transactional
+    public AdminSession refresh(String rawDeviceToken) {
+        if (rawDeviceToken == null || rawDeviceToken.isBlank()) {
+            throw rejected();
+        }
+        var userId = trustedDeviceService.exchange(rawDeviceToken).orElseThrow(this::rejected);
+        var user = userRepository.findById(userId)
+                .filter(candidate -> candidate.getAuthMethod() == AuthMethod.EMAIL_OTP
+                        && candidate.getStatus() == UserStatus.ACTIVE)
+                .orElseThrow(this::rejected);
+        var deviceToken = trustedDeviceService.remember(userId);
+        return new AdminSession(sessionMinter.mint(user), deviceToken);
     }
 
     private Optional<User> activeAdmin(String email) {

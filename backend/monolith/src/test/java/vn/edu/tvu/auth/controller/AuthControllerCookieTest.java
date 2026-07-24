@@ -78,9 +78,13 @@ class AuthControllerCookieTest {
 
         var response = controller.logout();
 
+        // Three: the session JWT, the readable XSRF token, and the remembered-device token. Logout must
+        // clear the device cookie too, or a signed-out browser would still refresh into a new session.
         assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE))
-                .hasSize(2)
+                .hasSize(3)
                 .allSatisfy(cookie -> assertThat(cookie).contains("Max-Age=0"));
+        assertThat(response.getHeaders().get(HttpHeaders.SET_COOKIE))
+                .anySatisfy(cookie -> assertThat(cookie).contains("TVU_DEVICE"));
         assertThat(response.getBody()).isEqualTo(new AuthController.LogoutResponse("LOGGED_OUT"));
     }
 }

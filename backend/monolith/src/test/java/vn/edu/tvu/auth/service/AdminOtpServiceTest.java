@@ -40,6 +40,9 @@ class AdminOtpServiceTest {
     @Mock
     private SessionMinter sessionMinter;
 
+    @Mock
+    private TrustedDeviceService trustedDeviceService;
+
     @InjectMocks
     private AdminOtpService service;
 
@@ -61,7 +64,7 @@ class AdminOtpServiceTest {
         when(userRepository.findByEmailAndAuthMethod("admin@tvu.edu.vn", AuthMethod.EMAIL_OTP))
                 .thenReturn(Optional.of(admin));
 
-        assertThatThrownBy(() -> service.verify("admin@tvu.edu.vn", "123456"))
+        assertThatThrownBy(() -> service.verify("admin@tvu.edu.vn", "123456", false))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("401");
     }

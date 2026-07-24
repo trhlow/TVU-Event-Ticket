@@ -33,16 +33,19 @@ public class AdminManagementService {
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
     private final TokenRevocationService tokenRevocationService;
+    private final TrustedDeviceService trustedDeviceService;
 
     public AdminManagementService(
             ClubRepository clubRepository,
             UserRepository userRepository,
             AuditLogService auditLogService,
-            TokenRevocationService tokenRevocationService) {
+            TokenRevocationService tokenRevocationService,
+            TrustedDeviceService trustedDeviceService) {
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
         this.tokenRevocationService = tokenRevocationService;
+        this.trustedDeviceService = trustedDeviceService;
     }
 
     @Transactional(readOnly = true)
@@ -152,8 +155,10 @@ public class AdminManagementService {
     public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
         organizer.lock();
-        // Locking must take effect now, not whenever the organizer's current JWT happens to expire.
+        // Locking must take effect now, not whenever the organizer's current JWT happens to expire, and
+        // their remembered browsers must stop refreshing too.
         tokenRevocationService.revoke(organizer.getId());
+        trustedDeviceService.revokeAll(organizer.getId());
         auditLogService.recordAudit(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
     }
