@@ -1,9 +1,6 @@
 package vn.edu.tvu.auth.service;
 
-import vn.edu.tvu.auth.config.BootstrapAdminProperties;
-import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
-import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
@@ -11,8 +8,6 @@ import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
 import vn.edu.tvu.auth.identity.IdentityProvider;
 import vn.edu.tvu.auth.repository.UserRepository;
-import vn.edu.tvu.auth.security.CsrfTokenService;
-import vn.edu.tvu.auth.security.JwtSubject;
 
 import java.util.UUID;
 
@@ -26,21 +21,15 @@ public class AuthApplicationService {
 
     private final IdentityProvider identityProvider;
     private final UserRepository userRepository;
-    private final InternalJwtService jwtService;
-    private final CsrfTokenService csrfTokenService;
-    private final BootstrapAdminProperties bootstrapAdminProperties;
+    private final SessionMinter sessionMinter;
 
     public AuthApplicationService(
             IdentityProvider identityProvider,
             UserRepository userRepository,
-            InternalJwtService jwtService,
-            CsrfTokenService csrfTokenService,
-            BootstrapAdminProperties bootstrapAdminProperties) {
+            SessionMinter sessionMinter) {
         this.identityProvider = identityProvider;
         this.userRepository = userRepository;
-        this.jwtService = jwtService;
-        this.csrfTokenService = csrfTokenService;
-        this.bootstrapAdminProperties = bootstrapAdminProperties;
+        this.sessionMinter = sessionMinter;
     }
 
     @Transactional
@@ -54,13 +43,13 @@ public class AuthApplicationService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Club is inactive");
         }
         var saved = userRepository.save(user);
-        return sessionFor(saved);
+        return sessionMinter.mint(saved);
     }
 
     @Transactional(readOnly = true)
     public AuthProfileResponse me(UUID userId) {
         return userRepository.findById(userId)
-                .map(this::profile)
+                .map(sessionMinter::profile)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -73,75 +62,21 @@ public class AuthApplicationService {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.completeProfile(mssv, request.classCode().trim());
-        return sessionFor(userRepository.save(user));
+        return sessionMinter.mint(userRepository.save(user));
     }
 
     /**
-     * The Entra subject is the stable, non-reassignable identifier, so match on it first. Email is only a
-     * fallback for claiming an account that was provisioned but never signed in — admin-created/reset
-     * organizers and the seeded bootstrap super admin, which carry a placeholder subject. Matching a live
-     * privileged account by email and overwriting its subject (the previous behaviour) let a reissued Entra
-     * email — same address, brand-new subject — take the account over and bypass the deliberate organizer
-     * reset flow. An email that already belongs to a claimed identity is therefore rejected, not merged.
+     * The Entra subject is the stable, non-reassignable identifier and is now the only thing this flow
+     * matches on. Admin accounts live on the emailed-code path and carry no subject, so Entra cannot reach
+     * them by address — a reissued email pointing at a brand-new subject simply becomes a new student.
      */
     private User resolveUser(ExternalIdentity identity) {
-        var bySubject = userRepository.findByExtSubject(identity.subject());
-        if (bySubject.isPresent()) {
-            return refreshIdentity(bySubject.get(), identity);
-        }
-        var byEmail = userRepository.findByEmail(identity.email());
-        if (byEmail.isPresent()) {
-            var existing = byEmail.get();
-            if (!existing.hasUnclaimedPlaceholderSubject()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Email is already linked to another identity");
-            }
-            return refreshIdentity(existing, identity);
-        }
-        return createUser(identity);
+        return userRepository.findByExtSubject(identity.subject())
+                .map(user -> {
+                    user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
+                    return user;
+                })
+                .orElseGet(() -> User.student(identity.subject(), identity.email(), identity.displayName()));
     }
 
-    private User refreshIdentity(User user, ExternalIdentity identity) {
-        user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
-        if (isBootstrapAdmin(identity.email())) {
-            user.promoteToSuperAdmin();
-        }
-        return user;
-    }
-
-    private User createUser(ExternalIdentity identity) {
-        if (isBootstrapAdmin(identity.email())) {
-            return User.superAdmin(identity.subject(), identity.email(), identity.displayName());
-        }
-        return User.student(identity.subject(), identity.email(), identity.displayName());
-    }
-
-    private boolean isBootstrapAdmin(String email) {
-        return bootstrapAdminProperties.hasEmail()
-                && bootstrapAdminProperties.normalizedEmail().equalsIgnoreCase(email);
-    }
-
-    private LoginResult sessionFor(User user) {
-        var jwt = jwtService.mint(new JwtSubject(
-                user.getId(),
-                user.getEmail(),
-                user.getRole(),
-                user.getClub() == null ? null : user.getClub().getId(),
-                user.getMssv(),
-                user.getMssvStatus() == MssvStatus.VERIFIED));
-        return new LoginResult(profile(user), jwt, csrfTokenService.sign(jwt.jti(), jwt.expiresAt()));
-    }
-
-    private AuthProfileResponse profile(User user) {
-        return new AuthProfileResponse(
-                user.getId(),
-                user.getEmail(),
-                user.getDisplayName(),
-                user.getRole(),
-                user.getClub() == null ? null : user.getClub().getId(),
-                user.getMssv(),
-                user.getClassCode(),
-                user.getMssvStatus(),
-                user.getMssv() != null && !user.getMssv().isBlank());
-    }
 }

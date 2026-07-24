@@ -2,7 +2,6 @@ import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   BarChart3,
-  Bell,
   Calendar,
   ClipboardCheck,
   ClipboardList,
@@ -42,8 +41,6 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
           { to: "/student/tickets", label: "Vé QR của tôi", icon: Ticket },
           { to: "/student/registrations", label: "Đăng ký của tôi", icon: ClipboardList },
           { to: "/student/history", label: "Lịch sử tham gia", icon: FileClock },
-          { to: "/student/notifications", label: "Thông báo", icon: Bell },
-          { to: "/student/account", label: "Tài khoản", icon: User },
         ]
       : currentUser.role === "ORGANIZER"
         ? [
@@ -55,7 +52,6 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             { to: "/organizer/reservations", label: "Duyệt đăng ký", icon: ClipboardCheck },
             { to: "/organizer/registration-qr", label: "QR đăng ký", icon: QrCode },
             { to: "/organizer/check-in", label: "Quét QR điểm danh", icon: ScanLine },
-            { to: "/organizer/notifications", label: "Thông báo", icon: Bell },
           ]
         : [
             { to: "/admin/dashboard", label: "Tổng quan", icon: Grid2X2, end: true },
@@ -66,7 +62,6 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             { to: "/admin/statistics", label: "Thống kê", icon: BarChart3 },
             { to: "/admin/roles", label: "Phân quyền RBAC", icon: ShieldCheck, section: "SUPER ADMIN" },
             { to: "/admin/audit-logs", label: "Nhật ký hệ thống", icon: KeyRound },
-            { to: "/admin/notifications", label: "Thông báo", icon: Bell },
           ];
 
   const settingsPath =
@@ -98,7 +93,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             to="/organizer/events/create"
             onClick={onClose}
             title="Tạo sự kiện"
-            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-accent-600 text-sm font-bold text-white shadow-md shadow-blue-700/20 transition hover:from-brand-600 hover:to-accent-500 ${
+            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white transition hover:bg-brand-700 ${
               collapsed ? "w-10 px-0" : "w-full gap-2.5 px-3"
             }`}
           >

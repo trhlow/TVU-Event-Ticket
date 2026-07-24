@@ -5,6 +5,7 @@ import { requireCurrentUser } from "../../state/authSession";
 import { registrationService } from "../../services/registrationService";
 import { formatDateTime } from "../../utils/formatDate";
 import PageHeader from "../../components/common/PageHeader";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { Reservation } from "../../types/reservation";
 
 export default function EventRegistrationResultPage() {
@@ -32,12 +33,11 @@ export default function EventRegistrationResultPage() {
     return (
       <div className="mx-auto max-w-2xl space-y-6 text-left">
         <PageHeader
-          breadcrumb={[{ label: "Sinh viên", path: "/student/home" }, { label: "Đăng ký sự kiện" }, { label: "Kết quả đăng ký" }]}
           title="Đăng ký đã được ghi nhận"
         />
 
         <div className="enterprise-card space-y-5 p-8 text-center">
-          <div className="icon-float mx-auto grid h-16 w-16 place-items-center rounded-full border border-success-100 bg-success-50 text-success-600">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-success-100 bg-success-50 text-success-600">
             <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
           </div>
           <p className="text-xs font-semibold leading-relaxed text-slate-500">
@@ -57,7 +57,11 @@ export default function EventRegistrationResultPage() {
   }
 
   if (reservation === undefined) {
-    return <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải kết quả đăng ký...</div>;
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 text-left">
+        <LoadingSkeleton type="list" count={2} />
+      </div>
+    );
   }
 
   if (!reservation) {
@@ -74,12 +78,11 @@ export default function EventRegistrationResultPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student/home" }, { label: "Sự kiện" }, { label: "Kết quả đăng ký" }]}
         title="Đăng ký thành công"
       />
 
       <div className="enterprise-card flex flex-col items-center space-y-6 p-8 text-center">
-        <div className="icon-float grid h-16 w-16 place-items-center rounded-full border border-success-100 bg-success-50 text-success-600 shadow-inner">
+        <div className="grid h-16 w-16 place-items-center rounded-full border border-success-100 bg-success-50 text-success-600">
           <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
         </div>
 

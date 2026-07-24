@@ -1,28 +1,40 @@
 {$APP_DOMAIN} {
-    encode zstd gzip
+	encode zstd gzip
 
-    header {
-        -Server
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "DENY"
-        Referrer-Policy "strict-origin-when-cross-origin"
-        Permissions-Policy "camera=(self), geolocation=(), microphone=()"
-    }
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), geolocation=(), microphone=()"
+		# SPA is served here and the API is same-origin, so 'self' covers both. script-src stays 'self'
+		# (Vite emits external module chunks, no inline script); style-src allows 'unsafe-inline' for the
+		# inline styles component libraries inject. MSAL talks to login.microsoftonline.com over
+		# connect-src and renews tokens in a hidden iframe (frame-src). Verify the login flow after any
+		# change here.
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://login.microsoftonline.com; frame-src https://login.microsoftonline.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self' https://login.microsoftonline.com; object-src 'none'"
+	}
 
-    handle /api/* {
-        reverse_proxy monolith:8080 {
-            header_up X-Forwarded-For {remote_host}
-        }
-    }
+	handle /api/* {
+		reverse_proxy monolith:8080 {
+			header_up X-Forwarded-For {remote_host}
+		}
+	}
 
-    # Keep the public health probe intentionally narrow; management endpoints
-    # such as /actuator/info are not routed to the application.
-    handle /actuator/health {
-        reverse_proxy monolith:8080
-    }
+	# The monolith publishes its JWT public key and minimal OIDC discovery here.
+	# Route these before the frontend fallback or callers receive index.html.
+	handle /.well-known/* {
+		reverse_proxy monolith:8080
+	}
 
-    handle {
-        reverse_proxy frontend:80
-    }
+	# Keep the public health probe intentionally narrow; management endpoints
+	# such as /actuator/info are not routed to the application.
+	handle /actuator/health {
+		reverse_proxy monolith:8080
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
 }

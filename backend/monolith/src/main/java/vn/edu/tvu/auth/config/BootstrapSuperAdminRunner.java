@@ -22,13 +22,10 @@ public class BootstrapSuperAdminRunner implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (!properties.hasEmail()) {
-            return;
+        for (var email : properties.emails()) {
+            if (userRepository.findByEmail(email).isEmpty()) {
+                userRepository.save(User.emailOtpSuperAdmin(email, "Bootstrap Admin"));
+            }
         }
-        var email = properties.normalizedEmail();
-        if (userRepository.findByEmail(email).isPresent()) {
-            return;
-        }
-        userRepository.save(User.superAdmin(User.BOOTSTRAP_SUBJECT_PREFIX + email, email, "Bootstrap Admin"));
     }
 }

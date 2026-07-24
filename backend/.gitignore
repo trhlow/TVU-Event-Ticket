@@ -21,6 +21,8 @@ application-local.yaml
 *.p12
 *.pfx
 *.jks
+infra/production/.state/
+infra/production/backups/
 
 # ---- Claude Code ----
 # Personal, machine-specific overrides — commit settings.json, not this.

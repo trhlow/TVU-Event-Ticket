@@ -1,5 +1,5 @@
 import { Building2, Info, Mail, ShieldCheck, UserRound } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
 import { requireCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
 
@@ -13,30 +13,17 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-left">
-      <Breadcrumb
-        items={[
-          { label: isAdmin ? "Quản trị hệ thống" : "Ban tổ chức", path: isAdmin ? "/admin" : "/organizer" },
-          { label: "Hồ sơ tài khoản" },
-        ]}
+      <PageHeader
+        eyebrow={getRoleLabel(user.role)}
+        icon={ShieldCheck}
+        title="Hồ sơ tài khoản"
+        description="Thông tin định danh và phạm vi phụ trách được đồng bộ từ tài khoản nội bộ TVU."
+        actions={
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+            Đang hoạt động
+          </span>
+        }
       />
-
-      <section className="page-hero p-5 text-white md:p-6">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-white/80">
-              <ShieldCheck className="h-4 w-4" /> {getRoleLabel(user.role)}
-            </p>
-            <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-3xl">Hồ sơ tài khoản</h1>
-            <p className="mt-3 max-w-3xl text-base font-medium leading-7 text-white/82">
-              Thông tin định danh và phạm vi phụ trách được đồng bộ từ tài khoản nội bộ TVU.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/20 bg-white/12 px-5 py-4 backdrop-blur">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">Trạng thái</p>
-            <p className="mt-1 text-base font-semibold text-white">Đang hoạt động</p>
-          </div>
-        </div>
-      </section>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <section className="enterprise-card p-6">

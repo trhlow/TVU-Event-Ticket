@@ -3,7 +3,9 @@ import { Search } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import { Input } from "../../components/ui/input";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
@@ -17,12 +19,12 @@ interface EnhancedTicket extends Ticket {
 
 export default function OrganizerTicketsPage() {
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [tickets, setTickets] = useState<EnhancedTicket[]>([]);
   const [search, setSearch] = useState("");
   const [filterEvent, setFilterEvent] = useState("ALL");
   const [filterCheckin, setFilterCheckin] = useState("ALL");
-  const [toastMsg, setToastMsg] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,17 +35,17 @@ export default function OrganizerTicketsPage() {
       try {
         const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
         const attendeeGroups = await Promise.all(
-          eventData.map((event) => ticketService.listAttendees(event.id).catch(() => ({ tickets: [] as Ticket[], totalElements: 0 }))),
+          eventData.map((event) => ticketService.listAttendees(event.id).catch(() => [] as Ticket[])),
         );
         if (!mounted) return;
 
         setEvents(eventData);
         setTickets(attendeeGroups.flatMap((group, index) => {
           const event = eventData[index];
-          return group.tickets.map((ticket) => ({ ...ticket, eventTitle: event?.title || "Sự kiện đang cập nhật thông tin" }));
+          return group.map((ticket) => ({ ...ticket, eventTitle: event?.title || "Sự kiện đang cập nhật thông tin" }));
         }));
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách vé.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách vé.", "error");
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -53,7 +55,7 @@ export default function OrganizerTicketsPage() {
     return () => {
       mounted = false;
     };
-  }, [currentUser.clubId]);
+  }, [currentUser.clubId, showToast]);
 
   const filteredTickets = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -106,22 +108,21 @@ export default function OrganizerTicketsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quản lý vé" }]}
         title="Quản lý vé đã phát hành"
         description="Đọc attendee JSON từ ticket-service theo từng sự kiện của CLB."
       />
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+      <div className="enterprise-card grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
         <div className="space-y-1">
           <label className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</label>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input
+            <Input
               type="text"
               placeholder="Sự kiện, student ID, mã vé..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="tvu-input pl-9"
+              className="pl-9"
             />
           </div>
         </div>
@@ -148,13 +149,11 @@ export default function OrganizerTicketsPage() {
 
       <div className="enterprise-card overflow-hidden p-1">
         {isLoading ? (
-          <div className="py-12 text-center text-sm font-bold text-slate-500">Đang tải vé đã phát hành...</div>
+          <LoadingSkeleton type="table" count={5} />
         ) : (
           <DataTable data={filteredTickets} columns={columns} searchPlaceholder="Lọc nhanh danh sách..." searchField="eventTitle" />
         )}
       </div>
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { Eye, KeyRound, ShieldAlert } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
+import DataTable from "../../components/common/DataTable";
+import Dialog from "../../components/common/Dialog";
 
 interface PermissionRow {
   key: string;
@@ -21,13 +23,42 @@ const PERMISSIONS: PermissionRow[] = [
   { key: "audit_log", group: "Xem audit log", description: "Xem nhật ký thao tác và sự kiện bảo mật hệ thống.", student: false, organizer: false, admin: true },
 ];
 
+const ROLE_CHECK = (enabled: boolean) => (
+  <span
+    className={`mx-auto grid h-8 w-8 place-items-center rounded-full border text-xs font-black ${
+      enabled ? "border-success-200 bg-success-50 text-success-700" : "border-slate-200 bg-slate-50 text-slate-400"
+    }`}
+  >
+    {enabled ? "✓" : "—"}
+  </span>
+);
+
 export default function SuperAdminRBACPage() {
   const [selectedPermission, setSelectedPermission] = useState<PermissionRow | null>(null);
+
+  const columns = [
+    { header: "Nhóm quyền", accessor: (permission: PermissionRow) => <span className="block font-extrabold text-slate-950">{permission.group}</span> },
+    { header: "Mô tả", accessor: (permission: PermissionRow) => <span className="block max-w-md font-semibold leading-6 text-slate-500">{permission.description}</span> },
+    { header: "SINH_VIEN", accessor: (permission: PermissionRow) => ROLE_CHECK(permission.student), className: "text-center" },
+    { header: "ORGANIZER", accessor: (permission: PermissionRow) => ROLE_CHECK(permission.organizer), className: "text-center" },
+    { header: "SUPER_ADMIN", accessor: (permission: PermissionRow) => ROLE_CHECK(permission.admin), className: "text-center" },
+    {
+      header: "Chi tiết",
+      accessor: (permission: PermissionRow) => (
+        <div className="flex justify-end">
+          <button onClick={() => setSelectedPermission(permission)} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50">
+            <Eye className="h-4 w-4" aria-hidden="true" />
+            Xem
+          </button>
+        </div>
+      ),
+      className: "text-right",
+    },
+  ];
 
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Quản trị hệ thống", path: "/admin" }, { label: "Phân quyền RBAC" }]}
         eyebrow="Chỉ đọc"
         icon={KeyRound}
         title="Ma trận phân quyền RBAC"
@@ -56,54 +87,21 @@ export default function SuperAdminRBACPage() {
         </div>
       </div>
 
-      <div className="enterprise-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-left text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                <th className="p-4">Nhóm quyền</th>
-                <th className="p-4">Mô tả</th>
-                <th className="p-4 text-center">SINH_VIEN</th>
-                <th className="p-4 text-center">ORGANIZER</th>
-                <th className="p-4 text-center">SUPER_ADMIN</th>
-                <th className="p-4 text-right">Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {PERMISSIONS.map((permission) => (
-                <tr key={permission.key} className="hover:bg-info-50/30">
-                  <td className="p-4 font-extrabold text-slate-950">{permission.group}</td>
-                  <td className="max-w-md p-4 font-semibold leading-6 text-slate-500">{permission.description}</td>
-                  {(["student", "organizer", "admin"] as const).map((role) => (
-                    <td key={role} className="p-4 text-center">
-                      <span
-                        className={`mx-auto grid h-8 w-8 place-items-center rounded-full border text-xs font-black ${
-                          permission[role] ? "border-success-200 bg-success-50 text-success-700" : "border-slate-200 bg-slate-50 text-slate-400"
-                        }`}
-                      >
-                        {permission[role] ? "✓" : "—"}
-                      </span>
-                    </td>
-                  ))}
-                  <td className="p-4 text-right">
-                    <button onClick={() => setSelectedPermission(permission)} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50">
-                      <Eye className="h-4 w-4" aria-hidden="true" />
-                      Xem
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable data={PERMISSIONS} columns={columns} searchPlaceholder="Tìm kiếm nhóm quyền..." searchField="group" />
 
-      {selectedPermission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button className="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" onClick={() => setSelectedPermission(null)} aria-label="Đóng" />
-          <div className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <h2 className="font-display text-lg font-extrabold text-slate-950">{selectedPermission.group}</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{selectedPermission.description}</p>
+      <Dialog
+        isOpen={!!selectedPermission}
+        onClose={() => setSelectedPermission(null)}
+        title={selectedPermission?.group}
+        footer={
+          <button onClick={() => setSelectedPermission(null)} className="btn-press min-h-11 w-full rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
+            Đóng
+          </button>
+        }
+      >
+        {selectedPermission && (
+          <>
+            <p className="text-sm font-semibold leading-6 text-slate-600">{selectedPermission.description}</p>
             <div className="mt-5 space-y-2">
               {[
                 ["SINH_VIEN", selectedPermission.student],
@@ -118,12 +116,9 @@ export default function SuperAdminRBACPage() {
                 </div>
               ))}
             </div>
-            <button onClick={() => setSelectedPermission(null)} className="btn-press mt-6 min-h-11 w-full rounded-xl bg-brand-600 text-sm font-extrabold text-white hover:bg-brand-700">
-              Đóng
-            </button>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Dialog>
     </div>
   );
 }

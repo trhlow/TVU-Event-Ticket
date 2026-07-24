@@ -112,6 +112,27 @@ export const authService = {
       displayName: response.account?.name || response.account?.username,
     });
   },
+  /**
+   * Admin sign-in step one: ask for a code. Always resolves — the backend answers 202 whether or not the
+   * address belongs to an admin, so the UI cannot be used to discover which addresses are privileged.
+   */
+  async requestOtp(email: string): Promise<void> {
+    await apiRequest<void>("/auth/otp/request", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim() }),
+    });
+  },
+  async verifyOtp(email: string, code: string, rememberDevice: boolean): Promise<User> {
+    await apiRequest<LoginResponse>("/auth/otp/verify", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim(), code: code.trim(), rememberDevice }),
+    });
+    return persistProfile(await apiRequest<AuthProfileResponse>("/auth/me"));
+  },
+  async refreshSession(): Promise<User> {
+    await apiRequest<LoginResponse>("/auth/session/refresh", { method: "POST" });
+    return persistProfile(await apiRequest<AuthProfileResponse>("/auth/me"));
+  },
   async updateProfile(data: UpdateProfileRequest): Promise<User> {
     const response = await apiRequest<LoginResponse>("/auth/me/profile", {
       method: "PATCH",

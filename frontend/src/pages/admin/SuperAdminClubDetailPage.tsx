@@ -1,14 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Activity, Users } from 'lucide-react';
-import Breadcrumb from '../../components/common/Breadcrumb';
+import { Activity, Calendar, ShieldCheck, Ticket, Users } from 'lucide-react';
+import PageHeader from '../../components/common/PageHeader';
 import StatisticCard from '../../components/common/StatisticCard';
 import StatusBadge from '../../components/common/StatusBadge';
 import BackendPendingNotice from '../../components/common/BackendPendingNotice';
+import LoadingSkeleton from '../../components/common/LoadingSkeleton';
+import EmptyState from '../../components/common/EmptyState';
+import DonutChartCard from '../../components/charts/DonutChartCard';
+import LineChartCard from '../../components/charts/LineChartCard';
 import { clubService } from '../../services/clubService';
 import { userService } from '../../services/userService';
+import { clubStatsService } from '../../services/clubStatsService';
 import { Club } from '../../types/club';
 import { User } from '../../types/user';
+import { ClubStatsDetail } from '../../types/clubStats';
+
+const EVENT_STATUS_LABELS: Record<string, string> = { DRAFT: 'Bản nháp', OPEN: 'Đang mở', CLOSED: 'Đã đóng' };
 
 type TabKey = 'overview' | 'members' | 'events' | 'stats' | 'logs';
 
@@ -27,6 +35,8 @@ export default function SuperAdminClubDetailPage() {
   const [organizers, setOrganizers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [stats, setStats] = useState<ClubStatsDetail | null>(null);
+  const [statsError, setStatsError] = useState(false);
 
   useEffect(() => {
     if (!clubId) return;
@@ -49,8 +59,28 @@ export default function SuperAdminClubDetailPage() {
     };
   }, [clubId]);
 
+  useEffect(() => {
+    if (!clubId) return;
+    let mounted = true;
+    clubStatsService
+      .getDetail(clubId)
+      .then((result) => {
+        if (mounted) setStats(result);
+      })
+      .catch(() => {
+        if (mounted) setStatsError(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [clubId]);
+
   if (isLoading) {
-    return <div className="py-16 text-center text-sm font-bold text-slate-500">Đang tải thông tin CLB...</div>;
+    return (
+      <div className="space-y-6 text-left">
+        <LoadingSkeleton type="card" count={3} />
+      </div>
+    );
   }
 
   if (loadError || !club) {
@@ -64,19 +94,12 @@ export default function SuperAdminClubDetailPage() {
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý CLB', path: '/admin/clubs' }, { label: club.name }]} />
-
-      <section className="tilt-card enterprise-card relative overflow-hidden p-6">
-        <div className="tilt-card-sheen" aria-hidden="true" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <span className="inline-flex rounded-full bg-info-50 px-3 py-1 text-xs font-black text-brand-700">{club.code}</span>
-            <h2 className="text-2xl font-black tracking-tight text-slate-950">{club.name}</h2>
-            <p className="max-w-3xl text-sm font-medium leading-relaxed text-slate-500">{club.description || 'Chưa có mô tả.'}</p>
-          </div>
-          <StatusBadge type="user" status={club.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'} />
-        </div>
-      </section>
+      <PageHeader
+        eyebrow={club.code}
+        title={club.name}
+        description={club.description || 'Chưa có mô tả.'}
+        actions={<StatusBadge type="user" status={club.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'} />}
+      />
 
       <div className="flex gap-2 overflow-x-auto border-b border-gray-200">
         {TABS.map(([key, label]) => (
@@ -96,20 +119,31 @@ export default function SuperAdminClubDetailPage() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <StatisticCard label="Thành viên BTC" value={organizers.length} icon={Users} color="primary" />
           <StatisticCard label="Tài khoản đang hoạt động" value={organizers.filter((user) => user.status === 'ACTIVE').length} icon={Activity} color="success" />
-          <div className="md:col-span-2">
-            <BackendPendingNotice
-              description="Số sự kiện, lượt đăng ký và tỷ lệ check-in của CLB cần API thống kê theo CLB từ backend."
-              requiredEndpoints={['GET /admin/clubs/{clubId}/statistics']}
-            />
-          </div>
+          {stats ? (
+            <>
+              <StatisticCard label="Tổng sự kiện" value={stats.summary.totalEvents} icon={Calendar} color="warning" />
+              <StatisticCard label="Vé đã phát hành" value={stats.summary.ticketsIssued} icon={Ticket} />
+            </>
+          ) : (
+            <div className="md:col-span-2">
+              <BackendPendingNotice
+                title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
+                description={
+                  statsError
+                    ? 'Không thể gọi API thống kê CLB (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend).'
+                    : 'Đang tải số sự kiện, vé phát hành và tỷ lệ check-in của CLB.'
+                }
+              />
+            </div>
+          )}
         </div>
       )}
 
       {activeTab === 'members' && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {organizers.length === 0 ? (
-            <div className="md:col-span-2 rounded-2xl border border-dashed border-gray-300 bg-gray-50 p-8 text-center text-sm font-bold text-gray-500">
-              CLB chưa có tài khoản Ban tổ chức nào.
+            <div className="md:col-span-2">
+              <EmptyState title="Chưa có thành viên" description="CLB chưa có tài khoản Ban tổ chức nào." icon={Users} />
             </div>
           ) : (
             organizers.map((user) => (
@@ -131,10 +165,57 @@ export default function SuperAdminClubDetailPage() {
       )}
 
       {activeTab === 'stats' && (
-        <BackendPendingNotice
-          description="Backend chưa có API thống kê đăng ký/sức chứa theo sự kiện cho một CLB cụ thể."
-          requiredEndpoints={['GET /admin/clubs/{clubId}/statistics']}
-        />
+        stats ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <StatisticCard label="Tổng sự kiện" value={stats.summary.totalEvents} icon={Calendar} color="warning" />
+              <StatisticCard label="Vé đã phát hành" value={stats.summary.ticketsIssued} icon={Ticket} color="primary" />
+              <StatisticCard
+                label="Tỷ lệ check-in"
+                value={stats.summary.checkInRate != null ? `${Math.round(stats.summary.checkInRate * 100)}%` : 'Chưa có dữ liệu'}
+                icon={ShieldCheck}
+                color="success"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <LineChartCard
+                  title="Vé phát hành & Check-in 30 ngày gần nhất"
+                  xAxisKey="date"
+                  data={stats.last30Days.map((point) => ({
+                    date: point.date.slice(5),
+                    'Vé phát hành': point.ticketsIssued,
+                    'Check-in': point.checkedIn,
+                  }))}
+                  dataKeys={[
+                    { key: 'Vé phát hành', name: 'Vé phát hành', color: '#3b82f6' },
+                    { key: 'Check-in', name: 'Check-in', color: '#10b981' },
+                  ]}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <DonutChartCard
+                  title="Cơ cấu trạng thái sự kiện"
+                  data={Object.entries(stats.summary.eventsByStatus).map(([status, value]) => ({
+                    name: EVENT_STATUS_LABELS[status] || status,
+                    value,
+                  }))}
+                  colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}
+                />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <BackendPendingNotice
+            title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
+            description={
+              statsError
+                ? 'Không thể gọi API thống kê CLB (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend).'
+                : 'Đang tải biểu đồ hoạt động 30 ngày gần nhất của CLB.'
+            }
+          />
+        )
       )}
 
       {activeTab === 'logs' && (

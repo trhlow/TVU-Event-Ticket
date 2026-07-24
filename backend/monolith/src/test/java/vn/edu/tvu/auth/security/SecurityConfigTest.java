@@ -6,6 +6,7 @@ import vn.edu.tvu.auth.controller.WellKnownController;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.service.AdminManagementService;
 import vn.edu.tvu.auth.service.AuditLogService;
+import vn.edu.tvu.auth.service.AdminOtpService;
 import vn.edu.tvu.auth.service.AuthApplicationService;
 import vn.edu.tvu.auth.service.InternalJwtService;
 import vn.edu.tvu.testsupport.AuthSecurityTestConfiguration;
@@ -40,6 +41,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private AuthApplicationService authApplicationService;
+
+    @MockitoBean
+    private AdminOtpService adminOtpService;
 
     @MockitoBean
     private AuthCookieService authCookieService;

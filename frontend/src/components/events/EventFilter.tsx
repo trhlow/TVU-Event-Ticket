@@ -1,9 +1,8 @@
 import React from 'react';
 import { Search, Filter, RefreshCw } from 'lucide-react';
-import { Club } from '../../types/club';
 
 interface EventFilterProps {
-  clubs: Club[];
+  clubs: Array<{ id: string; name: string }>;
   categories: string[];
   onSearchChange: (text: string) => void;
   onClubChange: (clubId: string) => void;

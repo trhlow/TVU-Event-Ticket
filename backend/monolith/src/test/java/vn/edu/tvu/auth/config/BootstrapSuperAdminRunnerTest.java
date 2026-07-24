@@ -1,5 +1,6 @@
 package vn.edu.tvu.auth.config;
 
+import vn.edu.tvu.auth.domain.AuthMethod;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.repository.UserRepository;
@@ -33,8 +34,7 @@ class BootstrapSuperAdminRunnerTest {
         var repository = mock(UserRepository.class);
         when(repository.findByEmail("admin@example.com"))
                 .thenReturn(Optional.empty())
-                .thenReturn(Optional.of(User.superAdmin("bootstrap:admin@example.com", "admin@example.com",
-                        "Bootstrap Admin")));
+                .thenReturn(Optional.of(User.emailOtpSuperAdmin("admin@example.com", "Bootstrap Admin")));
         var runner = new BootstrapSuperAdminRunner(new BootstrapAdminProperties(" Admin@Example.com "), repository);
 
         runner.run(new DefaultApplicationArguments());
@@ -44,6 +44,7 @@ class BootstrapSuperAdminRunnerTest {
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getEmail()).isEqualTo("admin@example.com");
         assertThat(captor.getValue().getRole()).isEqualTo(UserRole.SUPER_ADMIN);
-        assertThat(captor.getValue().getExtSubject()).isEqualTo("bootstrap:admin@example.com");
+        assertThat(captor.getValue().getAuthMethod()).isEqualTo(AuthMethod.EMAIL_OTP);
+        assertThat(captor.getValue().getExtSubject()).isNull();
     }
 }

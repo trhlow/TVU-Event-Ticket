@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
-import Toast from "../../components/common/Toast";
+import { useToast } from "../../components/common/ToastProvider";
 import QRScannerPanel from "../../components/tickets/QRScannerPanel";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
@@ -11,10 +11,10 @@ import { Ticket } from "../../types/ticket";
 
 export default function OrganizerScanPage() {
   const currentUser = requireCurrentUser();
+  const { showToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [cameraPermission, setCameraPermission] = useState<"idle" | "granted" | "denied">("idle");
-  const [toastMsg, setToastMsg] = useState("");
   const [scanHistory, setScanHistory] = useState<Array<{ code: string; message: string; success: boolean; time: string }>>([]);
 
   useEffect(() => {
@@ -25,12 +25,12 @@ export default function OrganizerScanPage() {
         if (mounted) setEvents(items);
       })
       .catch((error) => {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
       });
     return () => {
       mounted = false;
     };
-  }, [currentUser.clubId]);
+  }, [currentUser.clubId, showToast]);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +75,6 @@ export default function OrganizerScanPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Quét QR điểm danh" }]}
         title="Quét QR điểm danh"
         description="Nhập QR payload đã được backend/notification ký. Frontend không tự ký QR hay tự xác minh kết quả — backend luôn là nơi quyết định."
       />
@@ -108,7 +107,6 @@ export default function OrganizerScanPage() {
           )}
         </div>
       </section>
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

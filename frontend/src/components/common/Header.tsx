@@ -1,12 +1,14 @@
 import { Bell, Menu } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
 import { getCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
+import NotificationsPanel from "./NotificationsPanel";
+import { NotificationScope } from "../../pages/common/NotificationsPage";
 
-const notificationsPathByRole: Record<string, string> = {
-  SINH_VIEN: "/student/notifications",
-  ORGANIZER: "/organizer/notifications",
-  SUPER_ADMIN: "/admin/notifications",
+const notificationScopeByRole: Record<string, NotificationScope> = {
+  SINH_VIEN: "student",
+  ORGANIZER: "organizer",
+  SUPER_ADMIN: "admin",
 };
 
 interface HeaderProps {
@@ -25,12 +27,33 @@ export default function Header({
   showWorkspaceTitle = true,
 }: HeaderProps) {
   const currentUser = getCurrentUser();
-  const navigate = useNavigate();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const notificationsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!notificationsOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
+        setNotificationsOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setNotificationsOpen(false);
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [notificationsOpen]);
 
   if (!currentUser) return null;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-blue-100/70 bg-white/86 px-4 shadow-sm shadow-blue-950/[0.04] backdrop-blur-xl sm:px-5 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-blue-100/70 bg-white/86 px-4 shadow-sm backdrop-blur-xl sm:px-5 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">
         {onToggleSidebar && (
           <button
@@ -66,15 +89,25 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={() => navigate(notificationsPathByRole[currentUser.role] || "/notifications")}
-          className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm shadow-blue-950/[0.03] hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
-          aria-label="Thông báo"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
-        <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm shadow-blue-950/[0.03] sm:flex">
+        <div ref={notificationsRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setNotificationsOpen((open) => !open)}
+            aria-haspopup="dialog"
+            aria-expanded={notificationsOpen}
+            className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
+            aria-label="Thông báo"
+          >
+            <Bell className="h-5 w-5" />
+          </button>
+          {notificationsOpen && (
+            <NotificationsPanel
+              scope={notificationScopeByRole[currentUser.role] || "student"}
+              onClose={() => setNotificationsOpen(false)}
+            />
+          )}
+        </div>
+        <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
           <img
             src="/tvu_logo_1783065060265.jpg"
             alt=""

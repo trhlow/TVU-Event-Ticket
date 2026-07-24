@@ -74,6 +74,12 @@ SPRING_PROFILES_ACTIVE=prod java -jar monolith/target/monolith-0.0.1-SNAPSHOT.ja
 mvn -pl monolith -am test -Dtest=TicketReservationServiceTest
 ```
 
+## Production
+
+For the complete server preparation, secret generation, build, deploy, smoke
+test, backup, and rollback path, follow
+[`docs/PRODUCTION_DEPLOYMENT_VI.md`](docs/PRODUCTION_DEPLOYMENT_VI.md).
+
 ## Notes
 
 - The atomic ticket deduction happens at **organizer approval time**, not at student submit (§6.3, §6.11).

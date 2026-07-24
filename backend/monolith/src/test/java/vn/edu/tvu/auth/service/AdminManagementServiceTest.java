@@ -48,12 +48,15 @@ class AdminManagementServiceTest {
     @Mock
     private TokenRevocationService tokenRevocationService;
 
+    @Mock
+    private TrustedDeviceService trustedDeviceService;
+
     private AdminManagementService service;
 
     @BeforeEach
     void setUp() {
         service = new AdminManagementService(clubRepository, userRepository,
-                new AuditLogService(auditLogRepository), tokenRevocationService);
+                new AuditLogService(auditLogRepository), tokenRevocationService, trustedDeviceService);
     }
 
     @Test
@@ -191,7 +194,7 @@ class AdminManagementServiceTest {
     void statsReturnsTotalsAndZeroFilledRoleBreakdown() {
         var auditLogService = new AuditLogService(auditLogRepository);
         var service = new AdminManagementService(clubRepository, userRepository, auditLogService,
-                tokenRevocationService);
+                tokenRevocationService, trustedDeviceService);
         when(clubRepository.count()).thenReturn(4L);
         when(userRepository.count()).thenReturn(50L);
         when(userRepository.countGroupedByRole()).thenReturn(List.of(
