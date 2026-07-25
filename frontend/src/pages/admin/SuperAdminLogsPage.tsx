@@ -63,49 +63,48 @@ export default function SuperAdminLogsPage() {
       <PageHeader
         title="Nhật ký bảo mật và hoạt động"
         description="Audit log các thao tác quản trị, đọc trực tiếp từ GET /api/admin/audit-log."
-        actions={
-          available && (
-            <div className="grid w-full gap-2 sm:grid-cols-3">
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động (khớp chính xác)</span>
-                <Input
-                  value={actionFilter}
-                  onChange={(event) => {
-                    setPage(0);
-                    setActionFilter(event.target.value);
-                  }}
-                  placeholder="vd: auth.club.create"
-                  className="tvu-input"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Từ thời điểm</span>
-                <Input
-                  type="datetime-local"
-                  value={fromFilter}
-                  onChange={(event) => {
-                    setPage(0);
-                    setFromFilter(event.target.value);
-                  }}
-                  className="tvu-input"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Đến thời điểm</span>
-                <Input
-                  type="datetime-local"
-                  value={toFilter}
-                  onChange={(event) => {
-                    setPage(0);
-                    setToFilter(event.target.value);
-                  }}
-                  className="tvu-input"
-                />
-              </label>
-            </div>
-          )
-        }
-      />
+      >
+        {available && (
+          <div className="grid w-full gap-2 sm:grid-cols-3">
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động (khớp chính xác)</span>
+              <Input
+                value={actionFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setActionFilter(event.target.value);
+                }}
+                placeholder="vd: auth.club.create"
+                className="tvu-input"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Từ thời điểm</span>
+              <Input
+                type="datetime-local"
+                value={fromFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setFromFilter(event.target.value);
+                }}
+                className="tvu-input"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Đến thời điểm</span>
+              <Input
+                type="datetime-local"
+                value={toFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setToFilter(event.target.value);
+                }}
+                className="tvu-input"
+              />
+            </label>
+          </div>
+        )}
+      </PageHeader>
 
       {!available ? (
         <BackendPendingNotice
