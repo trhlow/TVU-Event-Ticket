@@ -52,6 +52,10 @@ public class Club {
         this.status = ClubStatus.INACTIVE;
     }
 
+    public void activate() {
+        this.status = ClubStatus.ACTIVE;
+    }
+
     public boolean isActive() {
         return status == ClubStatus.ACTIVE;
     }

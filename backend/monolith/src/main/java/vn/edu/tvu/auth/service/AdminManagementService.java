@@ -95,6 +95,15 @@ public class AdminManagementService {
         auditLogService.recordAudit(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
     }
 
+    @Transactional
+    public ClubResponse reactivateClub(UUID actorId, UUID clubId) {
+        var club = clubRepository.findById(clubId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
+        club.activate();
+        auditLogService.recordAudit(actorId, "auth.club.reactivate", "club", club.getId(), "{}");
+        return clubResponse(club);
+    }
+
     @Transactional(readOnly = true)
     public List<AdminUserResponse> listUsers(UserRole role, MssvStatus mssvStatus) {
         return userRepository.search(role, mssvStatus).stream()

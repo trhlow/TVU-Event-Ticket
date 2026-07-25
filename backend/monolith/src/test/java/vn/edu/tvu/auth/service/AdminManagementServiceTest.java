@@ -73,6 +73,32 @@ class AdminManagementServiceTest {
     }
 
     @Test
+    void reactivateClub_reactivatesAndAudits() {
+        var clubId = UUID.randomUUID();
+        var club = new Club("CLB Tin hoc", null);
+        ReflectionTestUtils.setField(club, "id", clubId);
+        club.deactivate();
+        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club));
+
+        var response = service.reactivateClub(UUID.randomUUID(), clubId);
+
+        assertThat(club.isActive()).isTrue();
+        assertThat(response.status()).isEqualTo(vn.edu.tvu.auth.domain.ClubStatus.ACTIVE);
+        var audit = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(audit.capture());
+        assertThat(audit.getValue().getAction()).isEqualTo("auth.club.reactivate");
+    }
+
+    @Test
+    void reactivateClub_rejectsUnknownClub() {
+        when(clubRepository.findById(any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reactivateClub(UUID.randomUUID(), UUID.randomUUID()))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @Test
     void createClub_rejectsDuplicateName() {
         when(clubRepository.existsByName("CLB Tin hoc")).thenReturn(true);
 

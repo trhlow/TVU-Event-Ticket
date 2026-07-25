@@ -87,6 +87,12 @@ public class AdminController {
         adminManagementService.deactivateClub(actorId(jwt), clubId);
     }
 
+    @PatchMapping("/clubs/{clubId}/activate")
+    @Operation(summary = "Reactivate a deactivated club")
+    public ClubResponse reactivateClub(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID clubId) {
+        return adminManagementService.reactivateClub(actorId(jwt), clubId);
+    }
+
     @PostMapping("/organizers")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create an organizer account for a club")
