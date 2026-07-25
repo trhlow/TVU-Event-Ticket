@@ -63,5 +63,25 @@ services:
       retries: 12
       start_period: 40s
 
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: Dockerfile
+      args:
+        # Same-origin: the browser calls /api and the dev nginx below proxies it to the monolith.
+        VITE_API_BASE_URL: /api
+        VITE_APP_ENV: development
+        # The backend runs the dev profile, where Microsoft login has no verifier bean. devstub is the
+        # student path that works locally; the admin panel uses the demo OTP account regardless.
+        VITE_AUTH_PROVIDER: devstub
+        VITE_USE_DEMO_DATA: "false"
+        VITE_ENABLE_MOCK_FALLBACK: "false"
+    volumes:
+      - ./frontend.dev.conf:/etc/nginx/conf.d/default.conf:ro
+    ports: ["5173:80"]
+    depends_on:
+      monolith:
+        condition: service_healthy
+
 volumes:
   monolith-pgdata:

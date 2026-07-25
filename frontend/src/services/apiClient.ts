@@ -23,14 +23,10 @@ export class ApiError extends Error {
   }
 }
 
-// FIXME(frontend): single-flight this refresh. Right now every 401'd request calls it
-// independently, so a page that fires several API calls at once after the session expires sends
-// several parallel /auth/session/refresh calls with the SAME device cookie. The backend rotates the
-// token on first use and treats the second arrival of an already-rotated token as a stolen cookie,
-// which revokes EVERY trusted device — logging the admin out and forcing a new OTP. Dedupe concurrent
-// callers onto one shared in-flight promise (module-level `let inFlight: Promise<boolean> | null`)
-// so the burst becomes a single refresh. Until then the 30-day "remember this device" feature is
-// unreliable on any multi-request page. See docs review 2026-07-24.
+// Dedupe concurrent callers onto one shared in-flight promise so a page that fires several API
+// calls at once after the session expires sends a single /auth/session/refresh instead of several
+// parallel ones with the same device cookie (the backend revokes every trusted device if it sees
+// an already-rotated token arrive twice).
 let refreshInFlight: Promise<boolean> | null = null;
 
 function tryRefreshSession(): Promise<boolean> {

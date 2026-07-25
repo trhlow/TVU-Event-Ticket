@@ -7,5 +7,15 @@
 .DS_Store
 Thumbs.db
 
-# Git worktrees for isolated feature development (see backend/.claude/skills/using-git-worktrees)
+# Git worktrees for isolated feature development
 .worktrees/
+
+# ---- AI coding-agent tooling (local only, never committed) ----
+# Skills, agents, hooks, session logs and plan/spec scratch files belong to each
+# developer's machine, not to the shared history. Keep them out of every branch so
+# main stays product code only.
+.claude/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
+docs/superpowers/

@@ -69,6 +69,54 @@ class SensitiveFlowRateLimitFilterTest {
         @Override public Instant instant() { return instant; }
     }
 
+    /**
+     * X-Forwarded-For is only meaningful when the peer that set it is our own reverse proxy. If the
+     * application is ever reachable directly, an attacker sets the header themselves and every request
+     * lands under a different counter — the limit stops existing precisely when it is the only thing
+     * standing between a public port and the OTP endpoints.
+     */
+    @Test
+    void ignoresAForwardedAddressSentByAnUntrustedPeer() throws Exception {
+        var filter = new SensitiveFlowRateLimitFilter(Clock.fixed(Instant.parse("2026-07-25T00:00:00Z"), ZoneOffset.UTC));
+
+        for (var attempt = 0; attempt < 10; attempt++) {
+            var allowed = sendFrom(filter, "/api/auth/otp/request", "203.0.113.7", "10.0.0." + attempt);
+            assertThat(allowed.getStatus()).isEqualTo(200);
+        }
+
+        var rejected = sendFrom(filter, "/api/auth/otp/request", "203.0.113.7", "10.0.0.99");
+
+        assertThat(rejected.getStatus())
+                .as("a spoofed header must not buy a fresh counter")
+                .isEqualTo(429);
+    }
+
+    @Test
+    void stillTrustsTheForwardedAddressFromTheReverseProxy() throws Exception {
+        var filter = new SensitiveFlowRateLimitFilter(Clock.fixed(Instant.parse("2026-07-25T00:00:00Z"), ZoneOffset.UTC));
+
+        for (var attempt = 0; attempt < 10; attempt++) {
+            sendFrom(filter, "/api/auth/login", "172.18.0.2", "198.51.100.4");
+        }
+
+        var otherClient = sendFrom(filter, "/api/auth/login", "172.18.0.2", "198.51.100.5");
+
+        assertThat(otherClient.getStatus())
+                .as("behind the proxy, distinct real clients still get distinct counters")
+                .isEqualTo(200);
+    }
+
+    private MockHttpServletResponse sendFrom(
+            SensitiveFlowRateLimitFilter filter, String path, String peerAddress, String forwardedFor)
+            throws Exception {
+        var request = new MockHttpServletRequest("POST", path);
+        request.setRemoteAddr(peerAddress);
+        request.addHeader("X-Forwarded-For", forwardedFor);
+        var response = new MockHttpServletResponse();
+        filter.doFilter(request, response, new MockFilterChain());
+        return response;
+    }
+
     @Test
     void doesNotThrottleAReadOnlyRequest() throws Exception {
         var filter = new SensitiveFlowRateLimitFilter(Clock.systemUTC());

@@ -179,7 +179,8 @@ export default function LoginPage() {
           ) : (
             <form onSubmit={handleVerifyOtp} className="mt-4 space-y-3">
               <p className="text-xs font-medium leading-5 text-slate-600">
-                Nhập mã 6 số đã gửi tới <span className="font-bold">{adminEmail}</span>.
+                Nhập mã 6 số đã gửi tới <span className="font-bold">{adminEmail}</span>. Mã có hiệu lực 10
+                phút — nếu yêu cầu lại ngay, hệ thống vẫn giữ mã cũ nên hãy dùng email đã nhận.
               </p>
               <input
                 type="text"

@@ -41,9 +41,19 @@ is bundled into the client-side JS and is publicly readable.
 - The session cache (`src/state/authSession.ts`) is an in-memory mirror of the authenticated
   profile, not the JWT itself. The JWT lives only in an HttpOnly cookie the frontend cannot read;
   nothing auth-related is ever written to `localStorage`/`sessionStorage`.
-- Organizer and Super Admin accounts use the backend email-OTP flow
-  (`POST /auth/otp/request`, `POST /auth/otp/verify`). A verified browser can refresh its short-lived
-  session through `POST /auth/session/refresh`; concurrent refresh attempts are deduplicated client-side.
+- **Organizer and Super Admin sign in with a mailed one-time code**, not a password. The "Ban tổ
+  chức CLB · Quản trị viên" panel on the login page posts to `/auth/otp/request` and then
+  `/auth/otp/verify`. There is deliberately no password anywhere: club accounts are shared between a
+  chair and a vice-chair and handed over each year, so control of the mailbox is the real credential.
+- The role decides the method, and the server does not trust which box was used. A student address
+  typed into the code panel behaves exactly like an unknown one — every outcome is the same silent
+  202 on request and the same 401 on verify, so neither flow reveals which addresses are admins.
+- Ticking "Ghi nhớ thiết bị này trong 30 ngày" stores a rotating device token; `/auth/session/refresh`
+  then mints a session without a code. The token is single-use and rotates on every exchange, and
+  concurrent refresh attempts are deduplicated client-side onto a single in-flight request.
+- A code costs a send slot: one mail per address per minute and ten per day. Asking again too soon
+  changes nothing on screen — the request still answers 202 — but no new mail is sent and the code
+  already in the inbox stays valid for its full ten minutes.
 
 ## Demo mode
 
@@ -80,8 +90,10 @@ surface/border/text tokens, and motion tokens (`--ease-premium`, `--motion-fast/
 these tokens (e.g. `bg-success-50`, `text-danger-600`) instead of hard-coding raw palette colours.
 
 Shared building blocks:
-- `PageHeader` — breadcrumb + title + description + actions, used across Student/Organizer/Super Admin routes.
-- `Breadcrumb`, `EmptyState`, `BackendPendingNotice`, `DemoDataBadge`, `StatisticCard`, `EventCard`, `TicketCard`,
+- `PageHeader` — eyebrow + title + description + actions, used across Student/Organizer/Super Admin routes.
+  It still accepts an optional `breadcrumb`, but no route passes one: breadcrumbs were dropped from every
+  page in the 2026-07 redesign, so `Breadcrumb` survives only as an unused component.
+- `EmptyState`, `BackendPendingNotice`, `DemoDataBadge`, `StatisticCard`, `EventCard`, `TicketCard`,
   `QRDisplayCard` — all theme-token driven.
 
 Motion primitives (`src/hooks/`):
@@ -118,6 +130,7 @@ on backend" state instead of fabricating data. Full detail in
   MSSV verification, and audit logs are connected to live backend APIs.
 - `EventResponse`/`ReservationResponse` don't include a club display name or a student display
   name — those fields render as a neutral placeholder rather than a fabricated value.
-- No endpoint exists for a student to re-fetch a lost ticket QR, or for a signed ticket QR to be
-  rendered as an actual scannable image on the frontend (the raw signed payload is shown as text
-  when the backend does provide one, since no QR-rendering library is wired up).
+- **No endpoint returns a student's signed ticket QR.** It is delivered by email once, at approval.
+  `qrCodeValue` is therefore optional on `Ticket`, and a student who loses the mail cannot recover the
+  code in the app. Rendering itself is wired up: `QRDisplayCard` draws a real scannable image with
+  `qrcode.react` whenever a value is present.

@@ -57,6 +57,37 @@ class AdminOtpServiceTest {
         verify(otpStore, never()).save(any(), any());
     }
 
+    /**
+     * Without a password there is no second way in, so the mail provider's quota is the whole admin
+     * sign-in. A resend loop against one known club address must not be able to spend it.
+     */
+    @Test
+    void requestCode_sendsNothingWhenTheAddressIsAlreadyInsideItsCooldown() {
+        var admin = User.emailOtpSuperAdmin("admin@tvu.edu.vn", "Admin");
+        when(userRepository.findByEmailAndAuthMethod("admin@tvu.edu.vn", AuthMethod.EMAIL_OTP))
+                .thenReturn(Optional.of(admin));
+        when(otpStore.acquireSendSlot(admin.getId())).thenReturn(false);
+
+        service.requestCode("admin@tvu.edu.vn");
+
+        verify(mailSender, never()).sendCode(any(), any());
+        verify(otpStore, never()).save(any(), any());
+    }
+
+    @Test
+    void requestCode_mailsACodeWhenTheAddressHasSendBudgetLeft() {
+        var admin = User.emailOtpSuperAdmin("admin@tvu.edu.vn", "Admin");
+        when(userRepository.findByEmailAndAuthMethod("admin@tvu.edu.vn", AuthMethod.EMAIL_OTP))
+                .thenReturn(Optional.of(admin));
+        when(otpStore.acquireSendSlot(admin.getId())).thenReturn(true);
+        when(otpCodeIssuer.issue("admin@tvu.edu.vn")).thenReturn("123456");
+
+        service.requestCode("admin@tvu.edu.vn");
+
+        verify(otpStore).save(admin.getId(), "123456");
+        verify(mailSender).sendCode("admin@tvu.edu.vn", "123456");
+    }
+
     @Test
     void verify_rejectsALockedAccountWithoutSayingSo() {
         var admin = User.emailOtpSuperAdmin("admin@tvu.edu.vn", "Admin");
