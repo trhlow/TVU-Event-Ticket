@@ -77,6 +77,20 @@ describe("ticketService.listAttendeesPage", () => {
     expect(requestedUrl.searchParams.get("keyword")).toBe("a b@tvu.edu.vn");
   });
 
+  it("forwards supported server-side status and sort filters", async () => {
+    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
+    const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { ticketService } = await import("../ticketService");
+    await ticketService.listAttendeesPage("e1", { status: "CHECKED_IN", sort: "checkedInAt,desc" });
+
+    const [url] = fetchMock.mock.calls[0];
+    const requestedUrl = new URL(String(url), "http://localhost");
+    expect(requestedUrl.searchParams.get("status")).toBe("CHECKED_IN");
+    expect(requestedUrl.searchParams.get("sort")).toBe("checkedInAt,desc");
+  });
+
   it("omits the keyword param when no keyword is given", async () => {
     vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
@@ -123,5 +137,30 @@ describe("ticketService.listAttendees", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.map((ticket) => ticket.id)).toEqual(["t1", "t2"]);
+  });
+});
+
+describe("ticketService.exportAttendeesCsv", () => {
+  it("downloads the full CSV using the same keyword and status filters", async () => {
+    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "content-type": "text/csv;charset=UTF-8" }),
+      text: async () => "ticketId,studentEmail\n1,a@tvu.edu.vn",
+    } as Response);
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { ticketService } = await import("../ticketService");
+    const csv = await ticketService.exportAttendeesCsv("e1", {
+      keyword: "a@tvu.edu.vn",
+      status: "VALID",
+    });
+
+    const [url] = fetchMock.mock.calls[0];
+    const requestedUrl = new URL(String(url), "http://localhost");
+    expect(requestedUrl.searchParams.get("keyword")).toBe("a@tvu.edu.vn");
+    expect(requestedUrl.searchParams.get("status")).toBe("VALID");
+    expect(csv).toContain("studentEmail");
   });
 });

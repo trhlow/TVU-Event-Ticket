@@ -115,15 +115,6 @@ export const userService = {
       },
     );
   },
-  async resetOrganizer(organizerId: string): Promise<User> {
-    return withUserFallback(
-      async () => mapOrganizer(await apiRequest<OrganizerResponse>(`/admin/organizers/${organizerId}/reset`, { method: "POST" })),
-      () => {
-        const existing = mockUsers.find((user) => user.id === organizerId);
-        return existing || mockUsers[0];
-      },
-    );
-  },
   async deleteOrganizer(organizerId: string): Promise<void> {
     return withUserFallback(
       () => apiRequest<void>(`/admin/organizers/${organizerId}`, { method: "DELETE" }),

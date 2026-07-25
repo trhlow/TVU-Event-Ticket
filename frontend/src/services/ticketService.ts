@@ -193,6 +193,16 @@ export const ticketService = {
   async availability(eventId: string): Promise<AvailabilityResponse> {
     return apiRequest<AvailabilityResponse>(`/ticketing/events/${eventId}/availability`);
   },
+  async exportAttendeesCsv(
+    eventId: string,
+    filters: Pick<AttendeeQuery, "status" | "keyword"> = {},
+  ): Promise<string> {
+    const params = new URLSearchParams();
+    if (filters.status) params.set("status", filters.status);
+    if (filters.keyword) params.set("keyword", filters.keyword);
+    const suffix = params.size > 0 ? `?${params.toString()}` : "";
+    return apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${suffix}`);
+  },
   async checkIn(qrPayload: string): Promise<Ticket> {
     return withTicketFallback(
       async () => mapTicket(await apiRequest<TicketResponse>("/ticketing/check-in", {

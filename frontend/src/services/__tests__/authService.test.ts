@@ -63,4 +63,38 @@ describe("authService.requestOtp", () => {
     expect(fetchMock.mock.calls[0][0]).toContain("/auth/otp/request");
     expect(fetchMock.mock.calls[0][1]?.method).toBe("POST");
   });
+
+  it("verifies a code with rememberDevice and refreshes the authenticated profile", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({ profile: {} }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        headers: new Headers({ "content-type": "application/json" }),
+        json: async () => ({
+          id: "admin-1",
+          email: "admin@tvu.edu.vn",
+          displayName: "Admin",
+          role: "SUPER_ADMIN",
+          profileComplete: true,
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const user = await authService.verifyOtp(" admin@tvu.edu.vn ", "123456", true);
+
+    expect(user.role).toBe("SUPER_ADMIN");
+    expect(fetchMock.mock.calls[0][0]).toContain("/auth/otp/verify");
+    expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
+      email: "admin@tvu.edu.vn",
+      code: "123456",
+      rememberDevice: true,
+    });
+  });
 });

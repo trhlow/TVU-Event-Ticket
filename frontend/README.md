@@ -41,10 +41,9 @@ is bundled into the client-side JS and is publicly readable.
 - The session cache (`src/state/authSession.ts`) is an in-memory mirror of the authenticated
   profile, not the JWT itself. The JWT lives only in an HttpOnly cookie the frontend cannot read;
   nothing auth-related is ever written to `localStorage`/`sessionStorage`.
-- **Organizer and Super Admin accounts have no password mechanism on the backend today.** The
-  "Admin / Ban tổ chức" section of the login page is permanently disabled with an explanation —
-  it does not send fake credentials anywhere. See
-  [backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md) item 1.
+- Organizer and Super Admin accounts use the backend email-OTP flow
+  (`POST /auth/otp/request`, `POST /auth/otp/verify`). A verified browser can refresh its short-lived
+  session through `POST /auth/session/refresh`; concurrent refresh attempts are deduplicated client-side.
 
 ## Demo mode
 
@@ -113,10 +112,10 @@ The following are **not frontend bugs** — the frontend is deliberately showing
 on backend" state instead of fabricating data. Full detail in
 [backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md):
 
-- Organizer/Super Admin accounts have no password or invite mechanism — the create-organizer form and the
-  internal login form are disabled by design.
-- Backend analytics and audit-log APIs now exist, but some frontend administration/report pages still need a
-  dedicated integration pass before they can replace their pending/demo states.
+- Organizer/Super Admin accounts intentionally have no password: they sign in with an emailed OTP.
+  Super Admin can provision Organizer accounts with email, display name, and club assignment.
+- Organizer dashboards, per-event dashboards, school-wide statistics, per-club statistics, users,
+  MSSV verification, and audit logs are connected to live backend APIs.
 - `EventResponse`/`ReservationResponse` don't include a club display name or a student display
   name — those fields render as a neutral placeholder rather than a fabricated value.
 - No endpoint exists for a student to re-fetch a lost ticket QR, or for a signed ticket QR to be

@@ -7,7 +7,6 @@ import { Button } from "../../components/ui/button";
 import { useToast } from "../../components/common/ToastProvider";
 import { formatDateTime } from "../../utils/formatDate";
 import { ticketService } from "../../services/ticketService";
-import { apiRequest } from "../../services/apiClient";
 import { Ticket } from "../../types/ticket";
 
 const PAGE_SIZE = 20;
@@ -23,6 +22,7 @@ export default function AttendeesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [sort, setSort] = useState("issuedAt,desc");
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -42,6 +42,7 @@ export default function AttendeesPage() {
         size: PAGE_SIZE,
         keyword: keyword || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter,
+        sort,
       })
       .then((result) => {
         if (!mounted) return;
@@ -58,7 +59,7 @@ export default function AttendeesPage() {
     return () => {
       mounted = false;
     };
-  }, [eventId, keyword, page, statusFilter, showToast]);
+  }, [eventId, keyword, page, sort, statusFilter, showToast]);
 
   const handleExportCSV = async () => {
     if (!eventId) {
@@ -66,8 +67,10 @@ export default function AttendeesPage() {
       return;
     }
     try {
-      const query = search.trim() ? `?keyword=${encodeURIComponent(search.trim())}` : "";
-      const csv = await apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${query}`);
+      const csv = await ticketService.exportAttendeesCsv(eventId, {
+        keyword: keyword || undefined,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+      });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -114,7 +117,7 @@ export default function AttendeesPage() {
         }
       />
 
-      <div className="enterprise-card grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+      <div className="enterprise-card grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
         <label className="space-y-1">
           <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</span>
           <div className="relative">
@@ -136,6 +139,23 @@ export default function AttendeesPage() {
             <option value="VALID">Còn hiệu lực</option>
             <option value="CHECKED_IN">Đã check-in</option>
             <option value="CANCELLED">Đã hủy</option>
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Sắp xếp</span>
+          <select
+            value={sort}
+            onChange={(event) => {
+              setPage(0);
+              setSort(event.target.value);
+            }}
+            className="tvu-input"
+          >
+            <option value="issuedAt,desc">Phát hành mới nhất</option>
+            <option value="issuedAt,asc">Phát hành cũ nhất</option>
+            <option value="checkedInAt,desc">Check-in mới nhất</option>
+            <option value="studentEmail,asc">Email A–Z</option>
+            <option value="studentMssv,asc">MSSV tăng dần</option>
           </select>
         </label>
       </div>

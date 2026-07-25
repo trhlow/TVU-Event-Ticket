@@ -16,6 +16,8 @@ export default function SuperAdminLogsPage() {
   const [available, setAvailable] = useState(apiConfig.useDemoData);
   const [loadError, setLoadError] = useState(false);
   const [actionFilter, setActionFilter] = useState("");
+  const [fromFilter, setFromFilter] = useState("");
+  const [toFilter, setToFilter] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -23,7 +25,13 @@ export default function SuperAdminLogsPage() {
   useEffect(() => {
     let mounted = true;
     auditLogService
-      .listRemote({ action: actionFilter.trim() || undefined, page, size: PAGE_SIZE })
+      .listRemote({
+        action: actionFilter.trim() || undefined,
+        from: fromFilter ? new Date(fromFilter).toISOString() : undefined,
+        to: toFilter ? new Date(toFilter).toISOString() : undefined,
+        page,
+        size: PAGE_SIZE,
+      })
       .then((result) => {
         if (!mounted) return;
         setLogs(result.items);
@@ -40,7 +48,7 @@ export default function SuperAdminLogsPage() {
     return () => {
       mounted = false;
     };
-  }, [actionFilter, page]);
+  }, [actionFilter, fromFilter, page, toFilter]);
 
   const columns = [
     { header: "Thời gian", accessor: (log: AuditLog) => <span className="text-[10px] font-bold text-gray-400">{formatDateTime(log.createdAt)}</span> },
@@ -57,7 +65,7 @@ export default function SuperAdminLogsPage() {
         description="Audit log các thao tác quản trị, đọc trực tiếp từ GET /api/admin/audit-log."
         actions={
           available && (
-            <div className="w-full sm:w-72">
+            <div className="grid w-full gap-2 sm:grid-cols-3">
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động (khớp chính xác)</span>
                 <Input
@@ -67,6 +75,30 @@ export default function SuperAdminLogsPage() {
                     setActionFilter(event.target.value);
                   }}
                   placeholder="vd: auth.club.create"
+                  className="tvu-input"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Từ thời điểm</span>
+                <Input
+                  type="datetime-local"
+                  value={fromFilter}
+                  onChange={(event) => {
+                    setPage(0);
+                    setFromFilter(event.target.value);
+                  }}
+                  className="tvu-input"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Đến thời điểm</span>
+                <Input
+                  type="datetime-local"
+                  value={toFilter}
+                  onChange={(event) => {
+                    setPage(0);
+                    setToFilter(event.target.value);
+                  }}
                   className="tvu-input"
                 />
               </label>

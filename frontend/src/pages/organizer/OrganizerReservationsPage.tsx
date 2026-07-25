@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle, Clock, Eye, ShieldCheck, Users, XCircle } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
@@ -18,7 +18,7 @@ export default function OrganizerReservationsPage() {
   const [pendingAction, setPendingAction] = useState<{ id: string; type: "APPROVE" | "REJECT" } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async () => {
     setIsLoading(true);
     try {
       setReservations(await registrationService.listRemote());
@@ -27,11 +27,11 @@ export default function OrganizerReservationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     void loadReservations();
-  }, []);
+  }, [loadReservations]);
 
   const filteredReservations = useMemo(() => {
     if (selectedStatus === "ALL") return reservations;
