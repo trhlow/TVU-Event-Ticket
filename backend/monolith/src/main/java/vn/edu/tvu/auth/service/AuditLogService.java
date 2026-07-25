@@ -40,9 +40,9 @@ public class AuditLogService implements AuditRecorder {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<AuditLogResponse> search(UUID actorId, String action, Instant from, Instant to,
-            Pageable pageable) {
-        return PageResponse.from(auditLogRepository.search(actorId, trimToNull(action), from, to, pageable)
+    public PageResponse<AuditLogResponse> search(UUID actorId, String action, UUID clubId, Instant from,
+            Instant to, Pageable pageable) {
+        return PageResponse.from(auditLogRepository.search(actorId, trimToNull(action), clubId, from, to, pageable)
                 .map(row -> new AuditLogResponse(row.getId(), row.getActorId(), row.getActorEmail(),
                         row.getAction(), row.getTargetType(), row.getTargetId(), row.getDetail(),
                         row.getCreatedAt())));

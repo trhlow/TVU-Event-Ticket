@@ -126,7 +126,7 @@ class SecurityConfigTest {
     void auditLogRouteAllowsSuperAdminRole() throws Exception {
         when(auditLogService.search(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any()))
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
                 .thenReturn(new vn.edu.tvu.shared.web.PageResponse<>(List.of(), 0, 20, 0, 0));
         var token = token(UserRole.SUPER_ADMIN);
 
@@ -168,6 +168,7 @@ class SecurityConfigTest {
     @Test
     void auditLogRouteBindsFromAndToDateTimeParams() throws Exception {
         when(auditLogService.search(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.eq(java.time.Instant.parse("2026-01-01T00:00:00Z")),
                 org.mockito.ArgumentMatchers.eq(java.time.Instant.parse("2026-02-01T00:00:00Z")),
                 org.mockito.ArgumentMatchers.any()))

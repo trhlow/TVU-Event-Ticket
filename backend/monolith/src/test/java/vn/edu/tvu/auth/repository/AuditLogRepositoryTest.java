@@ -1,6 +1,7 @@
 package vn.edu.tvu.auth.repository;
 
 import vn.edu.tvu.auth.domain.AuditLog;
+import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.auth.support.AbstractPostgresIntegrationTest;
 
@@ -26,6 +27,9 @@ class AuditLogRepositoryTest extends AbstractPostgresIntegrationTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ClubRepository clubRepository;
+
     @Test
     void searchJoinsActorEmailAndKeepsEntriesWithoutAMatchingUser() {
         var actor = userRepository.saveAndFlush(actor("admin@example.com"));
@@ -34,7 +38,7 @@ class AuditLogRepositoryTest extends AbstractPostgresIntegrationTest {
         auditLogRepository.saveAndFlush(AuditLog.local(UUID.randomUUID(), "auth.club.create", "club",
                 UUID.randomUUID(), "{}"));
 
-        var page = auditLogRepository.search(null, null, null, null,
+        var page = auditLogRepository.search(null, null, null, null, null,
                 PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "a.createdAt")));
 
         assertThat(page.getTotalElements()).isEqualTo(2);
@@ -54,14 +58,32 @@ class AuditLogRepositoryTest extends AbstractPostgresIntegrationTest {
                 UUID.randomUUID(), "{}"));
         var pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "a.createdAt"));
 
-        assertThat(auditLogRepository.search(actor.getId(), null, null, null, pageable).getTotalElements())
+        assertThat(auditLogRepository.search(actor.getId(), null, null, null, null, pageable).getTotalElements())
                 .isEqualTo(2);
-        assertThat(auditLogRepository.search(null, "auth.organizer.lock", null, null, pageable)
+        assertThat(auditLogRepository.search(null, "auth.organizer.lock", null, null, null, pageable)
                 .getTotalElements()).isEqualTo(1);
-        assertThat(auditLogRepository.search(null, null, Instant.now().plusSeconds(60), null, pageable)
+        assertThat(auditLogRepository.search(null, null, null, Instant.now().plusSeconds(60), null, pageable)
                 .getTotalElements()).isZero();
-        assertThat(auditLogRepository.search(null, null, null, Instant.now().plusSeconds(60), pageable)
+        assertThat(auditLogRepository.search(null, null, null, null, Instant.now().plusSeconds(60), pageable)
                 .getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void searchFiltersByActorClub() {
+        var club = clubRepository.saveAndFlush(new Club("CLB Audit " + UUID.randomUUID(), null));
+        var organizer = userRepository.saveAndFlush(
+                User.emailOtpOrganizer("organizer-audit@example.com", "Organizer", club));
+        var admin = userRepository.saveAndFlush(actor("admin-club-filter@example.com"));
+        auditLogRepository.saveAndFlush(AuditLog.local(organizer.getId(), "audit.ticket.approve", "reservation",
+                UUID.randomUUID(), "{}"));
+        auditLogRepository.saveAndFlush(AuditLog.local(admin.getId(), "auth.club.create", "club",
+                UUID.randomUUID(), "{}"));
+        var pageable = PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "a.createdAt"));
+
+        var page = auditLogRepository.search(null, null, club.getId(), null, null, pageable);
+
+        assertThat(page.getTotalElements()).isEqualTo(1);
+        assertThat(page.getContent().get(0).getActorEmail()).isEqualTo("organizer-audit@example.com");
     }
 
     private static User actor(String email) {
