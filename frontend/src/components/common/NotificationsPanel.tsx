@@ -1,5 +1,5 @@
 import { Construction, X } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { NotificationScope, notificationCopy } from "../../pages/common/NotificationsPage";
 
 const notificationsPathByScope: Record<NotificationScope, string> = {

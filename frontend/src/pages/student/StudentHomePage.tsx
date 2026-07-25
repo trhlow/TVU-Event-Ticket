@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { AlertTriangle, ArrowRight, Award, Calendar, Search, Sparkles, Ticket } from "lucide-react";
 import EventCard from "../../components/events/EventCard";
 import StatisticCard from "../../components/common/StatisticCard";

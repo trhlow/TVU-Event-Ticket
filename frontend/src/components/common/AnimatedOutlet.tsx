@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation, useOutlet } from "react-router-dom";
+import { useLocation, useOutlet } from "react-router";
 import { usePrefersReducedMotion } from "../../hooks/usePrefersReducedMotion";
 
 /**

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Calendar, Clock, Info, MapPin, ShieldAlert, Ticket } from "lucide-react";
 import { requireCurrentUser } from "../../state/authSession";
 import PageHeader from "../../components/common/PageHeader";

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { BarChart3, CheckSquare, Edit2, Eye, Lock, Plus, QrCode, Trash2, Unlock } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { Calendar, Mail, MapPin, UserRound } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";

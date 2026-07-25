@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Mail, MapPin, Menu, Phone, Share2, Users, X } from "lucide-react";
 import AnimatedOutlet from "../components/common/AnimatedOutlet";
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router";
 import { AlertCircle, FlaskConical, ShieldCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";

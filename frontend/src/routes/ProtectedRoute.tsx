@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router";
 import { WifiOff } from "lucide-react";
 import { getCurrentUser, isAuthenticated, setCurrentUser } from "../state/authSession";
 import { authService } from "../services/authService";

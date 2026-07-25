@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import PageHeader from '../../components/common/PageHeader';
 import EventForm from '../../components/events/EventForm';
 import { useToast } from '../../components/common/ToastProvider';

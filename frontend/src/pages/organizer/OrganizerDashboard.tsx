@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, Sparkles, Ticket } from "lucide-react";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";

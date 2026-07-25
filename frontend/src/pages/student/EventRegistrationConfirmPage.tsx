@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router';
 import { Calendar, MapPin, CheckSquare, Square, ArrowLeft, Send } from 'lucide-react';
 import { requireCurrentUser } from '../../state/authSession';
 import { formatDateTime } from '../../utils/formatDate';

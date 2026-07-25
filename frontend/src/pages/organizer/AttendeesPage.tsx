@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";

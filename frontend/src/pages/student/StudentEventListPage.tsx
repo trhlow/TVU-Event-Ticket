@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Calendar } from 'lucide-react';
 import EventCard from '../../components/events/EventCard';
 import EventFilter from '../../components/events/EventFilter';

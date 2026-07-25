@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 import { Activity, Calendar, ShieldCheck, Ticket, Users } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import StatisticCard from '../../components/common/StatisticCard';

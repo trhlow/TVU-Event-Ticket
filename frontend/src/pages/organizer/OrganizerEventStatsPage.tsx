@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { CheckCircle2, Gauge, Ticket, Users } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";

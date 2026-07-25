@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router";
 import { CheckCircle2, Calendar, MapPin, ListChecks } from "lucide-react";
 import { requireCurrentUser } from "../../state/authSession";
 import { registrationService } from "../../services/registrationService";
