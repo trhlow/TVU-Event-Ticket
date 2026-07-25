@@ -25,7 +25,6 @@ jobs:
               - 'backend/Dockerfile'
               - 'backend/monolith/**'
               - 'backend/infra/**'
-              - 'backend/.claude/**'
             frontend:
               - 'frontend/**'
 
