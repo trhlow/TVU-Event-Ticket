@@ -26,7 +26,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest({WellKnownController.class, AuthController.class, AdminController.class})
+@WebMvcTest({WellKnownController.class, AuthController.class, AdminController.class,
+        vn.edu.tvu.event.controller.AdminEventController.class})
 @Import({SecurityConfig.class, CookieCsrfFilter.class, AuthSecurityTestConfiguration.class})
 class SecurityConfigTest {
 
@@ -53,6 +54,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private AuditLogService auditLogService;
+
+    @MockitoBean
+    private vn.edu.tvu.event.service.EventService eventService;
 
     @Test
     void wellKnownEndpointsArePublic() throws Exception {
@@ -190,6 +194,74 @@ class SecurityConfigTest {
                         .param("actorId", "not-a-uuid")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminEventsRouteRequiresAuthentication() throws Exception {
+        mockMvc.perform(get("/api/admin/events"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void adminEventsRouteRejectsOrganizerRole() throws Exception {
+        var token = token(UserRole.ORGANIZER);
+
+        mockMvc.perform(get("/api/admin/events")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminEventsRouteAllowsSuperAdminRole() throws Exception {
+        when(eventService.listAllForAdmin(null)).thenReturn(List.of());
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/api/admin/events")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void updateDisplayNameRouteRequiresAuthentication() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/auth/me")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Ten Moi\"}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void updateDisplayNameRejectsBlankName() throws Exception {
+        var token = token(UserRole.ORGANIZER);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"   \"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void updateDisplayNameReachesServiceForOrganizer() throws Exception {
+        when(authApplicationService.updateDisplayName(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new vn.edu.tvu.auth.service.LoginResult(
+                        new vn.edu.tvu.auth.dto.response.AuthProfileResponse(UUID.randomUUID(),
+                                "organizer@example.com", "Ten Moi", UserRole.ORGANIZER, null, null, null,
+                                null, false),
+                        new JwtToken("jwt-value", "jti-1", java.time.Instant.now().plusSeconds(900)),
+                        "csrf-token"));
+        var token = token(UserRole.ORGANIZER);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .patch("/api/auth/me")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"displayName\":\"Ten Moi\"}"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.profile.displayName").value("Ten Moi"));
     }
 
     private String token(UserRole role) {
