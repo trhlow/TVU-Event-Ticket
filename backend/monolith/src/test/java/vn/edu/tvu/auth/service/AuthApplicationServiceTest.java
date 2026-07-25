@@ -4,6 +4,7 @@ import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
+import vn.edu.tvu.auth.dto.request.UpdateDisplayNameRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
 import vn.edu.tvu.auth.identity.IdentityProvider;
@@ -180,6 +181,32 @@ class AuthApplicationServiceTest {
         assertThatThrownBy(() -> service.updateProfile(userId, new UpdateProfileRequest("110122001", "DA21CNTT")))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("MSSV already exists");
+    }
+
+    @Test
+    void updateDisplayName_renamesOrganizerAndReturnsFreshProfile() {
+        var organizerId = UUID.randomUUID();
+        var organizer = persisted(User.emailOtpOrganizer("clb@tvu.edu.vn", "Ten Cu", null), organizerId);
+        when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
+        when(userRepository.save(organizer)).thenReturn(organizer);
+
+        var result = service.updateDisplayName(organizerId, new UpdateDisplayNameRequest("  Ten Moi  "));
+
+        assertThat(organizer.getDisplayName()).isEqualTo("Ten Moi");
+        assertThat(result.profile().displayName()).isEqualTo("Ten Moi");
+    }
+
+    @Test
+    void updateDisplayName_rejectsStudentAccounts() {
+        var studentId = UUID.randomUUID();
+        var student = persisted(User.student("entra:sv", "sv@tvu.edu.vn", "Sinh Vien"), studentId);
+        when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
+
+        assertThatThrownBy(() -> service.updateDisplayName(studentId, new UpdateDisplayNameRequest("Khac")))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode().value())
+                .isEqualTo(403);
+        verify(userRepository, never()).save(any());
     }
 
     private static User persisted(User user, UUID id) {

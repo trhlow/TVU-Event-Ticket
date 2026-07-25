@@ -3,7 +3,9 @@ package vn.edu.tvu.auth.service;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
+import vn.edu.tvu.auth.dto.request.UpdateDisplayNameRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
 import vn.edu.tvu.auth.identity.IdentityProvider;
@@ -62,6 +64,23 @@ public class AuthApplicationService {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         user.completeProfile(mssv, request.classCode().trim());
+        return sessionMinter.mint(userRepository.save(user));
+    }
+
+    /**
+     * Student display names are owned by the identity provider and get overwritten on every login
+     * ({@link #resolveUser}), so a student edit here would silently revert — only the emailed-code
+     * accounts (organizer, super admin), which have no external identity, may rename themselves.
+     */
+    @Transactional
+    public LoginResult updateDisplayName(UUID userId, UpdateDisplayNameRequest request) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getRole() == UserRole.SINH_VIEN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Student display name is managed by the identity provider");
+        }
+        user.rename(request.displayName().trim());
         return sessionMinter.mint(userRepository.save(user));
     }
 

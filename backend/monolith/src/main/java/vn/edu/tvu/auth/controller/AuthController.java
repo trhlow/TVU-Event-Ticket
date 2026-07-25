@@ -3,6 +3,7 @@ package vn.edu.tvu.auth.controller;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.request.OtpRequest;
 import vn.edu.tvu.auth.dto.request.OtpVerifyRequest;
+import vn.edu.tvu.auth.dto.request.UpdateDisplayNameRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
 import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.dto.response.LoginResponse;
@@ -86,6 +87,14 @@ public class AuthController {
             @AuthenticationPrincipal Jwt jwt,
             @Valid @RequestBody UpdateProfileRequest request) {
         return withSession(authService.updateProfile(UUID.fromString(jwt.getSubject()), request));
+    }
+
+    @PatchMapping("/me")
+    @Operation(summary = "Update display name for organizer/admin accounts and re-issue JWT")
+    public ResponseEntity<LoginResponse> updateDisplayName(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdateDisplayNameRequest request) {
+        return withSession(authService.updateDisplayName(UUID.fromString(jwt.getSubject()), request));
     }
 
     @PostMapping("/logout")

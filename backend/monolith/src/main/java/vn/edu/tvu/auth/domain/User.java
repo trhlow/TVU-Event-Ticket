@@ -118,6 +118,10 @@ public class User {
         this.status = UserStatus.LOCKED;
     }
 
+    public void rename(String displayName) {
+        this.displayName = displayName;
+    }
+
     public void completeProfile(String mssv, String classCode) {
         this.mssv = mssv;
         this.classCode = classCode;
