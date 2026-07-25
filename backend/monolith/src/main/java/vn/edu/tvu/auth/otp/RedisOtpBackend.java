@@ -22,12 +22,12 @@ public class RedisOtpBackend implements OtpStore.Backend {
 
     @Override
     public long increment(String key, Duration ttl) {
+        // SET NX EX creates the counter and its expiry in one command. Incrementing first and expiring
+        // afterwards would leave an immortal counter behind if the process died between the two, and a
+        // daily cap that never resets bars that address from ever receiving a code again. Only creation
+        // carries the TTL, so later increments cannot push the window forward into a cap that never lapses.
+        redisTemplate.opsForValue().setIfAbsent(key, "0", ttl);
         var count = redisTemplate.opsForValue().increment(key);
-        if (count != null && count == 1L) {
-            // Only the counter that created the key sets its expiry, so a busy day cannot keep pushing the
-            // window forward and turn the daily cap into a rolling one that never resets.
-            redisTemplate.expire(key, ttl);
-        }
         return count == null ? 0L : count;
     }
 
