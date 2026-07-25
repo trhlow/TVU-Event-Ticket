@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle, Clock, Eye, ShieldCheck, Users, XCircle } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import { Eye, ShieldCheck, Users, XCircle } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import StatisticCard from "../../components/common/StatisticCard";
@@ -14,9 +14,11 @@ import { registrationService } from "../../services/registrationService";
 export default function OrganizerReservationsPage() {
   const { showToast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState("ALL");
   const [pendingAction, setPendingAction] = useState<{ id: string; type: "APPROVE" | "REJECT" } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // The pending-queue endpoint drops a reservation the moment it's approved/rejected, so there's
+  // no server-side count to show for "processed" — this tracks it locally for this page visit only.
+  const [processedCount, setProcessedCount] = useState(0);
 
   const loadReservations = useCallback(async () => {
     setIsLoading(true);
@@ -33,17 +35,13 @@ export default function OrganizerReservationsPage() {
     void loadReservations();
   }, [loadReservations]);
 
-  const filteredReservations = useMemo(() => {
-    if (selectedStatus === "ALL") return reservations;
-    return reservations.filter((reservation) => reservation.status === selectedStatus);
-  }, [reservations, selectedStatus]);
-
   const handleConfirmAction = async () => {
     if (!pendingAction) return;
     try {
       await registrationService.updateStatus(pendingAction.id, pendingAction.type === "APPROVE" ? "APPROVED" : "REJECTED");
       showToast(pendingAction.type === "APPROVE" ? "Đã duyệt đăng ký." : "Đã từ chối đăng ký.");
       setPendingAction(null);
+      setProcessedCount((count) => count + 1);
       await loadReservations();
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Không thể xử lý đăng ký.", "error");
@@ -101,31 +99,18 @@ export default function OrganizerReservationsPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Duyệt đăng ký sự kiện"
-        description="Duyệt sẽ giữ chỗ và cấp vé theo quyết định của backend."
-        actions={
-          <label className="block sm:w-56">
-            <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Trạng thái</span>
-            <select value={selectedStatus} onChange={(event) => setSelectedStatus(event.target.value)} className="tvu-input">
-              <option value="ALL">Tất cả</option>
-              <option value="PENDING">Chờ duyệt</option>
-              <option value="APPROVED">Đã duyệt</option>
-              <option value="REJECTED">Từ chối</option>
-            </select>
-          </label>
-        }
+        description="Hàng đợi chờ duyệt — GET /reservations/pending không trả về đăng ký đã xử lý. Đăng ký đã duyệt biến thành vé tại trang Vé đã cấp; đăng ký đã từ chối chỉ còn trong audit log."
       />
 
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatisticCard label="Tổng đăng ký" value={filteredReservations.length} icon={Users} />
-        <StatisticCard label="Chờ duyệt" value={filteredReservations.filter((item) => item.status === "PENDING").length} icon={Clock} color="warning" />
-        <StatisticCard label="Đã duyệt" value={filteredReservations.filter((item) => item.status === "APPROVED").length} icon={CheckCircle} color="success" />
-        <StatisticCard label="Từ chối" value={filteredReservations.filter((item) => item.status === "REJECTED").length} icon={XCircle} color="danger" />
+      <div className="grid gap-4 md:grid-cols-2">
+        <StatisticCard label="Chờ duyệt" value={reservations.length} icon={Users} color="warning" />
+        <StatisticCard label="Đã xử lý trong phiên này" value={processedCount} icon={ShieldCheck} color="success" />
       </div>
 
       {isLoading ? (
         <LoadingSkeleton type="table" count={5} />
       ) : (
-        <DataTable data={filteredReservations} columns={columns} searchPlaceholder="Tìm sinh viên, MSSV, email..." searchField={(row) => `${row.studentName} ${row.mssv} ${row.email}`} />
+        <DataTable data={reservations} columns={columns} searchPlaceholder="Tìm sinh viên, MSSV, email..." searchField={(row) => `${row.studentName} ${row.mssv} ${row.email}`} />
       )}
 
       {pendingAction && (

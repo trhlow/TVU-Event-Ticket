@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useParams } from "react-router";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { useToast } from "../../hooks/useToast";
@@ -10,6 +11,7 @@ import { Event } from "../../types/event";
 import { Ticket } from "../../types/ticket";
 
 export default function OrganizerScanPage() {
+  const { eventId } = useParams<{ eventId: string }>();
   const currentUser = requireCurrentUser();
   const { showToast } = useToast();
   const [events, setEvents] = useState<Event[]>([]);
@@ -22,7 +24,7 @@ export default function OrganizerScanPage() {
     eventService
       .listByClubRemote(currentUser.clubId || "")
       .then((items) => {
-        if (mounted) setEvents(items);
+        if (mounted) setEvents(eventId ? items.filter((event) => event.id === eventId) : items);
       })
       .catch((error) => {
         if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
@@ -30,7 +32,25 @@ export default function OrganizerScanPage() {
     return () => {
       mounted = false;
     };
-  }, [currentUser.clubId, showToast]);
+  }, [currentUser.clubId, eventId, showToast]);
+
+  // Seeds the "click instead of type" helper list with tickets that are actually awaiting
+  // check-in. Without this, `tickets` only ever grows from check-in results, so the helper list
+  // stays permanently empty no matter how many valid tickets exist for the event(s).
+  useEffect(() => {
+    if (events.length === 0) return;
+    let mounted = true;
+    Promise.all(events.map((event) => ticketService.listAttendeesPage(event.id, { status: "VALID", size: 100 })))
+      .then((pages) => {
+        if (mounted) setTickets(pages.flatMap((page) => page.items));
+      })
+      .catch(() => {
+        // Best-effort UX sugar — manual QR entry still works even if this prefetch fails.
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [events]);
 
   useEffect(() => {
     let cancelled = false;
