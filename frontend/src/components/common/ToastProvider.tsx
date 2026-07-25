@@ -1,19 +1,12 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import Toast from "./Toast";
-
-type ToastType = "success" | "error" | "info";
+import { ToastContext, ToastType } from "../../hooks/useToast";
 
 interface QueuedToast {
   id: number;
   message: string;
   type: ToastType;
 }
-
-interface ToastContextValue {
-  showToast: (message: string, type?: ToastType) => void;
-}
-
-const ToastContext = createContext<ToastContextValue | null>(null);
 
 /**
  * App-wide toast queue — replaces the per-page `toastMsg` state + manual <Toast> wiring
@@ -44,10 +37,4 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-export function useToast() {
-  const context = useContext(ToastContext);
-  if (!context) throw new Error("useToast must be used within ToastProvider");
-  return context;
 }

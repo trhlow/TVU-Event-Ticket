@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router";
 import { Info } from "lucide-react";
 import { requireCurrentUser } from "../../state/authSession";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import PageHeader from "../../components/common/PageHeader";
 import StudentProfileForm, { StudentProfileFormValues } from "../../components/student/StudentProfileForm";
 import { authService } from "../../services/authService";

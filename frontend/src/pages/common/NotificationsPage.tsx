@@ -2,30 +2,11 @@ import { Bell } from "lucide-react";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
 import PageHeader from "../../components/common/PageHeader";
 import { requireCurrentUser } from "../../state/authSession";
-
-export type NotificationScope = "student" | "organizer" | "admin";
+import { NotificationScope, notificationCopy } from "../../constants/notifications";
 
 interface NotificationsPageProps {
   scope: NotificationScope;
 }
-
-export const notificationCopy: Record<NotificationScope, { title: string; description: string; endpoints: string[] }> = {
-  student: {
-    title: "Thông báo của tôi",
-    description: "Theo dõi trạng thái đăng ký, lịch sự kiện và vé QR đã được Ban tổ chức phát hành.",
-    endpoints: ["GET /notifications/me"],
-  },
-  organizer: {
-    title: "Thông báo Ban tổ chức",
-    description: "Các việc cần xử lý của CLB: đăng ký mới, phát vé QR và chuẩn bị check-in.",
-    endpoints: ["GET /notifications/organizer"],
-  },
-  admin: {
-    title: "Thông báo quản trị",
-    description: "Cảnh báo hệ thống, hoạt động CLB và nhật ký vận hành toàn trường.",
-    endpoints: ["GET /notifications/admin"],
-  },
-};
 
 export default function NotificationsPage({ scope }: NotificationsPageProps) {
   const user = requireCurrentUser();

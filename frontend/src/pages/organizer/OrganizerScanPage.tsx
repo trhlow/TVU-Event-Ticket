@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import QRScannerPanel from "../../components/tickets/QRScannerPanel";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";

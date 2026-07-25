@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowRight, Award, Calendar, Search, Sparkles, Ticket } 
 import EventCard from "../../components/events/EventCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";

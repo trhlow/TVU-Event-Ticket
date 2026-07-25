@@ -6,7 +6,7 @@ import PageHeader from "../../components/common/PageHeader";
 import EventBanner from "../../components/events/EventBanner";
 import StatusBadge from "../../components/common/StatusBadge";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { formatDateTime } from "../../utils/formatDate";

@@ -4,7 +4,7 @@ import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { formatDateTime } from "../../utils/formatDate";
 import { ticketService } from "../../services/ticketService";
 import { Ticket } from "../../types/ticket";

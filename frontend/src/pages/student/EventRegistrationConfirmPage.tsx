@@ -5,7 +5,7 @@ import { requireCurrentUser } from '../../state/authSession';
 import { formatDateTime } from '../../utils/formatDate';
 import PageHeader from '../../components/common/PageHeader';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
-import { useToast } from '../../components/common/ToastProvider';
+import { useToast } from '../../hooks/useToast';
 import { eventService } from '../../services/eventService';
 import { registrationService } from '../../services/registrationService';
 import { Event } from '../../types/event';

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Info, Mail } from 'lucide-react';
 import { requireCurrentUser } from '../../state/authSession';
 import { authService } from '../../services/authService';
-import { useToast } from '../../components/common/ToastProvider';
+import { useToast } from '../../hooks/useToast';
 import PageHeader from '../../components/common/PageHeader';
 import StudentProfileForm, { StudentProfileFormValues } from '../../components/student/StudentProfileForm';
 import { Input } from '../../components/ui/input';

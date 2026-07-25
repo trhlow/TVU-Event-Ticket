@@ -6,7 +6,7 @@ import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { Reservation } from "../../types/reservation";
 import { formatDateTime } from "../../utils/formatDate";
 import { registrationService } from "../../services/registrationService";

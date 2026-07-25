@@ -4,7 +4,7 @@ import { Calendar, Mail, MapPin, UserRound } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";

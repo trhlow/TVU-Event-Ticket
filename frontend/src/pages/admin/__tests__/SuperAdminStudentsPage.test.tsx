@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { User } from "../../../types/user";
 
@@ -27,11 +27,15 @@ const unverifiedStudent: User = {
 
 async function renderPage() {
   const { default: SuperAdminStudentsPage } = await import("../SuperAdminStudentsPage");
-  return render(
-    <MemoryRouter>
-      <SuperAdminStudentsPage />
-    </MemoryRouter>,
-  );
+  let utils!: ReturnType<typeof render>;
+  await act(async () => {
+    utils = render(
+      <MemoryRouter>
+        <SuperAdminStudentsPage />
+      </MemoryRouter>,
+    );
+  });
+  return utils;
 }
 
 beforeEach(() => {

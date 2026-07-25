@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
 import NotificationsPanel from "./NotificationsPanel";
-import { NotificationScope } from "../../pages/common/NotificationsPage";
+import { NotificationScope } from "../../constants/notifications";
 
 const notificationScopeByRole: Record<string, NotificationScope> = {
   SINH_VIEN: "student",

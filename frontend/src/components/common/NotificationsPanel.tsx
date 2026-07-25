@@ -1,6 +1,6 @@
 import { Construction, X } from "lucide-react";
 import { Link } from "react-router";
-import { NotificationScope, notificationCopy } from "../../pages/common/NotificationsPage";
+import { NotificationScope, notificationCopy } from "../../constants/notifications";
 
 const notificationsPathByScope: Record<NotificationScope, string> = {
   student: "/student/notifications",

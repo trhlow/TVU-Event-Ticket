@@ -6,7 +6,7 @@ import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { formatDateTime } from "../../utils/formatDate";

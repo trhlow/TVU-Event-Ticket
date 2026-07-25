@@ -5,7 +5,7 @@ import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import DetailDrawer from "../../components/common/DetailDrawer";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
 import { Ticket } from "../../types/ticket";

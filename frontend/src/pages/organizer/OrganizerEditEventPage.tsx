@@ -4,7 +4,7 @@ import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import EventForm from '../../components/events/EventForm';
-import { useToast } from '../../components/common/ToastProvider';
+import { useToast } from '../../hooks/useToast';
 import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';

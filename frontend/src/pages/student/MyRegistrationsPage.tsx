@@ -4,7 +4,7 @@ import { requireCurrentUser } from "../../state/authSession";
 import StatusBadge from "../../components/common/StatusBadge";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { formatDateTime } from "../../utils/formatDate";
 import { Reservation } from "../../types/reservation";
 import { registrationService } from "../../services/registrationService";

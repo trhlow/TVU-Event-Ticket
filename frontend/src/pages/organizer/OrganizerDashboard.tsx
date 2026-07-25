@@ -10,7 +10,7 @@ import DataTable from "../../components/common/DataTable";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import EmptyState from "../../components/common/EmptyState";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
