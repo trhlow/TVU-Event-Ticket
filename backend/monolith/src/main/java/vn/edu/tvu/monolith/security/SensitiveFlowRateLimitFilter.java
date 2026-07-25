@@ -1,6 +1,8 @@
 package vn.edu.tvu.monolith.security;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,12 +89,36 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
         }
     }
 
+    /**
+     * X-Forwarded-For is only evidence when our own reverse proxy set it. Caddy replaces the header with
+     * the real peer ({@code header_up X-Forwarded-For {remote_host}}) and reaches the application over the
+     * container network, so the header is honoured for a loopback or private-range peer and ignored for
+     * anyone else. Without that check, an application reachable on a public port lets every caller mint a
+     * fresh counter by varying the header, which removes the limit exactly where it is the only guard.
+     */
     private String clientAddress(HttpServletRequest request) {
         var forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.trim();
+        if (forwarded != null && !forwarded.isBlank() && isTrustedProxy(request.getRemoteAddr())) {
+            // The proxy sends one address; a comma only appears if something upstream appended, in which
+            // case the left-most entry is still the closest thing to the originating client.
+            var first = forwarded.split(",", 2)[0].trim();
+            if (!first.isEmpty()) {
+                return first;
+            }
         }
         return request.getRemoteAddr();
+    }
+
+    private boolean isTrustedProxy(String remoteAddress) {
+        if (remoteAddress == null || remoteAddress.isBlank()) {
+            return false;
+        }
+        try {
+            var address = InetAddress.getByName(remoteAddress);
+            return address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress();
+        } catch (UnknownHostException ex) {
+            return false;
+        }
     }
 
     private record Window(long windowStart, int count) {
