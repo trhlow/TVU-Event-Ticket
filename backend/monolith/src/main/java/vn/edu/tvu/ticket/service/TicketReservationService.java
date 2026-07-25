@@ -82,7 +82,7 @@ public class TicketReservationService {
         var existing = reservationRepository.findByEventIdAndStudentIdAndIdempotencyKey(
                 request.eventId(), actor.userId(), normalizedKey);
         if (existing.isPresent()) {
-            return reservationResponse(existing.get(), findTicketId(existing.get().getId()).orElse(null));
+            return reservationResponse(existing.get(), findTicket(existing.get().getId()));
         }
         if (reservationRepository.existsByEventIdAndStudentId(request.eventId(), actor.userId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Reservation already exists for event");
@@ -113,7 +113,7 @@ public class TicketReservationService {
         var reservation = lockedReservation(reservationId);
         requireClubScope(actor, reservation.getClubId(), "Reservation is outside organizer club scope");
         if (reservation.getStatus() == ReservationStatus.APPROVED) {
-            return reservationResponse(reservation, findTicketId(reservation.getId()).orElse(null));
+            return reservationResponse(reservation, findTicket(reservation.getId()));
         }
         if (reservation.getStatus() == ReservationStatus.REJECTED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Rejected reservation cannot be approved");
@@ -139,7 +139,7 @@ public class TicketReservationService {
         recordReservationApproved(reservation, ticket);
         recordAudit(actor.userId(), "audit.ticket.approve", "reservation", reservation.getId(),
                 "{\"ticketId\":\"" + ticket.getId() + "\"}");
-        return reservationResponse(reservation, ticket.getId());
+        return reservationResponse(reservation, ticket);
     }
 
     @Transactional
@@ -161,7 +161,7 @@ public class TicketReservationService {
     public List<ReservationResponse> listMine(CurrentUser actor) {
         requireRole(actor, UserRole.SINH_VIEN);
         return reservationRepository.findByStudentIdOrderByRequestedAtDesc(actor.userId()).stream()
-                .map(reservation -> reservationResponse(reservation, findTicketId(reservation.getId()).orElse(null)))
+                .map(reservation -> reservationResponse(reservation, findTicket(reservation.getId())))
                 .toList();
     }
 
@@ -173,7 +173,7 @@ public class TicketReservationService {
         }
         return reservationRepository.findByClubIdAndStatusOrderByRequestedAtDesc(actor.clubId(),
                         ReservationStatus.PENDING).stream()
-                .map(reservation -> reservationResponse(reservation, findTicketId(reservation.getId()).orElse(null)))
+                .map(reservation -> reservationResponse(reservation, findTicket(reservation.getId())))
                 .toList();
     }
 
@@ -210,16 +210,16 @@ public class TicketReservationService {
         auditRecorder.recordAudit(actorId, action, targetType, targetId, detail);
     }
 
-    private ReservationResponse reservationResponse(Reservation reservation, UUID ticketId) {
-        return reservationMapper.toResponse(reservation, ticketId);
+    private ReservationResponse reservationResponse(Reservation reservation, Ticket ticket) {
+        return reservationMapper.toResponse(reservation, ticket);
     }
 
-    private Optional<UUID> findTicketId(UUID reservationId) {
+    private Ticket findTicket(UUID reservationId) {
         var ticket = ticketRepository.findByReservationId(reservationId);
         if (ticket == null) {
-            return Optional.empty();
+            return null;
         }
-        return ticket.map(Ticket::getId);
+        return ticket.orElse(null);
     }
 
     /**
