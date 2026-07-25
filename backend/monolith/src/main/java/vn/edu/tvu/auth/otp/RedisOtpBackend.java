@@ -16,6 +16,22 @@ public class RedisOtpBackend implements OtpStore.Backend {
     }
 
     @Override
+    public boolean putIfAbsent(String key, Duration ttl) {
+        return Boolean.TRUE.equals(redisTemplate.opsForValue().setIfAbsent(key, "1", ttl));
+    }
+
+    @Override
+    public long increment(String key, Duration ttl) {
+        var count = redisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1L) {
+            // Only the counter that created the key sets its expiry, so a busy day cannot keep pushing the
+            // window forward and turn the daily cap into a rolling one that never resets.
+            redisTemplate.expire(key, ttl);
+        }
+        return count == null ? 0L : count;
+    }
+
+    @Override
     public void put(String key, OtpStore.Entry entry, Duration ttl) {
         redisTemplate.opsForValue().set(key, entry.code() + ":" + entry.attempts(), ttl);
     }

@@ -56,6 +56,11 @@ public class AdminOtpService {
         if (user == null) {
             return;
         }
+        if (!otpStore.acquireSendSlot(user.getId())) {
+            // Still a silent 202: telling the caller they were throttled would confirm the address exists.
+            log.info("Suppressed an OTP send that was outside its budget");
+            return;
+        }
         var code = otpCodeIssuer.issue(user.getEmail());
         otpStore.save(user.getId(), code);
         try {

@@ -6,13 +6,31 @@ import java.util.UUID;
 public class OtpStore {
 
     static final Duration TTL = Duration.ofMinutes(10);
+    static final Duration COOLDOWN = Duration.ofSeconds(60);
+    static final Duration DAILY_WINDOW = Duration.ofHours(24);
 
     private final Backend backend;
     private final int maxAttempts;
+    private final int maxSendsPerDay;
 
-    public OtpStore(Backend backend, int maxAttempts) {
+    public OtpStore(Backend backend, int maxAttempts, int maxSendsPerDay) {
         this.backend = backend;
         this.maxAttempts = maxAttempts;
+        this.maxSendsPerDay = maxSendsPerDay;
+    }
+
+    /**
+     * Decides whether this address may cost another mail. Sign-in here has no password fallback, so the
+     * provider's send quota is the whole admin entrance: the cooldown paces one caller and the daily cap
+     * bounds what any number of them can spend against a single address.
+     *
+     * <p>Both counters are keyed by user, so throttling one address never locks another admin out.
+     */
+    public boolean acquireSendSlot(UUID userId) {
+        if (!backend.putIfAbsent(cooldownKey(userId), COOLDOWN)) {
+            return false;
+        }
+        return backend.increment(dailyKey(userId), DAILY_WINDOW) <= maxSendsPerDay;
     }
 
     public void save(UUID userId, String code) {
@@ -46,6 +64,14 @@ public class OtpStore {
         return "otp:" + userId;
     }
 
+    private String cooldownKey(UUID userId) {
+        return "otp:cooldown:" + userId;
+    }
+
+    private String dailyKey(UUID userId) {
+        return "otp:daily:" + userId;
+    }
+
     public enum Result {
         OK,
         INVALID,
@@ -60,6 +86,12 @@ public class OtpStore {
      * expires with the code rather than outliving it.
      */
     public interface Backend {
+
+        /** Sets the key only if it is absent, returning whether this caller won it. */
+        boolean putIfAbsent(String key, Duration ttl);
+
+        /** Increments the key, applying the TTL when the counter is first created. */
+        long increment(String key, Duration ttl);
 
         void put(String key, Entry entry, Duration ttl);
 
