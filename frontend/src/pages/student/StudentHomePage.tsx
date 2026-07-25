@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowRight, Award, Calendar, Search, Sparkles, Ticket } 
 import EventCard from "../../components/events/EventCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
@@ -20,7 +20,7 @@ export default function StudentHomePage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [tickets, setTickets] = useState<IssuedTicket[]>([]);
-  const [toastMsg, setToastMsg] = useState("");
+  const { showToast } = useToast();
 
   useEffect(() => {
     let mounted = true;
@@ -37,7 +37,7 @@ export default function StudentHomePage() {
         setReservations(reservationData);
         setTickets(ticketData);
       } catch (error) {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải dữ liệu tổng quan.", "error");
       }
     }
 
@@ -45,6 +45,7 @@ export default function StudentHomePage() {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser.id]);
 
   const pendingReservationsCount = reservations.filter((reservation) => reservation.status === "PENDING").length;
@@ -180,8 +181,6 @@ export default function StudentHomePage() {
           </div>
         </div>
       </section>
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

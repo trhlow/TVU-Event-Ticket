@@ -1,4 +1,5 @@
 import React from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { Calendar, Download, MapPin, Printer, ShieldCheck } from "lucide-react";
 import { Event } from "../../types/event";
 import { Ticket } from "../../types/ticket";
@@ -18,8 +19,8 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
   const tiltRef = useCardTilt<HTMLDivElement>({ maxTilt: 5 });
 
   return (
-    <div ref={tiltRef} className="tilt-card mx-auto max-w-sm overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-xl shadow-brand-900/10">
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-800 via-brand-600 to-accent-500 p-5 text-left text-white">
+    <div ref={tiltRef} className="tilt-card mx-auto max-w-sm overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-lg">
+      <div className="relative overflow-hidden bg-brand-700 p-5 text-left text-white">
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">TVU Electronic Ticket</p>
         <h3 className="mt-2 font-display text-lg font-semibold leading-snug">{event.title}</h3>
@@ -31,14 +32,8 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
 
       <div className="p-5 text-center">
         <div className="mx-auto grid h-56 w-56 place-items-center rounded-2xl border border-slate-200 bg-white p-3 shadow-inner">
-          {hasQrPayload ? (
-            // The backend supplies a real signed payload here, but no QR-rendering library is
-            // wired up yet — showing the raw payload is honest; a fabricated checkerboard image
-            // that doesn't actually encode this string would not be.
-            <div className="px-3 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payload vé (chưa có bộ render QR)</p>
-              <p className="mt-2 break-all font-mono text-[11px] font-semibold leading-5 text-slate-700">{ticket.qrCodeValue}</p>
-            </div>
+          {hasQrPayload && ticket.qrCodeValue ? (
+            <QRCodeSVG value={ticket.qrCodeValue} size={208} level="M" marginSize={0} />
           ) : (
             <div className="px-4 text-center text-xs font-bold leading-5 text-slate-500">
               Backend chưa cung cấp QR payload cho vé này.

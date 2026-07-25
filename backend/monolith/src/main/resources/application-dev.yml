@@ -21,7 +21,10 @@ tvu:
     csrf:
       signing-secret: ${CSRF_SIGNING_SECRET:dev-csrf-signing-secret-change-me}
     bootstrap:
-      email: ${BOOTSTRAP_ADMIN_EMAIL:admin@example.com}
+      email: ${BOOTSTRAP_ADMIN_EMAIL:sadminevt@tvu.edu.vn}
+    demo-otp:
+      email: sadminevt@tvu.edu.vn
+      code: "123456"
     cookies:
       secure: false
       same-site: Lax

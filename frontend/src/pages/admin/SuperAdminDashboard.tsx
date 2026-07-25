@@ -4,32 +4,54 @@ import BarChartCard from "../../components/charts/BarChartCard";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
+import PageHeader from "../../components/common/PageHeader";
+import DataTable from "../../components/common/DataTable";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
 import DemoDataBadge from "../../components/common/DemoDataBadge";
-import { mockAuditLogs } from "../../data/mockAuditLogs";
+import type { AuditLog } from "../../types/audit";
 import { mockClubs } from "../../data/mockClubs";
 import { getEvents } from "../../data/mockEvents";
 import { getReservations } from "../../data/mockReservations";
-import { getTickets } from "../../data/mockTickets";
 import { formatDateTime } from "../../utils/formatDate";
 import { apiConfig } from "../../services/apiClient";
-import { statisticsService } from "../../services/statisticsService";
-
-const REQUIRED_ENDPOINTS = ["GET /admin/statistics/overview", "GET /admin/audit-logs"];
+import { auditLogService } from "../../services/auditLogService";
+import { SchoolWideOverview, statisticsService } from "../../services/statisticsService";
 
 export default function SuperAdminDashboard() {
-  const [available, setAvailable] = useState(apiConfig.useDemoData);
+  const [overview, setOverview] = useState<SchoolWideOverview | null>(null);
+  const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
+  const [loadError, setLoadError] = useState(false);
+  const [auditLogUnavailable, setAuditLogUnavailable] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
     statisticsService
-      .assertSupported()
-      .then(() => setAvailable(true))
-      .catch(() => setAvailable(false));
+      .overview()
+      .then((overviewResult) => {
+        if (mounted) setOverview(overviewResult);
+      })
+      .catch(() => {
+        if (mounted) setLoadError(true);
+      });
+    // Audit log is a separate, independently-failing data source (some backends don't expose it
+    // yet) — its failure must not blank out the stats/charts that did load successfully.
+    auditLogService
+      .listRemote({ size: 5 })
+      .then((logsResult) => {
+        if (mounted) setRecentLogs(logsResult.items);
+      })
+      .catch(() => {
+        if (mounted) setAuditLogUnavailable(true);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  const available = apiConfig.useDemoData ? true : overview !== null;
 
   const events = useMemo(() => getEvents(), []);
   const reservations = useMemo(() => getReservations(), []);
-  const tickets = useMemo(() => getTickets(), []);
 
   const clubDistributionData = useMemo(
     () =>
@@ -40,41 +62,54 @@ export default function SuperAdminDashboard() {
     [events],
   );
 
-  const monthlyData = [
-    { name: "T1", "Lượt đăng ký": 180 },
-    { name: "T2", "Lượt đăng ký": 220 },
-    { name: "T3", "Lượt đăng ký": 260 },
-    { name: "T4", "Lượt đăng ký": 310 },
-    { name: "T5", "Lượt đăng ký": 390 },
-    { name: "T6", "Lượt đăng ký": 430 },
-  ];
+  const monthlyData = useMemo(() => {
+    const counts = new Map<string, number>();
+    reservations.forEach((reservation) => {
+      const month = new Date(reservation.createdAt).getMonth() + 1;
+      const key = `T${month}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+    return Array.from(counts, ([name, value]) => ({ name, "Lượt đăng ký": value })).sort(
+      (a, b) => Number(a.name.slice(1)) - Number(b.name.slice(1)),
+    );
+  }, [reservations]);
 
-  const checkedIn = tickets.filter((ticket) => ticket.checkInStatus === "CHECKED_IN").length;
+  const totalClubs = overview?.admin.totalClubs ?? mockClubs.length;
+  const totalEvents = overview?.events.totalEvents ?? events.length;
+  const studentsCount = overview?.admin.usersByRole.SINH_VIEN ?? reservations.filter((item) => item.status === "APPROVED").length;
+  const ticketsIssued = overview?.tickets.ticketsIssued ?? 0;
+  const checkedIn = overview?.tickets.checkedIn ?? 0;
+
+  const auditColumns = [
+    { header: "Người thực hiện", accessor: (log: AuditLog) => <span className="block font-extrabold text-slate-950">{log.userName || log.actorName}</span> },
+    { header: "Vai trò", accessor: (log: AuditLog) => <span className="text-xs font-bold text-slate-500">{log.role || log.actorRole}</span> },
+    { header: "Hành động", accessor: (log: AuditLog) => <span className="font-semibold text-slate-700">{log.action}</span> },
+    { header: "Thời gian", accessor: (log: AuditLog) => <span className="text-xs font-bold text-slate-500">{formatDateTime(log.createdAt)}</span> },
+  ];
 
   return (
     <div className="space-y-7 text-left">
-      <section className="page-hero p-6 text-white md:p-8">
-        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
-              <Activity className="h-4 w-4" /> Trung tâm điều hành hệ thống
-            </p>
-            <h1 className="mt-4 font-display text-4xl font-extrabold tracking-tight md:text-5xl">Dashboard toàn trường</h1>
-            <p className="mt-3 max-w-3xl text-base font-medium leading-7 text-white/82">
-              Giám sát CLB, tài khoản Ban tổ chức, sự kiện, vé QR và nhật ký vận hành của TVU Event & Ticketing Platform.
-            </p>
+      <PageHeader
+        eyebrow="Trung tâm điều hành hệ thống"
+        icon={Activity}
+        title="Dashboard toàn trường"
+        description="Giám sát CLB, tài khoản Ban tổ chức, sự kiện, vé QR và nhật ký vận hành của TVU Event & Ticketing Platform."
+        actions={
+          <div className="rounded-2xl border border-info-100 bg-info-50 px-4 py-3 text-right">
+            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-brand-700">Hệ thống</p>
+            <p className="mt-1 text-2xl font-black text-slate-950">Ổn định</p>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/12 px-4 py-3 text-right backdrop-blur">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-white/70">Hệ thống</p>
-            <p className="mt-1 text-2xl font-black">Ổn định</p>
-          </div>
-        </div>
-      </section>
+        }
+      />
 
       {!available ? (
         <BackendPendingNotice
-          description="Backend chưa có API thống kê toàn trường và API đọc nhật ký hoạt động. Dashboard sẽ hiển thị số liệu thật ngay khi các endpoint bên dưới sẵn sàng."
-          requiredEndpoints={REQUIRED_ENDPOINTS}
+          title={loadError ? "Không thể tải số liệu toàn trường" : "Đang chờ dữ liệu backend"}
+          description={
+            loadError
+              ? "Không thể gọi API thống kê hoặc audit log (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend)."
+              : "Đang tải số liệu toàn trường từ backend."
+          }
         />
       ) : (
         <div className="space-y-7">
@@ -82,10 +117,10 @@ export default function SuperAdminDashboard() {
             <DemoDataBadge />
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <StatisticCard label="Tổng CLB" value={mockClubs.length} icon={Layers} />
-            <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} color="warning" />
-            <StatisticCard label="Sinh viên tham gia" value={reservations.filter((item) => item.status === "APPROVED").length} icon={Award} />
-            <StatisticCard label="Vé phát hành" value={tickets.length} icon={Ticket} color="success" />
+            <StatisticCard label="Tổng CLB" value={totalClubs} icon={Layers} />
+            <StatisticCard label="Tổng sự kiện" value={totalEvents} icon={Calendar} color="warning" />
+            <StatisticCard label="Sinh viên" value={studentsCount} icon={Award} />
+            <StatisticCard label="Vé phát hành" value={ticketsIssued} icon={Ticket} color="success" />
             <StatisticCard label="Lượt điểm danh" value={checkedIn} icon={ShieldCheck} color="success" />
           </div>
 
@@ -101,35 +136,22 @@ export default function SuperAdminDashboard() {
               title="Tỷ lệ điểm danh toàn trường"
               data={[
                 { name: "Đã điểm danh", value: checkedIn || 1 },
-                { name: "Chưa điểm danh", value: Math.max(tickets.length - checkedIn, 1) },
+                { name: "Chưa điểm danh", value: Math.max(ticketsIssued - checkedIn, 1) },
               ]}
               colors={["#10b981", "#cbd5e1"]}
             />
-            <section className="enterprise-card p-5">
-              <h2 className="section-heading">Hoạt động gần đây</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">Audit log mới nhất từ các vai trò trong hệ thống</p>
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-left text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                      <th className="py-3">Người thực hiện</th>
-                      <th className="py-3">Vai trò</th>
-                      <th className="py-3">Hành động</th>
-                      <th className="py-3 text-right">Thời gian</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {mockAuditLogs.slice(0, 5).map((log) => (
-                      <tr key={log.id} className="transition hover:bg-brand-50/40">
-                        <td className="py-4 font-extrabold text-slate-950">{log.userName}</td>
-                        <td className="py-4 text-xs font-bold text-slate-500">{log.role}</td>
-                        <td className="py-4 font-semibold text-slate-700">{log.action}</td>
-                        <td className="py-4 text-right text-xs font-bold text-slate-500">{formatDateTime(log.createdAt)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <section className="space-y-3">
+              <div>
+                <h2 className="section-heading">Hoạt động gần đây</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">Audit log mới nhất từ các vai trò trong hệ thống</p>
               </div>
+              {auditLogUnavailable ? (
+                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-xs font-semibold text-slate-500">
+                  Backend hiện chưa expose API audit log (GET /admin/audit-log).
+                </p>
+              ) : (
+                <DataTable data={recentLogs} columns={auditColumns} searchPlaceholder="Tìm kiếm hành động..." searchField="action" pageSize={5} />
+              )}
             </section>
           </div>
         </div>

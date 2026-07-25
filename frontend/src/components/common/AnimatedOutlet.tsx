@@ -13,9 +13,18 @@ export default function AnimatedOutlet() {
   const reducedMotion = usePrefersReducedMotion();
 
   useEffect(() => {
-    if (location.hash) return;
+    if (location.hash) {
+      const target = document.getElementById(location.hash.slice(1));
+      if (!target) return;
+      // Wait a tick so the destination route has rendered (e.g. navigating from another
+      // page to "/#faq" mounts LandingPage first, then the section can be measured).
+      const timer = window.setTimeout(() => {
+        target.scrollIntoView({ behavior: reducedMotion ? "instant" : "smooth", block: "start" });
+      }, 60);
+      return () => window.clearTimeout(timer);
+    }
     window.scrollTo({ top: 0, left: 0, behavior: "instant" as ScrollBehavior });
-  }, [location.pathname, location.hash]);
+  }, [location.pathname, location.hash, reducedMotion]);
 
   return (
     <div key={location.pathname} className={reducedMotion ? undefined : "route-transition"}>

@@ -30,8 +30,8 @@ class UserClubStatsQueryTest extends AbstractPostgresIntegrationTest {
         userRepository.saveAndFlush(User.organizer("ext-1", "o1@tvu.edu.vn", "O1", clubA));
         userRepository.saveAndFlush(User.organizer("ext-2", "o2@tvu.edu.vn", "O2", clubA));
         userRepository.saveAndFlush(User.organizer("ext-3", "o3@tvu.edu.vn", "O3", clubB));
-        // Inserted with SQL on purpose: the entity API cannot produce this row (promoteToSuperAdmin
-        // nulls the club), but the column allows it, so a legacy or hand-edited row can look like this.
+        // Inserted with SQL on purpose: the entity API never puts a SUPER_ADMIN in a club, but the column
+        // allows it, so a legacy or hand-edited row can look like this.
         // Without it, every user in the fixture is an ORGANIZER and the role filter is never exercised —
         // deleting `u.role = ORGANIZER` from the query would leave this test green.
         insertNonOrganizerInClub(clubA.getId(), "SUPER_ADMIN", "admin@tvu.edu.vn");
@@ -45,8 +45,8 @@ class UserClubStatsQueryTest extends AbstractPostgresIntegrationTest {
 
     private void insertNonOrganizerInClub(java.util.UUID clubId, String role, String email) {
         jdbcTemplate.update("""
-                INSERT INTO users (id, ext_subject, email, display_name, role, club_id)
-                VALUES (?, ?, ?, 'Not an organizer', ?, ?)
-                """, java.util.UUID.randomUUID(), "ext-" + email, email, role, clubId);
+                INSERT INTO users (id, ext_subject, email, display_name, role, club_id, auth_method)
+                VALUES (?, NULL, ?, 'Not an organizer', ?, ?, 'EMAIL_OTP')
+                """, java.util.UUID.randomUUID(), email, role, clubId);
     }
 }

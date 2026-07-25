@@ -23,7 +23,27 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+// FIXME(frontend): single-flight this refresh. Right now every 401'd request calls it
+// independently, so a page that fires several API calls at once after the session expires sends
+// several parallel /auth/session/refresh calls with the SAME device cookie. The backend rotates the
+// token on first use and treats the second arrival of an already-rotated token as a stolen cookie,
+// which revokes EVERY trusted device — logging the admin out and forcing a new OTP. Dedupe concurrent
+// callers onto one shared in-flight promise (module-level `let inFlight: Promise<boolean> | null`)
+// so the burst becomes a single refresh. Until then the 30-day "remember this device" feature is
+// unreliable on any multi-request page. See docs review 2026-07-24.
+async function tryRefreshSession(): Promise<boolean> {
+  try {
+    const response = await fetch(buildApiUrl("/auth/session/refresh"), {
+      method: "POST",
+      credentials: "include",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function apiRequest<T>(path: string, init: RequestInit = {}, retryOnAuthFailure = true): Promise<T> {
   const headers = new Headers(init.headers);
   const hasBody = init.body !== undefined && init.body !== null;
   if (hasBody && !headers.has("Content-Type")) {
@@ -48,6 +68,17 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 
   if (!response.ok) {
+    // A remembered admin browser holds a device cookie but only a 15-minute session. On the first 401,
+    // trade the cookie for a fresh session and replay the request once. The refresh endpoint answers 401
+    // for anyone without a valid device cookie (every student), so this is a no-op for them.
+    if (
+      response.status === 401 &&
+      retryOnAuthFailure &&
+      !path.includes("/auth/session/refresh") &&
+      (await tryRefreshSession())
+    ) {
+      return apiRequest<T>(path, init, false);
+    }
     throw await createApiError(response);
   }
 

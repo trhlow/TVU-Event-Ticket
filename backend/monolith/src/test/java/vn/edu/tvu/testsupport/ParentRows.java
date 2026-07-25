@@ -42,12 +42,16 @@ public final class ParentRows {
         if (clubId != null) {
             club(jdbc, clubId);
         }
+        // Role decides the sign-in method, and only Entra accounts carry a subject. Fixtures follow the
+        // same rule so they cannot describe a user the application would never create.
+        var entra = "SINH_VIEN".equals(role);
         jdbc.update("""
-                insert into users (id, ext_subject, email, display_name, role, club_id, status)
-                values (?, ?, ?, ?, ?, ?, 'ACTIVE')
+                insert into users (id, ext_subject, email, display_name, role, club_id, status, auth_method)
+                values (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)
                 on conflict (id) do nothing
                 """,
-                id, "ext-" + id, id + "@example.com", "User " + id, role, clubId);
+                id, entra ? "ext-" + id : null, id + "@example.com", "User " + id, role, clubId,
+                entra ? "MICROSOFT" : "EMAIL_OTP");
         return id;
     }
 

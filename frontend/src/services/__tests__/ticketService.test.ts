@@ -38,18 +38,18 @@ afterEach(() => {
   vi.resetModules();
 });
 
-describe("ticketService.listAttendees", () => {
+describe("ticketService.listAttendeesPage", () => {
   it("extracts rows from the paginated envelope, not a bare array", async () => {
     vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
     const { ticketService } = await import("../ticketService");
-    const result = await ticketService.listAttendees("e1");
+    const result = await ticketService.listAttendeesPage("e1");
 
-    expect(Array.isArray(result.tickets)).toBe(true);
-    expect(result.tickets).toHaveLength(1);
-    expect(result.tickets[0].id).toBe("t1");
+    expect(Array.isArray(result.items)).toBe(true);
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe("t1");
   });
 
   it("surfaces totalElements from the envelope so callers can detect truncation", async () => {
@@ -57,18 +57,18 @@ describe("ticketService.listAttendees", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE)));
 
     const { ticketService } = await import("../ticketService");
-    const result = await ticketService.listAttendees("e1");
+    const result = await ticketService.listAttendeesPage("e1");
 
     expect(result.totalElements).toBe(142);
   });
 
-  it("requests size=100 and, when given a keyword, a properly encoded keyword param", async () => {
+  it("requests the given size and a properly encoded keyword param", async () => {
     vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
     const { ticketService } = await import("../ticketService");
-    await ticketService.listAttendees("e1", "a b@tvu.edu.vn");
+    await ticketService.listAttendeesPage("e1", { size: 100, keyword: "a b@tvu.edu.vn" });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0];
@@ -83,7 +83,7 @@ describe("ticketService.listAttendees", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const { ticketService } = await import("../ticketService");
-    await ticketService.listAttendees("e1");
+    await ticketService.listAttendeesPage("e1");
 
     const [url] = fetchMock.mock.calls[0];
     const requestedUrl = new URL(String(url), "http://localhost");
@@ -95,9 +95,33 @@ describe("ticketService.listAttendees", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE)));
 
     const { ticketService } = await import("../ticketService");
+    const result = await ticketService.listAttendeesPage("e1");
+
+    expect(result.items[0].studentEmail).toBe("student1@tvu.edu.vn");
+    expect(result.items[0].studentMssv).toBe("110120001");
+  });
+});
+
+describe("ticketService.listAttendees", () => {
+  it("flattens every page into a single Ticket array", async () => {
+    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(mockJsonResponse(200, { ...ATTENDEE_PAGE, page: 0, totalPages: 2 }))
+      .mockResolvedValueOnce(
+        mockJsonResponse(200, {
+          ...ATTENDEE_PAGE,
+          content: [{ ...ATTENDEE_PAGE.content[0], ticketId: "t2" }],
+          page: 1,
+          totalPages: 2,
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { ticketService } = await import("../ticketService");
     const result = await ticketService.listAttendees("e1");
 
-    expect(result.tickets[0].studentEmail).toBe("student1@tvu.edu.vn");
-    expect(result.tickets[0].studentMssv).toBe("110120001");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result.map((ticket) => ticket.id)).toEqual(["t1", "t2"]);
   });
 });

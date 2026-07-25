@@ -42,3 +42,25 @@ describe("authService.logout", () => {
     expect(isAuthenticated()).toBe(false);
   });
 });
+
+describe("authService.requestOtp", () => {
+  it("posts the address to the request endpoint and resolves regardless of the account", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 202,
+      headers: new Headers(),
+      text: async () => "",
+      json: async () => ({}),
+      clone() {
+        return this;
+      },
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(authService.requestOtp("admin@tvu.edu.vn")).resolves.toBeUndefined();
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls[0][0]).toContain("/auth/otp/request");
+    expect(fetchMock.mock.calls[0][1]?.method).toBe("POST");
+  });
+});

@@ -8,7 +8,6 @@ export default function SuperAdminSettingsPage() {
   return (
     <div className="space-y-6 text-left animate-fade-in">
       <PageHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Cấu hình hệ thống' }]}
         title="Cấu hình & thiết lập hệ thống"
         description="Điều chỉnh thông số vận hành, chính sách hạn ngạch vé điện tử, tên miền và bảo mật dữ liệu."
       />

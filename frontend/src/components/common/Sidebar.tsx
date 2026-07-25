@@ -98,7 +98,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             to="/organizer/events/create"
             onClick={onClose}
             title="Tạo sự kiện"
-            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-accent-600 text-sm font-bold text-white shadow-md shadow-blue-700/20 transition hover:from-brand-600 hover:to-accent-500 ${
+            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white transition hover:bg-brand-700 ${
               collapsed ? "w-10 px-0" : "w-full gap-2.5 px-3"
             }`}
           >

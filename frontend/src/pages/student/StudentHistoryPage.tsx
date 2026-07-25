@@ -8,7 +8,6 @@ export default function StudentHistoryPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Sinh viên', path: '/student' }, { label: 'Lịch sử tham gia' }]}
         title="Lịch sử tham gia"
         description="Theo dõi các sự kiện đã được cấp vé, trạng thái điểm danh và thời gian check-in."
       />

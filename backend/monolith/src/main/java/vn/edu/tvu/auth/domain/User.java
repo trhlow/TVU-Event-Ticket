@@ -24,15 +24,6 @@ import java.util.UUID;
 @Table(name = "users")
 public class User {
 
-    /**
-     * Placeholder {@code ext_subject} prefixes for accounts provisioned before their owner has ever logged
-     * in: {@link #PENDING_SUBJECT_PREFIX} for admin-created/reset organizers, {@link #BOOTSTRAP_SUBJECT_PREFIX}
-     * for the seeded super admin. A real Entra subject never carries these, so they mark the one slot that
-     * login may legitimately claim by email. See {@link #hasUnclaimedPlaceholderSubject()}.
-     */
-    public static final String PENDING_SUBJECT_PREFIX = "pending:";
-    public static final String BOOTSTRAP_SUBJECT_PREFIX = "bootstrap:";
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -41,8 +32,12 @@ public class User {
     @Column(nullable = false)
     private long version;
 
-    @Column(name = "ext_subject", nullable = false, unique = true)
+    @Column(name = "ext_subject", unique = true)
     private String extSubject;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "auth_method", nullable = false, length = 20)
+    private AuthMethod authMethod = AuthMethod.MICROSOFT;
 
     @Column(nullable = false, unique = true, length = 320)
     private String email;
@@ -101,33 +96,26 @@ public class User {
         return new User(extSubject, email, displayName, UserRole.SUPER_ADMIN, null);
     }
 
+    public static User emailOtpOrganizer(String email, String displayName, Club club) {
+        var user = new User(null, email, displayName, UserRole.ORGANIZER, club);
+        user.authMethod = AuthMethod.EMAIL_OTP;
+        return user;
+    }
+
+    public static User emailOtpSuperAdmin(String email, String displayName) {
+        var user = new User(null, email, displayName, UserRole.SUPER_ADMIN, null);
+        user.authMethod = AuthMethod.EMAIL_OTP;
+        return user;
+    }
+
     public void updateIdentity(String extSubject, String email, String displayName) {
         this.extSubject = extSubject;
         this.email = email;
         this.displayName = displayName;
     }
 
-    public void promoteToSuperAdmin() {
-        this.role = UserRole.SUPER_ADMIN;
-        this.club = null;
-    }
-
     public void lock() {
         this.status = UserStatus.LOCKED;
-    }
-
-    public void resetExternalSubject(String extSubject) {
-        this.extSubject = extSubject;
-    }
-
-    /**
-     * True while {@code ext_subject} is still a provisioning placeholder that no real Entra login has
-     * claimed. Only such an account may be matched and claimed by email; every other account must be
-     * matched by its stable subject, so a reissued email cannot take it over.
-     */
-    public boolean hasUnclaimedPlaceholderSubject() {
-        return extSubject != null
-                && (extSubject.startsWith(PENDING_SUBJECT_PREFIX) || extSubject.startsWith(BOOTSTRAP_SUBJECT_PREFIX));
     }
 
     public void completeProfile(String mssv, String classCode) {
@@ -166,6 +154,10 @@ public class User {
 
     public String getExtSubject() {
         return extSubject;
+    }
+
+    public AuthMethod getAuthMethod() {
+        return authMethod;
     }
 
     public String getEmail() {

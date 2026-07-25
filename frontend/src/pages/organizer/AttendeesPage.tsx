@@ -1,48 +1,68 @@
 import React, { useEffect, useState } from "react";
-import { Download, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { useParams } from "react-router-dom";
 import PageHeader from "../../components/common/PageHeader";
-import DataTable from "../../components/common/DataTable";
-import Toast from "../../components/common/Toast";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../components/common/ToastProvider";
 import { formatDateTime } from "../../utils/formatDate";
 import { ticketService } from "../../services/ticketService";
 import { apiRequest } from "../../services/apiClient";
 import { Ticket } from "../../types/ticket";
 
+const PAGE_SIZE = 20;
+
 export default function AttendeesPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const { showToast } = useToast();
   const [attendees, setAttendees] = useState<Ticket[]>([]);
-  const [totalElements, setTotalElements] = useState(0);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
+  const [keyword, setKeyword] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "VALID" | "CHECKED_IN" | "CANCELLED">("ALL");
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
+    const handle = setTimeout(() => {
+      setPage(0);
+      setKeyword(search.trim());
+    }, 350);
+    return () => clearTimeout(handle);
   }, [search]);
 
   useEffect(() => {
     if (!eventId) return;
     let mounted = true;
-    ticketService.listAttendees(eventId, debouncedSearch)
-      .then((page) => {
-        if (mounted) {
-          setAttendees(page.tickets);
-          setTotalElements(page.totalElements);
-        }
+    setIsLoading(true);
+    ticketService
+      .listAttendeesPage(eventId, {
+        page,
+        size: PAGE_SIZE,
+        keyword: keyword || undefined,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+      })
+      .then((result) => {
+        if (!mounted) return;
+        setAttendees(result.items);
+        setTotalPages(result.totalPages);
+        setTotalElements(result.totalElements);
       })
       .catch((error) => {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải danh sách tham dự.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách tham dự.", "error");
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
       });
     return () => {
       mounted = false;
     };
-  }, [eventId, debouncedSearch]);
+  }, [eventId, keyword, page, statusFilter, showToast]);
 
   const handleExportCSV = async () => {
     if (!eventId) {
-      setToastMsg("Vui lòng chọn sự kiện trước khi xuất CSV.");
+      showToast("Vui lòng chọn sự kiện trước khi xuất CSV.", "error");
       return;
     }
     try {
@@ -56,7 +76,7 @@ export default function AttendeesPage() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setToastMsg(error instanceof Error ? error.message : "Không thể xuất CSV.");
+      showToast(error instanceof Error ? error.message : "Không thể xuất CSV.", "error");
     }
   };
 
@@ -65,7 +85,6 @@ export default function AttendeesPage() {
     { header: "Student ID", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentId}</span> },
     { header: "MSSV", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentMssv || "-"}</span> },
     { header: "Email", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.studentEmail || "-"}</span> },
-    { header: "Sự kiện", accessor: (ticket: Ticket) => <span className="text-xs font-bold text-slate-700">{ticket.eventId}</span> },
     {
       header: "Check-in",
       accessor: (ticket: Ticket) => (
@@ -86,36 +105,95 @@ export default function AttendeesPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "Người tham dự" }]}
         title="Danh sách sinh viên tham dự"
-        description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT."
+        description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT, phân trang và lọc phía server."
         actions={
-          <button onClick={handleExportCSV} className="btn-press flex cursor-pointer items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-brand-600/10 hover:bg-brand-700">
+          <Button onClick={handleExportCSV}>
             <Download className="h-4 w-4" aria-hidden="true" /> Xuất CSV
-          </button>
+          </Button>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="enterprise-card grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</span>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Email, MSSV..." className="tvu-input pl-9" />
+            <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Email hoặc MSSV sinh viên..." className="pl-9" />
           </div>
+        </label>
+        <label className="space-y-1">
+          <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Trạng thái vé</span>
+          <select
+            value={statusFilter}
+            onChange={(event) => {
+              setPage(0);
+              setStatusFilter(event.target.value as typeof statusFilter);
+            }}
+            className="tvu-input"
+          >
+            <option value="ALL">Tất cả</option>
+            <option value="VALID">Còn hiệu lực</option>
+            <option value="CHECKED_IN">Đã check-in</option>
+            <option value="CANCELLED">Đã hủy</option>
+          </select>
         </label>
       </div>
 
-      {totalElements > attendees.length && (
-        <p className="rounded-xl bg-warning-50 px-4 py-2 text-xs font-bold text-warning-700">
-          Hiển thị {attendees.length} trong tổng số {totalElements}. Dùng ô tìm kiếm để thu hẹp hoặc xuất CSV để xem đầy đủ.
-        </p>
-      )}
-
-      <div className="enterprise-card overflow-hidden p-1">
-        <DataTable data={attendees} columns={columns} searchPlaceholder="Lọc nhanh..." searchField="ticketCode" />
+      <div className="enterprise-card overflow-hidden">
+        <table className="w-full text-left text-xs font-semibold text-slate-600">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50/70 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {columns.map((column) => (
+                <th key={column.header} className="px-4 py-2.5">{column.header}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-9 text-center text-sm font-semibold text-slate-400">Đang tải...</td>
+              </tr>
+            ) : attendees.length > 0 ? (
+              attendees.map((ticket) => (
+                <tr key={ticket.id} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  {columns.map((column) => (
+                    <td key={column.header} className="px-4 py-3">{column.accessor(ticket)}</td>
+                  ))}
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-9 text-center text-sm font-semibold text-slate-400">Không tìm thấy người tham dự phù hợp</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+        <div className="flex flex-col gap-3 border-t border-slate-100 p-4 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            Trang <span className="text-slate-950">{page + 1}</span> / {totalPages} · Tổng số{" "}
+            <span className="text-slate-950">{totalElements}</span> người tham dự
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((current) => Math.max(current - 1, 0))}
+              disabled={page === 0}
+              className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Trang trước"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPage((current) => Math.min(current + 1, totalPages - 1))}
+              disabled={page >= totalPages - 1}
+              className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              aria-label="Trang sau"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

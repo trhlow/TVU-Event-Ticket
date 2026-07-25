@@ -8,7 +8,6 @@ export default function ClubReportPage() {
   return (
     <div className="space-y-6 text-left animate-fade-in">
       <PageHeader
-        breadcrumb={[{ label: 'Ban tổ chức', path: '/organizer' }, { label: 'Báo cáo CLB' }]}
         title="Báo cáo & thống kê hoạt động CLB"
         description="Phân tích hiệu quả truyền thông sự kiện, tỷ lệ phê duyệt và mức độ sinh viên tham gia điểm danh thực tế."
       />

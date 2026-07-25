@@ -75,7 +75,7 @@ export default function DataTable<T>({
 
   return (
     <div className="enterprise-card overflow-hidden text-left" id={id}>
-      <div className="flex flex-col gap-3 border-b border-blue-100 bg-gradient-to-r from-white via-blue-50/70 to-cyan-50/70 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 border-b border-blue-100 bg-slate-50/70 p-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-500" />
           <Input

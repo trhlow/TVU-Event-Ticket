@@ -1,5 +1,6 @@
 package vn.edu.tvu.auth.repository;
 
+import vn.edu.tvu.auth.domain.AuthMethod;
 import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.shared.domain.UserRole;
@@ -18,6 +19,8 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByExtSubject(String extSubject);
 
     Optional<User> findByEmail(String email);
+
+    Optional<User> findByEmailAndAuthMethod(String email, AuthMethod authMethod);
 
     boolean existsByMssv(String mssv);
 

@@ -5,7 +5,7 @@ import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import DetailDrawer from "../../components/common/DetailDrawer";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
-import Toast from "../../components/common/Toast";
+import { useToast } from "../../components/common/ToastProvider";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
 import { Ticket } from "../../types/ticket";
@@ -35,7 +35,7 @@ export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [eventsById, setEventsById] = useState<Record<string, Event>>({});
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
-  const [toastMsg, setToastMsg] = useState("");
+  const { showToast } = useToast();
 
   useEffect(() => {
     let mounted = true;
@@ -49,12 +49,12 @@ export default function MyTicketsPage() {
         setEventsById(Object.fromEntries(events.filter((event): event is Event => Boolean(event)).map((event) => [event.id, event])));
       })
       .catch((error) => {
-        if (mounted) setToastMsg(error instanceof Error ? error.message : "Không thể tải ví vé.");
+        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải ví vé.", "error");
       });
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [showToast]);
 
   const eventFor = (ticket: Ticket) => eventsById[ticket.eventId] || fallbackEvent(ticket);
   const activeTicket = tickets.find((ticket) => ticket.id === selectedTicketId);
@@ -63,7 +63,6 @@ export default function MyTicketsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: "Sinh viên", path: "/student" }, { label: "Ví vé QR của tôi" }]}
         title="Ví vé điện tử cá nhân"
         description="Vé xuất hiện sau khi Ban tổ chức duyệt đăng ký và backend cấp mã vé."
       />
@@ -88,11 +87,10 @@ export default function MyTicketsPage() {
       {activeTicket && activeEvent && (
         <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thông tin vé">
           <div className="p-1">
-            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => setToastMsg("Backend chưa cung cấp file vé QR.")} />
+            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => showToast("Backend chưa cung cấp file vé QR.", "info")} />
           </div>
         </DetailDrawer>
       )}
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

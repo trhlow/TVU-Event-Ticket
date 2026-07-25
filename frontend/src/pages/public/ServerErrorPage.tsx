@@ -6,7 +6,7 @@ export default function ServerErrorPage() {
   return (
     <div className="flex min-h-[70vh] flex-1 flex-col items-center justify-center p-6 text-center">
       <div className="enterprise-card flex w-full max-w-md flex-col items-center gap-6 p-8">
-        <div className="icon-float grid h-16 w-16 place-items-center rounded-full border border-warning-100 bg-warning-50 text-warning-600 shadow-inner">
+        <div className="grid h-16 w-16 place-items-center rounded-full border border-warning-100 bg-warning-50 text-warning-600">
           <AlertOctagon className="h-8 w-8" aria-hidden="true" />
         </div>
         <div className="space-y-2">

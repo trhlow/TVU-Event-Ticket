@@ -8,7 +8,6 @@ export default function SuperAdminEventsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Sự kiện toàn trường' }]}
         title="Sự kiện toàn trường"
         description="Theo dõi toàn bộ sự kiện của các CLB, trạng thái phát hành vé và quy mô đăng ký."
       />

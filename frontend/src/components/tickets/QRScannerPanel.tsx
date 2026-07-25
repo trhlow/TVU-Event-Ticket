@@ -93,7 +93,7 @@ export default function QRScannerPanel({
                 </span>
 
                 {/* Scanning line animation */}
-                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 shadow-md shadow-brand-500/50 animate-scan-line top-1/2"></div>
+                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 animate-scan-line top-1/2"></div>
               </>
             )}
           </div>

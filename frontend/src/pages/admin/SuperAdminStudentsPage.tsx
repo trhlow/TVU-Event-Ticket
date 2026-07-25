@@ -122,7 +122,6 @@ export default function SuperAdminStudentsPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        breadcrumb={[{ label: 'Quản trị hệ thống', path: '/admin' }, { label: 'Quản lý sinh viên' }]}
         title="Quản lý tài khoản sinh viên"
         description="Tra cứu hồ sơ sinh viên và xác minh MSSV. Sinh viên chỉ được đặt vé sau khi MSSV đã được duyệt."
       />

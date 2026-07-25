@@ -1,52 +1,75 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react";
-import Breadcrumb from "../../components/common/Breadcrumb";
+import PageHeader from "../../components/common/PageHeader";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
+import EmptyState from "../../components/common/EmptyState";
 import StatusBadge from "../../components/common/StatusBadge";
-import Toast from "../../components/common/Toast";
+import { Button } from "../../components/ui/button";
+import { useToast } from "../../components/common/ToastProvider";
 import { requireCurrentUser } from "../../state/authSession";
-import { getEvents } from "../../data/mockEvents";
+import { eventService } from "../../services/eventService";
 import { formatDateTime } from "../../utils/formatDate";
+import { Event } from "../../types/event";
 
 export default function OrganizerRegistrationQRPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const currentUser = requireCurrentUser();
-  const events = getEvents().filter((event) => event.clubId === currentUser.clubId);
-  const [selectedEventId, setSelectedEventId] = useState(eventId || events[0]?.id || "");
-  const [toastMsg, setToastMsg] = useState("");
+  const { showToast } = useToast();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedEventId, setSelectedEventId] = useState(eventId || "");
+
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await eventService.listByClubRemote(currentUser.clubId || "");
+      setEvents(data);
+      setSelectedEventId((current) => current || data[0]?.id || "");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentUser.clubId, showToast]);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
+
   const event = events.find((item) => item.id === selectedEventId) || events[0];
   const registrationLink = event ? `${window.location.origin}/student/events/${event.id}/register` : "";
 
   const copyLink = async () => {
     await navigator.clipboard?.writeText(registrationLink);
-    setToastMsg("Đã sao chép liên kết đăng ký sự kiện.");
+    showToast("Đã sao chép liên kết đăng ký sự kiện.");
   };
 
   return (
     <div className="space-y-6 text-left">
-      <Breadcrumb items={[{ label: "Ban tổ chức", path: "/organizer" }, { label: "QR đăng ký sự kiện" }]} />
+      <PageHeader
+        title="QR đăng ký sự kiện"
+        description="Liên kết dùng để sinh viên mở trang đăng ký sự kiện. Đây là liên kết công khai của Ban tổ chức, không phải vé tham gia."
+        actions={
+          events.length > 0 && (
+            <label className="w-full sm:w-80">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
+              <select value={event?.id || ""} onChange={(e) => setSelectedEventId(e.target.value)} className="tvu-input">
+                {events.map((item) => (
+                  <option key={item.id} value={item.id}>{item.title}</option>
+                ))}
+              </select>
+            </label>
+          )
+        }
+      />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="tvu-page-title text-2xl">QR đăng ký sự kiện</h1>
-          <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-slate-500">
-            Liên kết dùng để sinh viên mở trang đăng ký sự kiện. Đây là liên kết công khai của Ban tổ chức, không phải vé tham gia.
-          </p>
-        </div>
-        <label className="w-full sm:w-80">
-          <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Chọn sự kiện</span>
-          <select value={event?.id || ""} onChange={(e) => setSelectedEventId(e.target.value)} className="tvu-input">
-            {events.map((item) => (
-              <option key={item.id} value={item.id}>{item.title}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      {event ? (
+      {isLoading ? (
+        <LoadingSkeleton type="card" count={1} />
+      ) : event ? (
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           <section className="enterprise-card p-6 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-extrabold text-brand-700">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
               <QrCode className="h-4 w-4" /> Liên kết đăng ký
             </div>
             <div className="mx-auto grid h-64 w-64 place-items-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
@@ -90,25 +113,27 @@ export default function OrganizerRegistrationQRPage() {
             </div>
 
             <div className="grid gap-2 sm:grid-cols-2">
-              <button onClick={copyLink} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <Copy className="mr-2 inline h-4 w-4" /> Sao chép liên kết
-              </button>
-              <button onClick={() => window.print()} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
-                <Printer className="mr-2 inline h-4 w-4" /> In trang này
-              </button>
-              <Link to={`/student/events/${event.id}/register`} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50 sm:col-span-2">
-                <ExternalLink className="h-4 w-4" /> Xem trang đăng ký
-              </Link>
+              <Button variant="outline" onClick={copyLink}>
+                <Copy className="h-4 w-4" /> Sao chép liên kết
+              </Button>
+              <Button variant="outline" onClick={() => window.print()}>
+                <Printer className="h-4 w-4" /> In trang này
+              </Button>
+              <Button variant="outline" asChild className="sm:col-span-2">
+                <Link to={`/student/events/${event.id}/register`}>
+                  <ExternalLink className="h-4 w-4" /> Xem trang đăng ký
+                </Link>
+              </Button>
             </div>
           </section>
         </div>
       ) : (
-        <div className="enterprise-card p-10 text-center text-sm font-bold text-slate-500">
-          CLB chưa có sự kiện để tạo liên kết đăng ký.
-        </div>
+        <EmptyState
+          title="Chưa có sự kiện"
+          description="CLB chưa có sự kiện nào để tạo liên kết đăng ký."
+          icon={QrCode}
+        />
       )}
-
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}
     </div>
   );
 }

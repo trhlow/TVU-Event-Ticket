@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, FlaskConical, ShieldCheck, TicketCheck } from "lucide-react";
+import { AlertCircle, FlaskConical, ShieldCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -20,6 +20,10 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [devCredential, setDevCredential] = useState("");
   const [devDisplayName, setDevDisplayName] = useState("");
+  const [adminEmail, setAdminEmail] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -56,6 +60,39 @@ export default function LoginPage() {
     }
   };
 
+  const handleRequestOtp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMsg("");
+    if (!adminEmail.trim()) {
+      setErrorMsg("Nhập email tài khoản quản trị để nhận mã.");
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await authService.requestOtp(adminEmail);
+      // The backend answers the same whether or not the address is an admin, so the UI says the same too.
+      setOtpSent(true);
+      setToastMsg("Nếu email hợp lệ, mã đăng nhập đã được gửi. Kiểm tra hộp thư.");
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Không thể gửi mã. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMsg("");
+    setIsSubmitting(true);
+    try {
+      const user = await authService.verifyOtp(adminEmail, otpCode, rememberDevice);
+      navigate(homePathForRole(user.role), { replace: true });
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : "Mã không đúng hoặc đã hết hạn. Vui lòng thử lại.");
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDevStubLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setErrorMsg("");
@@ -78,16 +115,18 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#fbf8ff] px-4 py-8 text-slate-950">
-      <section className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_18px_45px_rgba(15,23,42,0.07)] sm:px-8 sm:py-9">
-        <div className="mx-auto grid h-[72px] w-[72px] place-items-center rounded-full bg-brand-700 text-white shadow-lg shadow-brand-700/20">
-          <TicketCheck className="h-8 w-8" aria-hidden="true" />
-        </div>
+    <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-8 text-slate-950">
+      <section className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-8 sm:py-9">
+        <img
+          src="/tvu_logo_1783065060265.jpg"
+          alt="Logo Trường Đại học Trà Vinh"
+          className="mx-auto h-[72px] w-[72px] rounded-full border border-blue-100 bg-white object-contain p-1.5 shadow-sm"
+        />
 
         <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
         <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
         <p className="mx-auto mt-3 max-w-[340px] text-sm font-medium leading-6 text-slate-600">
-          Sinh viên, Ban tổ chức và Quản trị viên đều đăng nhập chung bằng tài khoản Microsoft của trường. Vai trò và quyền truy cập luôn do backend quyết định sau khi xác thực, frontend không cho chọn vai trò.
+          Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Ban tổ chức CLB và Quản trị viên đăng nhập bằng email nhận mã. Vai trò và quyền truy cập luôn do backend quyết định, frontend không cho chọn vai trò.
         </p>
 
         {errorMsg && (
@@ -102,7 +141,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleMicrosoftLogin}
             disabled={isSubmitting}
-            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white shadow-sm shadow-blue-900/15 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
           >
             <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
               <span className="bg-[#f25022]" />
@@ -113,6 +152,75 @@ export default function LoginPage() {
             {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
           </button>
         )}
+
+        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-left">
+          <div className="flex items-center gap-2 text-slate-700">
+            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="text-[11px] font-black uppercase tracking-[0.14em]">Ban tổ chức CLB · Quản trị viên</span>
+          </div>
+          {!otpSent ? (
+            <form onSubmit={handleRequestOtp} className="mt-4 space-y-3">
+              <input
+                type="email"
+                value={adminEmail}
+                onChange={(event) => setAdminEmail(event.target.value)}
+                placeholder="email-clb@vidu.com"
+                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                autoComplete="username"
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmitting ? "Đang gửi..." : "Gửi mã đăng nhập"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="mt-4 space-y-3">
+              <p className="text-xs font-medium leading-5 text-slate-600">
+                Nhập mã 6 số đã gửi tới <span className="font-bold">{adminEmail}</span>.
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                value={otpCode}
+                onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))}
+                placeholder="123456"
+                className="tvu-input min-h-11 rounded-lg text-center text-lg font-bold tracking-[0.3em]"
+                autoComplete="one-time-code"
+              />
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={rememberDevice}
+                  onChange={(event) => setRememberDevice(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Ghi nhớ thiết bị này trong 30 ngày
+              </label>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {isSubmitting ? "Đang xác minh..." : "Xác minh và đăng nhập"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpSent(false);
+                  setOtpCode("");
+                }}
+                className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-700"
+              >
+                Dùng email khác
+              </button>
+            </form>
+          )}
+        </div>
 
         {/* import.meta.env.DEV is a build-time literal: Vite/Rollup dead-code-eliminates this
             entire branch from a `vite build` production bundle, so it cannot ship even if
@@ -164,8 +272,8 @@ export default function LoginPage() {
         <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3 text-left text-xs font-semibold leading-5 text-brand-900">
           <span className="flex items-start gap-2">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-            Tài khoản Ban tổ chức CLB và Quản trị viên do quản trị viên nhà trường cấp sẵn — đăng nhập bằng đúng nút Microsoft phía trên,
-            không có bước đăng ký hay biểu mẫu riêng. Nếu tài khoản Microsoft của bạn chưa được cấp quyền, hệ thống sẽ báo lỗi cụ thể sau khi đăng nhập.
+            Tài khoản Ban tổ chức CLB và Quản trị viên do quản trị viên nhà trường cấp sẵn bằng email — đăng nhập ở khung nhận mã phía trên,
+            không có bước đăng ký hay mật khẩu. Nếu email của bạn chưa được cấp quyền, hệ thống vẫn hiển thị như bình thường nhưng sẽ không gửi mã.
           </span>
         </div>
       </section>

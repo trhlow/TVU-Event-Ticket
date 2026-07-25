@@ -8,12 +8,11 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          "border-brand-600 bg-gradient-to-r from-brand-700 via-brand-600 to-accent-600 text-white shadow-brand-700/18 hover:from-brand-600 hover:to-accent-500",
-        secondary: "border-blue-100 bg-blue-50 text-brand-800 hover:bg-blue-100",
-        outline: "border-blue-100 bg-white text-slate-800 hover:bg-blue-50",
-        ghost: "border-transparent bg-transparent text-slate-600 hover:bg-white/90 hover:text-brand-800",
-        destructive: "border-rose-600 bg-rose-600 text-white shadow-rose-700/16 hover:bg-rose-700",
+        default: "border-brand-600 bg-brand-600 text-white hover:bg-brand-700",
+        secondary: "border-border-subtle bg-surface-elevated text-text-primary hover:bg-surface-sunken",
+        outline: "border-border-subtle bg-surface text-text-primary hover:bg-surface-elevated",
+        ghost: "border-transparent bg-transparent text-text-secondary hover:bg-surface-elevated hover:text-text-primary",
+        destructive: "border-danger-600 bg-danger-600 text-white hover:bg-danger-700",
       },
       size: {
         default: "h-10 px-4 py-2",

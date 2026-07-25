@@ -3,6 +3,7 @@ package vn.edu.tvu.auth.config;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import vn.edu.tvu.auth.otp.DemoOtpProperties;
 import vn.edu.tvu.auth.security.CsrfProperties;
 import vn.edu.tvu.auth.security.JwtProperties;
 
@@ -27,7 +28,8 @@ public class ProductionSecretsValidator {
 
     private static final String DEV_CSRF_SECRET = "dev-csrf-signing-secret-change-me";
 
-    public ProductionSecretsValidator(CsrfProperties csrfProperties, JwtProperties jwtProperties) {
+    public ProductionSecretsValidator(CsrfProperties csrfProperties, JwtProperties jwtProperties,
+            DemoOtpProperties demoOtpProperties) {
         if (!hasText(csrfProperties.signingSecret()) || DEV_CSRF_SECRET.equals(csrfProperties.signingSecret())) {
             throw new IllegalStateException("tvu.auth.csrf.signing-secret must be set to a real secret in "
                     + "production; the development default is committed to this repository");
@@ -36,6 +38,11 @@ public class ProductionSecretsValidator {
             throw new IllegalStateException("tvu.auth.jwt.private-key-pem and tvu.auth.jwt.public-key-pem must "
                     + "both be set in production; otherwise an ephemeral keypair is generated per process, "
                     + "invalidating every session on restart");
+        }
+        if (demoOtpProperties != null
+                && (hasText(demoOtpProperties.email()) || hasText(demoOtpProperties.code()))) {
+            throw new IllegalStateException("tvu.auth.demo-otp must not be configured in production; it is a "
+                    + "development convenience with a fixed code committed to this repository");
         }
     }
 

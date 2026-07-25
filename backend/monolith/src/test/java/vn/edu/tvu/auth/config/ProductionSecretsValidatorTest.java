@@ -2,6 +2,7 @@ package vn.edu.tvu.auth.config;
 
 import org.junit.jupiter.api.Test;
 
+import vn.edu.tvu.auth.otp.DemoOtpProperties;
 import vn.edu.tvu.auth.security.CsrfProperties;
 import vn.edu.tvu.auth.security.JwtProperties;
 
@@ -23,7 +24,7 @@ class ProductionSecretsValidatorTest {
      */
     @Test
     void blankCsrfSecretIsRejected() {
-        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(""), prodJwt()))
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(""), prodJwt(), noDemoOtp()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.csrf.signing-secret");
     }
@@ -31,7 +32,7 @@ class ProductionSecretsValidatorTest {
     @Test
     void blankJwtKeyMaterialIsRejected() {
         assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET),
-                new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", "", "")))
+                new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", "", ""), noDemoOtp()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.jwt");
     }
@@ -39,15 +40,28 @@ class ProductionSecretsValidatorTest {
     @Test
     void halfConfiguredJwtKeyPairIsRejected() {
         assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET),
-                new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", PRIVATE_PEM, "")))
+                new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", PRIVATE_PEM, ""),
+                noDemoOtp()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.jwt");
     }
 
     @Test
+    void rejectsDemoOtpConfigurationInProduction() {
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
+                new DemoOtpProperties("sadminevt@tvu.edu.vn", "123456")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tvu.auth.demo-otp");
+    }
+
+    @Test
     void fullyConfiguredSecretsAreAccepted() {
-        assertThatCode(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt()))
+        assertThatCode(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(), noDemoOtp()))
                 .doesNotThrowAnyException();
+    }
+
+    private DemoOtpProperties noDemoOtp() {
+        return new DemoOtpProperties(null, null);
     }
 
     private JwtProperties prodJwt() {
