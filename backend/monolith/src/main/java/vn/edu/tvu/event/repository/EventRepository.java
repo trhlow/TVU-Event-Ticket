@@ -14,6 +14,7 @@ import java.util.UUID;
 public interface EventRepository extends JpaRepository<Event, UUID> {
     Optional<Event> findByIdAndClubId(UUID id, UUID clubId);
     List<Event> findByClubIdOrderByStartAtDesc(UUID clubId);
+    List<Event> findAllByOrderByStartAtDesc();
     List<Event> findByStatusAndRegistrationOpenAtLessThanEqualAndRegistrationCloseAtGreaterThanEqualOrderByStartAt(
             EventStatus status, Instant openedAt, Instant closesAt);
 

@@ -109,6 +109,31 @@ class EventServiceTest {
                 .isInstanceOf(EventConflictException.class);
     }
 
+    @Test
+    void listAllForAdminReturnsEveryClubsEvents() {
+        mapResponses();
+        Event own = event(100);
+        EventRequest r = request(50);
+        Event foreign = Event.draft(UUID.randomUUID(), UUID.randomUUID(), r.title(), r.description(),
+                r.capacity(), r.registrationOpenAt(), r.registrationCloseAt(), r.startAt(), r.endAt(),
+                r.location());
+        when(repository.findAllByOrderByStartAtDesc()).thenReturn(List.of(own, foreign));
+
+        assertThat(service.listAllForAdmin(null)).hasSize(2);
+        verify(repository, never()).findByClubIdOrderByStartAtDesc(any());
+    }
+
+    @Test
+    void listAllForAdminFiltersByClubWhenGiven() {
+        mapResponses();
+        when(repository.findByClubIdOrderByStartAtDesc(clubId)).thenReturn(List.of(event(100)));
+
+        assertThat(service.listAllForAdmin(clubId))
+                .extracting(EventResponse::clubId)
+                .containsExactly(clubId);
+        verify(repository, never()).findAllByOrderByStartAtDesc();
+    }
+
     private EventRequest request(int capacity) {
         return new EventRequest("Open Day", "Description", capacity,
                 Instant.parse("2026-08-01T00:00:00Z"), Instant.parse("2026-08-02T00:00:00Z"),
