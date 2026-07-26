@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { AlertCircle, FlaskConical, ShieldCheck } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { AlertCircle, ArrowLeft, FlaskConical, ShieldCheck } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -115,15 +115,29 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-8 text-slate-950">
-      <section className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-8 sm:py-9">
-        <img
-          src="/tvu_logo_1783065060265.jpg"
-          alt="Logo Trường Đại học Trà Vinh"
-          className="mx-auto h-[72px] w-[72px] rounded-full border border-blue-100 bg-white object-contain p-1.5 shadow-sm"
-        />
+    <main className="auth-scene grid min-h-screen place-items-center overflow-hidden px-4 pb-10 pt-20 text-slate-950 sm:py-10">
+      <div className="auth-orb h-[380px] w-[380px] bg-cyan-400/60" style={{ top: "-120px", right: "-80px" }} aria-hidden="true" />
+      <div className="auth-orb h-[420px] w-[420px] bg-indigo-500/60" style={{ bottom: "-140px", left: "-120px", animationDelay: "-5s" }} aria-hidden="true" />
+      <div className="auth-orb h-[260px] w-[260px] bg-blue-400/50" style={{ top: "38%", left: "58%", animationDelay: "-9s" }} aria-hidden="true" />
 
-        <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
+      <Link
+        to="/"
+        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 text-sm font-bold text-white backdrop-blur-md sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Về trang chủ
+      </Link>
+
+      <section className="auth-card relative z-10 w-full max-w-[460px] rounded-3xl px-6 py-8 text-center sm:px-8 sm:py-9">
+        <div className="auth-logo-glow mx-auto w-fit">
+          <img
+            src="/tvu_logo_1783065060265.jpg"
+            alt="Logo Trường Đại học Trà Vinh"
+            className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-blue-900/20"
+          />
+        </div>
+
+        <h1 className="mt-6 bg-gradient-to-r from-brand-800 via-brand-600 to-accent-600 bg-clip-text font-display text-2xl font-extrabold leading-tight text-transparent">TVU Ticket</h1>
         <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
         <p className="mx-auto mt-3 max-w-[340px] text-sm font-medium leading-6 text-slate-600">
           Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Ban tổ chức CLB và Quản trị viên đăng nhập bằng email nhận mã. Vai trò và quyền truy cập luôn do hệ thống quyết định, bạn không thể tự chọn vai trò.
@@ -154,7 +168,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang gửi..." : "Gửi mã đăng nhập"}
               </button>
@@ -188,7 +202,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang xác minh..." : "Xác minh và đăng nhập"}
               </button>
@@ -211,7 +225,7 @@ export default function LoginPage() {
             type="button"
             onClick={handleMicrosoftLogin}
             disabled={isSubmitting}
-            className="btn-press mt-4 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+            className="btn-press mt-4 flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#2848b8] px-4 text-sm font-bold text-white shadow-lg shadow-[#2848b8]/30 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
           >
             <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
               <span className="bg-[#f25022]" />
