@@ -136,23 +136,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        {isMicrosoftProvider && (
-          <button
-            type="button"
-            onClick={handleMicrosoftLogin}
-            disabled={isSubmitting}
-            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
-              <span className="bg-[#f25022]" />
-              <span className="bg-[#7fba00]" />
-              <span className="bg-[#00a4ef]" />
-              <span className="bg-[#ffb900]" />
-            </span>
-            {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
-          </button>
-        )}
-
         <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-left">
           <div className="flex items-center gap-2 text-slate-700">
             <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -222,6 +205,23 @@ export default function LoginPage() {
             </form>
           )}
         </div>
+
+        {isMicrosoftProvider && (
+          <button
+            type="button"
+            onClick={handleMicrosoftLogin}
+            disabled={isSubmitting}
+            className="btn-press mt-4 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+          >
+            <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
+              <span className="bg-[#f25022]" />
+              <span className="bg-[#7fba00]" />
+              <span className="bg-[#00a4ef]" />
+              <span className="bg-[#ffb900]" />
+            </span>
+            {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
+          </button>
+        )}
 
         {/* import.meta.env.DEV is a build-time literal: Vite/Rollup dead-code-eliminates this
             entire branch from a `vite build` production bundle, so it cannot ship even if

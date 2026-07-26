@@ -13,7 +13,6 @@ const ForbiddenPage = lazy(() => import("../pages/public/ForbiddenPage"));
 const ServerErrorPage = lazy(() => import("../pages/public/ServerErrorPage"));
 const FeaturePlaceholderPage = lazy(() => import("../pages/common/FeaturePlaceholderPage"));
 const NotFound404Page = lazy(() => import("../pages/common/NotFound404Page"));
-const NotificationsPage = lazy(() => import("../pages/common/NotificationsPage"));
 const RoleProfilePage = lazy(() => import("../pages/common/RoleProfilePage"));
 
 const StudentHomePage = lazy(() => import("../pages/student/StudentHomePage"));
@@ -49,7 +48,6 @@ const SuperAdminOrganizersPage = lazy(() => import("../pages/admin/SuperAdminOrg
 const SuperAdminStudentsPage = lazy(() => import("../pages/admin/SuperAdminStudentsPage"));
 const SuperAdminRBACPage = lazy(() => import("../pages/admin/SuperAdminRBACPage"));
 const SuperAdminStatsPage = lazy(() => import("../pages/admin/SuperAdminStatsPage"));
-const SuperAdminSettingsPage = lazy(() => import("../pages/admin/SuperAdminSettingsPage"));
 const SuperAdminEventsPage = lazy(() => import("../pages/admin/SuperAdminEventsPage"));
 const SuperAdminClubDetailPage = lazy(() => import("../pages/admin/SuperAdminClubDetailPage"));
 
@@ -128,7 +126,6 @@ export default function AppRoutes() {
           <Route path="/student/profile" element={<StudentProfilePage />} />
           <Route path="/student/account" element={<StudentProfilePage />} />
           <Route path="/student/profile/complete" element={<CompleteProfilePage />} />
-          <Route path="/student/notifications" element={<NotificationsPage scope="student" />} />
         </Route>
       </Route>
 
@@ -160,7 +157,6 @@ export default function AppRoutes() {
           />
           <Route path="/organizer/events/:eventId/statistics" element={<OrganizerEventStatsPage />} />
           <Route path="/organizer/members" element={<AttendeesPage />} />
-          <Route path="/organizer/notifications" element={<NotificationsPage scope="organizer" />} />
           <Route
             path="/organizer/account/settings"
             element={
@@ -256,7 +252,6 @@ export default function AppRoutes() {
           <Route path="/admin/statistics" element={<SuperAdminStatsPage />} />
           <Route path="/admin/audit-logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/roles" element={<SuperAdminRBACPage />} />
-          <Route path="/admin/notifications" element={<NotificationsPage scope="admin" />} />
           <Route
             path="/admin/account/settings"
             element={
@@ -274,7 +269,6 @@ export default function AppRoutes() {
           <Route path="/admin/students" element={<SuperAdminStudentsPage />} />
           <Route path="/admin/rbac" element={<SuperAdminRBACPage />} />
           <Route path="/admin/logs" element={<SuperAdminLogsPage />} />
-          <Route path="/admin/settings" element={<SuperAdminSettingsPage />} />
           <Route path="/admin/profile" element={<RoleProfilePage scope="admin" />} />
         </Route>
       </Route>
