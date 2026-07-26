@@ -23,7 +23,12 @@ tvu:
     bootstrap:
       email: ${BOOTSTRAP_ADMIN_EMAIL:sadminevt@tvu.edu.vn}
     demo-otp:
-      email: sadminevt@tvu.edu.vn
+      # DEV/TEST ONLY: these addresses always receive this fixed code so local frontend testing does not
+      # depend on a mailbox. FixedOtpCodeIssuer is @Profile({"dev","test"}) and ProductionSecretsValidator
+      # refuses to start prod if this block leaks there, so deploys automatically fall back to random OTP.
+      emails:
+        - sadminevt@tvu.edu.vn
+        - adminclb@tvu.edu.vn
       code: "123456"
     cookies:
       secure: false

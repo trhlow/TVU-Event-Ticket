@@ -49,7 +49,7 @@ class ProductionSecretsValidatorTest {
     @Test
     void rejectsDemoOtpConfigurationInProduction() {
         assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
-                new DemoOtpProperties("sadminevt@tvu.edu.vn", "123456")))
+                new DemoOtpProperties(java.util.List.of("sadminevt@tvu.edu.vn", "adminclb@tvu.edu.vn"), "123456")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.demo-otp");
     }

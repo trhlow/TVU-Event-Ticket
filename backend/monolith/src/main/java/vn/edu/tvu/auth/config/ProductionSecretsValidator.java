@@ -39,8 +39,7 @@ public class ProductionSecretsValidator {
                     + "both be set in production; otherwise an ephemeral keypair is generated per process, "
                     + "invalidating every session on restart");
         }
-        if (demoOtpProperties != null
-                && (hasText(demoOtpProperties.email()) || hasText(demoOtpProperties.code()))) {
+        if (demoOtpProperties != null && demoOtpProperties.configured()) {
             throw new IllegalStateException("tvu.auth.demo-otp must not be configured in production; it is a "
                     + "development convenience with a fixed code committed to this repository");
         }
