@@ -34,7 +34,6 @@ const OrganizerScanPage = lazy(() => import("../pages/organizer/OrganizerScanPag
 const OrganizerEventDetailPage = lazy(() => import("../pages/organizer/OrganizerEventDetailPage"));
 const OrganizerTicketsPage = lazy(() => import("../pages/organizer/OrganizerTicketsPage"));
 const AttendeesPage = lazy(() => import("../pages/organizer/AttendeesPage"));
-const ClubReportPage = lazy(() => import("../pages/organizer/ClubReportPage"));
 const OrganizerCreateEventPage = lazy(() => import("../pages/organizer/OrganizerCreateEventPage"));
 const OrganizerEditEventPage = lazy(() => import("../pages/organizer/OrganizerEditEventPage"));
 const OrganizerRegistrationQRPage = lazy(() => import("../pages/organizer/OrganizerRegistrationQRPage"));
@@ -47,7 +46,6 @@ const SuperAdminLogsPage = lazy(() => import("../pages/admin/SuperAdminLogsPage"
 const SuperAdminOrganizersPage = lazy(() => import("../pages/admin/SuperAdminOrganizersPage"));
 const SuperAdminStudentsPage = lazy(() => import("../pages/admin/SuperAdminStudentsPage"));
 const SuperAdminRBACPage = lazy(() => import("../pages/admin/SuperAdminRBACPage"));
-const SuperAdminStatsPage = lazy(() => import("../pages/admin/SuperAdminStatsPage"));
 const SuperAdminEventsPage = lazy(() => import("../pages/admin/SuperAdminEventsPage"));
 const SuperAdminClubDetailPage = lazy(() => import("../pages/admin/SuperAdminClubDetailPage"));
 
@@ -123,7 +121,6 @@ export default function AppRoutes() {
           <Route path="/organizer/tickets" element={<OrganizerTicketsPage />} />
           <Route path="/organizer/check-in" element={<OrganizerScanPage />} />
           <Route path="/organizer/attendees" element={<AttendeesPage />} />
-          <Route path="/organizer/reports" element={<ClubReportPage />} />
           <Route path="/organizer/profile" element={<RoleProfilePage scope="organizer" />} />
         </Route>
       </Route>
@@ -148,7 +145,6 @@ export default function AppRoutes() {
               />
             }
           />
-          <Route path="/admin/statistics" element={<SuperAdminStatsPage />} />
           <Route path="/admin/audit-logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/roles" element={<SuperAdminRBACPage />} />
           <Route path="/admin/users" element={<SuperAdminUsersPage />} />

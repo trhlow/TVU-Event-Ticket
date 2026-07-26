@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, Sparkles, Ticket } from "lucide-react";
+import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, ShieldCheck, Sparkles, Ticket } from "lucide-react";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -59,6 +59,7 @@ export default function OrganizerDashboard() {
   const approvedCount = clubDashboard?.approved ?? 0;
   const checkedInCount = clubDashboard?.checkedIn ?? 0;
   const pendingCount = clubDashboard?.pending ?? pendingReservations.length;
+  const checkInRate = clubDashboard?.checkInRate ?? null;
 
   const lineChartData = useMemo(() => {
     if (clubDashboard?.registrationsByDay?.length) {
@@ -115,14 +116,20 @@ export default function OrganizerDashboard() {
       />
 
       {isLoading ? (
-        <LoadingSkeleton type="card" count={5} />
+        <LoadingSkeleton type="card" count={6} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
           <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
           <StatisticCard label="Đăng ký chờ duyệt" value={pendingCount} icon={ClipboardList} color="warning" />
           <StatisticCard label="Vé đã phát hành" value={approvedCount} icon={Ticket} color="primary" />
           <StatisticCard label="Đã điểm danh" value={checkedInCount} icon={Award} color="success" />
+          <StatisticCard
+            label="Tỷ lệ check-in"
+            value={checkInRate == null ? "Chưa có dữ liệu" : `${Math.round(checkInRate * 100)}%`}
+            icon={ShieldCheck}
+            color="success"
+          />
         </div>
       )}
 
