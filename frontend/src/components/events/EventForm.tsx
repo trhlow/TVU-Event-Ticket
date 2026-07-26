@@ -48,7 +48,6 @@ export default function EventForm({
     registrationOpenAt: initialData?.registrationOpenAt ? new Date(initialData.registrationOpenAt).toISOString().slice(0, 16) : '',
     registrationCloseAt: initialData?.registrationCloseAt ? new Date(initialData.registrationCloseAt).toISOString().slice(0, 16) : '',
     capacity: initialData?.capacity || 100,
-    status: initialData?.status || 'UPCOMING',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -145,21 +144,6 @@ export default function EventForm({
               <option value="Cuộc thi">Cuộc thi</option>
               <option value="Tình nguyện">Tình nguyện</option>
               <option value="Kỹ năng">Kỹ năng</option>
-            </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <FieldLabel>Trạng thái phát hành</FieldLabel>
-            <select
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="tvu-input cursor-pointer"
-            >
-              <option value="UPCOMING">Sắp mở đăng ký (Ẩn)</option>
-              <option value="OPEN">Mở đăng ký ngay (Công khai)</option>
-              <option value="CLOSED">Đóng đăng ký</option>
-              <option value="ENDED">Kết thúc sự kiện</option>
             </select>
           </div>
 

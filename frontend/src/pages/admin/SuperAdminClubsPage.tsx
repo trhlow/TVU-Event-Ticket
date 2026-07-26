@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Lock, Plus } from "lucide-react";
 import DataTable from "../../components/common/DataTable";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -62,10 +63,10 @@ export default function SuperAdminClubsPage() {
     {
       header: "Tên CLB",
       accessor: (club: Club) => (
-        <div className="text-left font-semibold">
+        <Link to={`/admin/clubs/${club.id}`} className="block text-left font-semibold hover:underline">
           <span className="block font-bold text-slate-950">{club.name}</span>
           <span className="mt-1 block max-w-sm line-clamp-1 text-[10px] font-semibold text-slate-400">{club.description}</span>
-        </div>
+        </Link>
       ),
     },
     {
