@@ -81,30 +81,6 @@ export default function AppRoutes() {
         <Route path="/public/events" element={<Navigate to="/login" replace />} />
         <Route path="/public/guide" element={<Navigate to="/#guide" replace />} />
         <Route path="/complete-profile" element={<CompleteProfilePage />} />
-        <Route
-          path="/notifications"
-          element={
-            <FeaturePlaceholderPage
-              title="Thông báo"
-              description="Khu vực này hiển thị thông báo hệ thống, trạng thái duyệt đăng ký và nhắc lịch sự kiện theo từng vai trò."
-              backTo="/"
-              backLabel="Về trang chủ"
-              highlights={["Thông báo duyệt đăng ký", "Nhắc lịch sự kiện", "Cảnh báo hệ thống"]}
-            />
-          }
-        />
-        <Route
-          path="/account/settings"
-          element={
-            <FeaturePlaceholderPage
-              title="Cài đặt tài khoản"
-              description="Trang cài đặt chung cho thay đổi thông tin hồ sơ, bảo mật và tùy chọn nhận thông báo."
-              backTo="/"
-              backLabel="Về trang chủ"
-              highlights={["Hồ sơ cá nhân", "Bảo mật tài khoản", "Tùy chọn thông báo"]}
-            />
-          }
-        />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />
         <Route path="/404" element={<NotFound404Page />} />
@@ -117,7 +93,6 @@ export default function AppRoutes() {
           <Route path="/student/events" element={<StudentEventListPage />} />
           <Route path="/student/events/:eventId" element={<StudentEventDetailPage />} />
           <Route path="/student/events/:eventId/register" element={<EventRegistrationConfirmPage />} />
-          <Route path="/student/registrations/success" element={<EventRegistrationResultPage />} />
           <Route path="/student/registrations/success/:reservationId" element={<EventRegistrationResultPage />} />
           <Route path="/student/registrations" element={<MyRegistrationsPage />} />
           <Route path="/student/tickets" element={<MyTicketsPage />} />
@@ -135,60 +110,20 @@ export default function AppRoutes() {
           <Route path="/organizer/dashboard" element={<OrganizerDashboard />} />
           <Route path="/organizer/events" element={<OrganizerEventsPage />} />
           <Route path="/organizer/events/create" element={<OrganizerCreateEventPage />} />
-          <Route path="/organizer/events/new" element={<Navigate to="/organizer/events/create" replace />} />
           <Route path="/organizer/events/:eventId/edit" element={<OrganizerEditEventPage />} />
           <Route path="/organizer/events/:eventId" element={<OrganizerEventDetailPage />} />
-          <Route path="/organizer/events/:eventId/registration-qr" element={<OrganizerRegistrationQRPage />} />
           <Route path="/organizer/registration-qr" element={<OrganizerRegistrationQRPage />} />
+          <Route path="/organizer/events/:eventId/registration-qr" element={<OrganizerRegistrationQRPage />} />
           <Route path="/organizer/events/:eventId/registrations" element={<OrganizerReservationsPage />} />
           <Route path="/organizer/events/:eventId/participants" element={<AttendeesPage />} />
           <Route path="/organizer/events/:eventId/check-in" element={<OrganizerScanPage />} />
-          <Route
-            path="/organizer/events/:eventId/check-in/history"
-            element={
-              <FeaturePlaceholderPage
-                title="Lịch sử quét QR"
-                description="Theo dõi mã vé, thời điểm quét và trạng thái hợp lệ trong từng phiên check-in sự kiện."
-                backTo="/organizer/dashboard"
-                backLabel="Về tổng quan"
-                highlights={["Quét hợp lệ", "Quét trùng", "Quét sai sự kiện"]}
-              />
-            }
-          />
           <Route path="/organizer/events/:eventId/statistics" element={<OrganizerEventStatsPage />} />
           <Route path="/organizer/members" element={<AttendeesPage />} />
-          <Route
-            path="/organizer/account/settings"
-            element={
-              <FeaturePlaceholderPage
-                title="Cài đặt tài khoản"
-                description="Cập nhật hồ sơ Ban tổ chức, bảo mật tài khoản và tùy chọn thông báo cho CLB."
-                backTo="/organizer/dashboard"
-                backLabel="Về tổng quan"
-                highlights={["Hồ sơ tổ chức", "Bảo mật", "Thông báo"]}
-              />
-            }
-          />
-          <Route
-            path="/organizer/settings"
-            element={
-              <FeaturePlaceholderPage
-                title="Cài đặt Ban tổ chức"
-                description="Khu vực cài đặt hồ sơ, thông báo và bảo mật dành cho tài khoản Ban tổ chức CLB."
-                backTo="/organizer/dashboard"
-                backLabel="Về tổng quan"
-                highlights={["Hồ sơ CLB", "Tùy chọn thông báo", "Bảo mật tài khoản"]}
-              />
-            }
-          />
           <Route path="/organizer/reservations" element={<OrganizerReservationsPage />} />
-          <Route path="/organizer/registrations" element={<OrganizerReservationsPage />} />
           <Route path="/organizer/tickets" element={<OrganizerTicketsPage />} />
-          <Route path="/organizer/scan" element={<OrganizerScanPage />} />
           <Route path="/organizer/check-in" element={<OrganizerScanPage />} />
           <Route path="/organizer/attendees" element={<AttendeesPage />} />
           <Route path="/organizer/reports" element={<ClubReportPage />} />
-          <Route path="/organizer/statistics" element={<ClubReportPage />} />
           <Route path="/organizer/profile" element={<RoleProfilePage scope="organizer" />} />
         </Route>
       </Route>
@@ -198,44 +133,8 @@ export default function AppRoutes() {
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="/admin/dashboard" element={<SuperAdminDashboard />} />
           <Route path="/admin/clubs" element={<SuperAdminClubsPage />} />
-          <Route
-            path="/admin/clubs/create"
-            element={
-              <FeaturePlaceholderPage
-                title="Tạo câu lạc bộ"
-                description="Biểu mẫu tạo câu lạc bộ mới cho quản trị viên nhà trường, gồm tên CLB, mã CLB và trạng thái hoạt động."
-                backTo="/admin/clubs"
-                backLabel="Về danh sách CLB"
-                highlights={["Tên CLB", "Mã CLB", "Trạng thái hoạt động"]}
-              />
-            }
-          />
           <Route path="/admin/clubs/:clubId" element={<SuperAdminClubDetailPage />} />
-          <Route
-            path="/admin/clubs/:clubId/edit"
-            element={
-              <FeaturePlaceholderPage
-                title="Chỉnh sửa câu lạc bộ"
-                description="Cập nhật hồ sơ CLB, người phụ trách và trạng thái hoạt động của câu lạc bộ."
-                backTo="/admin/clubs"
-                backLabel="Về danh sách CLB"
-                highlights={["Cập nhật hồ sơ", "Đổi trạng thái", "Lưu thay đổi"]}
-              />
-            }
-          />
           <Route path="/admin/accounts" element={<SuperAdminOrganizersPage />} />
-          <Route
-            path="/admin/accounts/create"
-            element={
-              <FeaturePlaceholderPage
-                title="Tạo tài khoản Ban tổ chức"
-                description="Tạo tài khoản tổ chức sự kiện cho các câu lạc bộ và gán phân quyền phù hợp."
-                backTo="/admin/accounts"
-                backLabel="Về danh sách tài khoản"
-                highlights={["Tên đăng nhập", "CLB phụ trách", "Phân quyền"]}
-              />
-            }
-          />
           <Route path="/admin/events" element={<SuperAdminEventsPage />} />
           <Route
             path="/admin/events/:eventId"
@@ -252,23 +151,8 @@ export default function AppRoutes() {
           <Route path="/admin/statistics" element={<SuperAdminStatsPage />} />
           <Route path="/admin/audit-logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/roles" element={<SuperAdminRBACPage />} />
-          <Route
-            path="/admin/account/settings"
-            element={
-              <FeaturePlaceholderPage
-                title="Cài đặt tài khoản"
-                description="Cập nhật thông tin tài khoản quản trị viên và tùy chọn nhận thông báo."
-                backTo="/admin/dashboard"
-                backLabel="Về tổng quan"
-                highlights={["Hồ sơ quản trị", "Bảo mật", "Tùy chọn thông báo"]}
-              />
-            }
-          />
           <Route path="/admin/users" element={<SuperAdminUsersPage />} />
-          <Route path="/admin/organizers" element={<SuperAdminOrganizersPage />} />
           <Route path="/admin/students" element={<SuperAdminStudentsPage />} />
-          <Route path="/admin/rbac" element={<SuperAdminRBACPage />} />
-          <Route path="/admin/logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/profile" element={<RoleProfilePage scope="admin" />} />
         </Route>
       </Route>
