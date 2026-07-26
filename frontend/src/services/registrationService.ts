@@ -105,7 +105,7 @@ export const registrationService = {
           void rejectReason;
           return mapReservation(await apiRequest<ReservationResponse>(`/reservations/${reservationId}/reject`, { method: "POST" }));
         }
-        throw new Error("Backend chi ho tro duyet hoac tu choi dang ky.");
+        throw new Error("Chỉ hỗ trợ duyệt hoặc từ chối đăng ký.");
       },
       () => {
         const reservations = getReservations();

@@ -51,7 +51,7 @@ export default function StudentProfilePage() {
             <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
               <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
               <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-                Backend chỉ lưu MSSV và lớp học cho hồ sơ sinh viên. Số điện thoại chưa nằm trong hợp đồng API nên chưa được lưu tại đây.
+                Hệ thống chỉ lưu MSSV và lớp học cho hồ sơ sinh viên. Số điện thoại hiện chưa được hỗ trợ lưu trữ.
               </p>
             </div>
           }

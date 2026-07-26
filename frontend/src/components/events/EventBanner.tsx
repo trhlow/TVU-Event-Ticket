@@ -1,34 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, HandHeart, ImageIcon, Music, Sparkles, Trophy } from 'lucide-react';
+import { ImageIcon } from 'lucide-react';
 import LoadingSkeleton from '../common/LoadingSkeleton';
 
 interface EventBannerProps {
   src?: string;
   alt: string;
-  category: string;
   className?: string;
   imageClassName?: string;
-}
-
-function getCategoryIcon(category: string) {
-  if (category.includes('Văn')) return Music;
-  if (category.includes('Cuộc')) return Trophy;
-  if (category.includes('Tình')) return HandHeart;
-  if (category.includes('Kỹ')) return Sparkles;
-  if (category.includes('Học')) return BookOpen;
-  return ImageIcon;
 }
 
 export default function EventBanner({
   src,
   alt,
-  category,
   className = 'h-44 w-full',
   imageClassName = '',
 }: EventBannerProps) {
   const [isLoading, setIsLoading] = useState(Boolean(src));
   const [hasError, setHasError] = useState(!src);
-  const Icon = getCategoryIcon(category);
 
   useEffect(() => {
     setIsLoading(Boolean(src));
@@ -57,9 +45,9 @@ export default function EventBanner({
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-brand-700 text-white">
           <div className="relative flex flex-col items-center gap-3 px-6 text-center">
             <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-lg">
-              <Icon className="w-7 h-7 text-accent-500" />
+              <ImageIcon className="w-7 h-7 text-accent-500" />
             </div>
-            <span className="text-xs font-black uppercase tracking-widest">{category}</span>
+            <span className="line-clamp-2 text-xs font-black uppercase tracking-widest">{alt}</span>
           </div>
         </div>
       )}

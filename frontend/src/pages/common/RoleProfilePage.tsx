@@ -63,7 +63,7 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
           <div className="mt-6 flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4">
             <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
             <p className="text-xs font-semibold leading-relaxed text-brand-800">
-              Backend chưa có API cập nhật hồ sơ cho tài khoản Ban tổ chức/Quản trị viên. Khi có endpoint chính thức, các trường thông tin liên hệ sẽ được mở để chỉnh sửa tại đây.
+              Hệ thống chưa hỗ trợ cập nhật hồ sơ cho tài khoản Ban tổ chức/Quản trị viên. Các trường thông tin liên hệ sẽ mở để chỉnh sửa khi tính năng này sẵn sàng.
             </p>
           </div>
         </section>

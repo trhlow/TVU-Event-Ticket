@@ -94,7 +94,7 @@ export default function MyRegistrationsPage() {
         <EmptyState
           icon={ListChecks}
           title="Không có đăng ký nào"
-          description="Backend chưa trả về đăng ký phù hợp với bộ lọc này."
+          description="Không có đăng ký nào phù hợp với bộ lọc hiện tại."
         />
       )}
     </div>

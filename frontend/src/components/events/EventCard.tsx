@@ -28,16 +28,15 @@ export default function EventCard({
     <article ref={tiltRef} className="enterprise-card tilt-card group flex h-full flex-col overflow-hidden text-left">
       <div className="tilt-card-sheen" aria-hidden="true" />
       <div className="relative h-44 bg-slate-100">
-        <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-44 w-full transition duration-500 group-hover:scale-[1.04]" />
+        <EventBanner src={event.bannerUrl} alt={event.title} className="h-44 w-full transition duration-500 group-hover:scale-[1.04]" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/72 via-slate-950/18 to-transparent" />
         <div className="absolute left-3 top-3 flex flex-wrap gap-2">
-          <span className="rounded-full bg-white/92 px-2.5 py-1 text-[10px] font-bold text-brand-800 shadow-sm backdrop-blur">
-            {event.category}
-          </span>
           <StatusBadge type="event" status={event.status} />
         </div>
         <div className="absolute bottom-3 left-3 right-3">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">{event.clubName}</p>
+          {event.clubName && (
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/82">{event.clubName}</p>
+          )}
           <h3 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-snug text-white">
             {event.title}
           </h3>

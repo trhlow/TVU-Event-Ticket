@@ -1,6 +1,6 @@
 import { getTickets, saveTickets } from "../data/mockTickets";
 import { Ticket } from "../types/ticket";
-import { apiConfig, apiRequest, createUnsupportedApiError } from "./apiClient";
+import { apiConfig, apiRequest } from "./apiClient";
 
 interface ReservationResponse {
   id: string;
@@ -9,6 +9,9 @@ interface ReservationResponse {
   status: "PENDING" | "APPROVED" | "REJECTED";
   requestedAt: string;
   ticketId?: string | null;
+  eventTitle?: string;
+  eventLocation?: string;
+  eventStartAt?: string;
 }
 
 interface TicketResponse {
@@ -88,8 +91,13 @@ function mapReservationTicket(response: ReservationResponse): Ticket | null {
     studentId: response.studentId,
     ticketCode: response.ticketId,
     status: "VALID",
-    checkInStatus: "PENDING",
+    // /reservations/me carries no check-in data at all — this is not "not checked in yet", it is
+    // genuinely unknown. See the Ticket.checkInStatus doc comment.
+    checkInStatus: "UNKNOWN",
     issuedAt: response.requestedAt,
+    eventTitle: response.eventTitle || undefined,
+    eventLocation: response.eventLocation || undefined,
+    eventStartAt: response.eventStartAt || undefined,
   };
 }
 
@@ -222,9 +230,6 @@ export const ticketService = {
         return updated;
       },
     );
-  },
-  getQrPayload(): never {
-    throw createUnsupportedApiError("QR ticket payload cho sinh vien");
   },
   save(tickets: Ticket[]): void {
     saveTickets(tickets);

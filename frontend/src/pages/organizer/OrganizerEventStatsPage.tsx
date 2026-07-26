@@ -9,10 +9,12 @@ import DonutChartCard from "../../components/charts/DonutChartCard";
 import { Button } from "../../components/ui/button";
 import { dashboardService, EventDashboard } from "../../services/dashboardService";
 import { eventService } from "../../services/eventService";
+import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 
 export default function OrganizerEventStatsPage() {
   const { eventId } = useParams<{ eventId: string }>();
+  const currentUser = requireCurrentUser();
   const [event, setEvent] = useState<Event | undefined>();
   const [dashboard, setDashboard] = useState<EventDashboard | null>(null);
   const [loadError, setLoadError] = useState("");
@@ -20,10 +22,12 @@ export default function OrganizerEventStatsPage() {
   useEffect(() => {
     if (!eventId) return;
     let mounted = true;
-    Promise.all([eventService.getByIdRemote(eventId), dashboardService.eventDashboard(eventId)])
-      .then(([eventResult, dashboardResult]) => {
+    // GET /events/{id} only serves OPEN events (public discovery route); DRAFT/CLOSED events an
+    // organizer owns 404 there. /events/mine returns every status for the caller's own club.
+    Promise.all([eventService.listByClubRemote(currentUser.clubId || ""), dashboardService.eventDashboard(eventId)])
+      .then(([events, dashboardResult]) => {
         if (!mounted) return;
-        setEvent(eventResult);
+        setEvent(events.find((item) => item.id === eventId));
         setDashboard(dashboardResult);
       })
       .catch((error) => {
@@ -34,14 +38,13 @@ export default function OrganizerEventStatsPage() {
     return () => {
       mounted = false;
     };
-  }, [eventId]);
+  }, [eventId, currentUser.clubId]);
 
   if (loadError) {
     return (
       <BackendPendingNotice
         title="Không thể tải thống kê sự kiện"
         description={loadError}
-        requiredEndpoints={["GET /ticketing/events/{eventId}/dashboard"]}
       />
     );
   }
@@ -57,7 +60,7 @@ export default function OrganizerEventStatsPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Thống kê sự kiện"
-        description={event?.title || "Số liệu trực tiếp từ backend"}
+        description={event?.title || "Số liệu vé và check-in theo thời gian thực"}
         actions={
           eventId && (
             <Button asChild>

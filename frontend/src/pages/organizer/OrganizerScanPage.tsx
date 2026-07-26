@@ -96,7 +96,7 @@ export default function OrganizerScanPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Quét QR điểm danh"
-        description="Nhập QR payload đã được backend/notification ký. Frontend không tự ký QR hay tự xác minh kết quả — backend luôn là nơi quyết định."
+        description="Quét hoặc nhập mã QR đã gửi cho sinh viên qua email. Hệ thống luôn là nơi xác minh mã hợp lệ hay không."
       />
       <QRScannerPanel tickets={tickets} events={events} onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
       <section className="enterprise-card p-5">

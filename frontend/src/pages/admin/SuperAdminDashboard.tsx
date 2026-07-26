@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Activity, Award, Calendar, Layers, ShieldCheck, Ticket } from "lucide-react";
+import { Activity, Calendar, Gauge, Layers, ShieldCheck, Ticket, Users } from "lucide-react";
 import BarChartCard from "../../components/charts/BarChartCard";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
@@ -68,7 +68,6 @@ export default function SuperAdminDashboard() {
       <BackendPendingNotice
         title="Không thể tải dashboard toàn trường"
         description={loadError}
-        requiredEndpoints={["GET /admin/stats", "GET /events/stats", "GET /ticketing/stats"]}
       />
     );
   }
@@ -81,6 +80,11 @@ export default function SuperAdminDashboard() {
     name: club.clubName,
     "Sự kiện": club.totalEvents,
     "Vé phát hành": club.ticketsIssued,
+    "Đã check-in": club.checkedIn,
+  }));
+  const eventStatusData = Object.entries(overview.events.eventsByStatus).map(([status, value]) => ({
+    name: status === "DRAFT" ? "Bản nháp" : status === "OPEN" ? "Đang mở" : "Đã đóng",
+    value: value ?? 0,
   }));
   const auditColumns = [
     {
@@ -107,54 +111,65 @@ export default function SuperAdminDashboard() {
         eyebrow="Trung tâm điều hành hệ thống"
         icon={Activity}
         title="Dashboard toàn trường"
-        description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in trực tiếp từ backend."
+        description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in theo thời gian thực."
       />
 
       <div className="flex justify-end">
         <DemoDataBadge />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatisticCard label="Tổng CLB" value={overview.admin.totalClubs} icon={Layers} />
+        <StatisticCard label="Tổng người dùng" value={overview.admin.totalUsers} icon={Users} />
         <StatisticCard label="Tổng sự kiện" value={overview.events.totalEvents} icon={Calendar} color="warning" />
-        <StatisticCard
-          label="Sinh viên"
-          value={overview.admin.usersByRole.SINH_VIEN ?? 0}
-          icon={Award}
-        />
         <StatisticCard label="Vé phát hành" value={overview.tickets.ticketsIssued} icon={Ticket} color="success" />
         <StatisticCard label="Lượt check-in" value={overview.tickets.checkedIn} icon={ShieldCheck} color="success" />
+        <StatisticCard
+          label="Tỷ lệ check-in"
+          value={overview.tickets.checkInRate == null ? "Chưa có dữ liệu" : `${Math.round(overview.tickets.checkInRate * 100)}%`}
+          icon={Gauge}
+          color="success"
+        />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_0.6fr]">
-        {clubStatsError ? (
-          <BackendPendingNotice
-            title="Không thể tải thống kê theo CLB"
-            description={clubStatsError}
-            requiredEndpoints={["GET /admin/clubs/stats"]}
-          />
-        ) : (
-          <BarChartCard
-            title="Hoạt động theo câu lạc bộ"
-            data={clubDistributionData}
-            xAxisKey="name"
-            dataKeys={[
-              { key: "Sự kiện", name: "Sự kiện", color: "#2563eb" },
-              { key: "Vé phát hành", name: "Vé phát hành", color: "#f59e0b" },
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {clubStatsError ? (
+            <BackendPendingNotice
+              title="Không thể tải thống kê theo CLB"
+              description={clubStatsError}
+            />
+          ) : (
+            <BarChartCard
+              title="Hoạt động theo câu lạc bộ"
+              data={clubDistributionData}
+              xAxisKey="name"
+              dataKeys={[
+                { key: "Sự kiện", name: "Sự kiện", color: "#2563eb" },
+                { key: "Vé phát hành", name: "Vé phát hành", color: "#f59e0b" },
+                { key: "Đã check-in", name: "Đã check-in", color: "#10b981" },
+              ]}
+            />
+          )}
+        </div>
+        <div className="space-y-6">
+          <DonutChartCard
+            title="Tỷ lệ check-in"
+            data={[
+              { name: "Đã check-in", value: overview.tickets.checkedIn },
+              {
+                name: "Chưa check-in",
+                value: Math.max(overview.tickets.ticketsIssued - overview.tickets.checkedIn, 0),
+              },
             ]}
+            colors={["#10b981", "#cbd5e1"]}
           />
-        )}
-        <DonutChartCard
-          title="Tỷ lệ check-in"
-          data={[
-            { name: "Đã check-in", value: overview.tickets.checkedIn },
-            {
-              name: "Chưa check-in",
-              value: Math.max(overview.tickets.ticketsIssued - overview.tickets.checkedIn, 0),
-            },
-          ]}
-          colors={["#10b981", "#cbd5e1"]}
-        />
+          <DonutChartCard
+            title="Trạng thái sự kiện toàn trường"
+            data={eventStatusData}
+            colors={["#94a3b8", "#10b981", "#f59e0b"]}
+          />
+        </div>
       </div>
 
       <section className="space-y-3">
@@ -166,7 +181,6 @@ export default function SuperAdminDashboard() {
           <BackendPendingNotice
             title="Không thể tải audit log"
             description={auditLogError}
-            requiredEndpoints={["GET /admin/audit-log"]}
           />
         ) : (
           <DataTable

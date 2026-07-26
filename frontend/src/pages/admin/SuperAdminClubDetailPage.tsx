@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import { Activity, Calendar, ShieldCheck, Ticket, Users } from 'lucide-react';
 import PageHeader from '../../components/common/PageHeader';
 import StatisticCard from '../../components/common/StatisticCard';
@@ -12,9 +12,12 @@ import LineChartCard from '../../components/charts/LineChartCard';
 import { clubService } from '../../services/clubService';
 import { userService } from '../../services/userService';
 import { clubStatsService } from '../../services/clubStatsService';
+import { eventService } from '../../services/eventService';
+import { formatDateTime } from '../../utils/formatDate';
 import { Club } from '../../types/club';
 import { User } from '../../types/user';
 import { ClubStatsDetail } from '../../types/clubStats';
+import { Event } from '../../types/event';
 
 const EVENT_STATUS_LABELS: Record<string, string> = { DRAFT: 'Bản nháp', OPEN: 'Đang mở', CLOSED: 'Đã đóng' };
 
@@ -30,13 +33,18 @@ const TABS: Array<[TabKey, string]> = [
 
 export default function SuperAdminClubDetailPage() {
   const { clubId } = useParams<{ clubId: string }>();
-  const [activeTab, setActiveTab] = useState<TabKey>('overview');
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') as TabKey | null) || 'overview';
+  const [activeTab, setActiveTab] = useState<TabKey>(TABS.some(([key]) => key === initialTab) ? initialTab : 'overview');
   const [club, setClub] = useState<Club | null>(null);
   const [organizers, setOrganizers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [stats, setStats] = useState<ClubStatsDetail | null>(null);
   const [statsError, setStatsError] = useState(false);
+  const [clubEvents, setClubEvents] = useState<Event[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [eventsError, setEventsError] = useState('');
 
   useEffect(() => {
     if (!clubId) return;
@@ -53,6 +61,26 @@ export default function SuperAdminClubDetailPage() {
       })
       .finally(() => {
         if (mounted) setIsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [clubId]);
+
+  useEffect(() => {
+    if (!clubId) return;
+    let mounted = true;
+    setEventsLoading(true);
+    eventService
+      .getPublicEvents()
+      .then((allEvents) => {
+        if (mounted) setClubEvents(allEvents.filter((event) => event.clubId === clubId));
+      })
+      .catch((error) => {
+        if (mounted) setEventsError(error instanceof Error ? error.message : 'Không thể tải sự kiện của CLB.');
+      })
+      .finally(() => {
+        if (mounted) setEventsLoading(false);
       });
     return () => {
       mounted = false;
@@ -130,7 +158,7 @@ export default function SuperAdminClubDetailPage() {
                 title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
                 description={
                   statsError
-                    ? 'Không thể gọi API thống kê CLB (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend).'
+                    ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
                     : 'Đang tải số sự kiện, vé phát hành và tỷ lệ check-in của CLB.'
                 }
               />
@@ -158,10 +186,31 @@ export default function SuperAdminClubDetailPage() {
       )}
 
       {activeTab === 'events' && (
-        <BackendPendingNotice
-          description="Backend chưa có API liệt kê sự kiện của một CLB cụ thể cho Super Admin (API hiện có chỉ trả về sự kiện của CLB đang đăng nhập)."
-          requiredEndpoints={['GET /admin/clubs/{clubId}/events']}
-        />
+        eventsLoading ? (
+          <LoadingSkeleton type="card" count={2} />
+        ) : eventsError ? (
+          <BackendPendingNotice title="Không thể tải sự kiện của CLB" description={eventsError} />
+        ) : clubEvents.length === 0 ? (
+          <EmptyState title="Chưa có sự kiện" description="CLB này chưa có sự kiện nào đang mở đăng ký công khai." icon={Calendar} />
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-semibold leading-5 text-brand-800">
+              Danh sách này chỉ hiển thị sự kiện đang mở đăng ký công khai. Sự kiện ở trạng thái nháp hoặc đã đóng của CLB sẽ hiển thị đầy đủ khi hệ thống hỗ trợ tra cứu theo từng CLB.
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              {clubEvents.map((event) => (
+                <div key={event.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <StatusBadge type="event" status={event.status} />
+                    <span className="text-xs font-bold text-slate-500">Còn {event.remainingTickets}/{event.capacity} vé</span>
+                  </div>
+                  <p className="mt-3 text-base font-black text-gray-950">{event.title}</p>
+                  <p className="mt-1 text-xs font-semibold text-gray-500">{formatDateTime(event.startAt)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
       )}
 
       {activeTab === 'stats' && (
@@ -211,7 +260,7 @@ export default function SuperAdminClubDetailPage() {
             title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
             description={
               statsError
-                ? 'Không thể gọi API thống kê CLB (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend).'
+                ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
                 : 'Đang tải biểu đồ hoạt động 30 ngày gần nhất của CLB.'
             }
           />
@@ -220,8 +269,7 @@ export default function SuperAdminClubDetailPage() {
 
       {activeTab === 'logs' && (
         <BackendPendingNotice
-          description="Backend ghi nhận audit log nội bộ nhưng chưa có API đọc nhật ký lọc theo CLB."
-          requiredEndpoints={['GET /admin/audit-logs?clubId={clubId}']}
+          description="Hệ thống chưa hỗ trợ xem nhật ký thao tác lọc riêng theo từng CLB."
         />
       )}
     </div>

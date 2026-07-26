@@ -265,7 +265,7 @@ export default function SuperAdminOrganizersPage() {
         <ConfirmModal
           isOpen
           title="Xóa tài khoản Ban tổ chức"
-          description={`Xóa tài khoản "${deleteTarget.fullName}"? Thao tác có thể bị backend từ chối nếu tài khoản đang được tham chiếu.`}
+          description={`Xóa tài khoản "${deleteTarget.fullName}"? Thao tác có thể bị từ chối nếu tài khoản đang được sử dụng ở nơi khác trong hệ thống.`}
           confirmText={isSaving ? "Đang xóa..." : "Xóa tài khoản"}
           cancelText="Hủy"
           type="danger"

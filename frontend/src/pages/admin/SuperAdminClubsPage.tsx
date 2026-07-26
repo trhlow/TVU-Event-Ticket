@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Lock, Plus } from "lucide-react";
 import DataTable from "../../components/common/DataTable";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -62,10 +63,10 @@ export default function SuperAdminClubsPage() {
     {
       header: "Tên CLB",
       accessor: (club: Club) => (
-        <div className="text-left font-semibold">
+        <Link to={`/admin/clubs/${club.id}`} className="block text-left font-semibold hover:underline">
           <span className="block font-bold text-slate-950">{club.name}</span>
           <span className="mt-1 block max-w-sm line-clamp-1 text-[10px] font-semibold text-slate-400">{club.description}</span>
-        </div>
+        </Link>
       ),
     },
     {
@@ -94,7 +95,7 @@ export default function SuperAdminClubsPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Danh sách câu lạc bộ"
-        description="Quản lý CLB qua backend Auth/Admin service."
+        description="Quản lý danh sách câu lạc bộ trực thuộc trường."
         actions={
           <button onClick={() => setCreateOpen(true)} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">
             <Plus className="h-4 w-4" aria-hidden="true" /> Thêm CLB
@@ -125,7 +126,7 @@ export default function SuperAdminClubsPage() {
       </Dialog>
 
       {targetClub && (
-        <ConfirmModal isOpen={!!targetClub} title="Xác nhận khóa CLB" message={`Khóa CLB "${targetClub.name}"? Backend hiện chỉ hỗ trợ khóa (deactivate), chưa có API mở khóa.`} onConfirm={handleConfirmDeactivate} onCancel={() => setTargetClub(null)} confirmText="Khóa CLB" cancelText="Hủy" type="danger" />
+        <ConfirmModal isOpen={!!targetClub} title="Xác nhận khóa CLB" message={`Khóa CLB "${targetClub.name}"? Hệ thống hiện chỉ hỗ trợ khóa CLB, chưa hỗ trợ mở khóa lại.`} onConfirm={handleConfirmDeactivate} onCancel={() => setTargetClub(null)} confirmText="Khóa CLB" cancelText="Hủy" type="danger" />
       )}
 
       {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}

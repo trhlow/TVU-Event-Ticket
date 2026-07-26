@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { QRCodeSVG } from "qrcode.react";
 import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
@@ -72,10 +73,8 @@ export default function OrganizerRegistrationQRPage() {
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
               <QrCode className="h-4 w-4" /> Liên kết đăng ký
             </div>
-            <div className="mx-auto grid h-64 w-64 place-items-center rounded-3xl border-2 border-dashed border-slate-300 bg-slate-50 p-6 text-center">
-              <p className="text-xs font-bold leading-5 text-slate-500">
-                Chưa có tính năng tạo mã QR thật cho liên kết này. Dùng nút "Sao chép liên kết" bên dưới để chia sẻ.
-              </p>
+            <div className="mx-auto grid h-64 w-64 place-items-center rounded-3xl border border-slate-200 bg-white p-6">
+              <QRCodeSVG value={registrationLink} size={208} level="M" includeMargin={false} />
             </div>
             <p className="mt-4 break-all rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs font-semibold leading-5 text-slate-600">
               {registrationLink}
@@ -91,7 +90,7 @@ export default function OrganizerRegistrationQRPage() {
                 </span>
               </div>
               <h2 className="mt-3 font-display text-2xl font-extrabold leading-snug text-slate-950">{event.title}</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{event.clubName}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">{currentUser.clubName || "CLB"}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
