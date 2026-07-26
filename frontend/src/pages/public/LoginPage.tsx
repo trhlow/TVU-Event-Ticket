@@ -126,7 +126,7 @@ export default function LoginPage() {
         <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
         <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
         <p className="mx-auto mt-3 max-w-[340px] text-sm font-medium leading-6 text-slate-600">
-          Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Ban tổ chức CLB và Quản trị viên đăng nhập bằng email nhận mã. Vai trò và quyền truy cập luôn do backend quyết định, frontend không cho chọn vai trò.
+          Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Ban tổ chức CLB và Quản trị viên đăng nhập bằng email nhận mã. Vai trò và quyền truy cập luôn do hệ thống quyết định, bạn không thể tự chọn vai trò.
         </p>
 
         {errorMsg && (
@@ -267,7 +267,7 @@ export default function LoginPage() {
 
         <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-left text-xs font-semibold leading-5 text-brand-800">
           <ShieldCheck className="mr-1 inline h-4 w-4 align-[-3px]" />
-          Role luôn lấy từ backend profile/session. Frontend không cho chọn role và không lưu JWT/token vào localStorage hoặc sessionStorage.
+          Vai trò của bạn luôn do hệ thống xác định từ phiên đăng nhập, không thể tự chọn. Thông tin đăng nhập không được lưu trên trình duyệt.
         </div>
 
         <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3 text-left text-xs font-semibold leading-5 text-brand-900">

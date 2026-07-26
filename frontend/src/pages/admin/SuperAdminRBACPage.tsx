@@ -62,7 +62,7 @@ export default function SuperAdminRBACPage() {
         eyebrow="Chỉ đọc"
         icon={KeyRound}
         title="Ma trận phân quyền RBAC"
-        description="Backend hiện thực thi phân quyền bằng quy tắc cố định trong mã nguồn (@PreAuthorize theo vai trò), không phải một cấu hình có thể chỉnh sửa qua giao diện. Bảng dưới đây phản ánh đúng quy tắc hiện có, chỉ để tra cứu."
+        description="Hệ thống áp dụng phân quyền cố định theo từng vai trò, không phải cấu hình có thể chỉnh sửa qua giao diện. Bảng dưới đây phản ánh đúng quy tắc hiện có, chỉ để tra cứu."
       />
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -82,7 +82,7 @@ export default function SuperAdminRBACPage() {
         <div className="flex gap-3">
           <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" aria-hidden="true" />
           <p className="text-sm font-semibold leading-6 text-brand-900">
-            Đây là bảng tra cứu, không phải công cụ chỉnh sửa quyền — thay đổi quyền thật sự đòi hỏi sửa mã nguồn backend và triển khai lại dịch vụ.
+            Đây là bảng tra cứu, không phải công cụ chỉnh sửa quyền — thay đổi quyền thật sự cần đội kỹ thuật can thiệp trực tiếp vào hệ thống.
           </p>
         </div>
       </div>

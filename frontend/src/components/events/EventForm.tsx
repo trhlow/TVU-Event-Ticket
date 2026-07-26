@@ -40,7 +40,6 @@ export default function EventForm({
   const [formData, setFormData] = useState<Partial<Event>>({
     title: initialData?.title || '',
     description: initialData?.description || '',
-    category: initialData?.category || 'Học thuật',
     bannerUrl: initialData?.bannerUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60',
     location: initialData?.location || '',
     startAt: initialData?.startAt ? new Date(initialData.startAt).toISOString().slice(0, 16) : '',
@@ -129,22 +128,6 @@ export default function EventForm({
               className={errors.title ? 'border-rose-400 focus-visible:border-rose-500' : ''}
             />
             <FieldError message={errors.title} />
-          </div>
-
-          <div className="space-y-1.5">
-            <FieldLabel>Thể loại sự kiện</FieldLabel>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              className="tvu-input cursor-pointer"
-            >
-              <option value="Học thuật">Học thuật</option>
-              <option value="Văn nghệ">Văn nghệ</option>
-              <option value="Cuộc thi">Cuộc thi</option>
-              <option value="Tình nguyện">Tình nguyện</option>
-              <option value="Kỹ năng">Kỹ năng</option>
-            </select>
           </div>
 
           <div className="md:col-span-2 space-y-1.5">

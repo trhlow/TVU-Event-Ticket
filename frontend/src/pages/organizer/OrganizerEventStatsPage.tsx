@@ -45,7 +45,6 @@ export default function OrganizerEventStatsPage() {
       <BackendPendingNotice
         title="Không thể tải thống kê sự kiện"
         description={loadError}
-        requiredEndpoints={["GET /ticketing/events/{eventId}/dashboard"]}
       />
     );
   }
@@ -61,7 +60,7 @@ export default function OrganizerEventStatsPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Thống kê sự kiện"
-        description={event?.title || "Số liệu trực tiếp từ backend"}
+        description={event?.title || "Số liệu vé và check-in theo thời gian thực"}
         actions={
           eventId && (
             <Button asChild>

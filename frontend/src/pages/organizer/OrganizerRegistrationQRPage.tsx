@@ -90,7 +90,7 @@ export default function OrganizerRegistrationQRPage() {
                 </span>
               </div>
               <h2 className="mt-3 font-display text-2xl font-extrabold leading-snug text-slate-950">{event.title}</h2>
-              <p className="mt-1 text-sm font-semibold text-slate-500">{event.clubName}</p>
+              <p className="mt-1 text-sm font-semibold text-slate-500">{currentUser.clubName || "CLB"}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

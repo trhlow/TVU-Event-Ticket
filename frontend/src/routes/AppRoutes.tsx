@@ -11,7 +11,6 @@ const LandingPage = lazy(() => import("../pages/public/LandingPage"));
 const LoginPage = lazy(() => import("../pages/public/LoginPage"));
 const ForbiddenPage = lazy(() => import("../pages/public/ForbiddenPage"));
 const ServerErrorPage = lazy(() => import("../pages/public/ServerErrorPage"));
-const FeaturePlaceholderPage = lazy(() => import("../pages/common/FeaturePlaceholderPage"));
 const NotFound404Page = lazy(() => import("../pages/common/NotFound404Page"));
 const RoleProfilePage = lazy(() => import("../pages/common/RoleProfilePage"));
 
@@ -120,7 +119,6 @@ export default function AppRoutes() {
           <Route path="/organizer/reservations" element={<OrganizerReservationsPage />} />
           <Route path="/organizer/tickets" element={<OrganizerTicketsPage />} />
           <Route path="/organizer/check-in" element={<OrganizerScanPage />} />
-          <Route path="/organizer/attendees" element={<AttendeesPage />} />
           <Route path="/organizer/profile" element={<RoleProfilePage scope="organizer" />} />
         </Route>
       </Route>
@@ -133,18 +131,6 @@ export default function AppRoutes() {
           <Route path="/admin/clubs/:clubId" element={<SuperAdminClubDetailPage />} />
           <Route path="/admin/accounts" element={<SuperAdminOrganizersPage />} />
           <Route path="/admin/events" element={<SuperAdminEventsPage />} />
-          <Route
-            path="/admin/events/:eventId"
-            element={
-              <FeaturePlaceholderPage
-                title="Chi tiết sự kiện toàn trường"
-                description="Xem thông tin sự kiện, số vé, lịch sử duyệt và hoạt động check-in ở cấp toàn trường."
-                backTo="/admin/events"
-                backLabel="Về danh sách sự kiện"
-                highlights={["Duyệt đăng ký", "Tỷ lệ check-in", "Nhật ký hoạt động"]}
-              />
-            }
-          />
           <Route path="/admin/audit-logs" element={<SuperAdminLogsPage />} />
           <Route path="/admin/roles" element={<SuperAdminRBACPage />} />
           <Route path="/admin/users" element={<SuperAdminUsersPage />} />

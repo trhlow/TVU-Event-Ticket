@@ -117,7 +117,7 @@ export default function OrganizerReservationsPage() {
         <ConfirmModal
           isOpen={!!pendingAction}
           title={pendingAction.type === "APPROVE" ? "Xác nhận duyệt" : "Từ chối đăng ký"}
-          description="Thao tác này sẽ gọi backend và để backend quyết định sức chứa, phạm vi CLB và trạng thái hợp lệ."
+          description="Hệ thống sẽ tự kiểm tra số vé còn lại và phạm vi CLB trước khi xác nhận thao tác này."
           onConfirm={() => void handleConfirmAction()}
           onCancel={() => setPendingAction(null)}
           confirmText={pendingAction.type === "APPROVE" ? "Duyệt" : "Từ chối"}

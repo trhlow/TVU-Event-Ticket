@@ -24,7 +24,7 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/15" />
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/70">TVU Electronic Ticket</p>
         <h3 className="mt-2 font-display text-lg font-semibold leading-snug">{event.title}</h3>
-        <p className="mt-1.5 text-sm font-medium text-white/82">{event.clubName}</p>
+        {event.clubName && <p className="mt-1.5 text-sm font-medium text-white/82">{event.clubName}</p>}
         <div className="mt-4">
           <StatusBadge type="ticket" status={ticket.status} checkInStatus={ticket.checkInStatus} />
         </div>
@@ -36,7 +36,7 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
             <QRCodeSVG value={ticket.qrCodeValue} size={208} level="M" marginSize={0} />
           ) : (
             <div className="px-4 text-center text-xs font-bold leading-5 text-slate-500">
-              Backend chưa cung cấp QR payload cho vé này.
+              Mã QR đã được gửi qua email khi vé được duyệt. Trang này chưa hỗ trợ hiển thị lại mã QR — vui lòng kiểm tra hộp thư của bạn.
             </div>
           )}
         </div>

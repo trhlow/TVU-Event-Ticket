@@ -68,7 +68,6 @@ export default function SuperAdminDashboard() {
       <BackendPendingNotice
         title="Không thể tải dashboard toàn trường"
         description={loadError}
-        requiredEndpoints={["GET /admin/stats", "GET /events/stats", "GET /ticketing/stats"]}
       />
     );
   }
@@ -112,7 +111,7 @@ export default function SuperAdminDashboard() {
         eyebrow="Trung tâm điều hành hệ thống"
         icon={Activity}
         title="Dashboard toàn trường"
-        description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in trực tiếp từ backend."
+        description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in theo thời gian thực."
       />
 
       <div className="flex justify-end">
@@ -139,7 +138,6 @@ export default function SuperAdminDashboard() {
             <BackendPendingNotice
               title="Không thể tải thống kê theo CLB"
               description={clubStatsError}
-              requiredEndpoints={["GET /admin/clubs/stats"]}
             />
           ) : (
             <BarChartCard
@@ -183,7 +181,6 @@ export default function SuperAdminDashboard() {
           <BackendPendingNotice
             title="Không thể tải audit log"
             description={auditLogError}
-            requiredEndpoints={["GET /admin/audit-log"]}
           />
         ) : (
           <DataTable

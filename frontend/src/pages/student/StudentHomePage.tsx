@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { AlertTriangle, ArrowRight, Award, Calendar, Search, Sparkles, Ticket } from "lucide-react";
+import { AlertTriangle, ArrowRight, Award, Calendar, Sparkles, Ticket } from "lucide-react";
 import EventCard from "../../components/events/EventCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -50,8 +50,16 @@ export default function StudentHomePage() {
 
   const pendingReservationsCount = reservations.filter((reservation) => reservation.status === "PENDING").length;
 
-  function eventTitle(eventId: string): string {
-    return events.find((item) => item.id === eventId)?.title || "Sự kiện đang cập nhật thông tin";
+  // Reservations already carry their own event title from the backend. Tickets don't, so fall back to
+  // the title of the reservation that produced them (same eventId), then to the small featured-events
+  // list — never to the "featured" list alone, which only holds up to 3 OPEN events and would show a
+  // placeholder for the student's own past or closed-event tickets.
+  function eventTitleForTicket(eventId: string): string {
+    return (
+      reservations.find((item) => item.eventId === eventId)?.eventTitle ||
+      events.find((item) => item.id === eventId)?.title ||
+      "Sự kiện đang cập nhật thông tin"
+    );
   }
 
   return (
@@ -97,27 +105,6 @@ export default function StudentHomePage() {
         <StatisticCard label="Đơn chờ duyệt" value={pendingReservationsCount} icon={Award} subtext="Ban tổ chức đang xem xét" color="warning" />
       </div>
 
-      <section className="enterprise-card p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Tìm kiếm sự kiện</p>
-            <h2 className="section-heading mt-1">Sự kiện đang mở đăng ký</h2>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-[1fr_auto] md:w-[520px]">
-            <label className="relative">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input className="tvu-input pl-10" placeholder="Tìm theo tên sự kiện hoặc CLB" />
-            </label>
-            <select className="tvu-input">
-              <option>Tất cả lĩnh vực</option>
-              <option>Học thuật</option>
-              <option>Kỹ năng</option>
-              <option>Tình nguyện</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -153,7 +140,7 @@ export default function StudentHomePage() {
             {reservations.slice(0, 4).map((reservation) => (
               <div key={reservation.id} className="flex items-center justify-between gap-4 py-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">{eventTitle(reservation.eventId)}</p>
+                  <p className="truncate text-sm font-semibold text-slate-950">{reservation.eventTitle || "Sự kiện đang cập nhật thông tin"}</p>
                   <p className="mt-1 text-xs font-semibold text-slate-500">{formatDateTime(reservation.createdAt)}</p>
                 </div>
                 <StatusBadge type="reservation" status={reservation.status} />
@@ -169,7 +156,7 @@ export default function StudentHomePage() {
             {tickets.slice(0, 3).map((ticket) => (
               <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">{eventTitle(ticket.eventId)}</p>
+                  <p className="truncate text-sm font-semibold text-slate-950">{eventTitleForTicket(ticket.eventId)}</p>
                   <p className="mt-1 font-mono text-xs font-bold text-slate-500">Mã vé: {ticket.ticketCode}</p>
                 </div>
                 <Link to={`/student/tickets/${ticket.id}`} className="btn-press inline-flex h-9 items-center rounded-lg bg-brand-600 px-3 text-xs font-medium text-white">

@@ -41,18 +41,15 @@ interface AvailabilityResponse {
 
 type EventPayload = Partial<Event>;
 
-// EventResponse has no club display-name field (see backend/docs/BACKEND_SECURITY_REQUIREMENTS.md item
-// 15) — this must stay a neutral placeholder, never a fabricated specific club name.
-const CLUB_NAME_PLACEHOLDER = "Chưa có thông tin CLB";
-
 function mapRemoteEvent(event: EventResponse, availability?: AvailabilityResponse): Event {
   return {
     id: event.id,
     clubId: event.clubId,
-    clubName: CLUB_NAME_PLACEHOLDER,
+    // EventResponse has no club display-name field (see backend/docs/BACKEND_SECURITY_REQUIREMENTS.md
+    // item 15) — leave it empty rather than fabricating a name; callers hide the club line when blank.
+    clubName: "",
     title: event.title,
     description: event.description || "",
-    category: "Su kien",
     bannerUrl: "",
     location: event.location,
     startAt: event.startAt,

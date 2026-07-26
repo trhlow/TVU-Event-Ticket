@@ -4,7 +4,6 @@ export interface Event {
   clubName: string;
   title: string;
   description: string;
-  category: string;
   bannerUrl: string;
   location: string;
   startAt: string;

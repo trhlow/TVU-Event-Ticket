@@ -5,6 +5,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileClock,
+  GraduationCap,
   Grid2X2,
   KeyRound,
   Layers,
@@ -57,6 +58,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             { to: "/admin/accounts", label: "Tài khoản BTC", icon: Users },
             { to: "/admin/clubs", label: "Câu lạc bộ", icon: Layers },
             { to: "/admin/users", label: "Người dùng", icon: User },
+            { to: "/admin/students", label: "Sinh viên", icon: GraduationCap },
             { to: "/admin/roles", label: "Phân quyền RBAC", icon: ShieldCheck, section: "SUPER ADMIN" },
             { to: "/admin/audit-logs", label: "Nhật ký hệ thống", icon: KeyRound },
           ];

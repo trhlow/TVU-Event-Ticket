@@ -11,18 +11,21 @@ import { eventService } from "../../services/eventService";
 import { Ticket } from "../../types/ticket";
 import { Event } from "../../types/event";
 
+// The event lookup below only reaches OPEN events (public discovery endpoint), so a ticket for an
+// event that has since closed falls back here. The reservation that produced the ticket already
+// carried the real title/location/time regardless of the event's current status — use that instead
+// of a placeholder whenever it's available.
 function fallbackEvent(ticket: Ticket): Event {
   return {
     id: ticket.eventId,
     clubId: "",
-    clubName: "Chưa có thông tin CLB",
-    title: "Sự kiện đang cập nhật thông tin",
+    clubName: "",
+    title: ticket.eventTitle || "Sự kiện đang cập nhật thông tin",
     description: "",
-    category: "Sự kiện",
     bannerUrl: "",
-    location: "Đang cập nhật địa điểm",
-    startAt: ticket.issuedAt,
-    endAt: ticket.issuedAt,
+    location: ticket.eventLocation || "Đang cập nhật địa điểm",
+    startAt: ticket.eventStartAt || ticket.issuedAt,
+    endAt: ticket.eventStartAt || ticket.issuedAt,
     registrationOpenAt: ticket.issuedAt,
     registrationCloseAt: ticket.issuedAt,
     capacity: 0,
@@ -64,7 +67,7 @@ export default function MyTicketsPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Ví vé điện tử cá nhân"
-        description="Vé xuất hiện sau khi Ban tổ chức duyệt đăng ký và backend cấp mã vé."
+        description="Vé xuất hiện sau khi Ban tổ chức duyệt đăng ký và hệ thống cấp mã vé."
       />
 
       {tickets.length > 0 ? (
@@ -80,14 +83,14 @@ export default function MyTicketsPage() {
       <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
         <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
         <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-          Backend hiện chưa có API trả QR payload trực tiếp cho sinh viên; frontend không tự tạo QR ký giả.
+          Mã QR của mỗi vé được gửi qua email ngay khi vé được duyệt. Trang này chưa hỗ trợ hiển thị lại mã QR — vui lòng kiểm tra email nếu cần xuất trình mã khi check-in.
         </p>
       </div>
 
       {activeTicket && activeEvent && (
         <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thông tin vé">
           <div className="p-1">
-            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => showToast("Backend chưa cung cấp file vé QR.", "info")} />
+            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => showToast("Mã QR được gửi qua email, chưa hỗ trợ tải trực tiếp tại đây.", "info")} />
           </div>
         </DetailDrawer>
       )}

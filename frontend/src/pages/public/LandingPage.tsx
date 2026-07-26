@@ -481,7 +481,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
       </div>
 
       <div className="flex min-h-[230px] flex-col p-5">
-        <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">{event.clubName || "TVU"}</p>
+        {event.clubName && <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">{event.clubName}</p>}
         <h3 className="mt-2 line-clamp-2 font-display text-lg font-extrabold leading-snug text-slate-900">{event.title}</h3>
         <div className="mt-4 space-y-2 text-sm font-medium text-slate-600">
           <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-blue-700" /> {formatDateTime(event.startAt)}</p>

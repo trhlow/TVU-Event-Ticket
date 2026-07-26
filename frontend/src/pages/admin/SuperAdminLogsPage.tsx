@@ -111,8 +111,8 @@ export default function SuperAdminLogsPage() {
           title={loadError ? "Không thể tải audit log" : "Đang tải audit log"}
           description={
             loadError
-              ? "Không thể gọi GET /api/admin/audit-log (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend)."
-              : "Đang tải nhật ký hoạt động từ backend."
+              ? "Không thể tải nhật ký hoạt động. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ."
+              : "Đang tải nhật ký hoạt động..."
           }
         />
       ) : (

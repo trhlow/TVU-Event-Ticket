@@ -2,29 +2,17 @@ import React from 'react';
 import { Search, Filter, RefreshCw } from 'lucide-react';
 
 interface EventFilterProps {
-  clubs: Array<{ id: string; name: string }>;
-  categories: string[];
   onSearchChange: (text: string) => void;
-  onClubChange: (clubId: string) => void;
-  onCategoryChange: (category: string) => void;
   onStatusChange: (status: string) => void;
   onReset: () => void;
-  selectedClubId: string;
-  selectedCategory: string;
   selectedStatus: string;
   searchValue: string;
 }
 
 export default function EventFilter({
-  clubs,
-  categories,
   onSearchChange,
-  onClubChange,
-  onCategoryChange,
   onStatusChange,
   onReset,
-  selectedClubId,
-  selectedCategory,
   selectedStatus,
   searchValue,
 }: EventFilterProps) {
@@ -43,7 +31,7 @@ export default function EventFilter({
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Search Input */}
         <div className="space-y-1.5">
           <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Từ khóa tìm kiếm</label>
@@ -57,40 +45,6 @@ export default function EventFilter({
               className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white"
             />
           </div>
-        </div>
-
-        {/* Club Select */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Đơn vị tổ chức (CLB)</label>
-          <select
-            value={selectedClubId}
-            onChange={(e) => onClubChange(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-500 focus:bg-white cursor-pointer"
-          >
-            <option value="ALL">Tất cả CLB</option>
-            {clubs.map((club) => (
-              <option key={club.id} value={club.id}>
-                {club.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Category Select */}
-        <div className="space-y-1.5">
-          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Thể loại sự kiện</label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-500 focus:bg-white cursor-pointer"
-          >
-            <option value="ALL">Tất cả thể loại</option>
-            {categories.map((cat, idx) => (
-              <option key={idx} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Status Select */}

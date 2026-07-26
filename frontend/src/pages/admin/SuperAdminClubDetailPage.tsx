@@ -158,7 +158,7 @@ export default function SuperAdminClubDetailPage() {
                 title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
                 description={
                   statsError
-                    ? 'Không thể gọi API thống kê CLB (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend).'
+                    ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
                     : 'Đang tải số sự kiện, vé phát hành và tỷ lệ check-in của CLB.'
                 }
               />
@@ -195,8 +195,7 @@ export default function SuperAdminClubDetailPage() {
         ) : (
           <div className="space-y-4">
             <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-semibold leading-5 text-brand-800">
-              Danh sách này lấy từ API sự kiện công khai nên chỉ hiển thị sự kiện đang ở trạng thái OPEN. Sự kiện DRAFT/CLOSED của CLB sẽ
-              hiển thị đầy đủ khi backend bổ sung API GET /admin/clubs/{'{clubId}'}/events.
+              Danh sách này chỉ hiển thị sự kiện đang mở đăng ký công khai. Sự kiện ở trạng thái nháp hoặc đã đóng của CLB sẽ hiển thị đầy đủ khi hệ thống hỗ trợ tra cứu theo từng CLB.
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {clubEvents.map((event) => (
@@ -261,7 +260,7 @@ export default function SuperAdminClubDetailPage() {
             title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
             description={
               statsError
-                ? 'Không thể gọi API thống kê CLB (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend).'
+                ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
                 : 'Đang tải biểu đồ hoạt động 30 ngày gần nhất của CLB.'
             }
           />
@@ -270,8 +269,7 @@ export default function SuperAdminClubDetailPage() {
 
       {activeTab === 'logs' && (
         <BackendPendingNotice
-          description="Backend ghi nhận audit log nội bộ nhưng chưa có API đọc nhật ký lọc theo CLB."
-          requiredEndpoints={['GET /admin/audit-logs?clubId={clubId}']}
+          description="Hệ thống chưa hỗ trợ xem nhật ký thao tác lọc riêng theo từng CLB."
         />
       )}
     </div>

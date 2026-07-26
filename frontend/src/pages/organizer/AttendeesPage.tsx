@@ -144,7 +144,7 @@ export default function AttendeesPage() {
       <div className="space-y-6 text-left">
         <PageHeader
           title="Danh sách sinh viên tham dự"
-          description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT, phân trang và lọc phía server."
+          description="Danh sách người tham dự theo sự kiện, chỉ trong phạm vi CLB của bạn — có phân trang và lọc."
         />
         <EmptyState title="Chưa có sự kiện" description="CLB chưa có sự kiện nào để xem danh sách tham dự." icon={Users} />
       </div>
@@ -155,7 +155,7 @@ export default function AttendeesPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Danh sách sinh viên tham dự"
-        description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT, phân trang và lọc phía server."
+        description="Danh sách người tham dự theo sự kiện, chỉ trong phạm vi CLB của bạn — có phân trang và lọc."
         actions={
           <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-end">
             {!routeEventId && events.length > 0 && (
