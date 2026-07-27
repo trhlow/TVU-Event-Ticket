@@ -21,13 +21,12 @@ import { Event } from '../../types/event';
 
 const EVENT_STATUS_LABELS: Record<string, string> = { DRAFT: 'Bản nháp', OPEN: 'Đang mở', CLOSED: 'Đã đóng' };
 
-type TabKey = 'overview' | 'members' | 'events' | 'stats' | 'logs';
+type TabKey = 'overview' | 'members' | 'events' | 'logs';
 
 const TABS: Array<[TabKey, string]> = [
   ['overview', 'Tổng quan'],
   ['members', 'Thành viên'],
   ['events', 'Sự kiện'],
-  ['stats', 'Thống kê'],
   ['logs', 'Nhật ký thao tác'],
 ];
 
@@ -144,25 +143,61 @@ export default function SuperAdminClubDetailPage() {
       </div>
 
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-          <StatisticCard label="Thành viên BTC" value={organizers.length} icon={Users} color="primary" />
-          <StatisticCard label="Tài khoản đang hoạt động" value={organizers.filter((user) => user.status === 'ACTIVE').length} icon={Activity} color="success" />
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 xl:grid-cols-5">
+            <StatisticCard label="Thành viên BTC" value={organizers.length} icon={Users} color="primary" />
+            <StatisticCard label="Tài khoản đang hoạt động" value={organizers.filter((user) => user.status === 'ACTIVE').length} icon={Activity} color="success" />
+            {stats && (
+              <>
+                <StatisticCard label="Tổng sự kiện" value={stats.summary.totalEvents} icon={Calendar} color="warning" />
+                <StatisticCard label="Vé đã phát hành" value={stats.summary.ticketsIssued} icon={Ticket} />
+                <StatisticCard
+                  label="Tỷ lệ check-in"
+                  value={stats.summary.checkInRate != null ? `${Math.round(stats.summary.checkInRate * 100)}%` : 'Chưa có dữ liệu'}
+                  icon={ShieldCheck}
+                  color="success"
+                />
+              </>
+            )}
+          </div>
+
           {stats ? (
-            <>
-              <StatisticCard label="Tổng sự kiện" value={stats.summary.totalEvents} icon={Calendar} color="warning" />
-              <StatisticCard label="Vé đã phát hành" value={stats.summary.ticketsIssued} icon={Ticket} />
-            </>
-          ) : (
-            <div className="md:col-span-2">
-              <BackendPendingNotice
-                title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
-                description={
-                  statsError
-                    ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
-                    : 'Đang tải số sự kiện, vé phát hành và tỷ lệ check-in của CLB.'
-                }
-              />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <LineChartCard
+                  title="Vé phát hành & Check-in 30 ngày gần nhất"
+                  xAxisKey="date"
+                  data={stats.last30Days.map((point) => ({
+                    date: point.date.slice(5),
+                    'Vé phát hành': point.ticketsIssued,
+                    'Check-in': point.checkedIn,
+                  }))}
+                  dataKeys={[
+                    { key: 'Vé phát hành', name: 'Vé phát hành', color: '#3b82f6' },
+                    { key: 'Check-in', name: 'Check-in', color: '#10b981' },
+                  ]}
+                />
+              </div>
+              <div className="lg:col-span-1">
+                <DonutChartCard
+                  title="Cơ cấu trạng thái sự kiện"
+                  data={Object.entries(stats.summary.eventsByStatus).map(([status, value]) => ({
+                    name: EVENT_STATUS_LABELS[status] || status,
+                    value,
+                  }))}
+                  colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}
+                />
+              </div>
             </div>
+          ) : (
+            <BackendPendingNotice
+              title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
+              description={
+                statsError
+                  ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
+                  : 'Đang tải số sự kiện, vé phát hành, tỷ lệ check-in và biểu đồ hoạt động 30 ngày gần nhất của CLB.'
+              }
+            />
           )}
         </div>
       )}
@@ -210,60 +245,6 @@ export default function SuperAdminClubDetailPage() {
               ))}
             </div>
           </div>
-        )
-      )}
-
-      {activeTab === 'stats' && (
-        stats ? (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <StatisticCard label="Tổng sự kiện" value={stats.summary.totalEvents} icon={Calendar} color="warning" />
-              <StatisticCard label="Vé đã phát hành" value={stats.summary.ticketsIssued} icon={Ticket} color="primary" />
-              <StatisticCard
-                label="Tỷ lệ check-in"
-                value={stats.summary.checkInRate != null ? `${Math.round(stats.summary.checkInRate * 100)}%` : 'Chưa có dữ liệu'}
-                icon={ShieldCheck}
-                color="success"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <LineChartCard
-                  title="Vé phát hành & Check-in 30 ngày gần nhất"
-                  xAxisKey="date"
-                  data={stats.last30Days.map((point) => ({
-                    date: point.date.slice(5),
-                    'Vé phát hành': point.ticketsIssued,
-                    'Check-in': point.checkedIn,
-                  }))}
-                  dataKeys={[
-                    { key: 'Vé phát hành', name: 'Vé phát hành', color: '#3b82f6' },
-                    { key: 'Check-in', name: 'Check-in', color: '#10b981' },
-                  ]}
-                />
-              </div>
-              <div className="lg:col-span-1">
-                <DonutChartCard
-                  title="Cơ cấu trạng thái sự kiện"
-                  data={Object.entries(stats.summary.eventsByStatus).map(([status, value]) => ({
-                    name: EVENT_STATUS_LABELS[status] || status,
-                    value,
-                  }))}
-                  colors={['#3b82f6', '#10b981', '#f59e0b', '#ef4444']}
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <BackendPendingNotice
-            title={statsError ? 'Không thể tải thống kê CLB' : 'Đang tải thống kê CLB'}
-            description={
-              statsError
-                ? 'Không thể tải thống kê CLB. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ.'
-                : 'Đang tải biểu đồ hoạt động 30 ngày gần nhất của CLB.'
-            }
-          />
         )
       )}
 
