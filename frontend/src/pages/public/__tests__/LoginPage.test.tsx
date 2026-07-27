@@ -30,6 +30,7 @@ describe("LoginPage with the default Microsoft provider", () => {
   it("shows the role-neutral Microsoft login button and no DevStub panel", async () => {
     await renderLoginPage();
     expect(screen.getByRole("button", { name: /Đăng nhập bằng tài khoản Microsoft/i })).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: /Hoặc/i })).toBeInTheDocument();
     expect(screen.queryByText(/DEV ONLY/i)).not.toBeInTheDocument();
   });
 
@@ -42,7 +43,8 @@ describe("LoginPage with the default Microsoft provider", () => {
   it("offers backend OTP login for Organizer and Super Admin without a password field", async () => {
     await renderLoginPage();
     expect(screen.getByRole("button", { name: /Gửi mã đăng nhập/i })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("email-clb@vidu.com")).toHaveAttribute("type", "email");
+    expect(screen.getByRole("textbox", { name: /^Email$/i })).toHaveAttribute("type", "email");
+    expect(screen.queryByPlaceholderText("email-clb@vidu.com")).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/mật khẩu/i)).not.toBeInTheDocument();
   });
 });
