@@ -226,7 +226,6 @@ export default function LandingPage() {
         <RevealOnScroll as="section" id="features" className="scroll-mt-20 px-5 py-20 md:px-8 md:py-24">
           <div className="mx-auto max-w-[1180px]">
             <div className="landing-section-heading mx-auto max-w-2xl text-center">
-              <div className="mx-auto mb-5 h-1 w-12 rounded-full bg-gradient-to-r from-blue-700 to-cyan-400" aria-hidden="true" />
               <h2 id="features-title" className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
               <p className="mt-4 text-sm font-medium leading-7 text-slate-600 md:text-base">
                 Một nền tảng thống nhất cho toàn bộ hành trình sự kiện — từ đăng ký, xét duyệt đến check-in tại cổng.
