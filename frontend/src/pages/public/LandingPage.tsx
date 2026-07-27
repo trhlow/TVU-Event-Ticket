@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   ArrowRight,
-  BookOpenCheck,
   CalendarDays,
   CheckCircle2,
   ClipboardCheck,
@@ -23,7 +22,6 @@ import {
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import EmptyState from "../../components/common/EmptyState";
-import FAQAccordion from "../../components/common/FAQAccordion";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
@@ -55,34 +53,6 @@ const features = [
     title: "Chống vé ảo",
     description: "Hệ thống đồng bộ dữ liệu sinh viên trực tiếp, ngăn chặn tình trạng đầu cơ hoặc đăng ký ảo.",
     tone: "text-rose-700 bg-rose-50",
-  },
-];
-
-const faqItems = [
-  {
-    question: "Làm sao để đăng ký tham gia một sự kiện?",
-    answer:
-      "Đăng nhập bằng tài khoản TVU của bạn, chọn sự kiện đang mở đăng ký và gửi yêu cầu tham dự. Đăng ký của bạn sẽ ở trạng thái chờ duyệt cho đến khi Ban tổ chức CLB xác nhận.",
-  },
-  {
-    question: "Vé điện tử và mã QR hoạt động như thế nào?",
-    answer:
-      "Sau khi đăng ký được duyệt, hệ thống phát hành một vé điện tử kèm mã QR duy nhất cho tài khoản của bạn. Bạn xuất trình mã QR này tại cổng sự kiện để Ban tổ chức quét và xác nhận tham dự.",
-  },
-  {
-    question: "Vì sao đăng ký của tôi vẫn ở trạng thái chờ duyệt?",
-    answer:
-      "Mỗi đăng ký cần được Ban tổ chức CLB duyệt thủ công để đảm bảo đúng số lượng vé còn lại. Bạn có thể theo dõi trạng thái mới nhất trong mục Đăng ký của tôi sau khi đăng nhập.",
-  },
-  {
-    question: "Một vé đã check-in có thể dùng lại được không?",
-    answer:
-      "Không. Mỗi mã QR chỉ hợp lệ cho một lượt check-in duy nhất, giúp ngăn chặn tình trạng chia sẻ vé hoặc quét lại vé đã sử dụng.",
-  },
-  {
-    question: "Câu lạc bộ muốn tổ chức sự kiện thì cần làm gì?",
-    answer:
-      "Tài khoản Ban tổ chức của từng CLB được quản trị viên nhà trường cấp và phân quyền. Sau khi đăng nhập bằng tài khoản này, bạn có thể tạo sự kiện, duyệt đăng ký và quét mã QR check-in ngay trong hệ thống.",
   },
 ];
 
@@ -208,11 +178,11 @@ export default function LandingPage() {
   );
 
   return (
-    <div ref={rootRef} className="landing-page subtle-gradient-bg relative w-full max-w-full overflow-x-hidden text-left text-slate-900">
+    <div ref={rootRef} className="landing-page relative w-full max-w-full overflow-x-hidden bg-slate-50 text-left text-slate-900">
       <section
         id="home"
         ref={heroRef}
-        className="landing-hero relative isolate min-h-[calc(100vh-4rem)] scroll-mt-16 overflow-hidden"
+        className="landing-hero relative isolate min-h-[calc(100vh-4rem)] scroll-mt-16 overflow-hidden bg-slate-950"
       >
         <img
           src="/DJI_0431.jpg"
@@ -220,29 +190,30 @@ export default function LandingPage() {
           className="landing-hero-bg absolute inset-0 h-[112%] w-full object-cover"
           fetchPriority="high"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/52 to-slate-950/68" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/72 via-blue-950/62 to-slate-950/88" aria-hidden="true" />
+        <div className="landing-hero-pattern absolute inset-0" aria-hidden="true" />
 
-        <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center justify-center px-5 py-20 text-center md:px-8">
+        <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center justify-center px-5 pb-28 pt-20 text-center md:px-8 md:pb-36">
           <div className="flex max-w-4xl flex-col items-center">
-            <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/92 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
+            <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-100 shadow-sm backdrop-blur-md">
               <Sparkles className="h-4 w-4" /> Nền tảng vé sự kiện chính thức
             </p>
-            <h1 className="landing-fade-up mt-6 max-w-4xl font-display text-4xl font-extrabold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
+            <h1 className="landing-fade-up mt-7 max-w-4xl font-display text-4xl font-extrabold leading-[1.08] tracking-[-0.025em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
               Quản lý vé sự kiện đơn giản, minh bạch và an toàn
             </h1>
-            <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-100 drop-shadow md:text-lg">
+            <p className="landing-fade-up mt-6 max-w-2xl text-base font-medium leading-7 text-blue-50/90 drop-shadow md:text-lg">
               Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
             </p>
-            <div className="landing-fade-up mt-8 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
+            <div className="landing-fade-up mt-9 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to="/login"
-                className="btn-press group inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-700 px-7 text-sm font-bold text-white shadow-lg shadow-slate-950/25 hover:bg-blue-600"
+                className="btn-press group inline-flex h-13 flex-1 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-extrabold text-blue-900 shadow-xl shadow-slate-950/25 hover:bg-blue-50"
               >
                 Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/#guide"
-                className="btn-press inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-white/70 bg-white/15 px-7 text-sm font-bold text-white shadow-sm backdrop-blur hover:bg-white/25"
+                className="btn-press inline-flex h-13 flex-1 items-center justify-center rounded-full border border-white/30 bg-white/10 px-7 text-sm font-bold text-white shadow-sm backdrop-blur-md hover:bg-white/20"
               >
                 Xem hướng dẫn
               </Link>
@@ -251,136 +222,126 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <RevealOnScroll as="section" id="features" className="scroll-mt-20 bg-slate-50 px-5 py-16 md:px-8">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="landing-section-heading mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
-              Giải pháp toàn diện cho mọi nhu cầu tổ chức sự kiện của bạn.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature, index) => (
-              <RevealOnScroll key={feature.title} delay={index * 80}>
-                <FeatureCard feature={feature} />
-              </RevealOnScroll>
-            ))}
-          </div>
-        </div>
-      </RevealOnScroll>
-
-      <section id="events" className="scroll-mt-20 border-y border-slate-200 bg-white px-0 py-16">
-        <div className="mx-auto max-w-[1180px] px-5 text-center md:px-8">
-          <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Sự kiện nổi bật</h2>
-          <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
-            Khám phá các hoạt động hấp dẫn sắp diễn ra.
-          </p>
-        </div>
-
-        <div className="mt-10">
-          {isLoading ? (
-            <div className="mx-auto max-w-[1180px] px-5 md:px-8">
-              <LoadingSkeleton type="card" count={3} />
+      <div className="landing-main-shell relative z-20 -mt-12 overflow-hidden rounded-t-[2rem] bg-white md:-mt-16 md:rounded-t-[3rem]">
+        <RevealOnScroll as="section" id="features" className="scroll-mt-20 px-5 py-20 md:px-8 md:py-24">
+          <div className="mx-auto max-w-[1180px]">
+            <div className="landing-section-heading mx-auto max-w-2xl text-center">
+              <div className="mx-auto mb-5 h-1 w-12 rounded-full bg-gradient-to-r from-blue-700 to-cyan-400" aria-hidden="true" />
+              <h2 id="features-title" className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
+              <p className="mt-4 text-sm font-medium leading-7 text-slate-600 md:text-base">
+                Một nền tảng thống nhất cho toàn bộ hành trình sự kiện — từ đăng ký, xét duyệt đến check-in tại cổng.
+              </p>
             </div>
-          ) : error ? (
-            <div className="mx-auto max-w-[1180px] px-5 md:px-8">
-              <EmptyState title="Chưa tải được sự kiện" description={error} icon={CalendarDays} />
-            </div>
-          ) : visibleEvents.length > 0 ? (
-            <EventGrid events={visibleEvents} onOpen={() => navigate("/login")} />
-          ) : (
-            <div className="mx-auto max-w-[1180px] px-5 md:px-8">
-              <EmptyState
-                title="Chưa có sự kiện nổi bật"
-                description="Hiện chưa có sự kiện đang mở đăng ký hoặc sắp diễn ra. Vui lòng quay lại sau."
-                icon={CalendarDays}
-              />
-            </div>
-          )}
-        </div>
-      </section>
 
-      <RevealOnScroll as="section" id="guide" className="scroll-mt-20 bg-slate-50 px-5 py-16 md:px-8">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="mx-auto max-w-2xl text-center">
-            <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-blue-100 bg-white text-blue-800 shadow-sm">
-              <BookOpenCheck className="h-6 w-6" aria-hidden="true" />
-            </div>
-            <h2 className="mt-4 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Hướng dẫn sử dụng</h2>
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
-              Nắm nhanh quy trình đăng ký, quản lý và check-in sự kiện trên TVU Ticket.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-5 lg:grid-cols-3">
-            {guideSteps.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <RevealOnScroll key={item.title} delay={index * 90}>
-                  <article className="landing-guide-card h-full rounded-xl border border-slate-200 bg-white p-6 shadow-sm shadow-slate-950/4">
-                    <div className="flex items-start gap-4">
-                      <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800">
-                        <Icon className="h-6 w-6" aria-hidden="true" />
-                      </div>
-                      <div>
-                        <h3 className="font-display text-lg font-extrabold text-slate-900">{item.title}</h3>
-                        <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{item.description}</p>
-                      </div>
-                    </div>
-
-                    <ol className="mt-6 space-y-3">
-                      {item.steps.map((step, stepIndex) => (
-                        <li key={step} className="landing-guide-step flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
-                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-blue-800 shadow-sm ring-1 ring-blue-100">
-                            {stepIndex + 1}
-                          </span>
-                          <span className="text-sm font-semibold text-slate-700">{step}</span>
-                        </li>
-                      ))}
-                    </ol>
-                  </article>
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {features.map((feature, index) => (
+                <RevealOnScroll key={feature.title} delay={index * 80}>
+                  <FeatureCard feature={feature} />
                 </RevealOnScroll>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      </RevealOnScroll>
+        </RevealOnScroll>
 
-      <RevealOnScroll as="section" id="faq" className="scroll-mt-20 border-t border-slate-200 bg-white px-5 py-16 md:px-8">
-        <div className="mx-auto max-w-[1180px]">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Câu hỏi thường gặp</h2>
-            <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
-              Một số thắc mắc phổ biến về đăng ký, vé điện tử và check-in trên TVU Ticket.
-            </p>
-          </div>
-
-          <div className="mt-10">
-            <FAQAccordion items={faqItems} />
-          </div>
-        </div>
-      </RevealOnScroll>
-
-      <section className="px-5 py-16 md:px-8">
-        <div className="page-hero mx-auto max-w-[1180px] px-6 py-10 text-center text-white md:px-12 md:py-14">
-          <h2 className="font-display text-2xl font-extrabold md:text-3xl">Sẵn sàng cho sự kiện tiếp theo?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-sm font-semibold leading-6 text-white/85 md:text-base">
-            Đăng nhập bằng tài khoản Microsoft của trường để đăng ký sự kiện và nhận vé QR ngay khi được duyệt.
-          </p>
-          <div className="mt-7 flex justify-center">
+        <section id="events" className="landing-soft-section relative scroll-mt-20 px-0 py-20 md:py-24">
+          <div className="mx-auto flex max-w-[1180px] flex-col items-center gap-6 px-5 text-center md:px-8">
+            <h2 className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Sự kiện nổi bật</h2>
             <Link
               to="/login"
-              className="btn-press inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-white px-7 text-sm font-bold text-brand-800 hover:bg-blue-50"
+              className="group inline-flex w-fit items-center gap-2 rounded-full border border-blue-200 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
             >
-              Đăng nhập ngay <ArrowRight className="h-4 w-4" />
+              Khám phá sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
           </div>
-        </div>
-      </section>
 
-      <LandingFooter />
-      <ScrollToTopButton />
+          <div className="mt-12">
+            {isLoading ? (
+              <div className="mx-auto max-w-[1180px] px-5 md:px-8">
+                <LoadingSkeleton type="card" count={3} />
+              </div>
+            ) : error ? (
+              <div className="mx-auto max-w-[1180px] px-5 md:px-8">
+                <EmptyState title="Chưa tải được sự kiện" description={error} icon={CalendarDays} />
+              </div>
+            ) : visibleEvents.length > 0 ? (
+              <EventGrid events={visibleEvents} onOpen={() => navigate("/login")} />
+            ) : (
+              <div className="mx-auto max-w-[1180px] px-5 md:px-8">
+                <EmptyState
+                  title="Chưa có sự kiện nổi bật"
+                  description="Hiện chưa có sự kiện đang mở đăng ký hoặc sắp diễn ra. Vui lòng quay lại sau."
+                  icon={CalendarDays}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <RevealOnScroll as="section" id="guide" className="landing-guide-section relative isolate scroll-mt-20 overflow-hidden px-5 py-20 md:px-8 md:py-24">
+          <div className="landing-guide-glow landing-guide-glow-left" aria-hidden="true" />
+          <div className="landing-guide-glow landing-guide-glow-right" aria-hidden="true" />
+          <div className="relative z-10 mx-auto max-w-[1180px]">
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-white md:text-4xl">Bắt đầu thật đơn giản</h2>
+              <p className="mt-4 text-sm font-medium leading-7 text-blue-100/80 md:text-base">
+                Quy trình rõ ràng cho sinh viên, Ban tổ chức và đội ngũ check-in.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-5 lg:grid-cols-3">
+              {guideSteps.map((item, index) => {
+                const Icon = item.icon;
+                return (
+                  <RevealOnScroll key={item.title} delay={index * 90}>
+                    <article className="landing-guide-card h-full rounded-2xl border border-white/70 bg-white/95 p-6 shadow-xl shadow-slate-950/15 backdrop-blur">
+                      <div className="flex items-start gap-4">
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800">
+                          <Icon className="h-6 w-6" aria-hidden="true" />
+                        </div>
+                        <div>
+                          <h3 className="font-display text-lg font-extrabold text-slate-900">{item.title}</h3>
+                          <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{item.description}</p>
+                        </div>
+                      </div>
+
+                      <ol className="mt-6 space-y-3">
+                        {item.steps.map((step, stepIndex) => (
+                          <li key={step} className="landing-guide-step flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-blue-800 shadow-sm ring-1 ring-blue-100">
+                              {stepIndex + 1}
+                            </span>
+                            <span className="text-sm font-semibold text-slate-700">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </article>
+                  </RevealOnScroll>
+                );
+              })}
+            </div>
+          </div>
+        </RevealOnScroll>
+
+        <section className="bg-white px-5 py-20 md:px-8 md:py-24">
+          <div className="landing-cta mx-auto flex max-w-[1180px] flex-col items-center justify-between gap-8 rounded-[2rem] px-7 py-10 text-center text-white md:flex-row md:px-12 md:py-12 md:text-left">
+            <div>
+              <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Sẵn sàng cho sự kiện tiếp theo?</h2>
+              <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-blue-100/85 md:text-base">
+                Đăng nhập bằng tài khoản Microsoft của trường để đăng ký sự kiện và nhận vé QR ngay khi được duyệt.
+              </p>
+            </div>
+            <Link
+              to="/login"
+              className="btn-press group inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-extrabold text-blue-900 shadow-lg shadow-slate-950/20 hover:bg-blue-50"
+            >
+              Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+            </Link>
+          </div>
+        </section>
+
+        <LandingFooter />
+      </div>
+      <ScrollToTopButton showAfterElementId="features-title" />
     </div>
   );
 }
@@ -391,12 +352,12 @@ function FeatureCard({ feature }: { feature: FeatureItem }) {
   const Icon = feature.icon;
 
   return (
-    <article className="hover-lift h-full rounded-xl border border-slate-200 bg-white p-5">
-      <div className={`grid h-11 w-11 place-items-center rounded-xl ${feature.tone}`}>
-        <Icon className="h-5 w-5" />
+    <article className="landing-feature-card group h-full rounded-2xl border border-slate-200/80 bg-white p-6">
+      <div className={`grid h-12 w-12 place-items-center rounded-2xl transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 ${feature.tone}`}>
+        <Icon className="h-5 w-5" aria-hidden="true" />
       </div>
-      <h3 className="mt-4 font-display text-base font-extrabold text-slate-900">{feature.title}</h3>
-      <p className="mt-2 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
+      <h3 className="mt-5 font-display text-lg font-extrabold text-slate-900">{feature.title}</h3>
+      <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
     </article>
   );
 }
@@ -420,13 +381,13 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
   const isAvailable = event.status === "OPEN" && event.remainingTickets > 0;
 
   return (
-    <article className="hover-lift group overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+    <article className="landing-event-card group overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
       <div className="relative aspect-[16/10] overflow-hidden bg-blue-950">
         {event.bannerUrl ? (
           <img
             src={event.bannerUrl}
             alt={event.title}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
             loading="lazy"
             referrerPolicy="no-referrer"
           />
@@ -441,7 +402,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
         </span>
       </div>
 
-      <div className="flex min-h-[230px] flex-col p-5">
+      <div className="flex min-h-[242px] flex-col p-6">
         {event.clubName && <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">{event.clubName}</p>}
         <h3 className="mt-2 line-clamp-2 font-display text-lg font-extrabold leading-snug text-slate-900">{event.title}</h3>
         <div className="mt-4 space-y-2 text-sm font-medium text-slate-600">
@@ -457,7 +418,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
           type="button"
           onClick={() => onOpen(event.id)}
           className={[
-            "btn-press group/btn mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold",
+            "btn-press group/btn mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold",
             isAvailable
               ? "bg-blue-800 text-white hover:bg-blue-700"
               : "border border-blue-200 bg-white text-blue-800 hover:bg-blue-50",
@@ -473,17 +434,17 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
 
 function LandingFooter() {
   return (
-    <footer className="bg-slate-50 px-5 py-12 md:px-8">
-      <div className="mx-auto grid max-w-[1180px] gap-8 border-t border-slate-200 pt-10 md:grid-cols-3">
+    <footer className="bg-slate-950 px-5 py-14 text-slate-300 md:px-8">
+      <div className="mx-auto grid max-w-[1180px] gap-10 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-3">
-            <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-10 w-10 rounded-full object-contain ring-1 ring-blue-100" />
-            <p className="font-display text-xl font-extrabold text-blue-800">TVU Ticket</p>
+            <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-10 w-10 rounded-full bg-white object-contain ring-2 ring-white/15" />
+            <p className="font-display text-xl font-extrabold text-white">TVU Ticket</p>
           </div>
-          <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-600">
+          <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-400">
             Hệ thống quản lý và phân phối vé sự kiện chính thức dành cho sinh viên và các Câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
           </p>
-          <div className="mt-5 flex gap-3 text-blue-800" aria-hidden="true">
+          <div className="mt-5 flex gap-3 text-blue-300" aria-hidden="true">
             <Share2 className="h-4 w-4" />
             <Users className="h-4 w-4" />
           </div>
@@ -494,18 +455,17 @@ function LandingFooter() {
             ["Trang chủ", "/"],
             ["Đăng nhập", "/login"],
             ["Hướng dẫn sử dụng", "/#guide"],
-            ["Câu hỏi thường gặp", "/#faq"],
           ]}
         />
         <div>
-          <h2 className="text-sm font-extrabold text-slate-900">Liên hệ</h2>
-          <div className="mt-4 space-y-3 text-sm font-medium text-slate-600">
-            <p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
-            <a href="mailto:support@tvu.edu.vn" className="flex gap-2 hover:text-brand-800 hover:underline">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> support@tvu.edu.vn
+          <h2 className="text-sm font-extrabold text-white">Liên hệ</h2>
+          <div className="mt-4 space-y-3 text-sm font-medium text-slate-400">
+            <p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
+            <a href="mailto:support@tvu.edu.vn" className="flex gap-2 hover:text-white hover:underline">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" /> support@tvu.edu.vn
             </a>
-            <a href="tel:+842943855246" className="flex gap-2 hover:text-brand-800 hover:underline">
-              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-700" /> 0294 3855 246
+            <a href="tel:+842943855246" className="flex gap-2 hover:text-white hover:underline">
+              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" /> 0294 3855 246
             </a>
           </div>
         </div>
@@ -517,10 +477,10 @@ function LandingFooter() {
 function FooterColumn({ title, links }: { title: string; links: Array<[string, string]> }) {
   return (
     <div>
-      <h2 className="text-sm font-extrabold text-slate-900">{title}</h2>
-      <nav className="mt-4 grid gap-3 text-sm font-medium text-slate-600" aria-label={title}>
+      <h2 className="text-sm font-extrabold text-white">{title}</h2>
+      <nav className="mt-4 grid gap-3 text-sm font-medium text-slate-400" aria-label={title}>
         {links.map(([label, to]) => (
-          <Link key={label} to={to} className="w-fit hover:text-blue-800 hover:underline">
+          <Link key={label} to={to} className="w-fit hover:text-white hover:underline">
             {label}
           </Link>
         ))}
