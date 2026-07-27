@@ -220,39 +220,34 @@ export default function LandingPage() {
           className="landing-hero-bg absolute inset-0 h-[112%] w-full object-cover"
           fetchPriority="high"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-white/68 via-white/38 to-white/84" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/60 via-slate-950/52 to-slate-950/68" aria-hidden="true" />
 
-        <div className="landing-hero-copy relative z-10 mx-auto grid min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center gap-10 px-5 py-20 text-center md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:text-left">
-          <div className="flex flex-col items-center lg:items-start">
-            <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/72 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
+        <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center justify-center px-5 py-20 text-center md:px-8">
+          <div className="flex max-w-4xl flex-col items-center">
+            <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-white/35 bg-white/92 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-800 shadow-sm backdrop-blur">
               <Sparkles className="h-4 w-4" /> Nền tảng vé sự kiện chính thức
             </p>
-            <h1 className="landing-fade-up mt-6 max-w-3xl font-display text-4xl font-extrabold leading-tight text-blue-900 sm:text-5xl lg:text-6xl">
+            <h1 className="landing-fade-up mt-6 max-w-4xl font-display text-4xl font-extrabold leading-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
               Quản lý vé sự kiện đơn giản, minh bạch và an toàn
             </h1>
-            <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:text-lg">
+            <p className="landing-fade-up mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-100 drop-shadow md:text-lg">
               Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
             </p>
-            <div className="landing-fade-up mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="landing-fade-up mt-8 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to="/login"
-                className="btn-press group inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-800 px-7 text-sm font-bold text-white shadow-md shadow-blue-900/16 hover:bg-blue-700"
+                className="btn-press group inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-blue-700 px-7 text-sm font-bold text-white shadow-lg shadow-slate-950/25 hover:bg-blue-600"
               >
                 Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/#guide"
-                className="btn-press inline-flex h-12 items-center justify-center rounded-xl border border-blue-800 bg-white/78 px-7 text-sm font-bold text-blue-900 shadow-sm backdrop-blur hover:bg-white"
+                className="btn-press inline-flex h-12 flex-1 items-center justify-center rounded-xl border border-white/70 bg-white/15 px-7 text-sm font-bold text-white shadow-sm backdrop-blur hover:bg-white/25"
               >
                 Xem hướng dẫn
               </Link>
             </div>
-            <p className="landing-fade-up mt-5 text-xs font-semibold text-slate-500">
-              Miễn phí cho sinh viên · Đăng nhập bằng tài khoản Microsoft của trường
-            </p>
           </div>
-
-          <HeroShowcase3D />
         </div>
       </section>
 
@@ -395,36 +390,6 @@ export default function LandingPage() {
 }
 
 type FeatureItem = (typeof features)[number];
-
-function HeroShowcase3D() {
-  return (
-    <div className="hidden lg:block" aria-hidden="true">
-      <div className="mx-auto w-[17rem] rounded-2xl border border-slate-200 bg-white p-6 shadow-lg shadow-slate-950/[0.06]">
-        <div className="flex items-center gap-2 text-blue-800">
-          <Ticket className="h-5 w-5" />
-          <span className="text-xs font-extrabold uppercase tracking-[0.14em]">Vé điện tử</span>
-        </div>
-        <p className="mt-4 font-display text-lg font-extrabold leading-snug text-slate-900">Tên sự kiện của bạn</p>
-        <p className="mt-1 text-xs font-semibold text-slate-500">Thời gian · Địa điểm</p>
-        <div className="my-4 border-t border-dashed border-slate-200" />
-        <div className="grid place-items-center rounded-xl border border-slate-100 bg-slate-50 p-4">
-          <QrCode className="h-16 w-16 text-slate-900" strokeWidth={1.4} />
-        </div>
-        <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-          <CheckCircle2 className="h-3.5 w-3.5" /> Vé hợp lệ
-        </span>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
-            <ScanLine className="h-3.5 w-3.5" /> Check-in
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700">
-            <ShieldCheck className="h-3.5 w-3.5" /> Chống vé ảo
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function FeatureCard({ feature }: { feature: FeatureItem }) {
   const Icon = feature.icon;
