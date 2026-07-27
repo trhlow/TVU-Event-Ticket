@@ -385,69 +385,28 @@
   }
 
   .public-nav-link {
-    isolation: isolate;
-    transition: color 0.22s ease, transform 0.22s ease;
-  }
-
-  .public-nav-link:hover {
-    transform: translateY(-0.5px);
-  }
-
-  .public-nav-link::before {
-    content: "";
-    position: absolute;
-    left: -0.65rem;
-    right: -0.65rem;
-    top: 50%;
-    z-index: -1;
-    height: 2rem;
-    transform: translateY(-50%) scaleX(0.86);
-    border-radius: 999px;
-    background: rgba(219, 234, 254, 0.58);
-    opacity: 0;
-    transition:
-      opacity 0.2s ease,
-      transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .public-nav-link:hover::before,
-  .public-nav-link:focus-visible::before {
-    opacity: 1;
-    transform: translateY(-50%) scaleX(1);
+    transition: color 0.2s ease;
   }
 
   .public-nav-active-indicator {
     position: absolute;
-    bottom: 1rem;
+    bottom: 0.75rem;
     left: 0;
     height: 2px;
     border-radius: 999px;
-    background: linear-gradient(90deg, #1d4ed8, #2563eb, #60a5fa);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+    background: #2563eb;
     transform-origin: left center;
     transition:
-      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.18s ease;
+      transform 0.24s ease,
+      width 0.24s ease,
+      opacity 0.16s ease;
     will-change: transform, width;
   }
 
-  .public-nav-active-indicator::after {
-    content: "";
-    position: absolute;
-    inset: -5px -8px;
-    border-radius: inherit;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.18), transparent 62%);
-    opacity: 0.85;
-  }
-
-  .public-nav-underline {
-    transform-origin: left center;
-    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .public-nav-link:hover .public-nav-underline {
-    transform: scaleX(1);
+  @media (prefers-reduced-motion: reduce) {
+    .public-nav-active-indicator {
+      transition: opacity 0.16s ease;
+    }
   }
 
   .public-mobile-menu {
