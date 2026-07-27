@@ -254,8 +254,7 @@ export default function LandingPage() {
       <RevealOnScroll as="section" id="features" className="scroll-mt-20 bg-slate-50 px-5 py-16 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="landing-section-heading mx-auto max-w-2xl text-center">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Tính năng nổi bật</p>
-            <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
+            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
               Giải pháp toàn diện cho mọi nhu cầu tổ chức sự kiện của bạn.
             </p>
@@ -273,8 +272,7 @@ export default function LandingPage() {
 
       <section id="events" className="scroll-mt-20 border-y border-slate-200 bg-white px-0 py-16">
         <div className="mx-auto max-w-[1180px] px-5 text-center md:px-8">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Sự kiện</p>
-          <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Sự kiện nổi bật</h2>
+          <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Sự kiện nổi bật</h2>
           <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
             Khám phá các hoạt động hấp dẫn sắp diễn ra.
           </p>
@@ -309,8 +307,7 @@ export default function LandingPage() {
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl border border-blue-100 bg-white text-blue-800 shadow-sm">
               <BookOpenCheck className="h-6 w-6" aria-hidden="true" />
             </div>
-            <p className="mt-4 text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Hướng dẫn</p>
-            <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Hướng dẫn sử dụng</h2>
+            <h2 className="mt-4 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Hướng dẫn sử dụng</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
               Nắm nhanh quy trình đăng ký, quản lý và check-in sự kiện trên TVU Ticket.
             </p>
@@ -353,8 +350,7 @@ export default function LandingPage() {
       <RevealOnScroll as="section" id="faq" className="scroll-mt-20 border-t border-slate-200 bg-white px-5 py-16 md:px-8">
         <div className="mx-auto max-w-[1180px]">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-700">Hỏi đáp</p>
-            <h2 className="mt-2 font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Câu hỏi thường gặp</h2>
+            <h2 className="font-display text-3xl font-extrabold text-blue-900 md:text-4xl">Câu hỏi thường gặp</h2>
             <p className="mt-3 text-sm font-semibold leading-6 text-slate-600 md:text-base">
               Một số thắc mắc phổ biến về đăng ký, vé điện tử và check-in trên TVU Ticket.
             </p>
