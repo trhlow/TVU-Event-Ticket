@@ -18,7 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
-@Profile("prod")
+@Profile("prod | microsoft")
 public class MicrosoftIdentityProvider implements IdentityProvider {
 
     private final MicrosoftIdentityProperties properties;
@@ -27,8 +27,8 @@ public class MicrosoftIdentityProvider implements IdentityProvider {
     public MicrosoftIdentityProvider(MicrosoftIdentityProperties properties, MicrosoftJwkSetClient jwkSetClient) {
         // Validated here rather than in the properties record's constructor: @ConfigurationPropertiesScan
         // binds that record under every profile, so failing there would break dev and test contexts that
-        // never use Microsoft login at all. This class is @Profile("prod"), so the check fires exactly
-        // where a missing tenant id would be a live vulnerability.
+        // never use Microsoft login at all. This class is active in production and in the explicit
+        // local "microsoft" profile, so the check fires whenever Microsoft authentication is enabled.
         if (properties.tenantId() == null || properties.tenantId().isBlank()) {
             throw new IllegalArgumentException(
                     "tvu.auth.microsoft.tenant-id must be set: without it every Microsoft directory is trusted");
