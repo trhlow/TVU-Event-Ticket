@@ -105,12 +105,9 @@ jobs:
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     env:
-      # Safe, non-production defaults so the build never needs real secrets and never ships
-      # with DevStub, demo data, or mock fallback baked in.
-      VITE_APP_ENV: production
-      VITE_AUTH_PROVIDER: microsoft
-      VITE_USE_DEMO_DATA: 'false'
-      VITE_ENABLE_MOCK_FALLBACK: 'false'
+      # VITE_APP_ENV and VITE_AUTH_PROVIDER now come from frontend/.env.production, which
+      # docker-compose and a manual build read too -- listing them here again is how CI and
+      # the deployed artifact used to drift. Only per-environment values stay.
       VITE_API_BASE_URL: http://localhost:8080/api
     steps:
       - uses: actions/checkout@v4
@@ -134,9 +131,11 @@ jobs:
         working-directory: frontend
         run: npm run test -- --run
 
-      - name: Build (production-safe env)
+      - name: Build production artifact and prove it carries no fixture data
         working-directory: frontend
-        run: npm run build
+        # build:production runs the bundle evidence gate: no fixture import, no fixture
+        # chunk, no fixture email/student id, no stray mock storage key.
+        run: npm run build:production
 
       - name: Audit dependencies (non-blocking)
         working-directory: frontend
@@ -144,20 +143,35 @@ jobs:
 
       - name: Fail if a real .env file was accidentally committed
         run: |
-          if git ls-files frontend | grep -E '^frontend/\.env($|\.[^.]*$)' | grep -v '\.env\.example$'; then
+          # .env.production is tracked on purpose: it carries the invariants of a
+          # production build so CI, docker and manual builds cannot disagree. Everything
+          # else that looks like an env file is still a mistake.
+          if git ls-files frontend | grep -E '^frontend/\.env($|\.[^.]*$)' \
+             | grep -vE '\.env\.(example|production)$'; then
             echo "A real .env file is tracked in git — remove it and rotate any secrets it held."
             exit 1
           fi
-          echo "No tracked .env file found."
-
-      - name: Fail if the production bundle contains DevStub UI or demo account strings
-        working-directory: frontend
-        run: |
-          if grep -rl "DEV ONLY\|admin@example.com" dist/assets/*.js 2>/dev/null; then
-            echo "Production bundle contains dev-only login UI or a default admin account string."
+          # A tracked env file is only safe while it holds no secrets, and it ends up in
+          # the bundle either way, so check rather than trust the comment in it.
+          # Only assignment lines: the file's own comment explains why secrets are banned,
+          # and matching that comment would fail the build on its own documentation.
+          if grep -vE '^\s*#' frontend/.env.production \
+             | grep -inE '(secret|password|token|private[_-]?key)'; then
+            echo "frontend/.env.production is committed and shipped in the bundle — it must not hold secrets."
             exit 1
           fi
-          echo "Production bundle is clean."
+          echo "No unexpected tracked .env file, and .env.production holds no secrets."
+
+      - name: Fail if the production bundle contains DevStub UI
+        working-directory: frontend
+        # Fixture data is covered by the evidence gate in build:production above; this
+        # only guards the dev-only sign-in UI, which is not fixture data.
+        run: |
+          if grep -rl "DEV ONLY" dist/assets/*.js 2>/dev/null; then
+            echo "Production bundle contains dev-only login UI."
+            exit 1
+          fi
+          echo "No dev-only login UI in the bundle."
 
       - name: Build deployable frontend image
         working-directory: frontend

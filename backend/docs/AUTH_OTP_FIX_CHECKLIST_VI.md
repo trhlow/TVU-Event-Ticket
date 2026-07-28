@@ -347,7 +347,37 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
     `head_branch == 'main'`; và nhớ `workflows: [CI, CodeQL]` là OR —
     workflow chạy khi MỘT trong hai xong, không phải chờ cả hai.
 
-- [ ] **C2. Dữ liệu ảo NẰM TRONG artifact production, không chỉ sau một cờ**
+- [x] ✅ **C2. Dữ liệu ảo NẰM TRONG artifact production, không chỉ sau một cờ**
+      — **XONG 2026-07-28**. Đo lại trên bundle dựng tại máy sau khi fix:
+      **0 chunk `mock*`** (trước: 3) và **2 email duy nhất** trong toàn bộ
+      `dist/assets/*.js` (trước: 17), cả hai đều là nội dung UI thật —
+      `support@tvu.edu.vn` ở footer và `organizer@tvu.edu.vn` là placeholder
+      form. **Địa chỉ Gmail cá nhân đã biến mất khỏi bundle.**
+      - Cách làm: **xoá hẳn nhánh demo** khỏi 7 service (bỏ `withXFallback`,
+        `list()`/`getById()`/`save()` sync và `buildMock*` — typecheck xác nhận
+        **không caller nào** ngoài services dùng chúng), chuyển 6 file fixture
+        sang `src/test/fixtures/`, gỡ `apiConfig.useDemoData` và
+        `DemoDataBadge`. Fixture không còn trong đồ thị runtime **vì không ai
+        import**, không phải vì khéo cấu hình build.
+      - Hiệu ứng phụ: **10 test frontend fail sẵn đã hết** (94/94 pass) — chúng
+        fail vì `mockEvents`/`mockTickets` chạm `localStorage` lúc import
+        top-level, đúng gốc rễ mà C2 gỡ.
+      - Gate: `npm run build:production` → `scripts/verify-bundle.mjs`, chạy
+        trong CI **và** trong `frontend/Dockerfile` nên image triển khai cũng
+        bị chặn. Denylist **sinh tự động từ chính file fixture** (29 term) chứ
+        không hardcode.
+      - Gate đã bắt được một ca thật ngay lần chạy đầu: placeholder
+        `StudentProfileForm.tsx` dùng `110121001`, trùng đúng một MSSV fixture
+        → đổi sang dạng che `110121xxx` (một MSSV đầy đủ trong placeholder
+        cũng có thể trùng sinh viên thật).
+      - `.env.production` giữ biến bất biến (`VITE_APP_ENV`,
+        `VITE_AUTH_PROVIDER`); đã **gỡ khai báo trùng** ở `ci.yml`,
+        `compose.yaml` và `frontend/Dockerfile` để ba nơi không thể lệch nhau.
+      - Backend theo **phương án (a)**: profile Maven `prod` loại
+        `application-dev.yml` khỏi JAR. Verify hai chiều bằng `unzip -l`:
+        có `-Pprod` → không còn file; không có → dev vẫn đủ. ⚠️ **Phải
+        `clean`**: lần chạy đầu vẫn thấy file vì `target/classes` còn bản cũ.
+      - Nội dung gốc của mục này giữ lại bên dưới làm bằng chứng đối chiếu:
       — ℹ️ *Ghi chú phân loại (v15)*: xét thuần tác động bảo mật/privacy thì
       đây là **High**, không phải Critical (rò rỉ fixture + một email cá nhân
       thật, không phải lỗ hổng chiếm quyền). Vẫn **giữ ở Critical** vì nó là

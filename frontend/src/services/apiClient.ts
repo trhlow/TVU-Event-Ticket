@@ -1,5 +1,4 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
-const USE_DEMO_DATA = import.meta.env.VITE_USE_DEMO_DATA === "true";
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
 
@@ -102,7 +101,6 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, retryO
 
 export const apiConfig = {
   baseUrl: API_BASE_URL,
-  useDemoData: USE_DEMO_DATA,
 };
 
 export function apiUrl(path: string): string {

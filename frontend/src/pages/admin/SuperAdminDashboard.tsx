@@ -7,7 +7,6 @@ import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import DemoDataBadge from "../../components/common/DemoDataBadge";
 import type { AuditLog } from "../../types/audit";
 import type { ClubStatsSummary } from "../../types/clubStats";
 import { formatDateTime } from "../../utils/formatDate";
@@ -115,7 +114,6 @@ export default function SuperAdminDashboard() {
       />
 
       <div className="flex justify-end">
-        <DemoDataBadge />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">

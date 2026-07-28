@@ -2,18 +2,18 @@ import React, { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
-import DemoDataBadge from "../../components/common/DemoDataBadge";
 import { Input } from "../../components/ui/input";
 import { formatDateTime } from "../../utils/formatDate";
 import { AuditLog } from "../../types/audit";
 import { auditLogService } from "../../services/auditLogService";
-import { apiConfig } from "../../services/apiClient";
 
 const PAGE_SIZE = 20;
 
 export default function SuperAdminLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [available, setAvailable] = useState(apiConfig.useDemoData);
+  // Starts false so the page shows its loading state until the first request settles;
+  // it used to seed from the demo flag, which no longer exists.
+  const [available, setAvailable] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [actionFilter, setActionFilter] = useState("");
   const [fromFilter, setFromFilter] = useState("");
@@ -118,7 +118,6 @@ export default function SuperAdminLogsPage() {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <DemoDataBadge />
           </div>
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
             <table className="w-full text-left text-xs font-semibold text-slate-600">

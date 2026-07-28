@@ -21,7 +21,6 @@ afterEach(() => {
 
 describe("userService.listAllRemote — query building", () => {
   it("requests /admin/users with no query string when no filters are given", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, []));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -35,7 +34,6 @@ describe("userService.listAllRemote — query building", () => {
   });
 
   it("forwards role and mssvStatus as query params when given", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, []));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -49,7 +47,6 @@ describe("userService.listAllRemote — query building", () => {
   });
 
   it("omits mssvStatus from the query when only role is given", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, []));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -72,7 +69,6 @@ describe("userService.listAllRemote — DTO mapping (mapAdminUser)", () => {
   };
 
   it("maps clubId/mssv/classCode through when present, and derives profileComplete=true from a non-blank mssv", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -93,7 +89,6 @@ describe("userService.listAllRemote — DTO mapping (mapAdminUser)", () => {
   });
 
   it("maps null clubId/mssv/classCode to undefined and derives profileComplete=false", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -112,7 +107,6 @@ describe("userService.listAllRemote — DTO mapping (mapAdminUser)", () => {
   });
 
   it("treats a whitespace-only mssv as incomplete", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(mockJsonResponse(200, [{ ...baseResponse, mssv: "   " }])),
@@ -127,7 +121,6 @@ describe("userService.listAllRemote — DTO mapping (mapAdminUser)", () => {
 
 describe("userService.listOrganizersRemote — DTO mapping (mapOrganizer)", () => {
   it("maps clubId through and always reports profileComplete=true for organizers", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -145,7 +138,6 @@ describe("userService.listOrganizersRemote — DTO mapping (mapOrganizer)", () =
   });
 
   it("maps a null clubId to undefined", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -164,7 +156,6 @@ describe("userService.listOrganizersRemote — DTO mapping (mapOrganizer)", () =
 
 describe("userService — write operations", () => {
   it("verifyMssv PATCHes /admin/users/:id/verify-mssv", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 204,
@@ -181,7 +172,6 @@ describe("userService — write operations", () => {
   });
 
   it("createOrganizer POSTs the email/displayName/clubId payload to /admin/organizers", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(
       mockJsonResponse(200, {
         id: "o2",
@@ -213,7 +203,6 @@ describe("userService — write operations", () => {
   });
 
   it("lockOrganizer PATCHes /admin/organizers/:id/lock", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(
       mockJsonResponse(200, {
         id: "o1",
@@ -236,7 +225,6 @@ describe("userService — write operations", () => {
   });
 
   it("deleteOrganizer DELETEs /admin/organizers/:id", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 204, headers: new Headers() } as Response);
     vi.stubGlobal("fetch", fetchMock);
 

@@ -1,6 +1,5 @@
-import { mockUsers } from "../data/mockUsers";
 import { User } from "../types/user";
-import { apiConfig, apiRequest } from "./apiClient";
+import { apiRequest } from "./apiClient";
 
 interface OrganizerResponse {
   id: string;
@@ -56,69 +55,30 @@ function mapAdminUser(response: AdminUserResponse): User {
   };
 }
 
-async function withUserFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
-  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
-  // so the UI shows a genuine error state instead of silently masking it with fixture data.
-  if (apiConfig.useDemoData) return fallback();
-  return request();
-}
-
 export const userService = {
   async listOrganizersRemote(): Promise<User[]> {
-    return withUserFallback(
-      async () => (await apiRequest<OrganizerResponse[]>("/admin/organizers")).map(mapOrganizer),
-      () => mockUsers.filter((user) => user.role === "ORGANIZER"),
-    );
-  },
-  listOrganizers(): User[] {
-    return mockUsers.filter((user) => user.role === "ORGANIZER");
+    return (await apiRequest<OrganizerResponse[]>("/admin/organizers")).map(mapOrganizer);
   },
   async listAllRemote(params?: { role?: User["role"]; mssvStatus?: User["mssvStatus"] }): Promise<User[]> {
     const query = new URLSearchParams();
     if (params?.role) query.set("role", params.role);
     if (params?.mssvStatus) query.set("mssvStatus", params.mssvStatus);
     const suffix = query.toString() ? `?${query.toString()}` : "";
-    return withUserFallback(
-      async () => (await apiRequest<AdminUserResponse[]>(`/admin/users${suffix}`)).map(mapAdminUser),
-      () => mockUsers.filter((user) => !params?.role || user.role === params.role),
-    );
+    return (await apiRequest<AdminUserResponse[]>(`/admin/users${suffix}`)).map(mapAdminUser);
   },
   async verifyMssv(userId: string): Promise<void> {
-    return withUserFallback(
-      () => apiRequest<void>(`/admin/users/${userId}/verify-mssv`, { method: "PATCH" }),
-      () => undefined,
-    );
+    return apiRequest<void>(`/admin/users/${userId}/verify-mssv`, { method: "PATCH" });
   },
   async createOrganizer(data: CreateOrganizerRequest): Promise<User> {
-    return withUserFallback(
-      async () => mapOrganizer(await apiRequest<OrganizerResponse>("/admin/organizers", {
-        method: "POST",
-        body: JSON.stringify(data),
-      })),
-      () => ({
-        id: `user_org_${Date.now()}`,
-        fullName: data.displayName,
-        email: data.email,
-        role: "ORGANIZER",
-        clubId: data.clubId,
-        profileComplete: true,
-        status: "ACTIVE",
-      }),
-    );
+    return mapOrganizer(await apiRequest<OrganizerResponse>("/admin/organizers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }));
   },
   async lockOrganizer(organizerId: string): Promise<User> {
-    return withUserFallback(
-      async () => mapOrganizer(await apiRequest<OrganizerResponse>(`/admin/organizers/${organizerId}/lock`, { method: "PATCH" })),
-      () => {
-        const existing = mockUsers.find((user) => user.id === organizerId);
-        return { ...(existing || mockUsers[0]), status: "LOCKED" };
-      },
-    );
+    return mapOrganizer(await apiRequest<OrganizerResponse>(`/admin/organizers/${organizerId}/lock`, { method: "PATCH" }));
   },
   async deleteOrganizer(organizerId: string): Promise<void> {
-    return withUserFallback(
-      () => apiRequest<void>(`/admin/organizers/${organizerId}`, { method: "DELETE" }),
-      () => undefined,
-    );
+    return apiRequest<void>(`/admin/organizers/${organizerId}`, { method: "DELETE" });
   },
 };

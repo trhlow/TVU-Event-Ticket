@@ -2,20 +2,15 @@ FROM node:24-alpine AS build
 
 WORKDIR /app
 
+# Only per-environment values are build arguments. VITE_APP_ENV and VITE_AUTH_PROVIDER
+# live in frontend/.env.production so this image, CI and a manual build cannot disagree
+# about what "production" means.
 ARG VITE_API_BASE_URL
-ARG VITE_APP_ENV=production
-ARG VITE_AUTH_PROVIDER=microsoft
-ARG VITE_USE_DEMO_DATA=false
-ARG VITE_ENABLE_MOCK_FALLBACK=false
 ARG VITE_MICROSOFT_CLIENT_ID
 ARG VITE_MICROSOFT_TENANT_ID
 ARG VITE_MICROSOFT_REDIRECT_URI
 
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-ENV VITE_APP_ENV=${VITE_APP_ENV}
-ENV VITE_AUTH_PROVIDER=${VITE_AUTH_PROVIDER}
-ENV VITE_USE_DEMO_DATA=${VITE_USE_DEMO_DATA}
-ENV VITE_ENABLE_MOCK_FALLBACK=${VITE_ENABLE_MOCK_FALLBACK}
 ENV VITE_MICROSOFT_CLIENT_ID=${VITE_MICROSOFT_CLIENT_ID}
 ENV VITE_MICROSOFT_TENANT_ID=${VITE_MICROSOFT_TENANT_ID}
 ENV VITE_MICROSOFT_REDIRECT_URI=${VITE_MICROSOFT_REDIRECT_URI}
@@ -24,7 +19,8 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+# build:production fails the image build if any fixture data reached the bundle.
+RUN npm run build:production
 
 FROM nginx:1.29-alpine AS production
 

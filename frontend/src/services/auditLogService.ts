@@ -1,6 +1,5 @@
-import { mockAuditLogs } from "../data/mockAuditLogs";
 import { AuditLog } from "../types/audit";
-import { apiConfig, apiRequest } from "./apiClient";
+import { apiRequest } from "./apiClient";
 
 interface AuditLogResponse {
   id: string;
@@ -62,15 +61,6 @@ export const auditLogService = {
     size = 20,
     sort = "createdAt,desc",
   }: AuditLogQuery = {}): Promise<AuditLogPage> {
-    if (apiConfig.useDemoData) {
-      return {
-        items: mockAuditLogs.slice(page * size, page * size + size),
-        page,
-        size,
-        totalElements: mockAuditLogs.length,
-        totalPages: Math.max(1, Math.ceil(mockAuditLogs.length / size)),
-      };
-    }
     const params = new URLSearchParams({ page: String(page), size: String(size), sort });
     if (actorId) params.set("actorId", actorId);
     if (action) params.set("action", action);

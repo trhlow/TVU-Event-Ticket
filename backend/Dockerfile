@@ -2,7 +2,9 @@
 FROM maven:3.9.16-eclipse-temurin-25 AS build
 WORKDIR /workspace
 COPY . .
-RUN --mount=type=cache,target=/root/.m2 mvn -B -pl monolith -am -Dmaven.test.skip=true package
+# -Pprod keeps application-dev.yml (default bootstrap admin, demo-otp block) out of the
+# packaged jar. Local `mvn package` without the profile still gets it, so dev is unaffected.
+RUN --mount=type=cache,target=/root/.m2 mvn -B -Pprod -pl monolith -am -Dmaven.test.skip=true package
 
 FROM eclipse-temurin:25-jre
 ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -Xss512k -XX:MaxRAMPercentage=70.0"

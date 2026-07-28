@@ -1,6 +1,5 @@
-import { getEvents, saveEvents } from "../data/mockEvents";
 import { Event } from "../types/event";
-import { apiConfig, apiRequest } from "./apiClient";
+import { apiRequest } from "./apiClient";
 
 type BackendEventStatus = "DRAFT" | "OPEN" | "CLOSED";
 
@@ -91,123 +90,51 @@ async function loadAvailability(eventIds: string[]): Promise<Map<string, Availab
   }
 }
 
-async function withEventFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
-  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
-  // so the UI shows a genuine error state instead of silently masking it with fixture data.
-  if (apiConfig.useDemoData) return fallback();
-  return request();
-}
-
 export const eventService = {
-  list(): Event[] {
-    return getEvents();
-  },
   async listRemote(): Promise<Event[]> {
     return this.getPublicEvents();
   },
   async getPublicEvents(): Promise<Event[]> {
-    return withEventFallback(
-      async () => {
-        const events = await apiRequest<EventResponse[]>("/events");
-        const availability = await loadAvailability(events.map((event) => event.id));
-        return events.map((event) => mapRemoteEvent(event, availability.get(event.id)));
-      },
-      () => getEvents(),
-    );
+    const events = await apiRequest<EventResponse[]>("/events");
+    const availability = await loadAvailability(events.map((event) => event.id));
+    return events.map((event) => mapRemoteEvent(event, availability.get(event.id)));
   },
   async getFeaturedEvents(limit = 6): Promise<Event[]> {
-    return withEventFallback(
-      async () => (await this.getPublicEvents()).filter((event) => event.status === "OPEN").slice(0, limit),
-      () => getEvents().filter((event) => event.status === "OPEN" || event.status === "UPCOMING").slice(0, limit),
-    );
-  },
-  listByClub(clubId: string): Event[] {
-    return getEvents().filter((event) => event.clubId === clubId);
+    return (await this.getPublicEvents()).filter((event) => event.status === "OPEN").slice(0, limit);
   },
   async listByClubRemote(clubId: string): Promise<Event[]> {
-    return withEventFallback(
-      async () => {
-        void clubId;
-        const events = await apiRequest<EventResponse[]>("/events/mine");
-        const availability = await loadAvailability(events.map((event) => event.id));
-        return events.map((event) => mapRemoteEvent(event, availability.get(event.id)));
-      },
-      () => getEvents().filter((event) => event.clubId === clubId),
-    );
-  },
-  getById(eventId: string): Event | undefined {
-    return getEvents().find((event) => event.id === eventId);
+    void clubId;
+    const events = await apiRequest<EventResponse[]>("/events/mine");
+    const availability = await loadAvailability(events.map((event) => event.id));
+    return events.map((event) => mapRemoteEvent(event, availability.get(event.id)));
   },
   async getByIdRemote(eventId: string): Promise<Event | undefined> {
-    return withEventFallback(
-      async () => {
-        const event = await apiRequest<EventResponse>(`/events/${eventId}`);
-        const availability = await loadAvailability([event.id]);
-        return mapRemoteEvent(event, availability.get(event.id));
-      },
-      () => getEvents().find((event) => event.id === eventId),
-    );
+    const event = await apiRequest<EventResponse>(`/events/${eventId}`);
+    const availability = await loadAvailability([event.id]);
+    return mapRemoteEvent(event, availability.get(event.id));
   },
   async getPublicEventById(eventId: string): Promise<Event | undefined> {
     return this.getByIdRemote(eventId);
   },
   async create(data: EventPayload): Promise<Event> {
-    return withEventFallback(
-      async () => mapRemoteEvent(await apiRequest<EventResponse>("/events", {
-        method: "POST",
-        body: JSON.stringify(toEventRequest(data)),
-      })),
-      () => {
-        const event = data as Event;
-        const next = [event, ...getEvents()];
-        saveEvents(next);
-        return event;
-      },
-    );
+    return mapRemoteEvent(await apiRequest<EventResponse>("/events", {
+      method: "POST",
+      body: JSON.stringify(toEventRequest(data)),
+    }));
   },
   async update(eventId: string, data: EventPayload): Promise<Event> {
-    return withEventFallback(
-      async () => mapRemoteEvent(await apiRequest<EventResponse>(`/events/${eventId}`, {
-        method: "PUT",
-        body: JSON.stringify(toEventRequest(data)),
-      })),
-      () => {
-        const events = getEvents();
-        const index = events.findIndex((event) => event.id === eventId);
-        if (index === -1) throw new Error("Event not found");
-        const updated = { ...events[index], ...data, id: eventId } as Event;
-        events[index] = updated;
-        saveEvents(events);
-        return updated;
-      },
-    );
+    return mapRemoteEvent(await apiRequest<EventResponse>(`/events/${eventId}`, {
+      method: "PUT",
+      body: JSON.stringify(toEventRequest(data)),
+    }));
   },
   async changeStatus(eventId: string, status: BackendEventStatus): Promise<Event> {
-    return withEventFallback(
-      async () => mapRemoteEvent(await apiRequest<EventResponse>(`/events/${eventId}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status }),
-      })),
-      () => {
-        const events = getEvents();
-        const index = events.findIndex((event) => event.id === eventId);
-        if (index === -1) throw new Error("Event not found");
-        const updated = { ...events[index], status } as Event;
-        events[index] = updated;
-        saveEvents(events);
-        return updated;
-      },
-    );
+    return mapRemoteEvent(await apiRequest<EventResponse>(`/events/${eventId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    }));
   },
   async delete(eventId: string): Promise<void> {
-    return withEventFallback(
-      () => apiRequest<void>(`/events/${eventId}`, { method: "DELETE" }),
-      () => {
-        saveEvents(getEvents().filter((event) => event.id !== eventId));
-      },
-    );
-  },
-  save(events: Event[]): void {
-    saveEvents(events);
+    return apiRequest<void>(`/events/${eventId}`, { method: "DELETE" });
   },
 };

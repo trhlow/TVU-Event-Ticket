@@ -40,7 +40,6 @@ afterEach(() => {
 
 describe("auditLogService.listRemote — query building", () => {
   it("defaults to page=0, size=20, sort=createdAt,desc with no filters set", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, LOG_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -59,7 +58,6 @@ describe("auditLogService.listRemote — query building", () => {
   });
 
   it("forwards page/size/sort overrides and all four filters when given", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, LOG_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -86,7 +84,6 @@ describe("auditLogService.listRemote — query building", () => {
   });
 
   it("surfaces the envelope's pagination fields on the returned page", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(mockJsonResponse(200, { ...LOG_PAGE, page: 1, totalElements: 42, totalPages: 3 })),
@@ -103,7 +100,6 @@ describe("auditLogService.listRemote — query building", () => {
 
 describe("auditLogService.listRemote — DTO mapping", () => {
   it("maps actorEmail/detail through when present, and builds target as type:id", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJsonResponse(200, LOG_PAGE)));
 
     const { auditLogService } = await import("../auditLogService");
@@ -120,7 +116,6 @@ describe("auditLogService.listRemote — DTO mapping", () => {
   });
 
   it("falls back actorName/userName to actorId when actorEmail is null", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -139,7 +134,6 @@ describe("auditLogService.listRemote — DTO mapping", () => {
   });
 
   it("falls back result to an empty string when detail is null", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(
@@ -157,17 +151,3 @@ describe("auditLogService.listRemote — DTO mapping", () => {
   });
 });
 
-describe("auditLogService.listRemote — demo mode", () => {
-  it("paginates the local fixture instead of calling fetch when VITE_USE_DEMO_DATA=true", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "true");
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
-
-    const { auditLogService } = await import("../auditLogService");
-    const result = await auditLogService.listRemote({ page: 0, size: 1 });
-
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.items.length).toBeLessThanOrEqual(1);
-    expect(result.size).toBe(1);
-  });
-});
