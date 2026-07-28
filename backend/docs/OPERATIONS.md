@@ -62,7 +62,7 @@ SELECT message_id, started_at, attempt_no, last_error
 ## Backup and restore
 
 1. Run `infra/production/scripts/backup-postgres.sh` from the production host and store the encrypted output outside the host.
-2. Test restore in an isolated database using `restore-postgres.sh` at least quarterly.
+2. Test restore in an isolated database using `restore-postgres-into-new-stack.sh` at least quarterly.
 3. Record the restore time and data age; treat an untested backup as unavailable.
 
 ## Incident checklist
@@ -106,3 +106,31 @@ VALUES (gen_random_uuid(), NULL, 'reachable@example.com', 'Recovery Admin',
 Then request a code for that address through the normal admin sign-in. Rehearse this against
 the production database before the auth migration ships — a runbook nobody has executed is not
 a recovery plan.
+
+## SMTP outage — the case the SQL above cannot fix
+
+If the mail provider is down, every admin is locked out and no database change helps: whatever
+account you point at whatever mailbox, the code still has to travel through the provider that is
+not working.
+
+1. Confirm it really is the provider. `curl -fsS https://DOMAIN/actuator/health` reports mail
+   status; the monolith logs show the actual SMTP error. A DNS failure or blocked egress from the
+   VPS looks identical from the outside and is fixed differently.
+2. Fail over to the standby provider:
+
+   ```bash
+   cd /srv/tvu-event-ticket/backend/infra/production
+   bash scripts/failover-smtp.sh
+   ```
+
+3. Prove it: request an admin code, confirm the mail arrives, sign in. Health reporting `UP` only
+   means a connection succeeded, not that anything was delivered.
+4. When the primary recovers: `bash scripts/failover-smtp.sh --restore`.
+
+⛔ **This only works if it was set up and rehearsed in advance.** The standby credentials are
+commented out in `.env` by default. An untested standby is not a recovery path — SPF and DKIM are
+configured per provider, so a standby whose sender address was never authorised will connect
+successfully and have its mail silently dropped as spam, which looks like success from the server.
+
+**Rehearsal, required before cutover:** switch to standby, receive a real code at a real bootstrap
+mailbox, sign in, switch back. Record the date and who did it.

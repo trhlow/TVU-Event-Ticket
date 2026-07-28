@@ -118,6 +118,17 @@ BOOTSTRAP_ADMIN_EMAIL=$admin_email
 # live admin code. Rotating it invalidates codes currently in flight, which is expected — users
 # simply request a new one.
 OTP_PEPPER=$(openssl rand -base64 32)
+
+# Standby SMTP (H14). Fill these in and REHEARSE the switch before cutover: admin sign-in is a
+# code sent by email and nothing else, so if the primary provider goes down and there is no tested
+# second one, nobody can administer the system — the break-glass SQL cannot help, because the
+# replacement admin also needs a code delivered by mail.
+# Note SPF/DKIM are per provider: the standby needs its own authorised sender address.
+#SMTP_STANDBY_HOST=
+#SMTP_STANDBY_PORT=587
+#SMTP_STANDBY_USERNAME=
+#SMTP_STANDBY_PASSWORD=
+#MAIL_FROM_ADDRESS_STANDBY=
 JWT_PRIVATE_KEY_PEM=$(flatten_pem "$private_key")
 JWT_PUBLIC_KEY_PEM=$(flatten_pem "$public_key")
 

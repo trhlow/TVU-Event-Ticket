@@ -266,7 +266,7 @@ không chạy; khi đó phải dùng kế hoạch migration tiến hoặc restor
 kiểm chứng:
 
 ```bash
-bash scripts/restore-postgres.sh --confirm /absolute/path/to/backup.dump
+bash scripts/restore-postgres-into-new-stack.sh --confirm /absolute/path/to/backup.dump
 ```
 
 Restore thay dữ liệu thật, flush Redis, purge queue và requeue một cửa sổ outbox
