@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
 @Component
-@Profile("prod")
+@Profile("prod | microsoft")
 public class RestMicrosoftJwkSetClient implements MicrosoftJwkSetClient {
 
     /**

@@ -276,17 +276,40 @@
      and QRDisplayCard so every "physical" card in the app shares one depth language. */
   .tilt-card {
     position: relative;
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateZ(0);
     transition: transform var(--motion-fast) ease, box-shadow var(--motion-fast) ease, border-color var(--motion-fast) ease;
+    will-change: transform;
   }
 
   .tilt-card:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
-    border-color: rgba(37, 99, 235, 0.2);
+    transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg)) translateY(-2px) translateZ(0);
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.04),
+      0 14px 34px rgba(15, 23, 42, 0.1);
+    border-color: rgba(37, 99, 235, 0.24);
   }
 
+  /* Mouse-following spotlight, revealed only while hovering the card. Pure overlay: pointer-events
+     none, sits above content backgrounds but below text thanks to being first child + z-index. */
   .tilt-card-sheen {
-    display: none;
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background: radial-gradient(
+      420px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      rgba(96, 165, 250, 0.14),
+      rgba(34, 211, 238, 0.05) 42%,
+      transparent 68%
+    );
+    opacity: 0;
+    transition: opacity var(--motion-base) ease;
+    pointer-events: none;
+  }
+
+  .tilt-card:hover .tilt-card-sheen {
+    opacity: 1;
   }
 
   @media (hover: none), (pointer: coarse) {
@@ -448,27 +471,237 @@
   }
 
   .page-hero {
-    border: 1px solid var(--color-border-subtle);
-    background: var(--color-brand-700);
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(30, 58, 138, 0.35);
+    background:
+      radial-gradient(720px 300px at 88% -20%, rgba(34, 211, 238, 0.22), transparent 60%),
+      radial-gradient(560px 280px at 8% 120%, rgba(99, 102, 241, 0.28), transparent 62%),
+      linear-gradient(130deg, #172554 0%, #1e3a8a 46%, #1d4ed8 100%);
     border-radius: 14px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.09),
+      0 14px 34px rgba(23, 37, 84, 0.22);
+  }
+
+  .page-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(closest-side at 70% 40%, #000, transparent 130%);
+  }
+
+  .page-hero > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Auth (login) scene — deep-blue aurora over a faint grid. Card stays light with dark text so
+     copy never sinks into the backdrop; the drama lives behind the glass, not under the words. */
+  .auth-scene {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(900px 480px at 82% -12%, rgba(34, 211, 238, 0.16), transparent 62%),
+      radial-gradient(760px 460px at -8% 30%, rgba(99, 102, 241, 0.2), transparent 58%),
+      radial-gradient(640px 420px at 50% 118%, rgba(37, 99, 235, 0.26), transparent 64%),
+      linear-gradient(160deg, #0b1533 0%, #16255c 48%, #1b3a8f 100%);
+  }
+
+  .auth-scene::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(90deg, rgba(148, 189, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(148, 189, 255, 0.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: radial-gradient(closest-side at 50% 42%, #000 40%, transparent 100%);
+  }
+
+  .auth-orb {
+    position: absolute;
+    z-index: -1;
+    border-radius: 999px;
+    filter: blur(60px);
+    opacity: 0.55;
+    animation: authOrbDrift 14s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .auth-card {
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 1px 2px rgba(8, 15, 40, 0.18),
+      0 24px 70px rgba(8, 15, 40, 0.4);
+  }
+
+  .auth-back-link {
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .auth-back-link:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.38);
+  }
+
+  .auth-back-link:hover svg {
+    transform: translateX(-3px);
+  }
+
+  .auth-back-link svg {
+    transition: transform 0.2s ease;
+  }
+
+  .auth-logo-glow {
+    position: relative;
+  }
+
+  .auth-logo-glow::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+    z-index: -1;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.28), transparent 70%);
+    animation: authLogoPulse 3.6s ease-in-out infinite;
   }
 
   .landing-page {
     --landing-blue: #1e3f8f;
   }
 
+  .landing-main-shell {
+    box-shadow: 0 -18px 60px rgba(8, 15, 40, 0.16);
+  }
+
   .landing-hero-bg {
     transform: scale(1.035);
   }
 
+  .landing-hero-pattern {
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.12), transparent 28%),
+      radial-gradient(circle at 78% 24%, rgba(99, 102, 241, 0.15), transparent 26%),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: auto, auto, 56px 56px, 56px 56px;
+    mask-image: linear-gradient(to bottom, #000 20%, rgba(0, 0, 0, 0.85) 62%, transparent 100%);
+  }
+
+  .landing-soft-section {
+    background:
+      radial-gradient(720px 320px at 100% 0%, rgba(59, 130, 246, 0.08), transparent 64%),
+      radial-gradient(620px 300px at 0% 100%, rgba(34, 211, 238, 0.06), transparent 62%),
+      #f8fafc;
+  }
+
+  .landing-feature-card,
+  .landing-event-card {
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.04),
+      0 12px 32px rgba(15, 23, 42, 0.06);
+    transition:
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.28s ease,
+      box-shadow 0.28s ease;
+  }
+
+  .landing-feature-card:hover,
+  .landing-event-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(96, 165, 250, 0.55);
+    box-shadow:
+      0 2px 4px rgba(15, 23, 42, 0.04),
+      0 22px 46px rgba(30, 64, 175, 0.12);
+  }
+
+  .landing-guide-section {
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, 0.08), transparent 44%),
+      linear-gradient(135deg, #0f1f4d 0%, #173b8f 52%, #1556b8 100%);
+  }
+
+  .landing-guide-section::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 52px 52px;
+    mask-image: radial-gradient(closest-side at 50% 50%, #000, transparent 120%);
+  }
+
+  .landing-guide-glow {
+    position: absolute;
+    width: 24rem;
+    height: 24rem;
+    border-radius: 999px;
+    filter: blur(70px);
+    opacity: 0.22;
+    pointer-events: none;
+  }
+
+  .landing-guide-glow-left {
+    bottom: -14rem;
+    left: -8rem;
+    background: #22d3ee;
+  }
+
+  .landing-guide-glow-right {
+    top: -16rem;
+    right: -8rem;
+    background: #818cf8;
+  }
+
+  .landing-cta {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(560px 240px at 90% -30%, rgba(34, 211, 238, 0.3), transparent 60%),
+      radial-gradient(440px 220px at 5% 130%, rgba(129, 140, 248, 0.32), transparent 62%),
+      linear-gradient(125deg, #172554 0%, #1e3a8a 48%, #1d4ed8 100%);
+    box-shadow: 0 22px 54px rgba(30, 58, 138, 0.2);
+  }
+
+  .landing-cta::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    mask-image: linear-gradient(90deg, transparent, #000 45%, #000);
+  }
+
   .landing-guide-card {
-    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 0.28s ease,
+      box-shadow 0.28s ease;
   }
 
   .landing-guide-card:hover {
-    transform: translateY(-2px);
-    border-color: rgba(96, 165, 250, 0.4);
-    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
+    transform: translateY(-5px);
+    border-color: rgba(191, 219, 254, 0.9);
+    box-shadow: 0 24px 52px rgba(8, 15, 40, 0.24);
   }
 
   .landing-guide-step {
@@ -523,6 +756,31 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes authOrbDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  33% {
+    transform: translate3d(24px, -18px, 0) scale(1.06);
+  }
+  66% {
+    transform: translate3d(-18px, 14px, 0) scale(0.97);
+  }
+}
+
+@keyframes authLogoPulse {
+  0%,
+  100% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
   }
 }
 

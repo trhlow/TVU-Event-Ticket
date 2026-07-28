@@ -1,16 +1,37 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronUp } from "lucide-react";
 
 interface ScrollToTopButtonProps {
   scrollContainerId?: string;
+  showAfterElementId?: string;
 }
 
-export default function ScrollToTopButton({ scrollContainerId }: ScrollToTopButtonProps) {
+export default function ScrollToTopButton({ scrollContainerId, showAfterElementId }: ScrollToTopButtonProps) {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const scrollTarget = scrollContainerId ? document.getElementById(scrollContainerId) : window;
     if (!scrollTarget) return undefined;
+
+    const showAfterElement = showAfterElementId ? document.getElementById(showAfterElementId) : null;
+
+    if (showAfterElement) {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          const rootTop = entry.rootBounds?.top ?? 0;
+          setVisible(entry.isIntersecting || entry.boundingClientRect.top < rootTop);
+        },
+        {
+          root: scrollTarget instanceof Window ? null : scrollTarget,
+          rootMargin: "0px 0px -15% 0px",
+          threshold: 0,
+        },
+      );
+
+      observer.observe(showAfterElement);
+      return () => observer.disconnect();
+    }
 
     const getScrollTop = () => (scrollTarget instanceof Window ? scrollTarget.scrollY : scrollTarget.scrollTop);
     const handleScroll = () => setVisible(getScrollTop() > 300);
@@ -19,7 +40,7 @@ export default function ScrollToTopButton({ scrollContainerId }: ScrollToTopButt
     scrollTarget.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => scrollTarget.removeEventListener("scroll", handleScroll);
-  }, [scrollContainerId]);
+  }, [scrollContainerId, showAfterElementId]);
 
   const handleClick = () => {
     const scrollTarget = scrollContainerId ? document.getElementById(scrollContainerId) : window;
@@ -32,7 +53,7 @@ export default function ScrollToTopButton({ scrollContainerId }: ScrollToTopButt
     scrollTarget?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  return (
+  return createPortal(
     <button
       type="button"
       aria-label="Quay lên đầu trang"
@@ -45,6 +66,7 @@ export default function ScrollToTopButton({ scrollContainerId }: ScrollToTopButt
       ].join(" ")}
     >
       <ChevronUp className="h-5 w-5" aria-hidden="true" />
-    </button>
+    </button>,
+    document.body,
   );
 }
