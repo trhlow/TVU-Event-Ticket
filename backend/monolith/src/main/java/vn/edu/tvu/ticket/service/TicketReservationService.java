@@ -1,5 +1,6 @@
 package vn.edu.tvu.ticket.service;
 
+import vn.edu.tvu.shared.audit.AuditDetail;
 import vn.edu.tvu.ticket.client.EventLookup;
 import vn.edu.tvu.ticket.client.EventSnapshot;
 import vn.edu.tvu.ticket.domain.OutboxMessage;
@@ -138,7 +139,7 @@ public class TicketReservationService {
         var ticket = ticketRepository.save(Ticket.issue(reservation));
         recordReservationApproved(reservation, ticket);
         recordAudit(actor.userId(), "audit.ticket.approve", "reservation", reservation.getId(),
-                "{\"ticketId\":\"" + ticket.getId() + "\"}");
+                AuditDetail.of("ticketId", ticket.getId()));
         return reservationResponse(reservation, ticket);
     }
 

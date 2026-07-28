@@ -64,6 +64,16 @@ public class SecurityConfig {
                         .hasRole("ORGANIZER")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        // Spring registers /.well-known/oauth-protected-resource automatically when
+                        // oauth2ResourceServer is enabled, and its built-in default advertises
+                        // tlsClientCertificateBoundAccessTokens(true). This application does not
+                        // verify certificate-bound tokens (RFC 8705), so that default is simply
+                        // untrue, and a client reading the metadata to decide how to present a token
+                        // would be misled. Not a bypass — the endpoint grants nothing — but metadata
+                        // that lies is worse than no metadata.
+                        .protectedResourceMetadata(metadata -> metadata
+                                .protectedResourceMetadataCustomizer(builder ->
+                                        builder.tlsClientCertificateBoundAccessTokens(false)))
                         .bearerTokenResolver(bearerTokenResolver())
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder)

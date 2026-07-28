@@ -1,5 +1,6 @@
 package vn.edu.tvu.auth.service;
 
+import vn.edu.tvu.shared.audit.AuditDetail;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
@@ -62,7 +63,7 @@ public class AdminManagementService {
         }
         var club = clubRepository.save(new Club(name, trimToNull(request.description())));
         auditLogService.recordAudit(actorId, "auth.club.create", "club", club.getId(),
-                "{\"name\":\"" + club.getName() + "\"}");
+                AuditDetail.of("name", club.getName()));
         return clubResponse(club);
     }
 
@@ -79,7 +80,7 @@ public class AdminManagementService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.update(request.name().trim(), trimToNull(request.description()));
         auditLogService.recordAudit(actorId, "auth.club.update", "club", club.getId(),
-                "{\"name\":\"" + club.getName() + "\"}");
+                AuditDetail.of("name", club.getName()));
         return clubResponse(club);
     }
 
@@ -162,7 +163,7 @@ public class AdminManagementService {
         var organizer = userRepository.save(
                 User.emailOtpOrganizer(email, request.displayName().trim(), club));
         auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
-                "{\"email\":\"" + organizer.getEmail() + "\"}");
+                AuditDetail.of("email", organizer.getEmail()));
         return organizerResponse(organizer);
     }
 
@@ -188,6 +189,10 @@ public class AdminManagementService {
     @Transactional
     public void deleteOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
+        // Their remembered browsers must stop refreshing. The JWT dies with the row (the validator
+        // rejects a token whose user no longer exists), but a device cookie would otherwise remain
+        // in the table pointing at a deleted user.
+        trustedDeviceService.revokeAll(organizer.getId());
         userRepository.delete(organizer);
         auditLogService.recordAudit(actorId, "auth.organizer.delete", "user", organizerId, "{}");
     }

@@ -20,13 +20,18 @@ jobs:
         id: filter
         with:
           filters: |
+            # The workflow and its scripts appear under BOTH filters on purpose. Without that, a
+            # change touching only CI could skip both jobs while ci-gate still reported success —
+            # a green gate that verified nothing.
             backend:
               - 'backend/pom.xml'
               - 'backend/Dockerfile'
               - 'backend/monolith/**'
               - 'backend/infra/**'
+              - '.github/workflows/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/**'
 
   backend:
     needs: changes
@@ -115,7 +120,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          # Must match frontend/Dockerfile (which builds the artifact that ships) and .nvmrc.
+          # Three different Node versions meant a green CI said nothing about the real image:
+          # the same suite passes on 22 and fails on 26.
+          node-version-file: frontend/.nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -137,9 +145,12 @@ jobs:
         # chunk, no fixture email/student id, no stray mock storage key.
         run: npm run build:production
 
-      - name: Audit dependencies (non-blocking)
+      - name: Audit dependencies
         working-directory: frontend
-        run: npm audit --audit-level=high || true
+        # No `|| true`. Fail-open meant a known high-severity CVE left the gate green, which is the
+        # same as not running it. If a finding has to be accepted, accept it explicitly with
+        # `npm audit --omit=dev` scope or an override, in a commit someone reviewed.
+        run: npm audit --audit-level=high
 
       - name: Fail if a real .env file was accidentally committed
         run: |
