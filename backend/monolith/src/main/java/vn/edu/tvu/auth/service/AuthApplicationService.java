@@ -1,5 +1,6 @@
 package vn.edu.tvu.auth.service;
 
+import vn.edu.tvu.auth.domain.AuthMethod;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
@@ -90,8 +91,15 @@ public class AuthApplicationService {
      * them by address — a reissued email pointing at a brand-new subject simply becomes a new student.
      */
     private User resolveUser(ExternalIdentity identity) {
-        return userRepository.findByExtSubject(identity.subject())
+        return userRepository.findByExtSubjectAndAuthMethod(identity.subject(), AuthMethod.MICROSOFT)
                 .map(user -> {
+                    // Fail closed. A non-student on the Microsoft path is a shape V13 forbids, so
+                    // reaching here means the data is wrong; minting a session for it would hand
+                    // out admin rights on the strength of a row that should not exist.
+                    if (user.getRole() != UserRole.SINH_VIEN) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                "This account cannot sign in with Microsoft");
+                    }
                     user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
                     return user;
                 })

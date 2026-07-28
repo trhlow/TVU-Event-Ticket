@@ -87,6 +87,6 @@ class AuditLogRepositoryTest extends AbstractPostgresIntegrationTest {
     }
 
     private static User actor(String email) {
-        return User.superAdmin("ext-" + email, email, "Audit Actor");
+        return User.emailOtpSuperAdmin(email, "Audit Actor");
     }
 }

@@ -796,6 +796,35 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
       minh được digest đúng) vừa dễ false-positive vì key khác cũng có thể
       chứa 6 chữ số.
 
+> ✅ **H3 + M8 XONG 2026-07-28** — `V13__users_auth_identity_constraint.sql`
+> gộp cả hai như C3.-1 yêu cầu. Clean slate đã chốt nên áp thẳng, không có
+> bước sửa dữ liệu cũ và không cần `NOT VALID` → `VALIDATE`.
+> - 4 CHECK: identity theo role (H3), club theo role, `VERIFIED` phải có
+>   `mssv`, và admin không được mang `mssv`/`class_code` (M8).
+> - Lớp code: `findByExtSubjectAndAuthMethod(subject, MICROSOFT)` +
+>   fail-closed nếu `role != SINH_VIEN`; `verifyMssv` chặn non-student.
+> - Đã xoá `User.organizer()` / `User.superAdmin()` — chúng tạo đúng hình
+>   dạng row mà DB nay cấm (MICROSOFT + có `ext_subject`). 14 chỗ dùng ở 5
+>   file test chuyển sang `emailOtpOrganizer`/`emailOtpSuperAdmin`.
+> - Bằng chứng: **18 test constraint trên Postgres thật**, ma trận nêu rõ
+>   `ext_subject` ở MỌI ca, và kiểm **cả INSERT lẫn UPDATE** — một CHECK chỉ
+>   chạy lúc INSERT sẽ để nguyên đường UPDATE lách qua.
+>
+> ⚠️ **Hai hệ quả phát sinh, ghi lại vì chúng đổi giả định của mục khác:**
+> 1. Fixture `ParentRows.user()` từng gán `club_id` cho **mọi** role, và
+>    `TicketRepositoryTest`/`TicketClubStatsQueryTest` tạo ORGANIZER **không
+>    có club** — cả hai đều là hình dạng `createOrganizer` không bao giờ sinh
+>    ra. Constraint phát hiện, đã sửa fixture chứ không nới constraint.
+> 2. `UserClubStatsQueryTest` có fixture cố ý nhét SUPER_ADMIN vào club với lý
+>    do "cột cho phép nên row cũ có thể như vậy" — **tiền đề đó nay sai**, DB
+>    cấm hẳn. Đã đổi thành assert DB từ chối, tách sang test riêng vì vi phạm
+>    constraint làm abort cả transaction.
+> 3. ⛔ **Nhánh "Club is inactive" trong `AuthApplicationService.login()` nay
+>    là code chết**: chỉ SINH_VIEN đi qua đường Entra, mà sinh viên không có
+>    club. Tôi **giữ nguyên nhánh** (phòng thủ nhiều lớp) nhưng ràng buộc thật
+>    cho organizer nằm ở đường OTP — **đó là H7, vẫn đang mở**. Đừng coi mục
+>    này là đã có bảo vệ.
+
 - [ ] **H3. Fail-closed hai lớp cho Entra login** — `resolveUser`
       (`AuthApplicationService.java:92-99`) chỉ match `ext_subject`:
   - [ ] Lớp DB: migration CHECK `SINH_VIEN → MICROSOFT + ext_subject NOT

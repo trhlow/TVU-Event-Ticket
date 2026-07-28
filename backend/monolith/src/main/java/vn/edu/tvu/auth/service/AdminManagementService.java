@@ -124,6 +124,12 @@ public class AdminManagementService {
     public void verifyMssv(UUID actorId, UUID userId) {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        // "Has a non-blank mssv" says nothing about whose row it is. Without this an admin could
+        // mark an organiser as a verified student — a shape V13 now refuses at the database level
+        // anyway, so the request has to stop here rather than fail as a constraint violation.
+        if (user.getRole() != UserRole.SINH_VIEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a student account has an MSSV to verify");
+        }
         if (user.getMssv() == null || user.getMssv().isBlank()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User has no MSSV to verify");
         }

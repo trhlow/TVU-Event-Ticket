@@ -58,7 +58,7 @@ class AdminManagementServiceTest {
     @Test
     void lockOrganizer_locksAccountAndRevokesOutstandingTokens() {
         var organizerId = UUID.randomUUID();
-        var organizer = User.organizer("entra:org", "organizer@example.com", "Organizer", null);
+        var organizer = User.emailOtpOrganizer("organizer@example.com", "Organizer", new Club("CLB", "Club"));
         ReflectionTestUtils.setField(organizer, "id", organizerId);
         when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
         var versionBeforeLock = organizer.getAuthVersion();
@@ -204,11 +204,31 @@ class AdminManagementServiceTest {
     }
 
     @Test
+    void verifyMssv_rejectsANonStudentEvenWhenAnMssvIsPresent() {
+        // The check used to be "is the mssv non-blank", which says nothing about whose row it is.
+        // An admin could mark an organiser as a verified student, and V13 forbids that shape at
+        // the database level anyway — so the service must refuse before it gets there.
+        var userId = UUID.randomUUID();
+        var club = new Club("CLB", "Club");
+        var organizer = User.emailOtpOrganizer("organizer@example.com", "Organizer", club);
+        ReflectionTestUtils.setField(organizer, "id", userId);
+        ReflectionTestUtils.setField(organizer, "mssv", "110122001");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.verifyMssv(UUID.randomUUID(), userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("student");
+
+        assertThat(organizer.getMssvStatus()).isEqualTo(MssvStatus.UNVERIFIED);
+    }
+
+    @Test
     void verifyMssv_rejectsUserWithoutMssv() {
         var userId = UUID.randomUUID();
-        var organizer = User.organizer("dev:organizer", "organizer@example.com", "Organizer", null);
-        ReflectionTestUtils.setField(organizer, "id", userId);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(organizer));
+        // A student, so the request gets past the role check and fails on the missing MSSV itself.
+        var student = User.student("dev:student", "student@example.com", "Student");
+        ReflectionTestUtils.setField(student, "id", userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(student));
 
         assertThatThrownBy(() -> service.verifyMssv(UUID.randomUUID(), userId))
                 .isInstanceOf(ResponseStatusException.class)

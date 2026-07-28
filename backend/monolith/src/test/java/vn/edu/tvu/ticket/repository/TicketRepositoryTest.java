@@ -289,9 +289,12 @@ class TicketRepositoryTest extends AbstractPostgresIntegrationTest {
         ticketRepository.saveAndFlush(Ticket.issue(reservation));
     }
 
-    /** A real organizer row for {@code reservations.reviewed_by}, which V7 constrains to users(id). */
+    /**
+     * A real organizer row for {@code reservations.reviewed_by}, which V7 constrains to users(id).
+     * Gets its own club because V13 requires every organiser to belong to one.
+     */
     private UUID reviewer() {
-        return ParentRows.user(jdbc, UUID.randomUUID(), null, "ORGANIZER");
+        return ParentRows.user(jdbc, UUID.randomUUID(), ParentRows.club(jdbc, UUID.randomUUID()), "ORGANIZER");
     }
 
     private void backdateRequestedAt(UUID reservationId, Instant requestedAt) {

@@ -98,14 +98,6 @@ public class User {
         return new User(extSubject, email, displayName, UserRole.SINH_VIEN, null);
     }
 
-    public static User organizer(String extSubject, String email, String displayName, Club club) {
-        return new User(extSubject, email, displayName, UserRole.ORGANIZER, club);
-    }
-
-    public static User superAdmin(String extSubject, String email, String displayName) {
-        return new User(extSubject, email, displayName, UserRole.SUPER_ADMIN, null);
-    }
-
     public static User emailOtpOrganizer(String email, String displayName, Club club) {
         var user = new User(null, email, displayName, UserRole.ORGANIZER, club);
         user.authMethod = AuthMethod.EMAIL_OTP;

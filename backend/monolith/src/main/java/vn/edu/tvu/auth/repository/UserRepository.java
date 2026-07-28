@@ -24,6 +24,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("select u.authVersion from User u where u.id = :userId")
     Optional<Long> findAuthVersionById(@Param("userId") UUID userId);
 
+    /**
+     * Resolves an Entra login. Matching the subject <em>and</em> the sign-in method is the second
+     * layer behind the V13 CHECK constraint: should an admin row ever end up carrying a subject —
+     * a manual fix during an incident, a future code path — the Entra flow still cannot reach it.
+     */
+    Optional<User> findByExtSubjectAndAuthMethod(String extSubject, AuthMethod authMethod);
+
     Optional<User> findByExtSubject(String extSubject);
 
     Optional<User> findByEmail(String email);

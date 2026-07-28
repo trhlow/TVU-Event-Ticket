@@ -61,7 +61,7 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
     void organizerWhoActedInTheSystemCanStillBeDeleted() {
         var club = clubRepository.saveAndFlush(new Club("CLB Su kien", "Ban to chuc su kien"));
         var organizer = userRepository.saveAndFlush(
-                User.organizer("ext-org-1", "organizer@example.com", "Organizer One", club));
+                User.emailOtpOrganizer("organizer@example.com", "Organizer One", club));
         var student = userRepository.saveAndFlush(
                 User.student("ext-stu-1", "student@example.com", "Student One"));
         var eventId = UUID.randomUUID();
@@ -143,7 +143,7 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
     @Test
     void userRepositoryPersistsOrganizerClubScope() {
         var club = clubRepository.saveAndFlush(new Club("CLB Truyen thong", "Truyen thong su kien"));
-        var organizer = User.organizer("msal-organizer-1", "organizer@example.com", "Tran Thi B", club);
+        var organizer = User.emailOtpOrganizer("organizer@example.com", "Tran Thi B", club);
 
         userRepository.saveAndFlush(organizer);
 
@@ -218,8 +218,7 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
         var club = clubRepository.saveAndFlush(new Club("CLB Stats " + UUID.randomUUID(), null));
         userRepository.saveAndFlush(User.student("ext-stats-1", "stats-student-1@example.com", "Student One"));
         userRepository.saveAndFlush(User.student("ext-stats-2", "stats-student-2@example.com", "Student Two"));
-        userRepository.saveAndFlush(User.organizer("ext-stats-3", "stats-organizer@example.com", "Organizer One",
-                club));
+        userRepository.saveAndFlush(User.emailOtpOrganizer("stats-organizer@example.com", "Organizer One", club));
 
         var rows = userRepository.countGroupedByRole();
 
@@ -235,7 +234,7 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
         // Proves V12 actually applied and that the projection the authentication path runs on
         // every request maps to it. A unit test with a stubbed lookup cannot show either.
         var user = userRepository.saveAndFlush(
-                User.organizer("ext-authver", "authver@example.com", "Auth Version", null));
+                User.emailOtpSuperAdmin("authver@example.com", "Auth Version"));
 
         assertThat(userRepository.findAuthVersionById(user.getId())).contains(0L);
     }
@@ -243,7 +242,7 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
     @Test
     void findAuthVersionById_seesTheBumpThatRevokesIssuedTokens() {
         var user = userRepository.saveAndFlush(
-                User.organizer("ext-authver-bump", "authver-bump@example.com", "Auth Version", null));
+                User.emailOtpSuperAdmin("authver-bump@example.com", "Auth Version"));
 
         user.revokeIssuedTokens();
         userRepository.saveAndFlush(user);
@@ -263,7 +262,7 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
         // The whole reason auth_version is a separate column from the @Version optimistic-lock
         // counter: renaming yourself must not sign you out of every device.
         var user = userRepository.saveAndFlush(
-                User.organizer("ext-authver-rename", "authver-rename@example.com", "Before", null));
+                User.emailOtpSuperAdmin("authver-rename@example.com", "Before"));
 
         user.rename("After");
         userRepository.saveAndFlush(user);
