@@ -162,3 +162,58 @@ jobs:
       - name: Build deployable frontend image
         working-directory: frontend
         run: docker build -t tvu/frontend:ci .
+
+  # Aggregate gate. `backend` and `frontend` are skipped by their own `if:` when the
+  # path filter does not match, and `dependency-review` does not exist at all on push
+  # events -- requiring those contexts directly in branch protection would block every
+  # PR that happens not to touch them. This job always runs, so it is the one safe
+  # context to require on main.
+  ci-gate:
+    needs: [changes, backend, frontend, dependency-review]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate CI results
+        env:
+          EVENT: ${{ github.event_name }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+        run: |
+          set -uo pipefail
+          failed=0
+          fail() { echo "::error::$1"; failed=1; }
+
+          # Everything else is gated on `changes`, so a skip or failure here makes the
+          # whole run untrustworthy. It must have run and passed.
+          [ "$CHANGES_RESULT" = success ] || fail "changes: expected success, got '$CHANGES_RESULT'"
+
+          # A skipped path job counts as a pass ONLY when the filter genuinely reported
+          # "unchanged". A blanket "skipped is fine" rule would be fail-open: a job
+          # skipped for any unforeseen reason would silently satisfy the gate.
+          check_path_job() {
+            name="$1"; result="$2"; changed="$3"
+            case "$result" in
+              success) ;;
+              skipped)
+                if [ "$changed" != false ]; then
+                  fail "$name: skipped but changes.outputs.$name='$changed' (expected 'false')"
+                fi
+                ;;
+              *) fail "$name: expected success, got '$result'" ;;
+            esac
+          }
+          check_path_job backend "$BACKEND_RESULT" "$BACKEND_CHANGED"
+          check_path_job frontend "$FRONTEND_RESULT" "$FRONTEND_CHANGED"
+
+          # dependency-review runs on pull_request only; on push it is skipped by design.
+          if [ "$EVENT" = pull_request ]; then
+            [ "$DEPENDENCY_REVIEW_RESULT" = success ] \
+              || fail "dependency-review: expected success on pull_request, got '$DEPENDENCY_REVIEW_RESULT'"
+          fi
+
+          [ "$failed" -eq 0 ] || exit 1
+          echo "All CI jobs accounted for."
