@@ -22,9 +22,17 @@ class ProductionSecretsValidatorTest {
      * the key. Compose then supplies an empty string, the property record substitutes its dev default, and
      * production runs on a secret that is committed to this repository.
      */
+    private static vn.edu.tvu.auth.otp.OtpProperties strongPepper() {
+        return new vn.edu.tvu.auth.otp.OtpProperties("Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MGFiY2RlZmdoaQ==");
+    }
+
+    private static BootstrapAdminProperties twoAdmins() {
+        return new BootstrapAdminProperties("truong@tvu.edu.vn,pho@tvu.edu.vn");
+    }
+
     @Test
     void blankCsrfSecretIsRejected() {
-        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(""), prodJwt(), noDemoOtp()))
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(""), prodJwt(), noDemoOtp(), strongPepper(), twoAdmins()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.csrf.signing-secret");
     }
@@ -32,7 +40,7 @@ class ProductionSecretsValidatorTest {
     @Test
     void blankJwtKeyMaterialIsRejected() {
         assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET),
-                new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", "", ""), noDemoOtp()))
+                new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", "", ""), noDemoOtp(), strongPepper(), twoAdmins()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.jwt");
     }
@@ -41,7 +49,7 @@ class ProductionSecretsValidatorTest {
     void halfConfiguredJwtKeyPairIsRejected() {
         assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET),
                 new JwtProperties("https://events.example.com", Duration.ofMinutes(15), "k", PRIVATE_PEM, ""),
-                noDemoOtp()))
+                noDemoOtp(), strongPepper(), twoAdmins()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.jwt");
     }
@@ -49,14 +57,61 @@ class ProductionSecretsValidatorTest {
     @Test
     void rejectsDemoOtpConfigurationInProduction() {
         assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
-                new DemoOtpProperties(java.util.List.of("sadminevt@tvu.edu.vn", "adminclb@tvu.edu.vn"), "123456")))
+                new DemoOtpProperties(java.util.List.of("sadminevt@tvu.edu.vn", "adminclb@tvu.edu.vn"), "123456"),
+                strongPepper(), twoAdmins()))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("tvu.auth.demo-otp");
     }
 
     @Test
+    void developmentPepperIsRejected() {
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
+                noDemoOtp(), new vn.edu.tvu.auth.otp.OtpProperties(null), twoAdmins()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("tvu.auth.otp.pepper");
+    }
+
+    @Test
+    void shortPepperIsRejected() {
+        // A six-digit code has a million possibilities; a weak pepper is reversed offline from a
+        // Redis dump in moments, which is the whole thing the pepper exists to prevent.
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
+                noDemoOtp(), new vn.edu.tvu.auth.otp.OtpProperties("too-short"), twoAdmins()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("too short");
+    }
+
+    @Test
+    void aSingleBootstrapAdminIsRejected() {
+        // Sign-in is passwordless: if that one mailbox is unreachable, nobody can administer the
+        // deployment and no other account has the rights to fix it.
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
+                noDemoOtp(), strongPepper(), new BootstrapAdminProperties("only@tvu.edu.vn")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("at least 2");
+    }
+
+    @Test
+    void duplicateBootstrapAdminsAreRejected() {
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
+                noDemoOtp(), strongPepper(),
+                new BootstrapAdminProperties("truong@tvu.edu.vn,truong@tvu.edu.vn")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("twice");
+    }
+
+    @Test
+    void malformedBootstrapAdminIsRejected() {
+        assertThatThrownBy(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(),
+                noDemoOtp(), strongPepper(),
+                new BootstrapAdminProperties("truong@tvu.edu.vn,not-an-email")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("invalid address");
+    }
+
+    @Test
     void fullyConfiguredSecretsAreAccepted() {
-        assertThatCode(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(), noDemoOtp()))
+        assertThatCode(() -> new ProductionSecretsValidator(new CsrfProperties(REAL_SECRET), prodJwt(), noDemoOtp(), strongPepper(), twoAdmins()))
                 .doesNotThrowAnyException();
     }
 

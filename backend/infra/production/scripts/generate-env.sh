@@ -28,6 +28,29 @@ EOF
 
 domain="$1"
 admin_email="$2"
+
+# Example domains must never reach BOOTSTRAP_ADMIN_EMAIL. After a clean-slate reset the runner
+# creates a SUPER_ADMIN for every address listed, so one example value left in place silently
+# recreates a ghost administrator account nobody owns.
+IFS=',' read -r -a bootstrap_emails <<< "$admin_email"
+[[ ${#bootstrap_emails[@]} -ge 2 ]] || {
+  echo "ADMIN_EMAILS must list at least two real mailboxes, comma-separated" >&2
+  exit 2
+}
+for candidate in "${bootstrap_emails[@]}"; do
+  candidate="$(echo "$candidate" | tr -d '[:space:]')"
+  [[ "$candidate" == *@*.* ]] || {
+    echo "Not an email address: $candidate" >&2
+    exit 2
+  }
+  case "${candidate,,}" in
+    *@example.com|*@example.org|*@example.net|*@vidu.com|*@test.com|admin@*)
+      echo "Refusing placeholder bootstrap address: $candidate" >&2
+      echo "Use real mailboxes you can actually read — this creates live super admin accounts." >&2
+      exit 2
+      ;;
+  esac
+done
 microsoft_client_id="$3"
 microsoft_tenant_id="$4"
 
@@ -86,6 +109,10 @@ JWT_KEY_ID=tvu-prod-$(date -u +%Y%m%d)
 CSRF_SIGNING_SECRET=$(random_secret)
 QR_SIGNING_SECRET=$(random_secret)
 BOOTSTRAP_ADMIN_EMAIL=$admin_email
+# Secret of its own: mixed into the HMAC of every one-time code so a Redis dump cannot hand over a
+# live admin code. Rotating it invalidates codes currently in flight, which is expected — users
+# simply request a new one.
+OTP_PEPPER=$(openssl rand -base64 32)
 JWT_PRIVATE_KEY_PEM=$(flatten_pem "$private_key")
 JWT_PUBLIC_KEY_PEM=$(flatten_pem "$public_key")
 

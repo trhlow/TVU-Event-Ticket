@@ -760,6 +760,40 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
     - **Chỉ sau khi cả hai xong mới được đánh dấu H1 HOÀN TẤT.** Trước đó H1
       luôn ở trạng thái "đã cấu hình, chưa đóng".
 
+> ✅ **H2 + H6 XONG 2026-07-29.**
+>
+> **H2** — toàn bộ verify gộp vào **một Lua script** (`RedisOtpBackend.CONSUME`):
+> so digest, đếm lần sai, tiêu thụ hoặc huỷ mã, trong một lần chạy không xen kẽ.
+> Không dùng MULTI/EXEC vì GET phải chạy trước khi so, mà GET trước MULTI thì
+> nằm ngoài transaction — vẫn race.
+> - **OTP không còn lưu plaintext**: lưu `HMAC-SHA256(pepper, code)`. Không
+>   dùng SHA-256 trần — 6 chữ số chỉ có 10⁶ khả năng, đảo ngược tức thì.
+>   `OTP_PEPPER` là secret **riêng**, preflight chặn việc tái dùng
+>   CSRF/QR/JWT/SMTP.
+> - TTL gốc được đọc bằng `PTTL` rồi đặt lại bằng `PEXPIRE` sau mỗi lần đoán
+>   sai → đoán sai cách quãng **không** kéo dài tuổi thọ mã.
+> - `ProductionSecretsValidator` kiểm **độ mạnh** pepper (≥44 ký tự = 32 byte
+>   Base64), không chỉ "khác rỗng".
+> - ⚠️ Bằng chứng test **có bite**: tạm thay Lua bằng đúng cách cũ
+>   (read-then-write) thì **2 test đồng thời đỏ ngay** —
+>   `consume_letsExactlyOneOfTwoConcurrentCorrectCodesThrough` và
+>   `consume_countsConcurrentWrongGuessesWithoutLosingAny`; khôi phục thì xanh.
+>
+> **H6** — tách đúng hai tầng:
+> - **Cấu hình** (`ProductionSecretsValidator`, `@Profile("prod")`, không đụng
+>   DB): ≥2 địa chỉ, đúng định dạng, không trùng nhau.
+> - **Dữ liệu** (`BootstrapSuperAdminRunner`, sau Flyway, trong transaction):
+>   email đã tồn tại nhưng **không** phải `ACTIVE + SUPER_ADMIN + EMAIL_OTP` →
+>   **fail startup** thay vì skip im lặng; kèm assert cuối cho **mọi** địa chỉ.
+> - `generate-env.sh` nhận danh sách phẩy, **từ chối** `example.com`/`vidu.com`/
+>   `admin@*`, và sinh `OTP_PEPPER`. `preflight.sh` chặn lại lần nữa, kể cả
+>   `sadminevt@*` (email demo cũ).
+>
+> Bằng chứng: full suite **324 pass / 0 fail / 0 skipped** (+9 test).
+>
+> ⬜ **Còn nợ**: ghi vào docs vận hành rằng rotate `OTP_PEPPER` sẽ vô hiệu hoá
+> mọi OTP đang chờ (hành vi dự kiến, người dùng chỉ cần xin mã mới).
+
 - [ ] **H2. OTP verify không nguyên tử** — `OtpStore.java:44-61` GET →
       compare → REMOVE/PUT nhiều lệnh; hai request đồng thời cùng code đúng
       đều OK:

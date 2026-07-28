@@ -18,7 +18,7 @@ required_keys=(
   POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
   REDIS_PASSWORD RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS
   JWT_ISSUER_URI JWT_KEY_ID JWT_PRIVATE_KEY_PEM JWT_PUBLIC_KEY_PEM
-  CSRF_SIGNING_SECRET QR_SIGNING_SECRET BOOTSTRAP_ADMIN_EMAIL
+  CSRF_SIGNING_SECRET QR_SIGNING_SECRET OTP_PEPPER BOOTSTRAP_ADMIN_EMAIL
   MICROSOFT_CLIENT_ID MICROSOFT_TENANT_ID
   SPRING_MAIL_HOST SPRING_MAIL_PORT SPRING_MAIL_USERNAME SPRING_MAIL_PASSWORD
   MAIL_FROM_ADDRESS
@@ -33,9 +33,33 @@ domain="$(env_value APP_DOMAIN)"
 [[ "$(env_value JWT_ISSUER_URI)" == "https://$domain" ]] \
   || die "JWT_ISSUER_URI must exactly equal https://APP_DOMAIN"
 
-for key in POSTGRES_PASSWORD REDIS_PASSWORD RABBITMQ_DEFAULT_PASS CSRF_SIGNING_SECRET QR_SIGNING_SECRET; do
+for key in POSTGRES_PASSWORD REDIS_PASSWORD RABBITMQ_DEFAULT_PASS CSRF_SIGNING_SECRET QR_SIGNING_SECRET OTP_PEPPER; do
   value="$(env_value "$key")"
   [[ ${#value} -ge 32 ]] || die "$key must contain at least 32 characters"
+done
+
+# A six-digit code has only a million possibilities, so a weak pepper is reversed offline from a
+# Redis dump in moments. It must also be its own secret: reusing another one means a single leak
+# compromises both.
+otp_pepper="$(env_value OTP_PEPPER)"
+for other in CSRF_SIGNING_SECRET QR_SIGNING_SECRET JWT_PRIVATE_KEY_PEM SPRING_MAIL_PASSWORD; do
+  [[ "$otp_pepper" != "$(env_value "$other")" ]] || die "OTP_PEPPER must not reuse $other"
+done
+
+# Every address here becomes a live SUPER_ADMIN after a clean-slate reset, so an example value
+# silently creates an account nobody owns. Two addresses minimum: sign-in is passwordless, and one
+# unreachable mailbox would lock every administrator out permanently.
+bootstrap_emails="$(env_value BOOTSTRAP_ADMIN_EMAIL)"
+IFS=',' read -r -a bootstrap_list <<< "$bootstrap_emails"
+[[ ${#bootstrap_list[@]} -ge 2 ]]   || die "BOOTSTRAP_ADMIN_EMAIL must list at least two mailboxes, comma-separated"
+for candidate in "${bootstrap_list[@]}"; do
+  candidate="$(echo "$candidate" | tr -d '[:space:]')"
+  [[ "$candidate" == *@*.* ]] || die "BOOTSTRAP_ADMIN_EMAIL contains an invalid address: $candidate"
+  case "${candidate,,}" in
+    *@example.com|*@example.org|*@example.net|*@vidu.com|*@test.com|admin@*|sadminevt@*)
+      die "BOOTSTRAP_ADMIN_EMAIL contains a placeholder or demo address: $candidate"
+      ;;
+  esac
 done
 
 permissions="$(stat -c '%a' "$env_file" 2>/dev/null || true)"

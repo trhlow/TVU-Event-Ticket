@@ -46,6 +46,10 @@ tvu:
     # direct in-process call — so what remains on RabbitMQ is the reservation-approved notification.
     exchange: tvu.events
   auth:
+    otp:
+      # Its own secret, never a reuse of the JWT key, CSRF secret, QR key or SMTP password.
+      # ProductionSecretsValidator enforces presence and strength under the prod profile.
+      pepper: ${OTP_PEPPER:}
     jwt:
       issuer: ${JWT_ISSUER_URI:http://localhost:8080}
       ttl: ${JWT_TTL:15m}
