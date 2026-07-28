@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import LoadingSkeleton from '../common/LoadingSkeleton';
+import { isSafeImageUrl } from '../../utils/safeImageUrl';
 
 interface EventBannerProps {
   src?: string;
@@ -15,21 +16,24 @@ export default function EventBanner({
   className = 'h-44 w-full',
   imageClassName = '',
 }: EventBannerProps) {
-  const [isLoading, setIsLoading] = useState(Boolean(src));
-  const [hasError, setHasError] = useState(!src);
+  // The banner URL is free text on the event form, so it can carry any scheme.
+  // An unusable URL is treated exactly like a missing one: show the placeholder.
+  const safeSrc = isSafeImageUrl(src) ? src : undefined;
+  const [isLoading, setIsLoading] = useState(Boolean(safeSrc));
+  const [hasError, setHasError] = useState(!safeSrc);
 
   useEffect(() => {
-    setIsLoading(Boolean(src));
-    setHasError(!src);
-  }, [src]);
+    setIsLoading(Boolean(safeSrc));
+    setHasError(!safeSrc);
+  }, [safeSrc]);
 
   return (
     <div className={`relative bg-brand-900 overflow-hidden ${className}`}>
       {isLoading && <LoadingSkeleton type="banner" />}
 
-      {!hasError && src && (
+      {!hasError && safeSrc && (
         <img
-          src={src}
+          src={safeSrc}
           alt={alt}
           className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'} ${imageClassName}`}
           referrerPolicy="no-referrer"
