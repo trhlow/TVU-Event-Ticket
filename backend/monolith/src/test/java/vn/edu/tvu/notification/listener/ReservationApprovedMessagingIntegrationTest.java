@@ -16,16 +16,16 @@ import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.boot.test.context.SpringBootTest;
 import vn.edu.tvu.MonolithApplication;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import vn.edu.tvu.notification.domain.DeliveryStatus;
+import vn.edu.tvu.notification.repository.DeliveryLedgerRepository;
 
 import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.after;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
@@ -36,7 +36,7 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
     @MockitoBean TicketMailSender mailSender;
 
     @org.springframework.beans.factory.annotation.Autowired RabbitTemplate rabbitTemplate;
-    @org.springframework.beans.factory.annotation.Autowired StringRedisTemplate redisTemplate;
+    @org.springframework.beans.factory.annotation.Autowired DeliveryLedgerRepository ledger;
     @org.springframework.beans.factory.annotation.Autowired NotificationRabbitProperties properties;
     @org.springframework.beans.factory.annotation.Autowired vn.edu.tvu.shared.messaging.MessagingProperties messaging;
     @org.springframework.beans.factory.annotation.Autowired MeterRegistry meterRegistry;
@@ -46,39 +46,59 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
     void deliversOnceAndSkipsRedeliveryWithTheSameMessageId() throws Exception {
         var messageId = UUID.randomUUID();
         var message = message();
-        doAnswer(invocation -> null).when(mailSender).send(any(), any());
+        when(mailSender.send(any(), any())).thenReturn(TicketMailSender.SendResult.accepted());
 
         publish(messageId, message);
         verify(mailSender, timeout(TimeUnit.SECONDS.toMillis(10)).times(1)).send(any(), any());
-        awaitDoneKey(messageId);
+        awaitStatus(messageId, DeliveryStatus.DELIVERED);
 
         publish(messageId, message);
         verify(mailSender, after(1000).times(1)).send(any(), any());
     }
 
     @Test
-    void failedMailDoesNotCreateDoneKeyAndReachesDlqMetric() throws Exception {
+    void failedMailIsNotRecordedAsDeliveredAndReachesDlqMetric() throws Exception {
         var messageId = UUID.randomUUID();
-        doThrow(new IllegalStateException("smtp unavailable")).when(mailSender).send(any(), any());
+        when(mailSender.send(any(), any()))
+                .thenReturn(TicketMailSender.SendResult.retryable("authentication failed"));
 
         publish(messageId, message());
         awaitDlqMetric();
 
-        assertThat(redisTemplate.hasKey("notification:done:" + messageId)).isFalse();
+        // FAILED, never DELIVERED: the ledger must not claim an email went out when none did.
+        assertThat(ledger.findById(messageId)).hasValueSatisfying(entry ->
+                assertThat(entry.getStatus()).isEqualTo(DeliveryStatus.FAILED));
+    }
+
+    @Test
+    void ambiguousSendIsParkedAsUnknownAndNeverRetried() throws Exception {
+        // The case the whole ledger exists for: the provider may or may not have accepted it.
+        // Redelivery must not send a second ticket, and the row must be left for a human.
+        var messageId = UUID.randomUUID();
+        var message = message();
+        when(mailSender.send(any(), any()))
+                .thenReturn(TicketMailSender.SendResult.ambiguous("send failed: SocketTimeoutException"));
+
+        publish(messageId, message);
+        awaitStatus(messageId, DeliveryStatus.UNKNOWN);
+
+        // Publishing the same message id again must not trigger another send attempt.
+        publish(messageId, message);
+        verify(mailSender, after(1500).times(1)).send(any(), any());
     }
 
     @Test
     void transientMailFailureIsRetriedAndSucceedsWithoutReachingDlq() throws Exception {
         var messageId = UUID.randomUUID();
         var message = message();
-        doThrow(new IllegalStateException("smtp unavailable"))
-                .doAnswer(invocation -> null)
-                .when(mailSender).send(any(), any());
+        when(mailSender.send(any(), any()))
+                .thenReturn(TicketMailSender.SendResult.retryable("authentication failed"))
+                .thenReturn(TicketMailSender.SendResult.accepted());
 
         publish(messageId, message);
 
         verify(mailSender, timeout(TimeUnit.SECONDS.toMillis(15)).times(2)).send(eq(message), any());
-        awaitDoneKey(messageId);
+        awaitStatus(messageId, DeliveryStatus.DELIVERED);
         verify(mailSender, after(1000).times(2)).send(eq(message), any());
         assertThat(meterRegistry.find("notification.messages.dlq").counter()).satisfiesAnyOf(
                 counter -> assertThat(counter).isNull(),
@@ -106,15 +126,16 @@ class ReservationApprovedMessagingIntegrationTest extends AbstractRabbitIntegrat
         throw new AssertionError("Expected notification message to reach the DLQ");
     }
 
-    private void awaitDoneKey(UUID messageId) throws InterruptedException {
-        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+    private void awaitStatus(UUID messageId, DeliveryStatus expected) throws InterruptedException {
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
         while (System.nanoTime() < deadline) {
-            if (Boolean.TRUE.equals(redisTemplate.hasKey("notification:done:" + messageId))) {
+            if (ledger.findById(messageId).filter(e -> e.getStatus() == expected).isPresent()) {
                 return;
             }
             Thread.sleep(100);
         }
-        throw new AssertionError("Expected notification done key");
+        throw new AssertionError("Expected ledger status " + expected + " for " + messageId
+                + " but found " + ledger.findById(messageId).map(e -> e.getStatus().name()).orElse("no row"));
     }
 
     private ReservationApprovedMessage message() {

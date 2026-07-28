@@ -13,6 +13,52 @@
 3. Correct the root cause before replaying a message. A replay with the same message ID is idempotent after a successful delivery.
 4. For a transient SMTP issue, let the listener retry according to the configured backoff before replaying manually.
 
+## Delivery semantics, stated exactly
+
+Do not describe ticket email delivery as "at-least-once" without qualification, and never as
+exactly-once. The two paths differ:
+
+- **Failures proven to precede the message body** (compose error, authentication rejected, connect
+  failure, recipient refused): **at-least-once**. These are retried and can produce a duplicate.
+- **Ambiguous outcomes** (a timeout or reset once the body was already in flight, or a worker killed
+  mid-send): **not retried at all**, so the email **may never have been delivered**. This is a
+  deliberate trade: a duplicate ticket is worse than a delayed one, and only a person can tell the
+  two apart.
+
+That second case is a real gap, and it is only acceptable because someone is watching it.
+
+### UNKNOWN reconciliation — who, how often, what to do
+
+`notification_delivery_ledger` rows sitting at `UNKNOWN` are emails whose fate nobody knows. Nothing
+automatic will ever resolve them.
+
+- **Alerts.** `notification_ledger_unknown_current > 0` is the backlog gauge; it reads the database,
+  so it survives a restart and clears itself once the rows are dealt with.
+  `increase(notification_ledger_unknown_total[5m]) > 0` catches new ones arriving while an older
+  backlog is still being worked through.
+- **Who.** The operator on duty for the event. On a day with an event running, that must be a named
+  person, not "whoever notices".
+- **How often.** Within **1 hour** on an event day, and at least **once a day** otherwise. A ticket
+  email that arrives after the event has started is no better than one that never arrived.
+- **What to do**, per row:
+  1. Take `message_id`, `started_at` and `last_error` from the ledger.
+  2. Search the SMTP provider's log for a message to that student around `started_at`.
+  3. **Found** → the email went out. Mark the row `DELIVERED` and note who checked and when.
+  4. **Not found** → it did not. Mark the row `FAILED`; the message is then eligible to be sent
+     again, and the student gets their ticket.
+  5. **Provider logs unavailable or inconclusive** → contact the student directly. Do not guess:
+     marking it `DELIVERED` on a hunch means someone silently never receives a ticket.
+- **Always record the decision** — who, when, and on what evidence. This is the audit trail for a
+  ticket that may or may not exist.
+
+```sql
+-- The working queue.
+SELECT message_id, started_at, attempt_no, last_error
+  FROM notification_delivery_ledger
+ WHERE status = 'UNKNOWN'
+ ORDER BY started_at;
+```
+
 ## Backup and restore
 
 1. Run `infra/production/scripts/backup-postgres.sh` from the production host and store the encrypted output outside the host.

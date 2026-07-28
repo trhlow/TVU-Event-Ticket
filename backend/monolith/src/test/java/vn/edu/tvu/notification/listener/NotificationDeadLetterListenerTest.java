@@ -14,7 +14,9 @@ class NotificationDeadLetterListenerTest {
     @Test
     void recordsDeadLetterWithoutRepublishingIt() {
         var registry = new SimpleMeterRegistry();
-        var listener = new NotificationDeadLetterListener(new NotificationMetrics(registry));
+        var listener = new NotificationDeadLetterListener(
+                new NotificationMetrics(registry, org.mockito.Mockito.mock(
+                        vn.edu.tvu.notification.repository.DeliveryLedgerRepository.class)));
         var message = MessageBuilder.withBody("invalid payload".getBytes())
                 .setMessageId("18c8a8d0-33f6-460d-a4e7-154f72e8a9a9")
                 .setReceivedRoutingKey("reservation.approved")

@@ -1805,6 +1805,48 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
       - [ ] Ghi rõ `lease-ttl` (khuyến nghị ≥ 3× SMTP timeout) và chu kỳ chạy
         reconciler; lease quá ngắn sẽ đẻ ra `UNKNOWN` giả cho những lần gửi
         chỉ đang chậm.
+> ✅ **H13.1 XONG 2026-07-28** — `V15__notification_delivery_ledger.sql` +
+> protocol 3 pha + contract `TicketMailSender`.
+> - **Nguồn sự thật rời Redis**: `notification_delivery_ledger` nằm cùng DB với
+>   outbox nên `pg_dump` cuốn theo. `NotificationIdempotencyStore` đã **xoá
+>   hẳn**.
+>   - ⚠️ **Khác checklist một điểm, cố ý**: checklist ghi "Redis chỉ còn giữ
+>     lock ngắn hạn". Tôi bỏ luôn lock Redis, vì `claim()` của ledger đã là
+>     một conditional UPDATE — nó vừa loại trừ lẫn nhau vừa mang lease. Giữ
+>     song song hai lease với hai TTL khác nhau là đúng kiểu trùng lặp đã đẻ
+>     ra mớ này. Nếu bạn muốn giữ lock Redis, nói và tôi thêm lại.
+> - **Ba pha, ranh giới transaction là phần cốt lõi**: TX1 `claim` ghi
+>   PROCESSING + lease rồi **commit** → gửi SMTP **ngoài mọi transaction** →
+>   TX2 `conclude`. Cả hai pha đều `REQUIRES_NEW`; nếu claim chung transaction
+>   với việc gửi thì crash sẽ rollback claim và **xoá sạch bằng chứng** rằng
+>   một email có thể đã đi.
+> - **UNKNOWN có hai nguồn, không phải một**: processor ghi UNKNOWN khi nó
+>   *biết* là không thể biết (timeout sau khi body đã đi); `DeliveryReconciler`
+>   ghi UNKNOWN cho claim hết lease — ca process bị giết, vì lúc đó **không
+>   còn gì chạy để tự ghi**.
+> - `conclude` khớp `attempt_id` nên attempt cũ về muộn không ghi đè kết luận
+>   của attempt đã thay thế nó.
+> - **Contract**: `send()` trả `SendResult(ACCEPTED | RETRYABLE_BEFORE_DATA |
+>   AMBIGUOUS)` thay vì ném một `IllegalStateException` cho mọi thứ. Whitelist
+>   hẹp, **mặc định AMBIGUOUS**: chỉ connect failure và `SendFailedException`
+>   với `getValidSentAddresses()` rỗng mới là retryable.
+>   - Dùng API chuẩn `jakarta.mail.SendFailedException` chứ không phải
+>     `SMTPAddressFailedException` của Angus — class đó chỉ có ở runtime,
+>     không nằm trên compile classpath.
+> - **Metric**: gauge `notification.ledger.unknown.current` **đọc DB** (sống
+>   sót restart, tự về 0) + counter `notification.ledger.unknown` cho
+>   `increase(...[5m])`. Đúng đính chính v17.
+> - **SLA reconciliation** đã viết vào `OPERATIONS.md`: ai trực, ≤1 giờ ngày
+>   sự kiện, 5 bước xử lý từng row, và câu lệnh SQL lấy hàng đợi.
+> - Bằng chứng: **8 test trên Postgres thật**, gồm **failpoint hai giai đoạn**
+>   (claim → không conclude = mô phỏng đúng process bị giết → assert còn
+>   PROCESSING → hết lease → reconciler → UNKNOWN, `attempt_no` vẫn 1) và ca
+>   attempt cũ không ghi đè được. Test integration messaging viết lại theo
+>   ledger, thêm ca AMBIGUOUS → UNKNOWN và **không gửi lại**.
+> - ⚠️ `QrSignerTest` **flaky có sẵn** (sinh UUID ngẫu nhiên → payload QR đổi
+>   mỗi lần, ZXing thỉnh thoảng decode trượt). Không liên quan H13.1, chạy
+>   riêng 3 lần đều pass. Đáng sửa riêng bằng payload cố định.
+
     - [ ] ⛔ **Sửa contract của `TicketMailSender` — nếu không, protocol trên
       KHÔNG thi hành được (mới, v17).** Hiện `SmtpTicketMailSender.java:46-47`
       `catch (Exception ex)` rồi gói **tất cả** vào một `IllegalStateException`,

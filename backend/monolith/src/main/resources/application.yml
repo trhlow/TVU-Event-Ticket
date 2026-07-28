@@ -52,8 +52,10 @@ tvu:
       key-id: ${JWT_KEY_ID:monolith-dev}
   notification:
     idempotency:
-      done-ttl: P30D
       lock-ttl: PT2M
+      # Well above any SMTP timeout: a lease that expires because a send was slow turns a healthy
+      # delivery into an UNKNOWN row, and every UNKNOWN row costs someone a manual investigation.
+      lease-ttl: PT5M
     mail:
       from-address: ${MAIL_FROM_ADDRESS:no-reply@tvu.edu.vn}
       from-name: ${MAIL_FROM_NAME:TVU Events}
