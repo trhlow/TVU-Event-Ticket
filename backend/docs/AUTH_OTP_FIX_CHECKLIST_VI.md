@@ -1124,6 +1124,34 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
     đây là đường xác thực nên **vẫn phải review tay**: chạm cả hai luồng
     request và verify OTP.
 
+> ✅ **H8 PHA 2 + M1 XONG 2026-07-28** — `V14__trusted_device_lineage.sql`
+> (`device_family_id` + `issued_auth_version`, partial unique index một token
+> sống mỗi family, index `expires_at`).
+> - **Thứ tự khoá đã đảo đúng**: `refresh()` nay `ownerOf()` (đọc không khoá,
+>   chỉ để định vị) → `findByIdForUpdate()` (khoá user) → `exchange()` (mutate
+>   device). Trước đây là device → user, ngược chiều với sign-out-all/lock =
+>   deadlock thật. Cửa sổ race cũng đóng: successor nay được insert **dưới
+>   generation đọc trong cùng lock**.
+> - **Ba nhánh tường minh** `==` / `<` / `>`, không dùng `!=`. Nhánh `<` chính
+>   là lỗ DoS: kẻ giữ cookie cũ replay liên tục để thu hồi các device vừa đăng
+>   ký lại — nay chỉ log và từ chối, không đụng gì.
+> - Replay generation sống chỉ revoke **đúng family**, không `revokeAll()`.
+> - M1 khác: rotate **giữ nguyên absolute expiry** gốc (không `now + 30d`),
+>   cookie `Max-Age` = thời gian còn lại, cleanup chỉ xoá `expires_at < now`
+>   (giữ tombstone), thêm `TrustedDeviceCleanupJob` chạy mỗi giờ.
+> - ⚠️ **Test viết SAU implementation ở mục này** (không phải TDD). Để chứng
+>   minh test có giá trị, đã cố ý gộp nhánh `<` vào `==` → đúng **một** test
+>   đỏ (`exchange_replayOfStaleGenerationLeavesCurrentDevicesAlone`), rồi khôi
+>   phục. Test cũ khẳng định hành vi `revokeAll` — chính là bug M1 phải bỏ —
+>   nên đã viết lại chứ không sửa cho xanh.
+> - ⬜ **Còn nợ, không làm được ở mục này**: test deadlock song song
+>   `refresh()` ⟂ `deactivateClub()` (bắt `40P01`). `deactivateClub` chưa khoá
+>   user — đó là **H7**, nên chưa có hai chiều khoá để mà deadlock. Phải viết
+>   test đó **cùng H7**, đừng coi là đã phủ.
+> - ⬜ Logout revoke theo family: `revokeFamily()` đã có, phần nối vào endpoint
+>   logout thuộc **H5**.
+> - Full suite: **288 pass, 0 fail, 0 skipped**.
+
 > ✅ **H8 PHA 1 XONG 2026-07-28** — `V12__users_auth_version.sql`, claim
 > `auth_version`, `AuthVersionValidator` thay `RevokedTokenValidator`, và
 > `lockOrganizer` bump trong cùng transaction. **Pha 2 (lineage V14 + race

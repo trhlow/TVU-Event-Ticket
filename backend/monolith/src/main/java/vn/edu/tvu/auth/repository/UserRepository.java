@@ -10,7 +10,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,6 +33,19 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      * a manual fix during an incident, a future code path — the Entra flow still cannot reach it.
      */
     Optional<User> findByExtSubjectAndAuthMethod(String extSubject, AuthMethod authMethod);
+
+    /**
+     * Locks the user row for the duration of the transaction.
+     *
+     * <p>Every flow that touches trusted devices has to take this lock first — see the ordering note
+     * on {@link vn.edu.tvu.auth.service.TrustedDeviceService}. Refresh used to mutate the device row
+     * and read the user afterwards, i.e. device → user, while sign-out-all and lock-organiser go
+     * user → device. Two opposite orders running at once is a textbook deadlock, and PostgreSQL
+     * resolves it by killing one transaction: a random 500 on the sign-in path.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :userId")
+    Optional<User> findByIdForUpdate(@Param("userId") UUID userId);
 
     Optional<User> findByExtSubject(String extSubject);
 

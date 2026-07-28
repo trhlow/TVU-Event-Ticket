@@ -78,26 +78,45 @@ public class AdminOtpService {
         if (otpStore.verify(user.getId(), code) != OtpStore.Result.OK) {
             throw rejected();
         }
-        var deviceToken = rememberDevice ? trustedDeviceService.remember(user.getId()) : null;
-        return new AdminSession(sessionMinter.mint(user), deviceToken);
+        var device = rememberDevice
+                ? trustedDeviceService.remember(user.getId(), user.getAuthVersion())
+                : null;
+        return new AdminSession(sessionMinter.mint(user),
+                device == null ? null : device.rawToken(),
+                device == null ? null : device.expiresAt());
     }
 
     /**
-     * Exchanges a remembered-device cookie for a fresh session without a code. The token rotates on every
-     * call; a replayed one is caught inside {@link TrustedDeviceService#exchange}.
+     * Exchanges a remembered-device cookie for a fresh session without a code.
+     *
+     * <p>The order of the three steps is load-bearing, not stylistic:
+     * <ol>
+     *   <li>locate the owner without touching anything;
+     *   <li>lock that user row;
+     *   <li>only then read state and rotate the device token.
+     * </ol>
+     *
+     * <p>It used to rotate the device first and read the user afterwards. That is device → user,
+     * the opposite of the user → device order sign-out-all and lock-organiser take, so the two
+     * deadlocked. It also left a window: rotate revoked the old row, sign-out-all ran in between,
+     * and the successor was then inserted <em>under the new generation</em> — leaving the user with
+     * a working cookie and a valid JWT immediately after signing out everywhere.
      */
     @Transactional
     public AdminSession refresh(String rawDeviceToken) {
-        if (rawDeviceToken == null || rawDeviceToken.isBlank()) {
-            throw rejected();
-        }
-        var userId = trustedDeviceService.exchange(rawDeviceToken).orElseThrow(this::rejected);
-        var user = userRepository.findById(userId)
+        var userId = trustedDeviceService.ownerOf(rawDeviceToken).orElseThrow(this::rejected);
+        // Everything below decides on state read under this lock. What ownerOf() returned is only
+        // used to pick the row, never to authorise anything.
+        var user = userRepository.findByIdForUpdate(userId)
                 .filter(candidate -> candidate.getAuthMethod() == AuthMethod.EMAIL_OTP
                         && candidate.getStatus() == UserStatus.ACTIVE)
                 .orElseThrow(this::rejected);
-        var deviceToken = trustedDeviceService.remember(userId);
-        return new AdminSession(sessionMinter.mint(user), deviceToken);
+
+        if (!(trustedDeviceService.exchange(rawDeviceToken, user.getAuthVersion())
+                instanceof TrustedDeviceService.ExchangeResult.Rotated rotated)) {
+            throw rejected();
+        }
+        return new AdminSession(sessionMinter.mint(user), rotated.rawToken(), rotated.expiresAt());
     }
 
     private Optional<User> activeAdmin(String email) {

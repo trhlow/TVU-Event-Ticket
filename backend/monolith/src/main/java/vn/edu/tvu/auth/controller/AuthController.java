@@ -121,7 +121,7 @@ public class AuthController {
         cookieService.loginCookies(session.session().jwt(), session.session().csrfToken())
                 .forEach(cookie -> headers.add(HttpHeaders.SET_COOKIE, cookie));
         if (session.deviceToken() != null) {
-            headers.add(HttpHeaders.SET_COOKIE, cookieService.deviceCookie(session.deviceToken()));
+            headers.add(HttpHeaders.SET_COOKIE, cookieService.deviceCookie(session.deviceToken(), session.deviceExpiresAt()));
         }
         return ResponseEntity.ok()
                 .headers(headers)
