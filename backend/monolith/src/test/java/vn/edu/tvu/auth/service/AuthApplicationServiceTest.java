@@ -68,10 +68,11 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void login_doesNotClaimAnAdminAccountThatSharesTheEmail() {
-        // An Entra login presenting a club account's address must create a brand-new student and leave the
-        // club account untouched. The stub is lenient because the fixed code never consults it: matching by
-        // subject only is exactly what closes the takeover path.
+    void login_refusesAnAddressThatAlreadyBelongsToAnAdmin() {
+        // H4 decided: one address, one account, across both sign-in methods. This test previously
+        // asserted the opposite — that such a login quietly became a brand-new student — which was
+        // the earlier decision. Email is unique in the schema in three places, so that behaviour
+        // could only ever have worked by accident.
         var club = new Club("CLB Tin hoc", "Hoc thuat CNTT");
         ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
         var clubAccount = persisted(
@@ -80,15 +81,15 @@ class AuthApplicationServiceTest {
                 .thenReturn(new ExternalIdentity("entra:attacker", "clbtinhoc@tvu.edu.vn", "Nguoi La"));
         when(userRepository.findByExtSubjectAndAuthMethod("entra:attacker", AuthMethod.MICROSOFT))
                 .thenReturn(Optional.empty());
-        lenient().when(userRepository.findByEmail("clbtinhoc@tvu.edu.vn")).thenReturn(Optional.of(clubAccount));
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
+        when(userRepository.findByEmail("clbtinhoc@tvu.edu.vn")).thenReturn(Optional.of(clubAccount));
 
-        var result = service.login(new LoginRequest("token", null));
+        assertThatThrownBy(() -> service.login(new LoginRequest("token", null)))
+                .isInstanceOf(ResponseStatusException.class);
 
-        assertThat(result.profile().role()).isEqualTo(UserRole.SINH_VIEN);
+        // The club account is untouched: no takeover, and no shadow student either.
         assertThat(clubAccount.getRole()).isEqualTo(UserRole.ORGANIZER);
         assertThat(clubAccount.getExtSubject()).isNull();
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -98,7 +99,7 @@ class AuthApplicationServiceTest {
                 .thenReturn(new ExternalIdentity("dev:student@example.com", "student@example.com", "Student"));
         when(userRepository.findByExtSubjectAndAuthMethod("dev:student@example.com", AuthMethod.MICROSOFT))
                 .thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> persisted(invocation.getArgument(0), userId));
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> persisted(invocation.getArgument(0), userId));
 
         var result = service.login(new LoginRequest("student@example.com", null));
 
@@ -120,7 +121,7 @@ class AuthApplicationServiceTest {
                 .thenReturn(new ExternalIdentity("entra:stable-subject", "student@example.com", "Student Renamed"));
         when(userRepository.findByExtSubjectAndAuthMethod("entra:stable-subject", AuthMethod.MICROSOFT))
                 .thenReturn(Optional.of(student));
-        when(userRepository.save(student)).thenReturn(student);
+        when(userRepository.saveAndFlush(student)).thenReturn(student);
 
         var result = service.login(new LoginRequest("student@example.com", null));
 
@@ -138,7 +139,7 @@ class AuthApplicationServiceTest {
                 .thenReturn(new ExternalIdentity("entra:admin-subject", "admin@example.com", "Admin"));
         when(userRepository.findByExtSubjectAndAuthMethod("entra:admin-subject", AuthMethod.MICROSOFT))
                 .thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class)))
+        when(userRepository.saveAndFlush(any(User.class)))
                 .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
 
         var result = service.login(new LoginRequest("admin@example.com", null));
@@ -165,7 +166,7 @@ class AuthApplicationServiceTest {
                 .isInstanceOf(ResponseStatusException.class);
 
         // No JWT is minted and nothing is written: the login stops before it can hand out a session.
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -202,7 +203,7 @@ class AuthApplicationServiceTest {
                 .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
         when(userRepository.findByExtSubjectAndAuthMethod("entra:organizer-subject", AuthMethod.MICROSOFT))
                 .thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class)))
+        when(userRepository.saveAndFlush(any(User.class)))
                 .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
 
         var result = service.login(new LoginRequest("organizer@example.com", null));
@@ -261,7 +262,7 @@ class AuthApplicationServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode().value())
                 .isEqualTo(403);
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     private static User persisted(User user, UUID id) {

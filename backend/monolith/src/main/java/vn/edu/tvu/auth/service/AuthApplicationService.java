@@ -45,7 +45,10 @@ public class AuthApplicationService {
         if (user.getClub() != null && !user.getClub().isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Club is inactive");
         }
-        var saved = userRepository.save(user);
+        // saveAndFlush, not save: with save() the INSERT happens at commit, outside this method and
+        // outside any catch, so a losing race would surface as an opaque 500 from the framework
+        // rather than the 409 it is.
+        var saved = userRepository.saveAndFlush(user);
         return sessionMinter.mint(saved);
     }
 
@@ -103,7 +106,24 @@ public class AuthApplicationService {
                     user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
                     return user;
                 })
-                .orElseGet(() -> User.student(identity.subject(), identity.email(), identity.displayName()));
+                .orElseGet(() -> newStudent(identity));
+    }
+
+    /**
+     * Creates the student a first-time Entra login represents, refusing the address if it already
+     * belongs to someone.
+     *
+     * <p>Email is unique across both sign-in methods, so a Microsoft login presenting an address an
+     * admin already uses cannot become a new account. Checked here so the common case is a clear
+     * 409 rather than a constraint violation surfacing from somewhere further down; the database
+     * constraint remains the real guarantee, for the race this check cannot cover.
+     */
+    private User newStudent(ExternalIdentity identity) {
+        if (userRepository.findByEmail(identity.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "That email address is already in use");
+        }
+        return User.student(identity.subject(), identity.email(), identity.displayName());
     }
 
 }
