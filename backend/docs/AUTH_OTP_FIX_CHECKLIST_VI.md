@@ -1095,6 +1095,24 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
     đây là đường xác thực nên **vẫn phải review tay**: chạm cả hai luồng
     request và verify OTP.
 
+> ✅ **H8 PHA 1 XONG 2026-07-28** — `V12__users_auth_version.sql`, claim
+> `auth_version`, `AuthVersionValidator` thay `RevokedTokenValidator`, và
+> `lockOrganizer` bump trong cùng transaction. **Pha 2 (lineage V14 + race
+> trusted-device) CHƯA làm** — vẫn ở bước 3c.
+> - Đã xoá hẳn `TokenRevocationService` + `RevokedTokenValidator`. Đường kiểm
+>   JWT nay **không chạm Redis**.
+> - `User.lock()` tự gọi `revokeIssuedTokens()` nên không thể quên bump khi
+>   khoá — trước đây bump là một lời gọi service tách rời, dễ sót ở call site mới.
+> - Không cache, đọc DB mỗi request (đúng như chốt). `AuthVersionLookup` là
+>   port riêng để sau này gắn cache "chỉ được TỪ CHỐI" mà không sửa validator.
+> - Bằng chứng: 7 test unit cho validator (gồm **fail-closed khi DB lỗi** và
+>   **token thiếu claim bị từ chối**, không mặc định 0), 4 test trên **Postgres
+>   thật** cho V12 + projection, trong đó có ca "đổi tên hiển thị KHÔNG đăng
+>   xuất" — đây là lý do `auth_version` phải tách khỏi `@Version`.
+> - `detect_changes`: 33 symbol / 19 process, tất cả đều là luồng `mint` và
+>   `LockOrganizer` — đúng dự kiến, không chạm ticketing/event.
+> - Full suite: **260 test pass, 0 fail, 0 skipped**.
+
 - [ ] **H8. Revocation kiểu boolean chặn nhầm JWT mới cấp** —
       `TokenRevocationService.revoke()` (`:29-31`) ghi `"1"` theo userId sống
       15 phút; `RevokedTokenValidator` (`:21-28`) từ chối **mọi** JWT có

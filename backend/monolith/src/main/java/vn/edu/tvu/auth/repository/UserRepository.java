@@ -16,6 +16,14 @@ import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
+    /**
+     * Reads just the revocation counter, on the authentication path of every request. A projection
+     * rather than the whole aggregate: this runs far more often than anything else in the app, and
+     * loading the user (and its club) to compare one number would be wasteful.
+     */
+    @Query("select u.authVersion from User u where u.id = :userId")
+    Optional<Long> findAuthVersionById(@Param("userId") UUID userId);
+
     Optional<User> findByExtSubject(String extSubject);
 
     Optional<User> findByEmail(String email);

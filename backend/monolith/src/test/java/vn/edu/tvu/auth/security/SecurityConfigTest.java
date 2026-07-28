@@ -76,7 +76,7 @@ class SecurityConfigTest {
                 new JwtProperties("http://wrong-issuer", Duration.ofMinutes(15), "test-key", null, null),
                 keyManager);
         var token = wrongIssuerJwt.mint(new JwtSubject(UUID.randomUUID(), "student@example.com",
-                UserRole.SINH_VIEN, null, null, false)).value();
+                UserRole.SINH_VIEN, null, null, false, 0L)).value();
 
         mockMvc.perform(get("/api/auth/me")
                         .header("Authorization", "Bearer " + token))
@@ -266,6 +266,6 @@ class SecurityConfigTest {
 
     private String token(UserRole role) {
         return jwtService.mint(new JwtSubject(UUID.randomUUID(), role.name().toLowerCase() + "@example.com", role,
-                null, null, false)).value();
+                null, null, false, 0L)).value();
     }
 }

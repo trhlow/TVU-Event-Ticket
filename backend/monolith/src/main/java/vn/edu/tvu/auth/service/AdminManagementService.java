@@ -13,7 +13,6 @@ import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
-import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -32,19 +31,16 @@ public class AdminManagementService {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
-    private final TokenRevocationService tokenRevocationService;
     private final TrustedDeviceService trustedDeviceService;
 
     public AdminManagementService(
             ClubRepository clubRepository,
             UserRepository userRepository,
             AuditLogService auditLogService,
-            TokenRevocationService tokenRevocationService,
             TrustedDeviceService trustedDeviceService) {
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
-        this.tokenRevocationService = tokenRevocationService;
         this.trustedDeviceService = trustedDeviceService;
     }
 
@@ -163,10 +159,10 @@ public class AdminManagementService {
     @Transactional
     public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
+        // lock() bumps auth_version in this same transaction, so the organiser's issued JWTs stop
+        // working when the lock commits -- not whenever they happen to expire. Their remembered
+        // browsers must stop refreshing too.
         organizer.lock();
-        // Locking must take effect now, not whenever the organizer's current JWT happens to expire, and
-        // their remembered browsers must stop refreshing too.
-        tokenRevocationService.revoke(organizer.getId());
         trustedDeviceService.revokeAll(organizer.getId());
         auditLogService.recordAudit(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);

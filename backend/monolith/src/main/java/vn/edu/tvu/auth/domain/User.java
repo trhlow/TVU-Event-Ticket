@@ -32,6 +32,16 @@ public class User {
     @Column(nullable = false)
     private long version;
 
+    /**
+     * Bumped only by security-relevant operations, to invalidate JWTs already issued to this user.
+     *
+     * <p>Kept separate from {@link #version} on purpose: that one is JPA's optimistic-lock counter
+     * and moves on every update, so reusing it would sign a user out of every device the moment
+     * they edited their own display name.
+     */
+    @Column(name = "auth_version", nullable = false)
+    private long authVersion;
+
     @Column(name = "ext_subject", unique = true)
     private String extSubject;
 
@@ -116,6 +126,20 @@ public class User {
 
     public void lock() {
         this.status = UserStatus.LOCKED;
+        // Locking has to take effect now, not whenever this user's current JWT happens to expire.
+        revokeIssuedTokens();
+    }
+
+    public long getAuthVersion() {
+        return authVersion;
+    }
+
+    /**
+     * Invalidates every JWT issued to this user so far. Call inside the transaction that performs
+     * the revocation, so the state change and the invalidation commit together or not at all.
+     */
+    public void revokeIssuedTokens() {
+        this.authVersion++;
     }
 
     public void rename(String displayName) {

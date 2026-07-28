@@ -2,14 +2,15 @@ package vn.edu.tvu.testsupport;
 
 import java.time.Duration;
 
-import org.mockito.Mockito;
+import java.util.Optional;
+
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 
 import vn.edu.tvu.auth.security.CsrfProperties;
 import vn.edu.tvu.auth.security.JwtProperties;
 import vn.edu.tvu.auth.security.RsaKeyManager;
-import vn.edu.tvu.auth.security.TokenRevocationService;
+import vn.edu.tvu.auth.security.AuthVersionLookup;
 import vn.edu.tvu.auth.service.InternalJwtService;
 
 @TestConfiguration(proxyBeanMethods = false)
@@ -17,12 +18,13 @@ public class AuthSecurityTestConfiguration {
 
     /**
      * The security slice imports {@link vn.edu.tvu.auth.security.SecurityConfig}, whose {@code jwtDecoder}
-     * now depends on this Redis-backed service. Slices do not component-scan it, so supply a mock (nothing
-     * revoked by default) — full-context tests still get the real bean.
+     * needs the current auth_version for the token's subject. Slices do not component-scan the
+     * database-backed implementation, so answer 0 for everyone — matching the version these tests mint
+     * their tokens with, i.e. "nothing has been revoked". Full-context tests get the real bean.
      */
     @Bean
-    TokenRevocationService tokenRevocationService() {
-        return Mockito.mock(TokenRevocationService.class);
+    AuthVersionLookup authVersionLookup() {
+        return userId -> Optional.of(0L);
     }
 
     @Bean

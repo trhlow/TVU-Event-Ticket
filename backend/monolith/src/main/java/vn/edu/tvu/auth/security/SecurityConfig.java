@@ -99,11 +99,11 @@ public class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder(RsaKeyManager keyManager, JwtProperties properties,
-                          TokenRevocationService tokenRevocationService) {
+                          AuthVersionLookup authVersionLookup) {
         var decoder = NimbusJwtDecoder.withPublicKey(keyManager.publicKey()).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.issuer()),
-                new RevokedTokenValidator(tokenRevocationService)));
+                new AuthVersionValidator(authVersionLookup)));
         return decoder;
     }
 

@@ -11,7 +11,6 @@ import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.repository.AuditLogRepository;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
-import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,9 +45,6 @@ class AdminManagementServiceTest {
     private AuditLogRepository auditLogRepository;
 
     @Mock
-    private TokenRevocationService tokenRevocationService;
-
-    @Mock
     private TrustedDeviceService trustedDeviceService;
 
     private AdminManagementService service;
@@ -56,7 +52,7 @@ class AdminManagementServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdminManagementService(clubRepository, userRepository,
-                new AuditLogService(auditLogRepository), tokenRevocationService, trustedDeviceService);
+                new AuditLogService(auditLogRepository), trustedDeviceService);
     }
 
     @Test
@@ -65,11 +61,14 @@ class AdminManagementServiceTest {
         var organizer = User.organizer("entra:org", "organizer@example.com", "Organizer", null);
         ReflectionTestUtils.setField(organizer, "id", organizerId);
         when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
+        var versionBeforeLock = organizer.getAuthVersion();
 
         service.lockOrganizer(UUID.randomUUID(), organizerId);
 
         assertThat(organizer.getStatus()).isEqualTo(UserStatus.LOCKED);
-        verify(tokenRevocationService).revoke(organizerId);
+        // The bump is what invalidates JWTs already issued to this organiser. It happens on the
+        // entity inside the same transaction as the lock, so the two commit together.
+        assertThat(organizer.getAuthVersion()).isEqualTo(versionBeforeLock + 1);
     }
 
     @Test
@@ -220,7 +219,7 @@ class AdminManagementServiceTest {
     void statsReturnsTotalsAndZeroFilledRoleBreakdown() {
         var auditLogService = new AuditLogService(auditLogRepository);
         var service = new AdminManagementService(clubRepository, userRepository, auditLogService,
-                tokenRevocationService, trustedDeviceService);
+                trustedDeviceService);
         when(clubRepository.count()).thenReturn(4L);
         when(userRepository.count()).thenReturn(50L);
         when(userRepository.countGroupedByRole()).thenReturn(List.of(

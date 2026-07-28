@@ -229,4 +229,45 @@ class AuthRepositoryTest extends AbstractPostgresIntegrationTest {
         assertThat(byRole.get(UserRole.SINH_VIEN)).isGreaterThanOrEqualTo(2L);
         assertThat(byRole.get(UserRole.ORGANIZER)).isGreaterThanOrEqualTo(1L);
     }
+
+    @Test
+    void findAuthVersionById_readsTheColumnV12Added() {
+        // Proves V12 actually applied and that the projection the authentication path runs on
+        // every request maps to it. A unit test with a stubbed lookup cannot show either.
+        var user = userRepository.saveAndFlush(
+                User.organizer("ext-authver", "authver@example.com", "Auth Version", null));
+
+        assertThat(userRepository.findAuthVersionById(user.getId())).contains(0L);
+    }
+
+    @Test
+    void findAuthVersionById_seesTheBumpThatRevokesIssuedTokens() {
+        var user = userRepository.saveAndFlush(
+                User.organizer("ext-authver-bump", "authver-bump@example.com", "Auth Version", null));
+
+        user.revokeIssuedTokens();
+        userRepository.saveAndFlush(user);
+
+        assertThat(userRepository.findAuthVersionById(user.getId())).contains(1L);
+    }
+
+    @Test
+    void findAuthVersionById_isEmptyForAUserThatNoLongerExists() {
+        // The validator turns "empty" into a rejection, so a deleted account cannot keep using
+        // a token that is still cryptographically valid.
+        assertThat(userRepository.findAuthVersionById(UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void editingAProfileDoesNotRevokeSessions() {
+        // The whole reason auth_version is a separate column from the @Version optimistic-lock
+        // counter: renaming yourself must not sign you out of every device.
+        var user = userRepository.saveAndFlush(
+                User.organizer("ext-authver-rename", "authver-rename@example.com", "Before", null));
+
+        user.rename("After");
+        userRepository.saveAndFlush(user);
+
+        assertThat(userRepository.findAuthVersionById(user.getId())).contains(0L);
+    }
 }
