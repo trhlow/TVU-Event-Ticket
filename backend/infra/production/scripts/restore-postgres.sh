@@ -69,6 +69,12 @@ docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
 docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
   sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges' < "$backup_file"
 
+# --no-owner --no-privileges means every restored object belongs to whoever connected (the owner,
+# above) and every GRANT in the dump is discarded. With the H11 split that leaves the runtime
+# account with no rights at all, and the site fails on its first query after a restore — silently,
+# because the restore itself reports success. Re-applying the grants is not optional.
+docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1     -v db="$POSTGRES_DB" -v owner="$POSTGRES_USER" -v app="$POSTGRES_APP_USER"   < "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/grant-runtime-user.sql"
+
 # PostgreSQL is now rewound to the backup, but Redis and RabbitMQ keep their own persistent volumes and
 # still hold state from after the backup: ticket counters and dedup markers in Redis, and queued
 # reservation.approved messages in RabbitMQ that reference tickets no longer in the database. Left in

@@ -2,7 +2,7 @@ name: tvu-event-ticket
 
 services:
   caddy:
-    image: caddy:2.10-alpine
+    image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
@@ -40,11 +40,17 @@ services:
         VITE_MICROSOFT_REDIRECT_URI: https://${APP_DOMAIN}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+    # Matching what monolith already had. The two services being configured differently was drift,
+    # not a decision.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
       - public
     logging: *json_logging
@@ -60,8 +66,14 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod,monolith
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # Runtime credentials only. POSTGRES_USER owns the schema and can DROP it; the application
+      # must not hold that power, so an SQL injection or RCE here is confined to reading and
+      # writing rows instead of rewriting the database.
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_APP_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_APP_PASSWORD}
+      # Migrations run as a separate one-shot step (scripts/migrate.sh) using the owner account,
+      # which is deliberately absent from this container's environment.
+      SPRING_FLYWAY_ENABLED: "false"
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD}
@@ -94,7 +106,7 @@ services:
     logging: *json_logging
 
   postgres:
-    image: postgres:18.4-alpine
+    image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -112,7 +124,7 @@ services:
     logging: *json_logging
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}

@@ -15,7 +15,7 @@ docker compose version >/dev/null 2>&1 || die "Docker Compose plugin is unavaila
 
 required_keys=(
   APP_DOMAIN
-  POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
+  POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD POSTGRES_APP_USER POSTGRES_APP_PASSWORD
   REDIS_PASSWORD RABBITMQ_DEFAULT_USER RABBITMQ_DEFAULT_PASS
   JWT_ISSUER_URI JWT_KEY_ID JWT_PRIVATE_KEY_PEM JWT_PUBLIC_KEY_PEM
   CSRF_SIGNING_SECRET QR_SIGNING_SECRET OTP_PEPPER BOOTSTRAP_ADMIN_EMAIL
@@ -33,7 +33,12 @@ domain="$(env_value APP_DOMAIN)"
 [[ "$(env_value JWT_ISSUER_URI)" == "https://$domain" ]] \
   || die "JWT_ISSUER_URI must exactly equal https://APP_DOMAIN"
 
-for key in POSTGRES_PASSWORD REDIS_PASSWORD RABBITMQ_DEFAULT_PASS CSRF_SIGNING_SECRET QR_SIGNING_SECRET OTP_PEPPER; do
+# The whole point of H11 is that the application is not the owner. Identical names or passwords
+# would leave it running as the owner while looking like it is not.
+[[ "$(env_value POSTGRES_USER)" != "$(env_value POSTGRES_APP_USER)" ]]   || die "POSTGRES_APP_USER must differ from POSTGRES_USER; the application must not own the schema"
+[[ "$(env_value POSTGRES_PASSWORD)" != "$(env_value POSTGRES_APP_PASSWORD)" ]]   || die "POSTGRES_APP_PASSWORD must differ from POSTGRES_PASSWORD"
+
+for key in POSTGRES_PASSWORD POSTGRES_APP_PASSWORD REDIS_PASSWORD RABBITMQ_DEFAULT_PASS CSRF_SIGNING_SECRET QR_SIGNING_SECRET OTP_PEPPER; do
   value="$(env_value "$key")"
   [[ ${#value} -ge 32 ]] || die "$key must contain at least 32 characters"
 done

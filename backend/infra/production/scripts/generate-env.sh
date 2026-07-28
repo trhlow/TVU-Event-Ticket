@@ -92,8 +92,13 @@ cat >"$env_file" <<EOF
 APP_DOMAIN=$domain
 
 POSTGRES_DB=tvu_app
-POSTGRES_USER=tvu_app
+# Two accounts, deliberately. POSTGRES_USER owns the schema and is used only by scripts/migrate.sh;
+# POSTGRES_APP_USER is what the application runs as and can only read and write rows. Keeping the
+# owner password out of the application container is the point — otherwise the split is decoration.
+POSTGRES_USER=tvu_owner
 POSTGRES_PASSWORD=$(random_secret)
+POSTGRES_APP_USER=tvu_app
+POSTGRES_APP_PASSWORD=$(random_secret)
 
 DB_POOL_MAX_SIZE=10
 DB_POOL_MIN_IDLE=2
