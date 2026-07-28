@@ -27,6 +27,13 @@
 
 ## Restoring a locked-out super admin
 
+**Scope: a wrong account or a wrong mailbox. Not an SMTP outage.** The procedure below ends
+with "request a code for that address", so it only works while mail is being delivered. If the
+SMTP provider itself is down, pointing the account at a different mailbox changes nothing —
+nobody receives the code either way. That case needs the standby path in H14 (a second,
+already-tested SMTP provider, or an out-of-band one-time recovery code); there is no other way
+out, and this SQL is not it.
+
 Admin sign-in is passwordless: a super admin proves who they are by receiving a code at their
 configured address. If every bootstrap address in `BOOTSTRAP_ADMIN_EMAIL` is unreachable —
 a typo, a mailbox that was closed — no one can sign in, and no other account has the rights to

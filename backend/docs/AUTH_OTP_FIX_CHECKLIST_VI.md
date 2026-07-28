@@ -714,17 +714,26 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 - [ ] **H1. Gate OTP end-to-end trước nghiệm thu production** — admin chỉ có
       đường EMAIL_OTP; SMTP sai hoặc mail không đến = không ai đăng nhập
       quản trị được, hiện không có gì phát hiện sớm:
-  - [ ] `application-prod.yml:64-66`: bật `management.health.mail.enabled: true`.
-        KHÔNG thêm mail vào readiness group (`:49-51` giữ `db,redis,rabbit`).
+  - [x] ✅ **XONG 2026-07-28** — `application-prod.yml`: bật
+        `management.health.mail.enabled: true`, readiness group giữ nguyên
+        `db,redis,rabbit`.
+    - Chốt bằng test chứ không chỉ sửa file: `ProductionHealthConfigTest` đọc
+      thẳng `application-prod.yml` và khẳng định **cả hai** — mail bật, và
+      readiness **không** chứa mail. Test thứ hai là guard chống hồi quy (nó
+      xanh sẵn từ đầu); test thứ nhất đỏ đúng `expected: true but was: false`
+      trước khi sửa.
   - [ ] **Tác động đầy đủ khi mail DOWN** (chấp nhận có chủ đích vì SMTP là
         đường admin duy nhất): overall `/actuator/health` DOWN →
         (a) `smoke-test.sh:38` fail → deploy fail; (b) Docker healthcheck
         (`compose.yaml:89` grep `status":"UP`) đánh dấu container monolith
         **unhealthy liên tục** — compose không có "rotation", traffic vẫn
         chạy, nhưng `docker ps` sẽ báo unhealthy cho tới khi SMTP phục hồi.
-  - [ ] Checklist nghiệm thu (PRODUCTION_DEPLOYMENT_VI.md mục 8): sau deploy
-        đầu, gửi OTP thật đến **từng** bootstrap mailbox, xác nhận nhận mail
-        + đăng nhập thành công rồi mới tuyên bố production ready.
+  - [x] ✅ **XONG 2026-07-28** — checklist nghiệm thu
+        (`PRODUCTION_DEPLOYMENT_VI.md` mục 8): gate OTP quản trị được đưa lên
+        **mục 1**, làm trước mọi mục khác, yêu cầu gửi OTP thật tới **từng**
+        địa chỉ trong `BOOTSTRAP_ADMIN_EMAIL` (không phải một địa chỉ đại
+        diện), xác nhận thư đến rồi đăng nhập thành công. Kèm cảnh báo H1
+        **chưa đóng** sau mục này vì còn chờ H14.
   - [ ] ⛔ **Đính chính v15 — bỏ cách nói "break-glass SQL là phương án cuối".**
         SQL trong `OPERATIONS.md` (dòng 39/47) chỉ sửa được **sai tài khoản /
         sai mailbox** (gõ nhầm email admin, admin nghỉ việc). Nó **không cứu
@@ -734,6 +743,11 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
     - **SMTP/provider chết → SQL vô dụng**, phải dùng cơ chế dự phòng của
       **H14** (SMTP thứ hai đã test, hoặc one-time recovery code phát hành
       ngoài băng). H1 không có đường thoát nào khác.
+    - [x] ✅ **XONG 2026-07-28** — `OPERATIONS.md` mục "Restoring a locked-out
+      super admin" nay mở đầu bằng đúng phạm vi: **sai tài khoản hoặc sai
+      mailbox, KHÔNG phải outage SMTP**, và trỏ thẳng sang H14. Trước đây đoạn
+      này kết thúc bằng "request a code for that address" mà không nói rằng
+      bước đó cần SMTP còn sống.
   - [ ] Vì vậy **H14 là điều kiện tiên quyết để H1 được coi là đóng** — không
         được tuyên bố "đã có break-glass" khi mới chỉ có SQL.
   - ⚠️ **H1 được thi công làm hai nhịp** (để khớp thứ tự ở cuối file, tránh
