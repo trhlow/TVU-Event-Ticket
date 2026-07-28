@@ -181,6 +181,30 @@ public class TrustedDeviceService {
         return repository.revokeActiveInFamily(familyId, Instant.now());
     }
 
+    /**
+     * Logout: ends the session of the browser that presented this cookie.
+     *
+     * <p>Resolves the cookie to a <em>family</em> and revokes that family's currently active row —
+     * not the row the cookie itself names. If a refresh rotated the token a moment earlier, the
+     * presented row is already revoked while its successor is live, and revoking only what was
+     * presented would leave the browser signed in after the user pressed log out.
+     *
+     * <p>Deliberately not implemented by calling {@link #exchange}: a token that is already revoked
+     * takes the replay branch there, so logging out twice would be treated as a stolen cookie.
+     *
+     * <p>Idempotent and silent. An unknown, malformed or expired cookie revokes nothing and reports
+     * nothing — logout always succeeds from the caller's point of view.
+     */
+    @Transactional
+    public int revokeActiveInFamilyOf(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return 0;
+        }
+        return repository.findByTokenHash(hash(rawToken))
+                .map(device -> repository.revokeActiveInFamily(device.getDeviceFamilyId(), Instant.now()))
+                .orElse(0);
+    }
+
     /** Sign-out-all: every device on the account. Callers must also bump the user's auth_version. */
     @Transactional
     public void revokeAll(UUID userId) {

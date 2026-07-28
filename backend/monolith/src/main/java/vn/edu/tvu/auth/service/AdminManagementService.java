@@ -85,17 +85,28 @@ public class AdminManagementService {
 
     @Transactional
     public void deactivateClub(UUID actorId, UUID clubId) {
-        var club = clubRepository.findById(clubId)
+        // Club first, then its users, in ascending id order — the one lock order every flow follows.
+        var club = clubRepository.findByIdForUpdate(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.deactivate();
+        // Deactivating the club used to leave the user rows untouched, so its organisers stayed
+        // ACTIVE, requested a fresh code and carried on working. Two things close that: the
+        // eligibility policy now refuses them a new session, and the bump below kills the sessions
+        // they already hold. Both are needed — the policy alone leaves live tokens working until
+        // they expire.
+        revokeSessionsOf(userRepository.findByClubIdForUpdate(clubId));
         auditLogService.recordAudit(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
     }
 
     @Transactional
     public ClubResponse reactivateClub(UUID actorId, UUID clubId) {
-        var club = clubRepository.findById(clubId)
+        var club = clubRepository.findByIdForUpdate(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.activate();
+        // Bump on the way back up as well. A token minted in the narrow race window while the club
+        // was being deactivated is rejected while the club stays inactive — but without this it
+        // would start working again the moment the club is reactivated.
+        revokeSessionsOf(userRepository.findByClubIdForUpdate(clubId));
         auditLogService.recordAudit(actorId, "auth.club.reactivate", "club", club.getId(), "{}");
         return clubResponse(club);
     }
@@ -179,6 +190,11 @@ public class AdminManagementService {
         var organizer = organizer(organizerId);
         userRepository.delete(organizer);
         auditLogService.recordAudit(actorId, "auth.organizer.delete", "user", organizerId, "{}");
+    }
+
+    /** Invalidates the JWTs already issued to these users, inside this transaction. */
+    private void revokeSessionsOf(java.util.List<User> users) {
+        users.forEach(User::revokeIssuedTokens);
     }
 
     private User organizer(UUID organizerId) {

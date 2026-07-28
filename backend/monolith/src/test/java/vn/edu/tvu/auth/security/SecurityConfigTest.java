@@ -49,6 +49,10 @@ class SecurityConfigTest {
     @MockitoBean
     private AuthCookieService authCookieService;
 
+    // Logout now ends this browser's device session, so the controller needs it in the slice.
+    @MockitoBean
+    private vn.edu.tvu.auth.service.TrustedDeviceService trustedDeviceService;
+
     @MockitoBean
     private AdminManagementService adminManagementService;
 

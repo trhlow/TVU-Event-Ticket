@@ -35,7 +35,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/otp/request",
-                                "/api/auth/otp/verify", "/api/auth/session/refresh", "/.well-known/**",
+                                "/api/auth/otp/verify", "/api/auth/session/refresh",
+                                // Logging out must work with an expired or invalid JWT: otherwise a
+                                // user whose token just expired cannot clear their own cookies.
+                                "/api/auth/logout", "/.well-known/**",
                                 "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/mine").hasRole("ORGANIZER")
@@ -73,6 +76,13 @@ public class SecurityConfig {
     BearerTokenResolver bearerTokenResolver() {
         var headerResolver = new DefaultBearerTokenResolver();
         return request -> {
+            // Resolve no token at all for logout. permitAll alone is not enough: the resolver would
+            // still pick up the TVU_AUTH cookie, and an expired or revoked token makes the resource
+            // server reject the request with 401 before it reaches a permitAll endpoint — so the one
+            // person who most needs to log out could not.
+            if ("POST".equals(request.getMethod()) && "/api/auth/logout".equals(request.getRequestURI())) {
+                return null;
+            }
             var headerToken = headerResolver.resolve(request);
             if (StringUtils.hasText(headerToken)) {
                 return headerToken;

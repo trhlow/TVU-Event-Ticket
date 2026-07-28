@@ -77,7 +77,7 @@ class AdminManagementServiceTest {
         var club = new Club("CLB Tin hoc", null);
         ReflectionTestUtils.setField(club, "id", clubId);
         club.deactivate();
-        when(clubRepository.findById(clubId)).thenReturn(Optional.of(club));
+        when(clubRepository.findByIdForUpdate(clubId)).thenReturn(Optional.of(club));
 
         var response = service.reactivateClub(UUID.randomUUID(), clubId);
 
@@ -90,7 +90,7 @@ class AdminManagementServiceTest {
 
     @Test
     void reactivateClub_rejectsUnknownClub() {
-        when(clubRepository.findById(any())).thenReturn(Optional.empty());
+        when(clubRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.reactivateClub(UUID.randomUUID(), UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class);

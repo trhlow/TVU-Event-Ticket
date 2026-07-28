@@ -1019,6 +1019,42 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
       tuyên bố bootstrap xong (nối với H1).
   - Không cần check SMTP placeholder — preflight đã chặn (`common.sh:42`).
 
+> ✅ **H7 + H5 + H9 XONG 2026-07-29.**
+>
+> **H7** — `SessionEligibilityPolicy` là predicate trên `User`, **không** đặt
+> trong `activeAdmin(email)`: `refresh()` tra user bằng id và không đi qua đó,
+> nên quy tắc viết vào helper-theo-email sẽ lọt đúng đường refresh. Gọi từ cả
+> **ba** đường: request OTP, verify OTP, refresh.
+> - **Hai lớp cùng tồn tại**, không phải hai lựa chọn:
+>   - Lớp 1 — `verify()` nay khoá row user (`findByIdForUpdate`) rồi **đọc lại
+>     và kiểm lại policy** trước khi mint. Kiểm "ngay trước khi mint" mà không
+>     khoá thì vẫn thua race.
+>   - Lớp 2 — `deactivateClub` và `reactivateClub` bump `auth_version` cho
+>     **mọi** organizer của club, khoá theo **id tăng dần** để không deadlock
+>     với nhau. Reactivate cũng bump, nếu không token lỡ sinh trong cửa sổ race
+>     sẽ **sống lại** khi club mở lại.
+> - Hai predicate riêng cho hai đường đăng nhập, có test khẳng định: dùng chung
+>   một predicate sẽ **khoá toàn bộ đăng nhập sinh viên**.
+>
+> **H5** — logout dùng `revokeActiveInFamilyOf(rawToken)`: hash → tra family →
+> revoke **row active hiện hành của family đó**, kể cả khi row đó không phải
+> row vừa trình ra (ca logout ⟂ refresh — có test riêng). Idempotent, không bao
+> giờ `revokeAll`. `/api/auth/logout` vào permitAll **và** `bearerTokenResolver`
+> trả `null` cho đúng `POST /api/auth/logout` — permitAll một mình không đủ vì
+> resolver vẫn nhặt cookie `TVU_AUTH` và token hết hạn sẽ bị từ chối 401 trước
+> khi tới endpoint.
+>
+> **H9** — bump `auth_version` khi **mssv**, **mssv_status** hoặc **email**
+> đổi; **không** bump khi đổi `displayName` hay khi đăng nhập lại cùng email
+> (nếu không thì chính việc đăng nhập sẽ huỷ phiên vừa tạo trên máy khác).
+> Logic đặt trong `User` nên không call site nào quên được.
+>
+> Bằng chứng: 16 test mới (6 policy, 7 `auth_version`, 3 logout family), full
+> suite **315 pass / 0 fail / 0 skipped**.
+>
+> ⬜ **Vẫn nợ**: test deadlock song song `refresh()` ⟂ `deactivateClub()` bắt
+> `40P01`. Giờ đã đủ điều kiện viết (cả hai đường đều khoá), nhưng chưa viết.
+
 - [ ] **H7. Deactivate club bị vượt qua bằng đăng nhập OTP mới** (nâng từ M3
       — M3 chỉ thu hồi phiên ĐANG có, không chặn phiên MỚI). `activeAdmin()`
       (`AdminOtpService.java:103-106`) chỉ lọc `EMAIL_OTP + status ACTIVE`,

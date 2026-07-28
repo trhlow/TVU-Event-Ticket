@@ -47,6 +47,17 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("select u from User u where u.id = :userId")
     Optional<User> findByIdForUpdate(@Param("userId") UUID userId);
 
+    /**
+     * Every member of a club, locked, in id order.
+     *
+     * <p>Ordered on purpose: deactivating a club locks several user rows at once, and two such
+     * operations grabbing the same rows in different orders would deadlock. A single agreed order —
+     * ascending id — removes that.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.club.id = :clubId order by u.id")
+    List<User> findByClubIdForUpdate(@Param("clubId") UUID clubId);
+
     Optional<User> findByExtSubject(String extSubject);
 
     Optional<User> findByEmail(String email);

@@ -193,6 +193,48 @@ class TrustedDeviceIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     @Test
+    @DisplayName("logout ends the presenting browser only, and stays idempotent")
+    void revokeActiveInFamilyOf_endsThatBrowserOnlyAndIsIdempotent() {
+        var user = admin("logout-cookie@tvu.edu.vn");
+        var laptop = trustedDeviceService.remember(user.getId(), user.getAuthVersion());
+        var phone = trustedDeviceService.remember(user.getId(), user.getAuthVersion());
+
+        assertThat(trustedDeviceService.revokeActiveInFamilyOf(laptop.rawToken())).isEqualTo(1);
+        // Logging out twice must stay a no-op. Implementing logout via exchange() would take the
+        // replay branch on the second call and revoke far more than the user asked for.
+        assertThat(trustedDeviceService.revokeActiveInFamilyOf(laptop.rawToken())).isZero();
+
+        assertThat(trustedDeviceService.exchange(laptop.rawToken(), user.getAuthVersion()))
+                .isInstanceOf(ExchangeResult.Rejected.class);
+        assertThat(trustedDeviceService.exchange(phone.rawToken(), user.getAuthVersion()))
+                .isInstanceOf(ExchangeResult.Rotated.class);
+    }
+
+    @Test
+    @DisplayName("logout with a token that was already rotated still ends the browser's session")
+    void revokeActiveInFamilyOf_revokesTheSuccessorNotThePresentedRow() {
+        // The logout ⟂ refresh case. A refresh rotated the cookie moments ago, so the token the
+        // browser presents names an already-revoked row while its successor is live. Revoking only
+        // "the row presented" would leave the browser signed in after the user pressed log out.
+        var user = admin("logout-rotated@tvu.edu.vn");
+        var original = trustedDeviceService.remember(user.getId(), user.getAuthVersion());
+        var rotated = (ExchangeResult.Rotated) trustedDeviceService.exchange(
+                original.rawToken(), user.getAuthVersion());
+
+        assertThat(trustedDeviceService.revokeActiveInFamilyOf(original.rawToken())).isEqualTo(1);
+
+        assertThat(trustedDeviceService.exchange(rotated.rawToken(), user.getAuthVersion()))
+                .isInstanceOf(ExchangeResult.Rejected.class);
+    }
+
+    @Test
+    void revokeActiveInFamilyOf_ignoresAnUnknownOrMissingCookie() {
+        assertThat(trustedDeviceService.revokeActiveInFamilyOf(null)).isZero();
+        assertThat(trustedDeviceService.revokeActiveInFamilyOf("   ")).isZero();
+        assertThat(trustedDeviceService.revokeActiveInFamilyOf("not-a-real-token")).isZero();
+    }
+
+    @Test
     void revokeFamily_endsOneBrowserAndLeavesTheOthers() {
         var user = admin("logout-one@tvu.edu.vn");
         var laptop = trustedDeviceService.remember(user.getId(), user.getAuthVersion());

@@ -110,7 +110,18 @@ public class User {
         return user;
     }
 
+    /**
+     * Refreshes the identity a login just proved.
+     *
+     * <p>Bumps auth_version when the <em>email</em> changes, because the address travels in the JWT
+     * as a claim: without this an old token keeps asserting the previous address for the rest of its
+     * lifetime. displayName is not security-relevant and deliberately does not bump — renaming
+     * yourself must not sign you out of every device.
+     */
     public void updateIdentity(String extSubject, String email, String displayName) {
+        if (!java.util.Objects.equals(this.email, email)) {
+            revokeIssuedTokens();
+        }
         this.extSubject = extSubject;
         this.email = email;
         this.displayName = displayName;
@@ -138,13 +149,29 @@ public class User {
         this.displayName = displayName;
     }
 
+    /**
+     * Records a student's own profile details, which resets verification.
+     *
+     * <p>Bumps auth_version whenever the mssv or its verification state changes. Both travel in the
+     * JWT, and ticket booking reads them from the token rather than from the database — so a copy of
+     * a token taken while the account was verified could otherwise be replayed to book a ticket
+     * under the OLD mssv, for the remaining lifetime of that token, after the student had already
+     * changed it to something unverified.
+     */
     public void completeProfile(String mssv, String classCode) {
+        if (!java.util.Objects.equals(this.mssv, mssv) || this.mssvStatus != MssvStatus.UNVERIFIED) {
+            revokeIssuedTokens();
+        }
         this.mssv = mssv;
         this.classCode = classCode;
         this.mssvStatus = MssvStatus.UNVERIFIED;
     }
 
+    /** Verification is a claim in the JWT too, so existing tokens must be reissued. */
     public void verifyMssv() {
+        if (this.mssvStatus != MssvStatus.VERIFIED) {
+            revokeIssuedTokens();
+        }
         this.mssvStatus = MssvStatus.VERIFIED;
     }
 

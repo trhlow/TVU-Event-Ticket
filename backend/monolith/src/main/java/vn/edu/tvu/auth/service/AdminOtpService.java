@@ -7,6 +7,7 @@ import vn.edu.tvu.auth.otp.OtpCodeIssuer;
 import vn.edu.tvu.auth.otp.OtpMailSender;
 import vn.edu.tvu.auth.otp.OtpStore;
 import vn.edu.tvu.auth.repository.UserRepository;
+import vn.edu.tvu.auth.security.SessionEligibilityPolicy;
 
 import java.util.Locale;
 import java.util.Optional;
@@ -34,6 +35,7 @@ public class AdminOtpService {
     private final OtpMailSender mailSender;
     private final SessionMinter sessionMinter;
     private final TrustedDeviceService trustedDeviceService;
+    private final SessionEligibilityPolicy eligibility;
 
     public AdminOtpService(
             UserRepository userRepository,
@@ -41,18 +43,20 @@ public class AdminOtpService {
             OtpStore otpStore,
             OtpMailSender mailSender,
             SessionMinter sessionMinter,
-            TrustedDeviceService trustedDeviceService) {
+            TrustedDeviceService trustedDeviceService,
+            SessionEligibilityPolicy eligibility) {
         this.userRepository = userRepository;
         this.otpCodeIssuer = otpCodeIssuer;
         this.otpStore = otpStore;
         this.mailSender = mailSender;
         this.sessionMinter = sessionMinter;
         this.trustedDeviceService = trustedDeviceService;
+        this.eligibility = eligibility;
     }
 
     @Transactional(readOnly = true)
     public void requestCode(String email) {
-        var user = activeAdmin(email).orElse(null);
+        var user = eligibleAdmin(email).orElse(null);
         if (user == null) {
             return;
         }
@@ -74,10 +78,17 @@ public class AdminOtpService {
 
     @Transactional
     public AdminSession verify(String email, String code, boolean rememberDevice) {
-        var user = activeAdmin(email).orElseThrow(this::rejected);
-        if (otpStore.verify(user.getId(), code) != OtpStore.Result.OK) {
+        var candidate = eligibleAdmin(email).orElseThrow(this::rejected);
+        if (otpStore.verify(candidate.getId(), code) != OtpStore.Result.OK) {
             throw rejected();
         }
+        // Layer 1 against the check-then-mint race: take the row lock and re-read. Checking
+        // eligibility "just before minting" is not enough on its own — an admin can deactivate the
+        // club between the read and the mint, and the freshly minted token would carry the new
+        // auth_version and therefore be accepted. The lock makes the two operations take turns.
+        var user = userRepository.findByIdForUpdate(candidate.getId())
+                .filter(eligibility::mayStartAdminSession)
+                .orElseThrow(this::rejected);
         var device = rememberDevice
                 ? trustedDeviceService.remember(user.getId(), user.getAuthVersion())
                 : null;
@@ -108,8 +119,7 @@ public class AdminOtpService {
         // Everything below decides on state read under this lock. What ownerOf() returned is only
         // used to pick the row, never to authorise anything.
         var user = userRepository.findByIdForUpdate(userId)
-                .filter(candidate -> candidate.getAuthMethod() == AuthMethod.EMAIL_OTP
-                        && candidate.getStatus() == UserStatus.ACTIVE)
+                .filter(eligibility::mayStartAdminSession)
                 .orElseThrow(this::rejected);
 
         if (!(trustedDeviceService.exchange(rawDeviceToken, user.getAuthVersion())
@@ -119,9 +129,14 @@ public class AdminOtpService {
         return new AdminSession(sessionMinter.mint(user), rotated.rawToken(), rotated.expiresAt());
     }
 
-    private Optional<User> activeAdmin(String email) {
+    /**
+     * Locates a candidate for the emailed-code path. The eligibility rule itself lives in
+     * {@link SessionEligibilityPolicy} so that refresh — which finds its user by id and never comes
+     * through here — is governed by the same rule.
+     */
+    private Optional<User> eligibleAdmin(String email) {
         return userRepository.findByEmailAndAuthMethod(normalize(email), AuthMethod.EMAIL_OTP)
-                .filter(user -> user.getStatus() == UserStatus.ACTIVE);
+                .filter(eligibility::mayStartAdminSession);
     }
 
     private String normalize(String email) {
