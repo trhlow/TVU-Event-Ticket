@@ -474,6 +474,27 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 - [ ] **C3. Chưa có quy trình làm sạch production (clean slate)** — cả v8
       không có mục nào cho reset DB/Redis/RabbitMQ/bootstrap/localStorage.
 
+  > ✅ **THIẾT KẾ XONG 2026-07-28 — THỰC THI VẪN CHƯA.** Quy trình đã viết
+  > thành runbook riêng: **`backend/docs/CLEAN_SLATE_CUTOVER_VI.md`** (blue-green,
+  > định nghĩa no-write, commit point, rollback đồng bộ cả bốn, giữ volume cũ).
+  > Ba thứ giao kèm, đều đã chạy/verify được:
+  > 1. **`scripts/clean-slate-inventory.sh`** — bản đếm bằng chứng: 9 bảng,
+  >    `outbox_messages` theo status, **mọi** queue kể cả DLQ (dùng
+  >    `rabbitmqctl list_queues`, không hardcode tên), và prefix Redis lấy
+  >    **thẳng từ source Java**. ⚠️ Bản nháp đầu tôi đoán `ticket:count:*`
+  >    trong khi prefix thật là `ticket:remaining:` — sai prefix thì đếm ra 0
+  >    và trông y hệt "không có dữ liệu". Đã sửa.
+  > 2. **`frontend/src/lib/legacyStorageCleanup.ts`** — xoá 3 storage key, chạy
+  >    ở `main.tsx` trước khi render. 6 test. Chạy **mỗi lần khởi động** thay vì
+  >    một lần có marker: marker phải ghi thêm một key vĩnh viễn vào máy mọi
+  >    người dùng chỉ để tiết kiệm 3 lời gọi `removeItem`, và idempotent còn tự
+  >    lành nếu một tab cũ ghi lại key.
+  > 3. Nhánh miễn trừ trong `verify-bundle.mjs` giờ **thật sự được dùng** —
+  >    giai đoạn 1 cho phép 3 key xuất hiện đúng trong module cleanup.
+  >
+  > ⬜ **Còn nợ trước khi thực thi**: chạy `clean-slate-inventory.sh` trên
+  > production và lưu kết quả; H13 + H14 phải xong trước cutover.
+
   ### ⛔ C3.-1 — SƠ ĐỒ MIGRATION CHỐT CỨNG (v15, thay mọi mô tả rải rác trước)
 
   Đến v14/nháp v15 sơ đồ migration bị mô tả ở bốn chỗ và **không khớp nhau**:
