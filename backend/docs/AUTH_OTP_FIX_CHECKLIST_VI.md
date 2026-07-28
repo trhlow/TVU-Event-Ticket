@@ -230,20 +230,33 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 
 ## Critical
 
-- [ ] **C1. Cổng deploy** — hiện push lên `main` là deploy thẳng, song song
-      với CI (verify bằng `gh api`: main "Branch not protected", environment
-      `production` `protection_rules: []`, workflow không phụ thuộc CI):
-  - [ ] Bật branch protection cho `main`: require PR + required status checks
-        (dùng context `ci-gate`/`codeql-gate`, xem mục verify SHA bên dưới —
-        KHÔNG require thẳng job có `if:` điều kiện). Bật **enforce cho
-        administrators**, nếu không admin vẫn push thẳng được.
-  - [ ] Environment `production`: thêm required reviewer; tắt
-        `can_admins_bypass` (hiện đang `true`); bật prevent-self-review nếu
-        nhóm có từ 2 maintainer.
-  - [ ] `.github/workflows/deploy-production.yml`: **bỏ trigger `push: main`,
-        chỉ giữ `workflow_dispatch`** cho lần deploy đầu, reviewer approve
+- [x] ✅ **C1. Cổng deploy** — **XONG 2026-07-28**. Trước đó push lên `main` là
+      deploy thẳng, song song với CI (verify bằng `gh api`: main "Branch not
+      protected", environment `production` `protection_rules: []`, workflow
+      không phụ thuộc CI). Trạng thái sau khi fix, đọc lại bằng `gh api`:
+      `required_checks: [ci-gate, codeql-gate]`, `enforce_admins: true`,
+      `approvals: 1`, `can_admins_bypass: false`, deploy chỉ chạy bằng
+      `workflow_dispatch` với SHA 40-hex đúng đỉnh `main`:
+  - [x] ✅ **XONG 2026-07-28** — branch protection cho `main`: require PR
+        (1 approval, dismiss stale reviews), required status checks
+        `ci-gate` + `codeql-gate`, **enforce_admins = true**, cấm force-push và
+        xoá nhánh, bắt buộc resolve conversation. `strict` để **false** (không
+        bắt nhánh phải up-to-date) — bật lên sẽ buộc rebase lại mỗi lần main
+        đổi, chưa cần với quy mô nhóm hiện tại.
+    - ⚠️ Hai context này **chỉ tồn tại sau khi `ci.yml`/`codeql.yml` mới vào
+      PR**. PR mở từ nhánh chưa có hai job đó sẽ treo vĩnh viễn ở "Expected" —
+      rebase nhánh lên `hlow`/`main` mới là hết.
+  - [x] ✅ **XONG 2026-07-28** — environment `production`: required reviewer
+        `trhlow`, **`can_admins_bypass = false`**, deployment branch policy chỉ
+        cho phép **protected branches**.
+    - ℹ️ **prevent-self-review để `false` một cách có chủ đích**: repo chỉ có
+      **một** admin (`trhlow`; `khugiabao965` và `phdinh254` không phải admin).
+      Bật lên là tự khoá — không còn ai approve được deploy. Bật lại ngay khi
+      có maintainer thứ hai.
+  - [x] ✅ **XONG 2026-07-28** — `.github/workflows/deploy-production.yml`: bỏ
+        trigger `push: main`, chỉ còn `workflow_dispatch`, reviewer approve
         trong environment.
-  - [ ] **Verify SHA trong workflow** — hiện workflow nhận mọi ref
+  - [x] ✅ **XONG 2026-07-28 — Verify SHA trong workflow** — trước đây nhận mọi ref
         (`feature/foo` cũng lọt vì chỉ check charset, `:33`), fetch thẳng và
         deploy, không kiểm tra thuộc main hay đã qua CI. Phải thêm:
     - Input chỉ nhận SHA 40 ký tự: `^[0-9a-fA-F]{40}$` (bỏ nhận branch/ref
@@ -311,17 +324,22 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
         thấy run nào cũng là fail (fail-closed, không "không thấy nghĩa là
         ổn").
     - Deploy đúng SHA đã verify.
-  - [ ] **CodeQL triage gate**: gate là "không còn alert High/Critical chưa
-        triage", KHÔNG phải "workflow CodeQL xanh" (workflow xanh vẫn có thể
-        có finding). Hiện có **alert #5 `js/xss-through-dom` (High, open)**
-        tại `frontend/src/components/events/EventBanner.tsx` — fix hoặc
-        review + dismiss kèm bằng chứng false positive trước production.
-    - Chốt cách enforce (v6 bỏ trống): nếu để workflow deploy tự kiểm bằng
-      code-scanning alerts API thì cần thêm quyền **`security-events: read`**,
-      và gate fail khi còn alert `open` mức High/Critical. Nếu chọn triage thủ
-      công thì phải ghi rõ đây là bước người làm trong
-      `PRODUCTION_DEPLOYMENT_VI.md`, không phải cổng tự động — đừng để lửng lơ
-      như hiện tại.
+  - [x] ✅ **XONG 2026-07-28 — CodeQL triage gate**: gate là "không còn alert
+        High/Critical chưa triage", KHÔNG phải "workflow CodeQL xanh".
+    - **Chốt cách enforce: cổng TỰ ĐỘNG trong workflow deploy** (không phải
+      bước thủ công) — bước `Require no open High/Critical code scanning
+      alerts` dùng code-scanning alerts API với quyền `security-events: read`,
+      fail khi còn alert `open` mức high/critical và in ra số hiệu + đường dẫn.
+      Dismiss kèm lý do vẫn là đường thoát hợp lệ vì alert hết `open`.
+    - **Alert #5 `js/xss-through-dom` đã FIX** (không dismiss): đường taint là
+      thật — ô "Banner minh hoạ (URL)" trong `EventForm` là text tự do →
+      `formData.bannerUrl` → `<EventBanner src>` → `<img src>`. Thêm
+      `utils/safeImageUrl.ts` chỉ cho `http(s)` + đường dẫn same-site, chuẩn
+      hoá scheme trước khi so (trình duyệt bỏ qua whitespace/ký tự điều khiển
+      nên `java<TAB>script:` vẫn chạy). Chặn thêm sink thứ hai cùng loại ở
+      `LandingPage.tsx:465` mà CodeQL chưa flag.
+    - ⚠️ Alert **chỉ đóng sau khi fix vào `main`** và CodeQL chạy lại trên
+      `main`; tới lúc đó cổng deploy vẫn fail-closed (đúng thiết kế).
   - Tự động hóa sau khi quy trình ổn định. Khi đó nếu dùng `workflow_run`,
     bắt buộc đủ 4 guard (thiếu 1 là cổng hổng):
     `if: github.event.workflow_run.conclusion == 'success'`; checkout
