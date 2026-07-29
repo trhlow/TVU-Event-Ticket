@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Tests for publish-decision.sh, one per row of the agreed state table plus the ways each
-# classification can be reached wrongly.
+# Tests for publish-decision.sh.
 #
-# The invariant under test throughout: without a trustworthy prepared marker there is no
-# self-recoverable PARTIAL. Every case that reaches PARTIAL has one; every case that lacks one and
-# still finds objects in the registry is CONFLICT, not partial.
+# Two things this suite learned the hard way and now enforces on every case:
+#
+#   1. Assert the whole decision, not one field. An earlier version checked only `state`, and a
+#      mutation that gave CONFLICT the action list ["build_new"] left all forty-one green -- a
+#      classifier that says "conflict" while authorising a build is worse than one that says
+#      nothing.
+#
+#   2. Absence must be observed. An empty observation used to classify as ABSENT and authorise
+#      build_new, which is a decision to publish taken from no information.
 set -uo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,215 +19,257 @@ passed=0
 failed=0
 
 SHA=0123456789abcdef0123456789abcdef01234567
+OTHER_SHA=ffffffffffffffffffffffffffffffffffffffff
 MONO=sha256:1111111111111111111111111111111111111111111111111111111111111111
 FRONT=sha256:2222222222222222222222222222222222222222222222222222222222222222
 OTHER=sha256:9999999999999999999999999999999999999999999999999999999999999999
+MARKER_DIGEST=sha256:3333333333333333333333333333333333333333333333333333333333333333
 FP=fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477
 
-# observation <lookups-json>
-observation() {
-  cat <<EOF
-{
-  "commit": "$SHA",
-  "environment": "production",
-  "expected": {"repository": "owner/name", "frontendConfigFingerprint": "$FP"},
-  "lookups": $1
-}
-EOF
-}
+python_json() { python3 -c "$1" "${@:2}"; }
 
-# marker [overrides-json]
+# marker [json-overrides] [images-monolith] [images-frontend]
 marker() {
-  python3 - "${1:-{\}}" <<PYTHON
+  python_json '
 import json, sys
+overrides = json.loads(sys.argv[1] or "{}")
+mono, front = sys.argv[2], sys.argv[3]
 base = {
-  "status": "present",
-  "attested": True,
-  "attestedRepository": "owner/name",
+  "status": "present", "attested": True, "attestedRepository": "owner/name",
+  "markerDigest": sys.argv[4],
   "content": {
-    "commit": "$SHA",
-    "environment": "production",
-    "frontendConfigFingerprint": "$FP",
-    "images": {"monolith": "$MONO", "frontend": "$FRONT"},
-    "flywayInventoryFor": "$MONO",
-    "evidence": {"sbom": "sha256:aa", "vulnerabilityScan": "sha256:bb"}
-  }
+    "commit": sys.argv[5], "environment": "production",
+    "frontendConfigFingerprint": sys.argv[6],
+    "images": {"monolith": mono, "frontend": front},
+    "provenance": {"monolith": {"revision": sys.argv[5]}, "frontend": {"revision": sys.argv[5]}},
+    "evidence": {
+      "sbom": {"monolith": "sha256:" + "a"*64, "frontend": "sha256:" + "b"*64},
+      "vulnerabilityScan": {"monolith": "sha256:" + "c"*64, "frontend": "sha256:" + "d"*64},
+    },
+    "flywayInventory": {"boundTo": mono, "checksum": "e"*64,
+                        "migrations": [{"version": "16", "script": "V16__x.sql", "checksum": 1}]},
+  },
 }
-override = json.loads(sys.argv[1])
 def merge(a, b):
     for k, v in b.items():
         if isinstance(v, dict) and isinstance(a.get(k), dict):
             merge(a[k], v)
         else:
             a[k] = v
-merge(base, override)
+merge(base, overrides)
 print(json.dumps(base))
-PYTHON
+' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$MARKER_DIGEST" "$SHA" "$FP"
 }
 
-# expect <name> <lookups-json> <field> <wanted>
-expect() {
-  local name="$1" lookups="$2" field="$3" want="$4" got
-  got="$(observation "$lookups" | bash "$subject" 2>&1 \
-    | python3 -c "import json,sys; print(json.load(sys.stdin)['$field'])" 2>/dev/null)" || got="<unparseable>"
-  if [[ "$got" == "$want" ]]; then
+present() { printf '{"status":"present","digest":"%s"}' "$1"; }
+absent='{"status":"absent"}'
+
+# observation <final> <prepared> <monoTag> <frontTag> [monoObj] [frontObj] [monoCand] [frontCand]
+observation() {
+  cat <<EOF
+{"schemaVersion":1,"commit":"$SHA","environment":"production",
+ "expected":{"repository":"owner/name","frontendConfigFingerprint":"$FP"},
+ "lookups":{"finalMarker":$1,"preparedMarker":$2,"monolithTag":$3,"frontendTag":$4,
+            "monolithDigestObject":${5:-$(present "$MONO")},
+            "frontendDigestObject":${6:-$(present "$FRONT")},
+            "monolithCandidate":${7:-$absent},"frontendCandidate":${8:-$absent}}}
+EOF
+}
+
+# assert_decision <name> <observation> <state> <actions-json> <cleanupDebt> <retryable>
+assert_decision() {
+  local name="$1" obs="$2" want_state="$3" want_actions="$4" want_debt="$5" want_retry="$6"
+  local got
+  got="$(printf '%s' "$obs" | bash "$subject" 2>&1)"
+  local check
+  # The comparison prints PASS or the reasons, and anything else -- including nothing, which is
+  # what a crashed checker produces -- counts as a failure. An earlier version treated empty
+  # output as success, so a checker with a syntax error passed every case, including a subject
+  # rewired to answer COMPLETE unconditionally.
+  check="$(python_json '
+import json, sys
+
+want_state, want_actions, want_debt, want_retry = sys.argv[2:6]
+problems = []
+try:
+    d = json.loads(sys.argv[1])
+except Exception as error:
+    problems.append("decision is not JSON: %s" % error)
+    d = {}
+
+state = d.get("state")
+actions = d.get("actions")
+if state != want_state:
+    problems.append("state=%r wanted %r" % (state, want_state))
+if actions != json.loads(want_actions):
+    problems.append("actions=%r wanted %s" % (actions, want_actions))
+if d.get("cleanupDebt") != (want_debt == "true"):
+    problems.append("cleanupDebt=%r wanted %s" % (d.get("cleanupDebt"), want_debt))
+if d.get("retryable") != (want_retry == "true"):
+    problems.append("retryable=%r wanted %s" % (d.get("retryable"), want_retry))
+
+# Invariants checked on every case rather than in one place, so a mutation that keeps the label
+# right and the consequences wrong cannot pass anywhere.
+if state in ("UNKNOWN", "CONFLICT") and actions != []:
+    problems.append("%s must carry no actions, has %r" % (state, actions))
+if state == "ABSENT" and actions != ["build_new"]:
+    problems.append("ABSENT must be exactly [build_new], has %r" % (actions,))
+if state == "COMPLETE" and any(a != "verify_only" for a in actions or []):
+    problems.append("COMPLETE must propose no mutation, has %r" % (actions,))
+if state == "PARTIAL" and any(not (a.startswith("promote_") or a == "publish_final_marker")
+                              for a in actions or []):
+    problems.append("PARTIAL may only add, has %r" % (actions,))
+if d.get("retryable") and state != "UNKNOWN":
+    problems.append("retryable is only meaningful for UNKNOWN, state is %r" % (state,))
+
+print("; ".join(problems) if problems else "PASS")
+' "$got" "$want_state" "$want_actions" "$want_debt" "$want_retry" 2>&1)"
+  if [[ "$check" == "PASS" ]]; then
     echo "ok    $name"
     ((passed++))
   else
-    echo "FAIL  $name: $field is '$got', wanted '$want'"
-    echo "      decision: $(observation "$lookups" | bash "$subject" 2>&1)"
+    echo "FAIL  $name: $check"
+    echo "      decision: $got"
     ((failed++))
   fi
 }
 
-absent='{"status":"absent"}'
-present_mono="{\"status\":\"present\",\"digest\":\"$MONO\"}"
-present_front="{\"status\":\"present\",\"digest\":\"$FRONT\"}"
-
-echo "== ABSENT"
-expect "nothing published at all" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state ABSENT
-expect "an orphan candidate does not make a release exist" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent,\"monolithCandidate\":$present_mono}" \
-  state ABSENT
-expect "the orphan candidate is reported as debt" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent,\"monolithCandidate\":$present_mono}" \
-  cleanupDebt True
+echo "== absence must be observed, never inferred"
+for bad in '{}' '[]' 'null' '{"schemaVersion":1}' \
+  '{"schemaVersion":2,"commit":"'"$SHA"'","environment":"production","expected":{"repository":"owner/name","frontendConfigFingerprint":"'"$FP"'"},"lookups":{}}' ; do
+  assert_decision "unusable observation: $bad" "$bad" UNKNOWN '[]' false false
+done
+assert_decision "a missing lookup is not an absent one" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" | python3 -c '
+import json,sys
+o=json.load(sys.stdin); del o["lookups"]["finalMarker"]; print(json.dumps(o))')" \
+  UNKNOWN '[]' false false
+assert_decision "an unexpected lookup key is a typo, not a fact" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" | python3 -c '
+import json,sys
+o=json.load(sys.stdin); o["lookups"]["finlMarker"]={"status":"absent"}; print(json.dumps(o))')" \
+  UNKNOWN '[]' false false
+# Deliberately a complete, otherwise-valid observation: with the duplicate rejected this is
+# UNKNOWN, and with it accepted the later "absent" wins and the whole thing classifies as ABSENT
+# and authorises build_new. An earlier version of this case omitted the other lookups, so it
+# reached UNKNOWN through the missing-key check either way and could not tell the two apart.
+assert_decision "duplicate keys cannot hide an error behind an absence" \
+  "{\"schemaVersion\":1,\"commit\":\"$SHA\",\"environment\":\"production\",
+    \"expected\":{\"repository\":\"owner/name\",\"frontendConfigFingerprint\":\"$FP\"},
+    \"lookups\":{\"finalMarker\":{\"status\":\"error\",\"code\":503},
+                 \"finalMarker\":$absent,
+                 \"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent,
+                 \"monolithDigestObject\":$absent,\"frontendDigestObject\":$absent,
+                 \"monolithCandidate\":$absent,\"frontendCandidate\":$absent}}" \
+  UNKNOWN '[]' false false
 
 echo
-echo "== PARTIAL, only with a trustworthy prepared marker"
-expect "prepared marker, both tags missing" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state PARTIAL
-expect "prepared marker, one tag missing" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$absent}" \
-  state PARTIAL
-expect "both tags right, final marker missing" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state PARTIAL
-expect "resuming never rebuilds" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$absent}" \
-  actions "['promote_frontend_tag', 'publish_final_marker']"
+echo "== ABSENT"
+assert_decision "nothing published at all" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" "$absent" "$absent")" \
+  ABSENT '["build_new"]' false false
+assert_decision "an orphan candidate is debt, not a release" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" "$absent" "$absent" "$(present "$MONO")")" \
+  ABSENT '["build_new"]' true false
+
+echo
+echo "== PARTIAL, only with a trustworthy prepared marker and digests that still exist"
+assert_decision "both tags missing" \
+  "$(observation "$absent" "$(marker)" "$absent" "$absent")" \
+  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
+assert_decision "one tag missing" \
+  "$(observation "$absent" "$(marker)" "$(present "$MONO")" "$absent")" \
+  PARTIAL '["promote_frontend_tag","publish_final_marker"]' false false
+assert_decision "both tags right, final marker missing" \
+  "$(observation "$absent" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")")" \
+  PARTIAL '["publish_final_marker"]' false false
+assert_decision "a marker whose digest is no longer in the registry cannot be resumed" \
+  "$(observation "$absent" "$(marker)" "$absent" "$absent" "$absent")" \
+  CONFLICT '[]' false false
 
 echo
 echo "== COMPLETE"
-expect "final marker and both tags agree" \
-  "{\"finalMarker\":$(marker),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state COMPLETE
+assert_decision "final marker and both tags agree" \
+  "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")")" \
+  COMPLETE '["verify_only"]' false false
+assert_decision "leftover candidate does not invalidate it" \
+  "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")" "" "" "$(present "$MONO")")" \
+  COMPLETE '["verify_only"]' true false
 
 echo
 echo "== CONFLICT"
-expect "official tag with nothing to anchor it" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$absent,\"monolithTag\":$present_mono,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "tag points at a digest the prepared marker does not record" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":{\"status\":\"present\",\"digest\":\"$OTHER\"},\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "final marker present but a tag is missing" \
-  "{\"finalMarker\":$(marker),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "final marker disagrees with the tag" \
-  "{\"finalMarker\":$(marker),\"preparedMarker\":$(marker),\"monolithTag\":{\"status\":\"present\",\"digest\":\"$OTHER\"},\"frontendTag\":$present_front}" \
-  state CONFLICT
+assert_decision "official tag with nothing to anchor it" \
+  "$(observation "$absent" "$absent" "$(present "$MONO")" "$absent")" \
+  CONFLICT '[]' false false
+assert_decision "tag disagrees with the prepared marker" \
+  "$(observation "$absent" "$(marker)" "$(present "$OTHER")" "$absent")" \
+  CONFLICT '[]' false false
+assert_decision "final marker present but a tag is absent" \
+  "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$absent")" \
+  CONFLICT '[]' false false
+assert_decision "final and prepared markers bind different digests" \
+  "$(observation "$(marker)" "$(marker '' "$OTHER")" "$(present "$MONO")" "$(present "$FRONT")")" \
+  CONFLICT '[]' false false
+assert_decision "final trustworthy, prepared beside it is not" \
+  "$(observation "$(marker)" "$(marker '{"attested":false}')" "$(present "$MONO")" "$(present "$FRONT")")" \
+  CONFLICT '[]' false false
 
 echo
 echo "== a marker that cannot be trusted is not a marker"
-expect "unattested" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"attested":false}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "attested to a different repository" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"attestedRepository":"someone/else"}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "records a different commit" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"content":{"commit":"ffffffffffffffffffffffffffffffffffffffff"}}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "records a different environment" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"content":{"environment":"staging"}}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "records a different frontend fingerprint" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"content":{"frontendConfigFingerprint":"deadbeef"}}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "Flyway inventory bound to a different image" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker "{\"content\":{\"flywayInventoryFor\":\"$OTHER\"}}"),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "missing SBOM evidence" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"content":{"evidence":{"sbom":""}}}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-expect "missing scan evidence" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker '{"content":{"evidence":{"vulnerabilityScan":""}}}'),\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state CONFLICT
-
-
-# A final marker is the document everything downstream trusts, so it has to be verified rather than
-# believed. These cases exist because mutation testing found none: removing the trustworthiness
-# check on the final marker left every other test green, since they all put the untrustworthy
-# marker in the prepared slot.
-echo
-echo "== an untrustworthy final marker is a conflict, not a complete release"
-expect "final marker unattested" \
-  "{\"finalMarker\":$(marker '{"attested":false}'),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state CONFLICT
-expect "final marker attested to a different repository" \
-  "{\"finalMarker\":$(marker '{"attestedRepository":"someone/else"}'),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state CONFLICT
-expect "final marker records a different commit" \
-  "{\"finalMarker\":$(marker '{"content":{"commit":"ffffffffffffffffffffffffffffffffffffffff"}}'),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state CONFLICT
-expect "final marker missing scan evidence" \
-  "{\"finalMarker\":$(marker '{"content":{"evidence":{"vulnerabilityScan":""}}}'),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state CONFLICT
-expect "final marker Flyway inventory bound elsewhere" \
-  "{\"finalMarker\":$(marker "{\"content\":{\"flywayInventoryFor\":\"$OTHER\"}}"),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front}" \
-  state CONFLICT
+untrustworthy=(
+  '{"attested":false}|unattested'
+  '{"attested":"false"}|attested is the string false'
+  '{"attested":1}|attested is a number'
+  '{"attestedRepository":"someone/else"}|attested to another repository'
+  '{"markerDigest":"nonsense"}|marker digest malformed'
+  '{"content":{"commit":"'"$OTHER_SHA"'"}}|records another commit'
+  '{"content":{"environment":"staging"}}|records another environment'
+  '{"content":{"frontendConfigFingerprint":"deadbeef"}}|fingerprint malformed'
+  '{"content":{"images":{"monolith":"sha256:zzzz"}}}|digest is not hex'
+  '{"content":{"provenance":{"monolith":{"revision":"'"$OTHER_SHA"'"}}}}|provenance points elsewhere'
+  '{"content":{"evidence":{"sbom":true}}}|sbom evidence is a boolean'
+  '{"content":{"evidence":{"vulnerabilityScan":{"monolith":"anything"}}}}|scan evidence is free text'
+  '{"content":{"flywayInventory":{"boundTo":"'"$OTHER"'"}}}|inventory bound to another image'
+  '{"content":{"flywayInventory":{"migrations":[]}}}|inventory has no migrations'
+  '{"content":{"flywayInventory":{"checksum":"short"}}}|inventory checksum malformed'
+)
+for entry in "${untrustworthy[@]}"; do
+  override="${entry%%|*}"; label="${entry##*|}"
+  assert_decision "prepared marker: $label" \
+    "$(observation "$absent" "$(marker "$override")" "$absent" "$absent")" \
+    CONFLICT '[]' false false
+done
+for entry in "${untrustworthy[@]}"; do
+  override="${entry%%|*}"; label="${entry##*|}"
+  assert_decision "final marker: $label" \
+    "$(observation "$(marker "$override")" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")")" \
+    CONFLICT '[]' false false
+done
 
 echo
-echo "== UNKNOWN outranks everything, and proposes nothing"
+echo "== UNKNOWN outranks everything and proposes nothing"
+error_lookup() { printf '{"status":"error","code":%s}' "$1"; }
 for code in 408 429 500 502 503 504; do
-  expect "code $code is retryable" \
-    "{\"finalMarker\":{\"status\":\"error\",\"code\":$code},\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-    retryable True
+  assert_decision "code $code is retryable" \
+    "$(observation "$(error_lookup "$code")" "$absent" "$absent" "$absent")" \
+    UNKNOWN '[]' false true
 done
-for code in 401 403; do
-  expect "code $code is not retryable" \
-    "{\"finalMarker\":{\"status\":\"error\",\"code\":$code},\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-    retryable False
+for code in 401 403 404; do
+  assert_decision "code $code is not retryable" \
+    "$(observation "$(error_lookup "$code")" "$absent" "$absent" "$absent")" \
+    UNKNOWN '[]' false false
 done
-expect "an unreadable lookup proposes no actions" \
-  "{\"finalMarker\":{\"status\":\"error\",\"code\":503},\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  actions "[]"
-expect "an error outranks an otherwise complete release" \
-  "{\"finalMarker\":$(marker),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":{\"status\":\"error\",\"code\":500}}" \
-  state UNKNOWN
-expect "a malformed digest is not a digest" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":{\"status\":\"present\",\"digest\":\"\"},\"frontendTag\":$absent}" \
-  state UNKNOWN
-expect "a truncated digest is not a digest" \
-  "{\"finalMarker\":$absent,\"preparedMarker\":$(marker),\"monolithTag\":{\"status\":\"present\",\"digest\":\"sha256:abc\"},\"frontendTag\":$absent}" \
-  state UNKNOWN
-expect "an unrecognised status is not a status" \
-  "{\"finalMarker\":{\"status\":\"probably\"},\"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent}" \
-  state UNKNOWN
-
-echo
-echo "== cleanup debt never invalidates a release"
-expect "complete release with a leftover candidate stays COMPLETE" \
-  "{\"finalMarker\":$(marker),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front,\"frontendCandidate\":$present_front}" \
-  state COMPLETE
-expect "and reports the debt" \
-  "{\"finalMarker\":$(marker),\"preparedMarker\":$(marker),\"monolithTag\":$present_mono,\"frontendTag\":$present_front,\"frontendCandidate\":$present_front}" \
-  cleanupDebt True
-
-echo
-echo "== malformed input is not a state"
-got="$(printf 'not json' | bash "$subject" | python3 -c "import json,sys; print(json.load(sys.stdin)['state'])")"
-if [[ "$got" == UNKNOWN ]]; then
-  echo "ok    unparseable observation"
-  ((passed++))
-else
-  echo "FAIL  unparseable observation: got '$got'"
-  ((failed++))
-fi
+assert_decision "an error outranks an otherwise complete release" \
+  "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(error_lookup 500)")" \
+  UNKNOWN '[]' false true
+for bad_digest in '""' '"sha256:abc"' '"sha256:'"$(printf 'z%.0s' {1..64})"'"' '"1111"'; do
+  assert_decision "a malformed tag digest is not a digest: $bad_digest" \
+    "$(observation "$absent" "$(marker)" "{\"status\":\"present\",\"digest\":$bad_digest}" "$absent")" \
+    UNKNOWN '[]' false false
+done
+assert_decision "an unrecognised status is not a status" \
+  "$(observation '{"status":"probably"}' "$absent" "$absent" "$absent")" \
+  UNKNOWN '[]' false false
 
 echo
 echo "passed=$passed failed=$failed"
