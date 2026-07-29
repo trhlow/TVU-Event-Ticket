@@ -791,10 +791,26 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 >
 > Bằng chứng: full suite **324 pass / 0 fail / 0 skipped** (+9 test).
 >
-> ⬜ **Còn nợ**: ghi vào docs vận hành rằng rotate `OTP_PEPPER` sẽ vô hiệu hoá
-> mọi OTP đang chờ (hành vi dự kiến, người dùng chỉ cần xin mã mới).
+> ✅ **Khoản nợ cuối đã trả 2026-07-29** — `OPERATIONS.md` mục "Rotating
+> OTP_PEPPER": nêu rõ rotate làm mọi OTP đang chờ hết hiệu lực là **hành vi dự
+> kiến**, kèm phạm vi ảnh hưởng bằng số thật (entry tự hết hạn trong 10 phút
+> theo `OtpStore.TTL`, xin mã mới sau cooldown 60 giây theo `OtpStore.COOLDOWN`
+> **nếu chưa hết ngân sách 10 lượt/24h** theo `OtpConfiguration`), khi nào cần
+> rotate, và cảnh báo không chạy hai instance với hai pepper khác nhau.
+> - ⚠️ Runbook bắt buộc **recreate** container (`up -d --no-deps
+>   --force-recreate --wait monolith`, cùng cách `failover-smtp.sh:83` đang
+>   dùng) chứ **không** `docker compose restart` — restart giữ nguyên
+>   environment cũ, tức pepper cũ, mà mọi bước sau vẫn xanh.
+> - ⚠️ Bằng chứng rotation phải là **mã cũ bị từ chối trong cửa sổ TTL 10 phút**
+>   + container id đổi. Chỉ "xin mã mới rồi đăng nhập được" **không** chứng minh
+>   gì: nó thành công y hệt trên container còn chạy pepper cũ.
+> - Ngân sách diễn tập được ghi rõ (1/5 lượt đoán sai, 1/10 lượt gửi mỗi 24h),
+>   cấm lặp drill và cấm xoá key rate-limit bằng tay.
+>
+> **H2 đóng.**
 
-- [ ] **H2. OTP verify không nguyên tử** — `OtpStore.java:44-61` GET →
+- [x] ✅ **H2. OTP verify không nguyên tử** — **XONG 2026-07-29** (chi tiết ở
+      khối ghi chú ngay trên). Mô tả lỗi gốc: `OtpStore.java:44-61` GET →
       compare → REMOVE/PUT nhiều lệnh; hai request đồng thời cùng code đúng
       đều OK:
   - [ ] **Ưu tiên Lua script** gộp check code + tăng attempts + consume một

@@ -21,9 +21,9 @@ Checklist `AUTH_OTP_FIX_CHECKLIST_VI.md` có 32 mục (3 Critical, 14 High,
 14 Medium, 1 Low). **29 mục đã có implementation, code hoặc tài liệu** — nhưng
 theo đúng tiêu chí đóng mục của chính checklist thì con số phân rã là:
 
-- **21 mục đóng hoàn toàn.**
-- **8 mục mới xong một phần** (C3, H1, H2, H7, H8, H10, H13, H14) — còn chờ
-  chạy thật trên máy chủ, chờ diễn tập, chờ test hoặc chờ tài liệu.
+- **22 mục đóng hoàn toàn.**
+- **7 mục mới xong một phần** (C3, H1, H7, H8, H10, H13, H14) — còn chờ chạy
+  thật trên máy chủ, chờ diễn tập, hoặc chờ test còn thiếu.
 - **3 mục chưa bắt đầu** (M2, M5, M13).
 
 Bảng đầy đủ ở mục 5. Bản trước của báo cáo này ghi "28 mục hoàn thành, còn 4
@@ -204,13 +204,12 @@ hơn không có test.
 | **M5** | Ghi nhận mã commit thật đang chạy trên máy chủ | **Cần truy cập VPS**, tôi không có. Đây là việc phải làm trực tiếp trên máy chủ. |
 | **M13** | Dựng Prometheus/Grafana + cảnh báo thật | Là hạng mục hạ tầng riêng, cần quyết định về công cụ và chi phí. |
 
-### 5.2 Tám mục mới xong một phần — **không được tính là hoàn tất**
+### 5.2 Bảy mục mới xong một phần — **không được tính là hoàn tất**
 
 | Mục | Đã có | Còn thiếu để đóng |
 |---|---|---|
 | **C3** | Runbook clean-slate blue-green + script đếm dữ liệu | Chưa chạy inventory thật, chưa cutover production |
 | **H1** | Đường khôi phục quyền admin + checklist nghiệm thu | Checklist quy định H1 **chỉ đóng sau khi H14 đã cấu hình và diễn tập thành công** |
-| **H2** | Mã OTP đã băm kèm pepper | Còn nợ tài liệu vận hành: rotate `OTP_PEPPER` làm mọi mã đang chờ hết hiệu lực |
 | **H7** | Khoá theo id tăng dần khi vô hiệu hoá CLB | **Test deadlock** `refresh()` ⟂ `deactivateClub()` — đây là bằng chứng đóng H7, không phải một mục riêng |
 | **H8** | Version phiên trong DB + trusted-device lineage | Cùng test deadlock trên; checklist ghi rõ H8 vẫn dừng ở bước 3c |
 | **H10** | Đạt *mức tối thiểu*: pin digest toàn bộ base image (2 Dockerfile + 4 image dịch vụ trong Compose production, RabbitMQ pin 29/07) và pin SHA mọi GitHub Action | Image ứng dụng vẫn build trên VPS lúc deploy → chưa build-once-in-CI / deploy-by-digest, chưa reproducible-by-construction |

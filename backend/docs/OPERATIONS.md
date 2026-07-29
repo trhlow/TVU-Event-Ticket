@@ -65,6 +65,77 @@ SELECT message_id, started_at, attempt_no, last_error
 2. Test restore in an isolated database using `restore-postgres-into-new-stack.sh` at least quarterly.
 3. Record the restore time and data age; treat an untested backup as unavailable.
 
+## Rotating OTP_PEPPER
+
+`OTP_PEPPER` is the HMAC key mixed into every stored one-time code. Redis holds
+`HMAC-SHA256(pepper, code)` under `otp:<userId>`, never the code itself: a Redis dump is not
+enough to recover a live code without the pepper.
+
+**Rotating it invalidates every code currently waiting to be used.** This is by design, not an
+incident: the stored digests were computed with the old pepper and no longer match anything the
+user can type. Anyone mid-login sees their code rejected and requests a new one.
+
+Blast radius is small and self-clearing. Pending entries expire on their own within
+**10 minutes** (`OtpStore.TTL`), and a user can request a replacement after the **60 second**
+cooldown (`OtpStore.COOLDOWN`) provided they have not spent their budget of **10 sends per 24
+hours** (`OtpConfiguration`). There is nothing to clean up by hand.
+
+**Rotate when:** the pepper may have leaked (a `.env` copied to an untrusted machine, a shared
+terminal recording, an operator leaving the project), or as scheduled hygiene alongside the other
+signing secrets.
+
+**Procedure:**
+
+1. Tell the support channel **before** touching anything, with one line: sign-in codes issued in
+   the last few minutes will stop working, request a new code. Sent afterwards, this arrives
+   behind the first report and the rotation reads as an outage.
+2. Pick a low-traffic window. Codes in flight when the container is recreated are lost, so
+   rotating during a check-in rush means a burst of confused users.
+3. Generate a fresh value: `openssl rand -base64 32`. It must not reuse the JWT key, the CSRF
+   secret, the QR signing key or the SMTP password — `preflight.sh` rejects a duplicate.
+   `ProductionSecretsValidator` rejects an empty value, the development default, and anything
+   under 44 characters; it cannot judge randomness, so generate the value with `openssl` rather
+   than typing one.
+4. If you intend to prove the rotation in step 6, request an OTP **now, before changing the
+   secret**, and write down the time it was issued. Do not use it.
+5. Replace `OTP_PEPPER` in the production `.env`, run `preflight.sh`, then **recreate** the
+   container — a restart does not reload the environment:
+
+   ```bash
+   bash scripts/preflight.sh
+   docker compose ps -q monolith            # note the container id
+
+   docker compose \
+     --env-file .env \
+     -f compose.yaml \
+     up -d --no-deps --force-recreate --wait monolith
+
+   docker compose ps -q monolith            # must be a different id
+   ```
+
+   A changed container id is the proof that the new environment was loaded. `docker compose
+   restart` leaves the id — and the old pepper — in place, which is the failure this step exists
+   to prevent. The same pattern is used by `failover-smtp.sh`.
+6. Verify the rotation actually happened, in this order:
+   1. Submit the code from step 4 **before `issued_at` + 10 minutes**. It must be rejected.
+      Past the TTL a rejection proves nothing — the entry expired on its own — so record the
+      issue time and the time of this check.
+   2. After the 60 second cooldown, request a new code and sign in successfully.
+
+   Signing in with a *new* code alone is not evidence: it succeeds just as well against a
+   container still running the old pepper.
+7. Record the date, who rotated, and the result of both checks in step 6.
+
+**Drill budget.** Each rehearsal spends real quota on the account used: the rejected old code
+consumes 1 of 5 wrong-guess attempts, and each new code consumes 1 of 10 sends per 24 hours.
+Do not loop the drill, and do not delete the rate-limit keys by hand to get around it — that
+disables the protection the drill is meant to exercise. To rehearse again, use the second
+bootstrap admin address or wait for the window to roll over.
+
+**Do not** run two application instances with different peppers. A code issued by one is
+unverifiable by the other, which looks like intermittent OTP failure rather than a configuration
+split.
+
 ## Base image digests — who bumps them, and when
 
 Every third-party image in `infra/production/compose.yaml` and both Dockerfiles is pinned by
