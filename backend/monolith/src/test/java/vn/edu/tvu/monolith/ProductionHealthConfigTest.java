@@ -12,8 +12,8 @@ import org.springframework.core.io.ClassPathResource;
 
 /**
  * Reads application-prod.yml directly rather than booting a context, because what matters
- * here is the shipped file itself: these two settings are a deliberate, easily-reverted
- * trade-off and the reasoning lives in the assertions below.
+ * here is the shipped file itself: these settings are deliberate, easily-reverted trade-offs
+ * and the reasoning lives in the assertions below.
  */
 class ProductionHealthConfigTest {
 
@@ -40,5 +40,24 @@ class ProductionHealthConfigTest {
                 .as("Adding mail here would take the whole site out of rotation the moment SMTP"
                         + " wobbles, even though students browsing events need no email at all")
                 .isEqualTo("db,redis,rabbit");
+    }
+
+    @Test
+    @DisplayName("OpenAPI document is off in production, so the endpoint does not exist to be exposed")
+    void apiDocsDisabledInProduction() throws IOException {
+        assertThat(productionProperties().getProperty("springdoc.api-docs.enabled"))
+                .as("Caddy not routing /v3/api-docs and the container not publishing a port are"
+                        + " properties of the environment: one stray `ports:` line added while debugging"
+                        + " undoes both. Not creating the endpoint is a property of the artifact")
+                .isEqualTo(false);
+    }
+
+    @Test
+    @DisplayName("Swagger UI is off in production — its bundle is the part that carries CVEs")
+    void swaggerUiDisabledInProduction() throws IOException {
+        assertThat(productionProperties().getProperty("springdoc.swagger-ui.enabled"))
+                .as("The swagger-ui webjar is third-party JavaScript shipped inside our jar; it is"
+                        + " what forced the DOMPurify pin. Production has no reason to serve it")
+                .isEqualTo(false);
     }
 }
