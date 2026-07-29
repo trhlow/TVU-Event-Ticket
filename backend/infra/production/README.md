@@ -14,7 +14,7 @@ Run these commands from `backend/infra/production` on an Ubuntu production host.
 # Two arguments. The Microsoft ids come from frontend/.env.production, which is tracked in
 # Git and is what the frontend bundle was built from; the domain must match the redirect
 # URI in that file.
-bash scripts/generate-env.sh evts.id.vn chair@tvu.edu.vn,vice@tvu.edu.vn
+bash scripts/generate-env.sh evts.id.vn REPLACE_WITH_REAL_ADMIN_MAILBOX_1,REPLACE_WITH_REAL_ADMIN_MAILBOX_2
 
 # After filling SMTP values in .env:
 bash scripts/preflight.sh

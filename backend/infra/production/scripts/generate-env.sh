@@ -15,11 +15,16 @@ Usage:
   bash scripts/generate-env.sh DOMAIN ADMIN_EMAILS
 
 Example:
-  bash scripts/generate-env.sh events.example.com chair@tvu.edu.vn,vice@tvu.edu.vn
+  bash scripts/generate-env.sh events.example.com REPLACE_WITH_REAL_ADMIN_MAILBOX_1,REPLACE_WITH_REAL_ADMIN_MAILBOX_2
 
 ADMIN_EMAILS is a comma-separated list of at least two real mailboxes. Sign-in is
 passwordless, so one unreachable mailbox with one address configured locks every
 super admin out of the system.
+
+The example above is deliberately not a valid address. Every mailbox listed gets a
+live SUPER_ADMIN account created for it, so an example that runs is an example that
+creates administrators nobody owns -- which is the situation the clean-slate cutover
+exists to end. Substitute addresses you can open and read.
 
 The Microsoft application and directory ids are no longer arguments. They come
 from frontend/.env.production, which is tracked in Git and is what the frontend

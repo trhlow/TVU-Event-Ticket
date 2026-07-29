@@ -100,7 +100,7 @@ Script sau sinh độc lập password cho PostgreSQL, Redis, RabbitMQ, CSRF và 
 
 ```bash
 cd /srv/tvu-event-ticket/backend/infra/production
-bash scripts/generate-env.sh evts.id.vn chair@tvu.edu.vn,vice@tvu.edu.vn
+bash scripts/generate-env.sh evts.id.vn REPLACE_WITH_REAL_ADMIN_MAILBOX_1,REPLACE_WITH_REAL_ADMIN_MAILBOX_2
 ```
 
 Chỉ **hai** tham số. Client ID và tenant ID **không còn nhập tay** — script đọc
