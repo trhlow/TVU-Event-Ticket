@@ -3,17 +3,29 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 deployment_dir="$(cd -- "$script_dir/.." && pwd)"
+repository_root="$(cd -- "$deployment_dir/../../.." && pwd)"
 env_file="$deployment_dir/.env"
+
+# shellcheck source=frontend-config.sh
+source "$script_dir/frontend-config.sh"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/generate-env.sh DOMAIN ADMIN_EMAIL MICROSOFT_CLIENT_ID MICROSOFT_TENANT_ID
+  bash scripts/generate-env.sh DOMAIN ADMIN_EMAILS
 
 Example:
-  bash scripts/generate-env.sh events.example.com admin@example.com \
-    11111111-1111-1111-1111-111111111111 \
-    22222222-2222-2222-2222-222222222222
+  bash scripts/generate-env.sh events.example.com chair@tvu.edu.vn,vice@tvu.edu.vn
+
+ADMIN_EMAILS is a comma-separated list of at least two real mailboxes. Sign-in is
+passwordless, so one unreachable mailbox with one address configured locks every
+super admin out of the system.
+
+The Microsoft application and directory ids are no longer arguments. They come
+from frontend/.env.production, which is tracked in Git and is what the frontend
+bundle is built from. Typing them here as well meant two sources for one fact,
+and a typo produced a backend that rejected every token the frontend obtained,
+with nothing to compare against. DOMAIN must match the redirect URI in that file.
 
 The script generates service passwords, signing secrets, and a stable RSA key
 pair. It never overwrites an existing .env. You must add the SMTP credential
@@ -21,7 +33,7 @@ afterward, then run scripts/preflight.sh.
 EOF
 }
 
-[[ $# -eq 4 ]] || {
+[[ $# -eq 2 ]] || {
   usage >&2
   exit 2
 }
@@ -51,17 +63,34 @@ for candidate in "${bootstrap_emails[@]}"; do
       ;;
   esac
 done
-microsoft_client_id="$3"
-microsoft_tenant_id="$4"
 
 [[ "$domain" =~ ^[A-Za-z0-9.-]+$ && "$domain" == *.* ]] \
   || { echo "DOMAIN must be a hostname without https:// or a path" >&2; exit 2; }
 [[ "$admin_email" == *@*.* && "$admin_email" != *[[:space:]]* ]] \
   || { echo "ADMIN_EMAIL is not a plausible email address" >&2; exit 2; }
-[[ "$microsoft_client_id" != *[[:space:]]* && -n "$microsoft_client_id" ]] \
-  || { echo "MICROSOFT_CLIENT_ID must not be blank or contain spaces" >&2; exit 2; }
-[[ "$microsoft_tenant_id" != *[[:space:]]* && -n "$microsoft_tenant_id" ]] \
-  || { echo "MICROSOFT_TENANT_ID must not be blank or contain spaces" >&2; exit 2; }
+# One source of truth, read rather than retyped. frontend-config.sh validates the file first --
+# GUID shape, no placeholders, https redirect -- so a bad value fails here rather than at the first
+# sign-in attempt.
+frontend_config="$(frontend_config_json "$repository_root")" || {
+  echo "Could not read the frontend production config. Refusing to generate a .env that would" >&2
+  echo "disagree with the bundle; fix frontend/.env.production first." >&2
+  exit 2
+}
+read_frontend_value() {
+  printf '%s' "$frontend_config" | python3 -c "import json,sys; print(json.load(sys.stdin)['$1'])"
+}
+microsoft_client_id="$(read_frontend_value VITE_MICROSOFT_CLIENT_ID)"
+microsoft_tenant_id="$(read_frontend_value VITE_MICROSOFT_TENANT_ID)"
+frontend_redirect="$(read_frontend_value VITE_MICROSOFT_REDIRECT_URI)"
+
+# The domain argument and the redirect the bundle was built with must describe the same site. Entra
+# compares the redirect byte for byte, so a mismatch becomes AADSTS50011 at sign-in -- after
+# deployment, in front of users, with nothing in the logs pointing back here.
+[[ "$frontend_redirect" == "https://$domain" ]] || {
+  echo "DOMAIN is $domain, but frontend/.env.production was built for $frontend_redirect." >&2
+  echo "These must match exactly; Entra compares the redirect URI byte for byte." >&2
+  exit 2
+}
 [[ ! -e "$env_file" ]] || {
   echo "Refusing to overwrite existing $env_file" >&2
   exit 1

@@ -4,11 +4,19 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$script_dir/common.sh"
+# shellcheck source=frontend-config.sh
+source "$script_dir/frontend-config.sh"
 
 require_command docker
 require_command git
 require_command curl
 require_command openssl
+# Not `require_command python3`: on some hosts python3 resolves to a shim that exits non-zero when
+# actually invoked, and frontend-config.sh depends on it to tell a real config from an empty one.
+# Ask it to run something.
+python3 -c 'import json, hashlib, sys; sys.exit(0)' >/dev/null 2>&1   || die "python3 must be installed and runnable: the release verifier and the frontend config
+fingerprint both depend on it, and a deploy that cannot compute the fingerprint cannot tell
+whether the frontend image was built for this environment"
 [[ -f "$env_file" ]] || die "Missing production environment file: $env_file"
 docker info >/dev/null 2>&1 || die "Docker daemon is unavailable to the deploy user"
 docker compose version >/dev/null 2>&1 || die "Docker Compose plugin is unavailable"
@@ -90,6 +98,26 @@ cmp -s "$private_key_file.public" "$derived_public_key_file" \
   || die "JWT_PRIVATE_KEY_PEM and JWT_PUBLIC_KEY_PEM do not form one key pair"
 
 ENV_FILE="$env_file" docker compose --env-file "$env_file" -f "$compose_file" config --quiet
+
+# Two representations of one fact, checked against each other. The frontend bakes these values in
+# at build time and the backend reads them at runtime, so they cannot be collapsed into a single
+# variable -- but they can be required to agree. When they disagree the symptom is a user who signs
+# in with Microsoft successfully and is then rejected by the API, which points at neither file.
+repository_root="$(cd -- "$deployment_dir/../../.." && pwd)"
+frontend_config="$(frontend_config_json "$repository_root")"   || die "Could not read frontend/.env.production; the frontend build configuration is unverifiable"
+read_frontend_value() {
+  printf '%s' "$frontend_config" | python3 -c "import json,sys; print(json.load(sys.stdin)['$1'])"
+}
+expected_client_id="$(read_frontend_value VITE_MICROSOFT_CLIENT_ID)"
+expected_tenant_id="$(read_frontend_value VITE_MICROSOFT_TENANT_ID)"
+expected_redirect="$(read_frontend_value VITE_MICROSOFT_REDIRECT_URI)"
+
+[[ "$(env_value MICROSOFT_CLIENT_ID)" == "$expected_client_id" ]]   || die "MICROSOFT_CLIENT_ID in $env_file does not match VITE_MICROSOFT_CLIENT_ID in
+frontend/.env.production. The backend would reject the audience of every token the frontend obtains"
+[[ "$(env_value MICROSOFT_TENANT_ID)" == "$expected_tenant_id" ]]   || die "MICROSOFT_TENANT_ID in $env_file does not match VITE_MICROSOFT_TENANT_ID in
+frontend/.env.production. The backend would reject the tid claim of every token the frontend obtains"
+[[ "$expected_redirect" == "https://$domain" ]]   || die "APP_DOMAIN is $domain, but the frontend bundle was built for $expected_redirect.
+Entra compares the redirect URI byte for byte; sign-in would fail with AADSTS50011"
 
 available_kib="$(awk '/MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null || true)"
 if [[ -n "$available_kib" && "$available_kib" -lt 1572864 ]]; then
