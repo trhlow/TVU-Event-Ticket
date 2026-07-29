@@ -55,11 +55,18 @@ REQUIRED_LOOKUPS = (
 # Exactly the fields each observed state may carry. A lookup that says "absent" while carrying an
 # error code is two answers at once, and picking either is guessing.
 LOOKUP_FIELDS = {
-    "absent": ({"status", "observedCode"}, {"status", "observedCode"}),
-    "error": ({"status"}, {"status", "code", "timeout", "detail"}),
-    "present": ({"status"}, {"status", "digest", "attested", "attestedRepository", "markerDigest",
-                             "verification", "content"}),
+    # Every lookup records what it asked about. Without queriedRef an "absent" is an assertion with
+    # no subject, and two lookups that queried different references look identical.
+    "absent": ({"status", "observedCode", "queriedRef"}, {"status", "observedCode", "queriedRef"}),
+    "error": ({"status", "queriedRef"}, {"status", "queriedRef", "code", "timeout", "detail"}),
+    # A digest object cannot be queried before a marker names a digest. "skipped" says the question
+    # was never asked, which is different from asking and being told no.
+    "skipped": ({"status", "reason"}, {"status", "reason"}),
+    "present": ({"status", "queriedRef"}, {"status", "queriedRef", "digest", "markerDigest",
+                                           "verification", "content"}),
 }
+
+SKIP_REASONS = {"no_claimed_digest"}
 
 
 class Invalid(Exception):
@@ -124,6 +131,10 @@ def validate(obs):
     for name, lookup in lookups.items():
         lookup = as_dict(lookup, f"lookups.{name}")
         status = lookup.get("status")
+        # Checked as a string first: an unhashable value such as [] raised TypeError out of the
+        # membership test, so the script died with a traceback and no decision at all -- a caller
+        # reading stdout got nothing rather than UNKNOWN.
+        require(type(status) is str, f"lookups.{name}.status must be a string, got {status!r}")
         require(status in LOOKUP_FIELDS,
                 f"lookups.{name}.status must be present, absent or error, got {status!r}")
         required_fields, allowed_fields = LOOKUP_FIELDS[status]
@@ -134,7 +145,12 @@ def validate(obs):
                 f"lookups.{name} carries fields that do not belong to status {status!r}: "
                 f"{', '.join(sorted(present_fields - allowed_fields))}")
 
-        if status == "absent":
+        if status == "skipped":
+            require(lookup.get("reason") in SKIP_REASONS,
+                    f"lookups.{name}.reason must be one of {sorted(SKIP_REASONS)}")
+            require(name.endswith("DigestObject"),
+                    f"lookups.{name} may not be skipped; only a digest object can go unqueried")
+        elif status == "absent":
             # Absence is a fact the collector observed, not the absence of a fact. Only a 404 says
             # "this is not there"; anything else says "I did not get an answer".
             require(exact_int(lookup.get("observedCode"), f"lookups.{name}.observedCode") == 404,
@@ -260,7 +276,13 @@ def inventory_problems(inventory, monolith_digest, where):
         if type(record) is not dict:
             problems.append(f"{at} must be an object")
             continue
-        for field in ("version", "type", "script"):
+        # Repeatable migrations (R__) have no version in Flyway's history table, and several of
+        # them share that absence. Requiring a unique string would have blocked the first release
+        # that added one -- and the schema, not the release, would have been wrong.
+        version = record.get("version")
+        if version is not None and (type(version) is not str or not version):
+            problems.append(f"{at}.version must be a non-empty string or null for a repeatable")
+        for field in ("type", "script"):
             if type(record.get(field)) is not str or not record[field]:
                 problems.append(f"{at}.{field} must be a non-empty string")
         if type(record.get("checksum")) is not int:
@@ -271,7 +293,6 @@ def inventory_problems(inventory, monolith_digest, where):
         if record.get("success") is not True:
             problems.append(f"{at}.success is {record.get('success')!r}; a failed migration must "
                             f"not be released")
-        version = record.get("version")
         if type(version) is str:
             if version in seen_versions:
                 problems.append(f"{at}.version {version!r} appears twice")
@@ -288,6 +309,10 @@ def inventory_problems(inventory, monolith_digest, where):
         problems.append(f"{where}.checksum is {inventory.get('checksum')!r} but the migrations "
                         f"hash to {computed}")
     return problems
+
+
+def canonical(value):
+    return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 def decide(obs):
@@ -322,6 +347,13 @@ def decide(obs):
         if final["markerDigest"] != prepared["markerDigest"]:
             return conflict(f"final marker {final['markerDigest']} and prepared marker "
                             f"{prepared['markerDigest']} are different artifacts", cleanup_debt)
+        # Content-addressed storage makes "same digest, different content" impossible, so an
+        # observation showing it is contradicting itself and nothing here can resolve which half to
+        # believe.
+        if canonical(final["content"]) != canonical(prepared["content"]):
+            return conflict(f"final and prepared markers share digest {final['markerDigest']} but "
+                            f"their content differs; the observation contradicts itself",
+                            cleanup_debt)
 
     if final_present:
         if final_problems:
@@ -344,8 +376,12 @@ def decide(obs):
 
     if not prepared_present:
         stray = [image for image in IMAGES if tags[image]["status"] == "present"]
+        stray += [f"{image} digest object" for image in IMAGES
+                  if objects[image]["status"] == "present"]
         if stray:
-            return conflict("official tag(s) present with no prepared marker to anchor them: "
+            # Anything found without a marker to explain it is unexplained, not absent. A genuinely
+            # clean slate has no digest to have queried, which is what "skipped" records.
+            return conflict("object(s) present with no prepared marker to anchor them: "
                             + ", ".join(stray), cleanup_debt)
         return decision("ABSENT", ["build_new"], "nothing published for this commit", cleanup_debt)
 

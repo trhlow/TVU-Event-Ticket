@@ -39,6 +39,7 @@ migrations = [{"version": "16", "type": "SQL", "script": "V16__x.sql",
 canonical = json.dumps(migrations, sort_keys=True, separators=(",", ":"))
 base = {
   "status": "present",
+  "queriedRef": "ghcr.io/owner/name:release-" + sha,
   "markerDigest": mdigest,
   "verification": {
     "attestationVerified": True, "subjectDigest": mdigest,
@@ -72,8 +73,11 @@ print(json.dumps(base))
 ' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "${4:-$MARKER_DIGEST}" "$SHA" "$FP"
 }
 
-present() { printf '{"status":"present","digest":"%s"}' "$1"; }
-absent='{"status":"absent","observedCode":404}'
+present() { printf '{"status":"present","queriedRef":"ghcr.io/owner/name@%s","digest":"%s"}' "$1" "$1"; }
+absent='{"status":"absent","observedCode":404,"queriedRef":"ghcr.io/owner/name:sha-x"}'
+# A digest object cannot be queried before a marker names one, so a clean slate skips it. Claiming
+# absence there would assert an observation nobody made.
+skipped='{"status":"skipped","reason":"no_claimed_digest"}'
 
 # observation <final> <prepared> <monoTag> <frontTag> [monoObj] [frontObj] [monoCand] [frontCand]
 observation() {
@@ -185,12 +189,17 @@ assert_decision "duplicate keys cannot hide an error behind an absence" \
 
 echo
 echo "== ABSENT"
+# A clean slate has no digest to have queried, so the digest objects are skipped rather than
+# absent. Claiming absence there would be an observation nobody made.
 assert_decision "nothing published at all" \
-  "$(observation "$absent" "$absent" "$absent" "$absent" "$absent" "$absent")" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" "$skipped" "$skipped")" \
   ABSENT '["build_new"]' false false
 assert_decision "an orphan candidate is debt, not a release" \
-  "$(observation "$absent" "$absent" "$absent" "$absent" "$absent" "$absent" "$(present "$MONO")")" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" "$skipped" "$skipped" "$(present "$MONO")")" \
   ABSENT '["build_new"]' true false
+assert_decision "a digest object present with no marker is unexplained, not absent" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" "$(present "$MONO")" "$skipped")" \
+  CONFLICT '[]' false false
 
 echo
 echo "== PARTIAL, only with a trustworthy prepared marker and digests that still exist"
@@ -291,7 +300,7 @@ assert_decision "COMPLETE requires the digest objects to match"   "$(observation
 
 echo
 echo "== UNKNOWN outranks everything and proposes nothing"
-error_lookup() { printf '{"status":"error","code":%s}' "$1"; }
+error_lookup() { printf '{"status":"error","code":%s,"queriedRef":"ghcr.io/owner/name:sha-x"}' "$1"; }
 for code in 408 429 500 502 503 504; do
   assert_decision "code $code is retryable" \
     "$(observation "$(error_lookup "$code")" "$absent" "$absent" "$absent")" \
