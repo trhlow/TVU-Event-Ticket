@@ -66,7 +66,57 @@ jobs:
         # code being scanned -- and because it failed, the two steps after it never ran at all. NVD data
         # (the actual CVE source, keyed by NVD_API_KEY) is unaffected. Re-enable with OSS Index
         # credentials if that feed is wanted.
-        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY" -DossindexAnalyzerEnabled=false
+        # formats=HTML,JSON: the plugin writes only HTML by default, and the step after this one
+        # reads the JSON to prove two below-threshold CVEs are absent. HTML stays for humans.
+        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY" -DossindexAnalyzerEnabled=false -Dformats=HTML,JSON
+
+      - name: Prove the patched CVEs are absent, not merely below the threshold
+        working-directory: backend
+        # A green scan above says only that nothing scored CVSS >= 7. These two were patched while
+        # sitting *below* that threshold, so the scan would stay green whether they were fixed or
+        # not. Reading the report itself is what makes the fix a repeatable check instead of a
+        # one-time observation.
+        #
+        #   CVE-2026-54515  jackson-databind  -> 2.21.5
+        #   CVE-2026-49844  log4j-api         -> 2.25.5
+        run: |
+          report=monolith/target/dependency-check-report.json
+          if [ ! -f "$report" ]; then
+            echo "No dependency-check report at $report — the scan did not produce one, so this"
+            echo "check cannot prove anything. Failing rather than passing on a missing file."
+            exit 1
+          fi
+          failed=0
+          for cve in CVE-2026-54515 CVE-2026-49844; do
+            if grep -q "$cve" "$report"; then
+              echo "::error::$cve is still reported. The pin for it has regressed."
+              failed=1
+            else
+              echo "ok: $cve absent from the report"
+            fi
+          done
+          exit $failed
+
+      - name: Prove no webjar reached the packaged artifact
+        working-directory: backend
+        # The Enforcer ban stops a webjar being declared; this checks what actually got packaged.
+        # They are different questions: the ban reads the dependency graph, this reads the jar that
+        # ships. A test running under surefire cannot answer it either — that classpath is flat,
+        # while the artifact nests its dependencies under BOOT-INF/lib.
+        run: |
+          jar=$(find monolith/target -maxdepth 1 -name '*.jar' ! -name '*sources*' ! -name '*original*' | head -1)
+          if [ -z "$jar" ]; then
+            echo "No packaged jar found — nothing to inspect. Failing rather than passing silently."
+            exit 1
+          fi
+          echo "Inspecting $jar"
+          if unzip -l "$jar" | grep -E 'BOOT-INF/lib/.*webjar|META-INF/resources/webjars'; then
+            echo "::error::A webjar is packaged in the deployable artifact."
+            echo "This application serves no static assets, so nothing renders it — but it ships and"
+            echo "Spring Boot maps /webjars/** onto it. See the Enforcer ban in backend/pom.xml."
+            exit 1
+          fi
+          echo "ok: no webjar in the packaged artifact"
 
       - name: Fail if any test was skipped
         working-directory: backend
@@ -193,8 +243,32 @@ jobs:
   # events -- requiring those contexts directly in branch protection would block every
   # PR that happens not to touch them. This job always runs, so it is the one safe
   # context to require on main.
+  shellcheck:
+    # Unconditional: these scripts are the deploy path. A run that skipped them because the filter
+    # saw no shell change is a run that says nothing about them, and they are cheap to check.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Lint deployment and operations scripts
+        # These scripts run on the production host with set -euo pipefail and no one watching. The
+        # failure mode they are exposed to is not a syntax error -- `bash -n` already catches those
+        # -- but an unquoted expansion or an unset variable that silently does the wrong thing on a
+        # path with a space in it. shellcheck is the only thing in this pipeline that looks for that.
+        run: |
+          shopt -s nullglob
+          scripts=(backend/infra/production/scripts/*.sh)
+          if [ ${#scripts[@]} -eq 0 ]; then
+            echo "No scripts matched — the path must have moved. Failing rather than passing on an"
+            echo "empty set, which is how this check would quietly stop checking anything."
+            exit 1
+          fi
+          echo "Linting ${#scripts[@]} script(s):"
+          for script in "${scripts[@]}"; do echo "  $script"; done
+          shellcheck --severity=warning "${scripts[@]}"
+
   ci-gate:
-    needs: [changes, backend, frontend, dependency-review]
+    needs: [changes, backend, frontend, dependency-review, shellcheck]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -205,6 +279,7 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
+          SHELLCHECK_RESULT: ${{ needs.shellcheck.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
         run: |
@@ -239,6 +314,9 @@ jobs:
             [ "$DEPENDENCY_REVIEW_RESULT" = success ] \
               || fail "dependency-review: expected success on pull_request, got '$DEPENDENCY_REVIEW_RESULT'"
           fi
+
+          # shellcheck has no path filter, so there is no legitimate reason for it to be skipped.
+          [ "$SHELLCHECK_RESULT" = success ]             || fail "shellcheck: expected success, got '$SHELLCHECK_RESULT'"
 
           [ "$failed" -eq 0 ] || exit 1
           echo "All CI jobs accounted for."

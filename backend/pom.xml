@@ -94,6 +94,51 @@
                             </rules>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>enforce-no-webjars</id>
+                        <goals><goal>enforce</goal></goals>
+                        <configuration>
+                            <rules>
+                                <!--
+                                    This application serves no static assets: the frontend is a
+                                    separate Nginx container. A webjar on the classpath is therefore
+                                    third-party JavaScript that nothing renders but everything ships
+                                    — and Spring Boot maps /webjars/** onto it by default, so it is
+                                    reachable as well as present.
+
+                                    That is not hypothetical here. springdoc's ui starter packaged
+                                    swagger-ui, which is where CVE-2026-65898 (DOMPurify) came from,
+                                    and any signed-in user could fetch the page through /webjars/**.
+                                    The application moved to springdoc's api starter to remove it.
+
+                                    Banning the group, not just the one artifact, because the next
+                                    webjar will arrive under a different name and most likely
+                                    transitively, where nobody is looking. A legitimate future need
+                                    then has to change this line, which makes the decision visible
+                                    instead of silent.
+
+                                    Complements rather than replaces the runtime layers:
+                                    spring.web.resources.add-mappings=false, denyAll on /webjars/**,
+                                    and ProductionDocumentationValidator. Those stop a webjar being
+                                    served; this stops one arriving.
+                                -->
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>org.webjars</exclude>
+                                        <exclude>org.webjars.*</exclude>
+                                        <exclude>org.springdoc:springdoc-openapi-starter-webmvc-ui</exclude>
+                                    </excludes>
+                                    <message>
+No webjars, and not the springdoc ui starter that pulls one. This application
+        renders no Swagger UI (/swagger-ui/index.html answers 401 in every profile), so a webjar
+        here is unrendered third-party JavaScript that still ships and is still routable. If one is
+        genuinely needed, remove the ban deliberately and say why in the commit.
+                                    </message>
+                                    <searchTransitive>true</searchTransitive>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
