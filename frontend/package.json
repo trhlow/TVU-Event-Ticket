@@ -7,6 +7,8 @@
     "dev": "vite",
     "typecheck": "tsc -b --pretty false",
     "build": "tsc -b && vite build",
+    "build:production": "tsc -b && vite build --mode production && npm run verify:bundle",
+    "verify:bundle": "node scripts/verify-bundle.mjs",
     "lint": "oxlint",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts",
@@ -43,5 +45,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=24 <25"
   }
 }

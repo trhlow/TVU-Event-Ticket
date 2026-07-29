@@ -31,7 +31,8 @@ class InternalJwtServiceTest {
                 UserRole.ORGANIZER,
                 clubId,
                 "110122001",
-                true);
+                true,
+                4L);
 
         var first = service.mint(subject);
         var second = service.mint(subject);
@@ -52,6 +53,9 @@ class InternalJwtServiceTest {
         assertThat(decodedAgain.getId()).isNotEqualTo(decoded.getId());
         assertThat(first.expiresAt()).isEqualTo(decoded.getExpiresAt());
         assertThat(first.jti()).isEqualTo(decoded.getId());
+        // Without this claim AuthVersionValidator rejects the token, so a mint that forgets it
+        // would lock out every user rather than fail loudly at build time.
+        assertThat(decoded.<Long>getClaim("auth_version")).isEqualTo(4L);
     }
 
     @Test
@@ -70,7 +74,8 @@ class InternalJwtServiceTest {
                 UserRole.SINH_VIEN,
                 null,
                 null,
-                false);
+                false,
+                0L);
 
         var decoded = NimbusJwtDecoder.withPublicKey(keyManager.publicKey())
                 .build()

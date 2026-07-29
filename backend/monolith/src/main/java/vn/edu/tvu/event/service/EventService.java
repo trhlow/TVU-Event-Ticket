@@ -93,6 +93,13 @@ public class EventService {
         return new EventStatsResponse(repository.count(), eventsByStatus);
     }
 
+    public List<EventResponse> listAllForAdmin(UUID clubId) {
+        var events = clubId == null
+                ? repository.findAllByOrderByStartAtDesc()
+                : repository.findByClubIdOrderByStartAtDesc(clubId);
+        return events.stream().map(mapper::toResponse).toList();
+    }
+
     public List<EventResponse> listPublic() {
         Instant now = clock.instant();
         return repository.findByStatusAndRegistrationOpenAtLessThanEqualAndRegistrationCloseAtGreaterThanEqualOrderByStartAt(

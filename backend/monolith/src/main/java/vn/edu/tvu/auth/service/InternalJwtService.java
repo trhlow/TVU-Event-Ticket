@@ -42,7 +42,11 @@ public class InternalJwtService {
                 .expiresAt(expiresAt)
                 .id(jti)
                 .claim("email", subject.email())
-                .claim("roles", List.of(subject.role().name()));
+                .claim("roles", List.of(subject.role().name()))
+                // Checked against the stored value on every request; a token whose version no
+                // longer matches has been revoked. Always present, because AuthVersionValidator
+                // rejects tokens that lack it rather than assuming zero.
+                .claim("auth_version", subject.authVersion());
 
         if (subject.clubId() != null) {
             claims.claim("club_id", subject.clubId().toString());

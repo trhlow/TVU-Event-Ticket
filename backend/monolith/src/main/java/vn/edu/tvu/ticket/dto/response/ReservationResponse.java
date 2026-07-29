@@ -1,6 +1,7 @@
 package vn.edu.tvu.ticket.dto.response;
 
 import vn.edu.tvu.ticket.domain.ReservationStatus;
+import vn.edu.tvu.ticket.domain.TicketStatus;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -20,5 +21,7 @@ public record ReservationResponse(
         Instant requestedAt,
         Instant reviewedAt,
         UUID reviewedBy,
-        UUID ticketId) {
+        UUID ticketId,
+        TicketStatus ticketStatus,
+        Instant checkedInAt) {
 }

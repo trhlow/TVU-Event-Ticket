@@ -22,10 +22,20 @@ docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
   sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup_file"
 docker run --rm -i postgres:18.4-alpine pg_restore --list < "$backup_file" > /dev/null
 
-# Record the snapshot moment beside the dump. restore-postgres.sh anchors its "requeue recently-sent
+# Record the snapshot moment beside the dump. restore-postgres-into-new-stack.sh anchors its "requeue recently-sent
 # notifications" window to this watermark -- the instant the backup was taken -- instead of to max(sent_at),
 # which can sit far in the past (e.g. a backup of a long-idle database) and would otherwise re-blast an old
 # cluster of ticket emails. Written only after the dump verifies, so a partial backup leaves no watermark.
+# A checksum beside the dump. pg_restore --list proves the file is readable, not that it is the
+# file that was written: a truncated copy, a half-finished transfer or bit rot all still "list".
+sha256sum "$backup_file" | awk '{print $1}' > "${backup_file}.sha256"
+
+# Encryption is NOT done here on purpose, because doing it badly is worse than not doing it: a key
+# stored next to the backup protects nothing. Encrypt during the off-site copy, with a key held
+# somewhere the production host cannot read. Until that exists, treat these dumps as containing
+# every student's name, address and ticket history — because they do.
+#   Suggested: age -r <recipient> "$backup_file" > "$backup_file.age" && rm "$backup_file"
+
 meta_file="${backup_file}.meta"
 printf 'BACKUP_STARTED_AT=%s\n' "$timestamp" > "$meta_file"
 

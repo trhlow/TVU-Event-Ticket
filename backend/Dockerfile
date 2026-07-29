@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1.7
-FROM maven:3.9.16-eclipse-temurin-25 AS build
+FROM maven:3.9.16-eclipse-temurin-25@sha256:7e461cec477077c1d9e50b13df8aef9018764410f4c4cd7c34803f10c4c99e4c AS build
 WORKDIR /workspace
 COPY . .
-RUN --mount=type=cache,target=/root/.m2 mvn -B -pl monolith -am -Dmaven.test.skip=true package
+# -Pprod keeps application-dev.yml (default bootstrap admin, demo-otp block) out of the
+# packaged jar. Local `mvn package` without the profile still gets it, so dev is unaffected.
+RUN --mount=type=cache,target=/root/.m2 mvn -B -Pprod -pl monolith -am -Dmaven.test.skip=true package
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre@sha256:681c543d6f36c50f45e9b5226930a46203dcfa351d3670e9d0bdf0dabae53539
 ENV JAVA_TOOL_OPTIONS="-XX:+UseSerialGC -Xss512k -XX:MaxRAMPercentage=70.0"
 # SPRING_MAIN_LAZY_INITIALIZATION is deliberately NOT set. It defers bean creation to first use, which
 # also defers every startup guard -- the production secret and Microsoft tenant checks would no longer

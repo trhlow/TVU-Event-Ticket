@@ -28,6 +28,7 @@ import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
 import { formatDateTime } from "../../utils/formatDate";
+import { isSafeImageUrl } from "../../utils/safeImageUrl";
 
 const features = [
   {
@@ -382,7 +383,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
   return (
     <article className="landing-event-card group overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
       <div className="relative aspect-[16/10] overflow-hidden bg-blue-950">
-        {event.bannerUrl ? (
+        {isSafeImageUrl(event.bannerUrl) ? (
           <img
             src={event.bannerUrl}
             alt={event.title}

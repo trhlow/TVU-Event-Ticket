@@ -34,7 +34,8 @@ class AuthControllerCookieTest {
                 false,
                 "Lax",
                 "/",
-                Duration.ofMinutes(15))));
+                Duration.ofMinutes(15))),
+                mock(vn.edu.tvu.auth.service.TrustedDeviceService.class));
         var profile = new AuthProfileResponse(
                 UUID.randomUUID(),
                 "student@example.com",
@@ -74,9 +75,10 @@ class AuthControllerCookieTest {
                 false,
                 "Lax",
                 "/",
-                Duration.ofMinutes(15))));
+                Duration.ofMinutes(15))),
+                mock(vn.edu.tvu.auth.service.TrustedDeviceService.class));
 
-        var response = controller.logout();
+        var response = controller.logout(null);
 
         // Three: the session JWT, the readable XSRF token, and the remembered-device token. Logout must
         // clear the device cookie too, or a signed-out browser would still refresh into a new session.

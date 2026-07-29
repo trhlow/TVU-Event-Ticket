@@ -16,7 +16,9 @@ class NotificationRabbitConfigTest {
             "tvu.events.notification.dlx", "notification.reservation-approved.dlq",
             "notification.reservation-approved.retry", Duration.ofMinutes(3), 5);
     private final NotificationIdempotencyProperties idempotency =
-            new NotificationIdempotencyProperties(Duration.ofDays(30), Duration.ofMinutes(2));
+            // (lockTtl, leaseTtl). The record no longer carries the 30-day done-ttl: that was the
+            // Redis delivery marker, now replaced by the PostgreSQL ledger.
+            new NotificationIdempotencyProperties(Duration.ofMinutes(2), Duration.ofMinutes(5));
     private final NotificationRabbitConfig config = new NotificationRabbitConfig(properties,
             new vn.edu.tvu.shared.messaging.MessagingProperties("tvu.events"), idempotency);
 

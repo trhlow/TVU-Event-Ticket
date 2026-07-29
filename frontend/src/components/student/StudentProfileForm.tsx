@@ -82,9 +82,11 @@ export default function StudentProfileForm({
           <label htmlFor="profile-mssv" className="block text-xs font-bold uppercase tracking-wider text-slate-700">Mã số sinh viên (MSSV) *</label>
           <div className="relative">
             <CreditCard className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            {/* The example MSSV is masked on purpose: a fully-formed one would be some
+                real student's id, and it also collided with a fixture id in the bundle gate. */}
             <Input
               id="profile-mssv"
-              placeholder="ví dụ: 110121001"
+              placeholder="ví dụ: 110121xxx"
               value={mssv}
               onChange={(event) => setMssv(event.target.value)}
               maxLength={30}

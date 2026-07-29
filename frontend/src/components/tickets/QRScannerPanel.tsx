@@ -3,7 +3,7 @@ import jsQR from "jsqr";
 import { QrCode, Search, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
 import { Ticket } from "../../types/ticket";
 import { Event } from "../../types/event";
-import { apiConfig } from "../../services/apiClient";
+import { useDemoData } from "../../lib/env";
 
 interface QRScannerPanelProps {
   tickets: Ticket[];
@@ -31,7 +31,7 @@ export default function QRScannerPanel({
 
   // Danh sách vé hợp lệ chỉ dùng để thao tác nhanh trong môi trường demo — backend thật không trả
   // về payload QR đã ký cho attendee list, nên mã hiển thị ở đây (ticketCode) không phải QR thật.
-  const pendingTickets = apiConfig.useDemoData
+  const pendingTickets = useDemoData
     ? tickets.filter((t) => t.status === "VALID" && t.checkInStatus === "PENDING")
     : [];
 
@@ -191,7 +191,7 @@ export default function QRScannerPanel({
         {/* Manual check-in helper panel — demo-mode only: production check-in has no way to know
             the signed QR payload of a pending ticket ahead of a real scan, so this shortcut would
             be misleading (clicking it would not send a valid payload) outside demo data. */}
-        {apiConfig.useDemoData && (
+        {useDemoData && (
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 text-xs font-semibold text-amber-900 space-y-2">
             <p className="font-extrabold flex items-center gap-1">

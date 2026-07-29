@@ -3,11 +3,13 @@ package vn.edu.tvu.auth.controller;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
 import vn.edu.tvu.auth.dto.request.OtpRequest;
 import vn.edu.tvu.auth.dto.request.OtpVerifyRequest;
+import vn.edu.tvu.auth.dto.request.UpdateDisplayNameRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
 import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.dto.response.LoginResponse;
 import vn.edu.tvu.auth.security.AuthCookieService;
 import vn.edu.tvu.auth.service.AdminOtpService;
+import vn.edu.tvu.auth.service.TrustedDeviceService;
 import vn.edu.tvu.auth.service.AdminSession;
 import vn.edu.tvu.auth.service.AuthApplicationService;
 import vn.edu.tvu.auth.service.LoginResult;
@@ -40,12 +42,14 @@ public class AuthController {
     private final AuthApplicationService authService;
     private final AdminOtpService adminOtpService;
     private final AuthCookieService cookieService;
+    private final TrustedDeviceService trustedDeviceService;
 
     public AuthController(AuthApplicationService authService, AdminOtpService adminOtpService,
-            AuthCookieService cookieService) {
+            AuthCookieService cookieService, TrustedDeviceService trustedDeviceService) {
         this.authService = authService;
         this.adminOtpService = adminOtpService;
         this.cookieService = cookieService;
+        this.trustedDeviceService = trustedDeviceService;
     }
 
     @PostMapping("/login")
@@ -88,9 +92,22 @@ public class AuthController {
         return withSession(authService.updateProfile(UUID.fromString(jwt.getSubject()), request));
     }
 
+    @PatchMapping("/me")
+    @Operation(summary = "Update display name for organizer/admin accounts and re-issue JWT")
+    public ResponseEntity<LoginResponse> updateDisplayName(
+            @AuthenticationPrincipal Jwt jwt,
+            @Valid @RequestBody UpdateDisplayNameRequest request) {
+        return withSession(authService.updateDisplayName(UUID.fromString(jwt.getSubject()), request));
+    }
+
     @PostMapping("/logout")
-    @Operation(summary = "Clear auth and CSRF cookies")
-    public ResponseEntity<LogoutResponse> logout() {
+    @Operation(summary = "End this browser's session and clear its cookies")
+    public ResponseEntity<LogoutResponse> logout(
+            @CookieValue(name = "TVU_DEVICE", required = false) String deviceToken) {
+        // This browser only. Signing every device out from here would make the dedicated
+        // sign-out-all endpoint meaningless, and because logout is exempt from CSRF it would hand
+        // anyone a way to sign a user out of all their devices from another site.
+        trustedDeviceService.revokeActiveInFamilyOf(deviceToken);
         var headers = new HttpHeaders();
         cookieService.logoutCookies().forEach(cookie -> headers.add(HttpHeaders.SET_COOKIE, cookie));
         return ResponseEntity.ok()
@@ -112,7 +129,7 @@ public class AuthController {
         cookieService.loginCookies(session.session().jwt(), session.session().csrfToken())
                 .forEach(cookie -> headers.add(HttpHeaders.SET_COOKIE, cookie));
         if (session.deviceToken() != null) {
-            headers.add(HttpHeaders.SET_COOKIE, cookieService.deviceCookie(session.deviceToken()));
+            headers.add(HttpHeaders.SET_COOKIE, cookieService.deviceCookie(session.deviceToken(), session.deviceExpiresAt()));
         }
         return ResponseEntity.ok()
                 .headers(headers)

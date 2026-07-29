@@ -35,4 +35,26 @@
         <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><configuration><annotationProcessorPaths><path><groupId>org.mapstruct</groupId><artifactId>mapstruct-processor</artifactId><version>1.6.2</version></path></annotationProcessorPaths></configuration></plugin>
     </plugins></build>
+
+    <profiles>
+        <!--
+          The image shipped to production packaged application-dev.yml, which carries a
+          default bootstrap-admin address and the demo-otp block. Nothing activates it
+          under the prod profile, so this was configuration leakage rather than a bypass -
+          but an artifact should not contain credentials-shaped config it can never use.
+
+          Only the config file is excluded. DemoOtpProperties and FixedOtpCodeIssuer stay
+          on the classpath on purpose: ProductionSecretsValidator imports DemoOtpProperties
+          and takes it in its constructor, so dropping those classes breaks the build. They
+          remain inert behind @Profile({"dev","test"}) plus that validator.
+        -->
+        <profile>
+            <id>prod</id>
+            <build><resources><resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes><exclude>application-dev.yml</exclude></excludes>
+            </resource></resources></build>
+        </profile>
+    </profiles>
 </project>

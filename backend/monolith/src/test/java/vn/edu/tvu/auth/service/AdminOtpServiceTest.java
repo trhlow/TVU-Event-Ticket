@@ -43,6 +43,12 @@ class AdminOtpServiceTest {
     @Mock
     private TrustedDeviceService trustedDeviceService;
 
+    // The real policy, not a mock: it is a pure predicate, and stubbing it would mean these tests
+    // no longer say anything about who may sign in.
+    @org.mockito.Spy
+    private vn.edu.tvu.auth.security.SessionEligibilityPolicy eligibility =
+            new vn.edu.tvu.auth.security.SessionEligibilityPolicy();
+
     @InjectMocks
     private AdminOtpService service;
 

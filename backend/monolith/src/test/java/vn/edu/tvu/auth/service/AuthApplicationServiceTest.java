@@ -1,9 +1,12 @@
 package vn.edu.tvu.auth.service;
 
+import vn.edu.tvu.auth.domain.AuthMethod;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.User;
+import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
+import vn.edu.tvu.auth.dto.request.UpdateDisplayNameRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
 import vn.edu.tvu.auth.identity.IdentityProvider;
@@ -65,26 +68,28 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void login_doesNotClaimAnAdminAccountThatSharesTheEmail() {
-        // An Entra login presenting a club account's address must create a brand-new student and leave the
-        // club account untouched. The stub is lenient because the fixed code never consults it: matching by
-        // subject only is exactly what closes the takeover path.
+    void login_refusesAnAddressThatAlreadyBelongsToAnAdmin() {
+        // H4 decided: one address, one account, across both sign-in methods. This test previously
+        // asserted the opposite — that such a login quietly became a brand-new student — which was
+        // the earlier decision. Email is unique in the schema in three places, so that behaviour
+        // could only ever have worked by accident.
         var club = new Club("CLB Tin hoc", "Hoc thuat CNTT");
         ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
         var clubAccount = persisted(
                 User.emailOtpOrganizer("clbtinhoc@tvu.edu.vn", "CLB Tin hoc", club), UUID.randomUUID());
         when(identityProvider.verify("token"))
                 .thenReturn(new ExternalIdentity("entra:attacker", "clbtinhoc@tvu.edu.vn", "Nguoi La"));
-        when(userRepository.findByExtSubject("entra:attacker")).thenReturn(Optional.empty());
-        lenient().when(userRepository.findByEmail("clbtinhoc@tvu.edu.vn")).thenReturn(Optional.of(clubAccount));
-        when(userRepository.save(any(User.class)))
-                .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
+        when(userRepository.findByExtSubjectAndAuthMethod("entra:attacker", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail("clbtinhoc@tvu.edu.vn")).thenReturn(Optional.of(clubAccount));
 
-        var result = service.login(new LoginRequest("token", null));
+        assertThatThrownBy(() -> service.login(new LoginRequest("token", null)))
+                .isInstanceOf(ResponseStatusException.class);
 
-        assertThat(result.profile().role()).isEqualTo(UserRole.SINH_VIEN);
+        // The club account is untouched: no takeover, and no shadow student either.
         assertThat(clubAccount.getRole()).isEqualTo(UserRole.ORGANIZER);
         assertThat(clubAccount.getExtSubject()).isNull();
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -92,8 +97,9 @@ class AuthApplicationServiceTest {
         var userId = UUID.randomUUID();
         when(identityProvider.verify("student@example.com"))
                 .thenReturn(new ExternalIdentity("dev:student@example.com", "student@example.com", "Student"));
-        when(userRepository.findByExtSubject("dev:student@example.com")).thenReturn(Optional.empty());
-        when(userRepository.save(any(User.class))).thenAnswer(invocation -> persisted(invocation.getArgument(0), userId));
+        when(userRepository.findByExtSubjectAndAuthMethod("dev:student@example.com", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.empty());
+        when(userRepository.saveAndFlush(any(User.class))).thenAnswer(invocation -> persisted(invocation.getArgument(0), userId));
 
         var result = service.login(new LoginRequest("student@example.com", null));
 
@@ -113,8 +119,9 @@ class AuthApplicationServiceTest {
         var student = persisted(User.student("entra:stable-subject", "student@example.com", "Student"), userId);
         when(identityProvider.verify("student@example.com"))
                 .thenReturn(new ExternalIdentity("entra:stable-subject", "student@example.com", "Student Renamed"));
-        when(userRepository.findByExtSubject("entra:stable-subject")).thenReturn(Optional.of(student));
-        when(userRepository.save(student)).thenReturn(student);
+        when(userRepository.findByExtSubjectAndAuthMethod("entra:stable-subject", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.of(student));
+        when(userRepository.saveAndFlush(student)).thenReturn(student);
 
         var result = service.login(new LoginRequest("student@example.com", null));
 
@@ -124,35 +131,85 @@ class AuthApplicationServiceTest {
     }
 
     @Test
-    void login_rejectsLockedAccount() {
-        var locked = persisted(User.organizer("entra:organizer-subject", "organizer@example.com", "Organizer", null),
-                UUID.randomUUID());
-        locked.lock();
-        when(identityProvider.verify("organizer@example.com"))
-                .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
-        when(userRepository.findByExtSubject("entra:organizer-subject")).thenReturn(Optional.of(locked));
+    void login_matchesOnlyMicrosoftRowsSoAnAdminSubjectCannotBeReached() {
+        // Second layer behind the V13 CHECK: even if an admin row somehow carried an ext_subject
+        // — a manual fix during an incident, a future code path — the Entra flow must not resolve
+        // to it. Matching on subject alone was the single point of failure.
+        when(identityProvider.verify("admin@example.com"))
+                .thenReturn(new ExternalIdentity("entra:admin-subject", "admin@example.com", "Admin"));
+        when(userRepository.findByExtSubjectAndAuthMethod("entra:admin-subject", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.empty());
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Account is locked");
+        var result = service.login(new LoginRequest("admin@example.com", null));
+
+        // Resolves to a brand-new student, never to the admin account.
+        assertThat(result.profile().role()).isEqualTo(UserRole.SINH_VIEN);
+        verify(userRepository, never()).findByExtSubject(any());
     }
 
     @Test
-    void login_rejectsOrganizerWhoseClubIsDeactivated() {
+    void login_rejectsAMicrosoftRowThatIsNotAStudent() {
+        // Fail closed rather than mint a JWT for a row whose shape should be impossible.
+        var organizer = persisted(
+                User.emailOtpOrganizer("organizer@example.com", "Organizer", new Club("CLB", "Club")),
+                UUID.randomUUID());
+        ReflectionTestUtils.setField(organizer, "authMethod", AuthMethod.MICROSOFT);
+        ReflectionTestUtils.setField(organizer, "extSubject", "entra:organizer-subject");
+        when(identityProvider.verify("organizer@example.com"))
+                .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
+        when(userRepository.findByExtSubjectAndAuthMethod("entra:organizer-subject", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class);
+
+        // No JWT is minted and nothing is written: the login stops before it can hand out a session.
+        verify(userRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void login_rejectsLockedAccount() {
+        // A student, because after V13 no other role can reach this flow at all.
+        var locked = persisted(User.student("entra:student-subject", "student@example.com", "Student"),
+                UUID.randomUUID());
+        locked.lock();
+        when(identityProvider.verify("student@example.com"))
+                .thenReturn(new ExternalIdentity("entra:student-subject", "student@example.com", "Student"));
+        when(userRepository.findByExtSubjectAndAuthMethod("entra:student-subject", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.of(locked));
+
+        assertThatThrownBy(() -> service.login(new LoginRequest("student@example.com", null)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("locked");
+    }
+
+    @Test
+    void login_cannotReachAnOrganizerRowAtAll() {
+        // Was: "rejects an organizer whose club is deactivated". That scenario is no longer
+        // reachable — an organiser lives on EMAIL_OTP with no ext_subject (V13), so the Microsoft
+        // lookup never returns one and the club check inside login() is now dead for this path.
+        //
+        // The guarantee itself has not moved into place yet: blocking an organiser whose club was
+        // deactivated belongs to the OTP sign-in path, which is H7 and still open. This test only
+        // states what is true today — Entra cannot touch an organiser row.
         var club = new Club("CLB Tin hoc", null);
         ReflectionTestUtils.setField(club, "id", UUID.randomUUID());
         club.deactivate();
         var organizer = persisted(
-                User.organizer("entra:organizer-subject", "organizer@example.com", "Organizer", club),
-                UUID.randomUUID());
+                User.emailOtpOrganizer("organizer@example.com", "Organizer", club), UUID.randomUUID());
         when(identityProvider.verify("organizer@example.com"))
                 .thenReturn(new ExternalIdentity("entra:organizer-subject", "organizer@example.com", "Organizer"));
-        when(userRepository.findByExtSubject("entra:organizer-subject")).thenReturn(Optional.of(organizer));
+        when(userRepository.findByExtSubjectAndAuthMethod("entra:organizer-subject", AuthMethod.MICROSOFT))
+                .thenReturn(Optional.empty());
+        when(userRepository.saveAndFlush(any(User.class)))
+                .thenAnswer(invocation -> persisted(invocation.getArgument(0), UUID.randomUUID()));
 
-        assertThatThrownBy(() -> service.login(new LoginRequest("organizer@example.com", null)))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("Club is inactive");
-        verify(userRepository, never()).save(any());
+        var result = service.login(new LoginRequest("organizer@example.com", null));
+
+        assertThat(result.profile().role()).isEqualTo(UserRole.SINH_VIEN);
+        assertThat(organizer.getStatus()).isEqualTo(UserStatus.ACTIVE);
     }
 
     @Test
@@ -180,6 +237,32 @@ class AuthApplicationServiceTest {
         assertThatThrownBy(() -> service.updateProfile(userId, new UpdateProfileRequest("110122001", "DA21CNTT")))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("MSSV already exists");
+    }
+
+    @Test
+    void updateDisplayName_renamesOrganizerAndReturnsFreshProfile() {
+        var organizerId = UUID.randomUUID();
+        var organizer = persisted(User.emailOtpOrganizer("clb@tvu.edu.vn", "Ten Cu", null), organizerId);
+        when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
+        when(userRepository.save(organizer)).thenReturn(organizer);
+
+        var result = service.updateDisplayName(organizerId, new UpdateDisplayNameRequest("  Ten Moi  "));
+
+        assertThat(organizer.getDisplayName()).isEqualTo("Ten Moi");
+        assertThat(result.profile().displayName()).isEqualTo("Ten Moi");
+    }
+
+    @Test
+    void updateDisplayName_rejectsStudentAccounts() {
+        var studentId = UUID.randomUUID();
+        var student = persisted(User.student("entra:sv", "sv@tvu.edu.vn", "Sinh Vien"), studentId);
+        when(userRepository.findById(studentId)).thenReturn(Optional.of(student));
+
+        assertThatThrownBy(() -> service.updateDisplayName(studentId, new UpdateDisplayNameRequest("Khac")))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(ex -> ((ResponseStatusException) ex).getStatusCode().value())
+                .isEqualTo(403);
+        verify(userRepository, never()).saveAndFlush(any());
     }
 
     private static User persisted(User user, UUID id) {

@@ -11,7 +11,6 @@ import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.repository.AuditLogRepository;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
-import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,9 +45,6 @@ class AdminManagementServiceTest {
     private AuditLogRepository auditLogRepository;
 
     @Mock
-    private TokenRevocationService tokenRevocationService;
-
-    @Mock
     private TrustedDeviceService trustedDeviceService;
 
     private AdminManagementService service;
@@ -56,20 +52,49 @@ class AdminManagementServiceTest {
     @BeforeEach
     void setUp() {
         service = new AdminManagementService(clubRepository, userRepository,
-                new AuditLogService(auditLogRepository), tokenRevocationService, trustedDeviceService);
+                new AuditLogService(auditLogRepository), trustedDeviceService);
     }
 
     @Test
     void lockOrganizer_locksAccountAndRevokesOutstandingTokens() {
         var organizerId = UUID.randomUUID();
-        var organizer = User.organizer("entra:org", "organizer@example.com", "Organizer", null);
+        var organizer = User.emailOtpOrganizer("organizer@example.com", "Organizer", new Club("CLB", "Club"));
         ReflectionTestUtils.setField(organizer, "id", organizerId);
         when(userRepository.findById(organizerId)).thenReturn(Optional.of(organizer));
+        var versionBeforeLock = organizer.getAuthVersion();
 
         service.lockOrganizer(UUID.randomUUID(), organizerId);
 
         assertThat(organizer.getStatus()).isEqualTo(UserStatus.LOCKED);
-        verify(tokenRevocationService).revoke(organizerId);
+        // The bump is what invalidates JWTs already issued to this organiser. It happens on the
+        // entity inside the same transaction as the lock, so the two commit together.
+        assertThat(organizer.getAuthVersion()).isEqualTo(versionBeforeLock + 1);
+    }
+
+    @Test
+    void reactivateClub_reactivatesAndAudits() {
+        var clubId = UUID.randomUUID();
+        var club = new Club("CLB Tin hoc", null);
+        ReflectionTestUtils.setField(club, "id", clubId);
+        club.deactivate();
+        when(clubRepository.findByIdForUpdate(clubId)).thenReturn(Optional.of(club));
+
+        var response = service.reactivateClub(UUID.randomUUID(), clubId);
+
+        assertThat(club.isActive()).isTrue();
+        assertThat(response.status()).isEqualTo(vn.edu.tvu.auth.domain.ClubStatus.ACTIVE);
+        var audit = ArgumentCaptor.forClass(AuditLog.class);
+        verify(auditLogRepository).save(audit.capture());
+        assertThat(audit.getValue().getAction()).isEqualTo("auth.club.reactivate");
+    }
+
+    @Test
+    void reactivateClub_rejectsUnknownClub() {
+        when(clubRepository.findByIdForUpdate(any())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.reactivateClub(UUID.randomUUID(), UUID.randomUUID()))
+                .isInstanceOf(ResponseStatusException.class);
+        verify(auditLogRepository, never()).save(any());
     }
 
     @Test
@@ -179,11 +204,31 @@ class AdminManagementServiceTest {
     }
 
     @Test
+    void verifyMssv_rejectsANonStudentEvenWhenAnMssvIsPresent() {
+        // The check used to be "is the mssv non-blank", which says nothing about whose row it is.
+        // An admin could mark an organiser as a verified student, and V13 forbids that shape at
+        // the database level anyway — so the service must refuse before it gets there.
+        var userId = UUID.randomUUID();
+        var club = new Club("CLB", "Club");
+        var organizer = User.emailOtpOrganizer("organizer@example.com", "Organizer", club);
+        ReflectionTestUtils.setField(organizer, "id", userId);
+        ReflectionTestUtils.setField(organizer, "mssv", "110122001");
+        when(userRepository.findById(userId)).thenReturn(Optional.of(organizer));
+
+        assertThatThrownBy(() -> service.verifyMssv(UUID.randomUUID(), userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("student");
+
+        assertThat(organizer.getMssvStatus()).isEqualTo(MssvStatus.UNVERIFIED);
+    }
+
+    @Test
     void verifyMssv_rejectsUserWithoutMssv() {
         var userId = UUID.randomUUID();
-        var organizer = User.organizer("dev:organizer", "organizer@example.com", "Organizer", null);
-        ReflectionTestUtils.setField(organizer, "id", userId);
-        when(userRepository.findById(userId)).thenReturn(Optional.of(organizer));
+        // A student, so the request gets past the role check and fails on the missing MSSV itself.
+        var student = User.student("dev:student", "student@example.com", "Student");
+        ReflectionTestUtils.setField(student, "id", userId);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(student));
 
         assertThatThrownBy(() -> service.verifyMssv(UUID.randomUUID(), userId))
                 .isInstanceOf(ResponseStatusException.class)
@@ -194,7 +239,7 @@ class AdminManagementServiceTest {
     void statsReturnsTotalsAndZeroFilledRoleBreakdown() {
         var auditLogService = new AuditLogService(auditLogRepository);
         var service = new AdminManagementService(clubRepository, userRepository, auditLogService,
-                tokenRevocationService, trustedDeviceService);
+                trustedDeviceService);
         when(clubRepository.count()).thenReturn(4L);
         when(userRepository.count()).thenReturn(50L);
         when(userRepository.countGroupedByRole()).thenReturn(List.of(

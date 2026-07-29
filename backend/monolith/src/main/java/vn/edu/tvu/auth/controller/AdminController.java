@@ -87,6 +87,12 @@ public class AdminController {
         adminManagementService.deactivateClub(actorId(jwt), clubId);
     }
 
+    @PatchMapping("/clubs/{clubId}/activate")
+    @Operation(summary = "Reactivate a deactivated club")
+    public ClubResponse reactivateClub(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID clubId) {
+        return adminManagementService.reactivateClub(actorId(jwt), clubId);
+    }
+
     @PostMapping("/organizers")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create an organizer account for a club")
@@ -135,6 +141,7 @@ public class AdminController {
     public PageResponse<AuditLogResponse> auditLog(
             @RequestParam(required = false) UUID actorId,
             @RequestParam(required = false) String action,
+            @RequestParam(required = false) UUID clubId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
             @RequestParam(defaultValue = "0") int page,
@@ -142,7 +149,7 @@ public class AdminController {
             @RequestParam(required = false) String sort) {
         var pageable = PageableFactory.of(page, size, sort, AuditLogService.AUDIT_SORT_FIELDS,
                 AuditLogService.DEFAULT_AUDIT_SORT);
-        return auditLogService.search(actorId, action, from, to, pageable);
+        return auditLogService.search(actorId, action, clubId, from, to, pageable);
     }
 
     private UUID actorId(Jwt jwt) {

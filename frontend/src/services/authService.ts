@@ -62,10 +62,13 @@ function microsoftConfig() {
 }
 
 async function loginWithCredential(payload: LoginRequest): Promise<User> {
+  // The third argument turns off retry-after-refresh. A failed sign-in must not trigger a session
+  // refresh and a second attempt: there is no session to refresh yet, and retrying doubles every
+  // wrong-credential attempt against the rate limit and the audit log.
   await apiRequest<LoginResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
-  });
+  }, false);
   return persistProfile(await apiRequest<AuthProfileResponse>("/auth/me"));
 }
 

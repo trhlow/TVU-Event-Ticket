@@ -40,7 +40,6 @@ afterEach(() => {
 
 describe("ticketService.listAttendeesPage", () => {
   it("extracts rows from the paginated envelope, not a bare array", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -53,7 +52,6 @@ describe("ticketService.listAttendeesPage", () => {
   });
 
   it("surfaces totalElements from the envelope so callers can detect truncation", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE)));
 
     const { ticketService } = await import("../ticketService");
@@ -63,7 +61,6 @@ describe("ticketService.listAttendeesPage", () => {
   });
 
   it("requests the given size and a properly encoded keyword param", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -78,7 +75,6 @@ describe("ticketService.listAttendeesPage", () => {
   });
 
   it("forwards supported server-side status and sort filters", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -92,7 +88,6 @@ describe("ticketService.listAttendeesPage", () => {
   });
 
   it("omits the keyword param when no keyword is given", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -105,7 +100,6 @@ describe("ticketService.listAttendeesPage", () => {
   });
 
   it("maps studentEmail and studentMssv through onto the Ticket object", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJsonResponse(200, ATTENDEE_PAGE)));
 
     const { ticketService } = await import("../ticketService");
@@ -118,7 +112,6 @@ describe("ticketService.listAttendeesPage", () => {
 
 describe("ticketService.listAttendees", () => {
   it("flattens every page into a single Ticket array", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(mockJsonResponse(200, { ...ATTENDEE_PAGE, page: 0, totalPages: 2 }))
@@ -142,7 +135,6 @@ describe("ticketService.listAttendees", () => {
 
 describe("ticketService.exportAttendeesCsv", () => {
   it("downloads the full CSV using the same keyword and status filters", async () => {
-    vi.stubEnv("VITE_USE_DEMO_DATA", "false");
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,

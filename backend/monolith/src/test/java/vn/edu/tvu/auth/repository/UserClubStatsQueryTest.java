@@ -8,10 +8,12 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 @DataJpaTest
@@ -27,20 +29,30 @@ class UserClubStatsQueryTest extends AbstractPostgresIntegrationTest {
     void countsOnlyOrganizersPerClub() {
         var clubA = clubRepository.saveAndFlush(new Club("Club A", "first"));
         var clubB = clubRepository.saveAndFlush(new Club("Club B", "second"));
-        userRepository.saveAndFlush(User.organizer("ext-1", "o1@tvu.edu.vn", "O1", clubA));
-        userRepository.saveAndFlush(User.organizer("ext-2", "o2@tvu.edu.vn", "O2", clubA));
-        userRepository.saveAndFlush(User.organizer("ext-3", "o3@tvu.edu.vn", "O3", clubB));
-        // Inserted with SQL on purpose: the entity API never puts a SUPER_ADMIN in a club, but the column
-        // allows it, so a legacy or hand-edited row can look like this.
-        // Without it, every user in the fixture is an ORGANIZER and the role filter is never exercised —
-        // deleting `u.role = ORGANIZER` from the query would leave this test green.
-        insertNonOrganizerInClub(clubA.getId(), "SUPER_ADMIN", "admin@tvu.edu.vn");
+        userRepository.saveAndFlush(User.emailOtpOrganizer("o1@tvu.edu.vn", "O1", clubA));
+        userRepository.saveAndFlush(User.emailOtpOrganizer("o2@tvu.edu.vn", "O2", clubA));
+        userRepository.saveAndFlush(User.emailOtpOrganizer("o3@tvu.edu.vn", "O3", clubB));
 
         var counts = userRepository.countOrganizersByClub(List.of(clubA.getId(), clubB.getId()));
 
         assertThat(counts)
                 .extracting(ClubMemberCount::getClubId, ClubMemberCount::getTotal)
                 .containsExactlyInAnyOrder(tuple(clubA.getId(), 2L), tuple(clubB.getId(), 1L));
+    }
+
+    /**
+     * The counting test above used to seed a SUPER_ADMIN inside a club, because the column allowed it
+     * and a legacy or hand-edited row could look like that. V13 (chk_users_club_by_role) forbids the
+     * shape outright now, so the guarantee moved from "the query filters it out" to "the row cannot
+     * exist" — asserted here, in its own transaction, because a constraint violation aborts the
+     * surrounding one and every later statement in it.
+     */
+    @Test
+    void aNonOrganizerCannotBePlacedInAClubAtAll() {
+        var club = clubRepository.saveAndFlush(new Club("Club C", "third"));
+
+        assertThatThrownBy(() -> insertNonOrganizerInClub(club.getId(), "SUPER_ADMIN", "admin@tvu.edu.vn"))
+                .isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private void insertNonOrganizerInClub(java.util.UUID clubId, String role, String email) {

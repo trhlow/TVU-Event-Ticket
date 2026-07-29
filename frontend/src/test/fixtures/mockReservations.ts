@@ -1,4 +1,4 @@
-import { Reservation } from '../types/reservation';
+import { Reservation } from '../../types/reservation';
 import { getEvents } from './mockEvents';
 
 type ReservationFixture = Omit<Reservation, 'eventTitle' | 'eventLocation' | 'eventStartAt'>;

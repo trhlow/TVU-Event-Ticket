@@ -29,7 +29,7 @@ bash scripts/rollback.sh --confirm
 
 # Data protection and disaster recovery.
 bash scripts/backup-postgres.sh
-bash scripts/restore-postgres.sh --confirm /absolute/path/to/backup.dump
+bash scripts/restore-postgres-into-new-stack.sh --confirm /absolute/path/to/backup.dump
 ```
 
 Only Caddy exposes ports 80 and 443. PostgreSQL, Redis, RabbitMQ, and the

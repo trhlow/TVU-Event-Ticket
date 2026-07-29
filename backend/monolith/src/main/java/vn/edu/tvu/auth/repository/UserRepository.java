@@ -10,11 +10,53 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import jakarta.persistence.LockModeType;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+    /**
+     * Reads just the revocation counter, on the authentication path of every request. A projection
+     * rather than the whole aggregate: this runs far more often than anything else in the app, and
+     * loading the user (and its club) to compare one number would be wasteful.
+     */
+    @Query("select u.authVersion from User u where u.id = :userId")
+    Optional<Long> findAuthVersionById(@Param("userId") UUID userId);
+
+    /**
+     * Resolves an Entra login. Matching the subject <em>and</em> the sign-in method is the second
+     * layer behind the V13 CHECK constraint: should an admin row ever end up carrying a subject —
+     * a manual fix during an incident, a future code path — the Entra flow still cannot reach it.
+     */
+    Optional<User> findByExtSubjectAndAuthMethod(String extSubject, AuthMethod authMethod);
+
+    /**
+     * Locks the user row for the duration of the transaction.
+     *
+     * <p>Every flow that touches trusted devices has to take this lock first — see the ordering note
+     * on {@link vn.edu.tvu.auth.service.TrustedDeviceService}. Refresh used to mutate the device row
+     * and read the user afterwards, i.e. device → user, while sign-out-all and lock-organiser go
+     * user → device. Two opposite orders running at once is a textbook deadlock, and PostgreSQL
+     * resolves it by killing one transaction: a random 500 on the sign-in path.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :userId")
+    Optional<User> findByIdForUpdate(@Param("userId") UUID userId);
+
+    /**
+     * Every member of a club, locked, in id order.
+     *
+     * <p>Ordered on purpose: deactivating a club locks several user rows at once, and two such
+     * operations grabbing the same rows in different orders would deadlock. A single agreed order —
+     * ascending id — removes that.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.club.id = :clubId order by u.id")
+    List<User> findByClubIdForUpdate(@Param("clubId") UUID clubId);
 
     Optional<User> findByExtSubject(String extSubject);
 

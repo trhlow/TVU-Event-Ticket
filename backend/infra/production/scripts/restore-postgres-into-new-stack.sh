@@ -1,6 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# RENAMED from restore-postgres.sh, because the old name described something this script does not
+# safely do. It DROPS and recreates the database, then deals with Redis and RabbitMQ afterwards. If
+# any of those later steps fails, the database has already been replaced while the queues and cache
+# still hold the previous world's data — a half-restored system with no way back.
+#
+# So: run it against a SEPARATE, NEWLY BUILT stack, then move traffic to that stack once it has been
+# smoke-tested. That is the blue-green procedure in docs/CLEAN_SLATE_CUTOVER_VI.md, and it is the
+# only supported way to use this script.
+#
+# The guard below refuses the default production project name. Override only if you genuinely know
+# the stack is disposable.
+project_name="$(docker compose --env-file "${ENV_FILE:-.env}" -f "$(dirname -- "${BASH_SOURCE[0]}")/../compose.yaml" config --format json 2>/dev/null | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+if [[ "${ALLOW_IN_PLACE_RESTORE:-0}" != "1" && "$project_name" == "tvu-event-ticket" ]]; then
+  echo "Refusing to restore into the live production stack (project: $project_name)." >&2
+  echo "Build a parallel stack (docker compose -p tvu-event-ticket-v2 ...), restore into that, smoke" >&2
+  echo "test it, then switch the Caddy upstream. See docs/CLEAN_SLATE_CUTOVER_VI.md." >&2
+  echo "If this really is a disposable stack, re-run with ALLOW_IN_PLACE_RESTORE=1." >&2
+  exit 1
+fi
+
+
 if [[ "${1:-}" != "--confirm" || -z "${2:-}" ]]; then
   echo "Usage: $0 --confirm /absolute/path/to/tvu_app_YYYYMMDDTHHMMSSZ.dump" >&2
   echo "This replaces the current production database. Test restores on a separate host first." >&2
@@ -68,6 +89,12 @@ docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
   sh -c 'dropdb -U "$POSTGRES_USER" --if-exists "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"'
 docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres \
   sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --no-owner --no-privileges' < "$backup_file"
+
+# --no-owner --no-privileges means every restored object belongs to whoever connected (the owner,
+# above) and every GRANT in the dump is discarded. With the H11 split that leaves the runtime
+# account with no rights at all, and the site fails on its first query after a restore — silently,
+# because the restore itself reports success. Re-applying the grants is not optional.
+docker compose --env-file "$env_file" -f "$compose_file" exec -T postgres   psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1     -v db="$POSTGRES_DB" -v owner="$POSTGRES_USER" -v app="$POSTGRES_APP_USER"   < "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/grant-runtime-user.sql"
 
 # PostgreSQL is now rewound to the backup, but Redis and RabbitMQ keep their own persistent volumes and
 # still hold state from after the backup: ticket counters and dedup markers in Redis, and queued

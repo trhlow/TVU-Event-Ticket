@@ -63,7 +63,14 @@ management:
         enabled: true
   health:
     mail:
-      enabled: false
+      # EMAIL_OTP is the only way an admin can sign in. With this off, a broken SMTP is
+      # invisible until someone tries to log in and cannot -- by which point there is no
+      # admin available to fix it. Deliberately NOT added to the readiness group above:
+      # students browsing events need no email, so mail must not take the site out of
+      # rotation. Consequences accepted on purpose: overall /actuator/health goes DOWN,
+      # so smoke-test.sh fails the deploy and `docker ps` shows monolith unhealthy until
+      # SMTP recovers. Traffic keeps flowing -- compose has no rotation to drop out of.
+      enabled: true
 
 tvu:
   auth:

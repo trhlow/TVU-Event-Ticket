@@ -1,6 +1,7 @@
 package vn.edu.tvu.auth.security;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import org.springframework.http.ResponseCookie;
@@ -10,7 +11,6 @@ import org.springframework.stereotype.Service;
 public class AuthCookieService {
 
     public static final String DEVICE_COOKIE = "TVU_DEVICE";
-    private static final Duration DEVICE_MAX_AGE = Duration.ofDays(30);
 
     private final AuthCookieProperties properties;
 
@@ -24,9 +24,16 @@ public class AuthCookieService {
                 cookie(properties.xsrfName(), csrfToken, properties.maxAge(), false));
     }
 
-    /** The remembered-device token, kept far longer than the 15-minute session it refreshes. */
-    public String deviceCookie(String rawToken) {
-        return cookie(DEVICE_COOKIE, rawToken, DEVICE_MAX_AGE, true);
+    /**
+     * The remembered-device token, kept far longer than the 15-minute session it refreshes.
+     *
+     * <p>Max-Age is the time actually left on the token, not a flat 30 days. Refreshing keeps the
+     * original absolute expiry, so a fixed 30-day cookie would outlive the token it carries and the
+     * browser would keep sending a value the server has already stopped accepting.
+     */
+    public String deviceCookie(String rawToken, Instant expiresAt) {
+        var remaining = Duration.between(Instant.now(), expiresAt);
+        return cookie(DEVICE_COOKIE, rawToken, remaining.isNegative() ? Duration.ZERO : remaining, true);
     }
 
     public List<String> logoutCookies() {
