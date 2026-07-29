@@ -19,10 +19,19 @@ workspace="$(mktemp -d)"
 trap 'rm -rf -- "$workspace"' EXIT
 mkdir -p "$workspace/bin"
 
+# Every stub records the full argv it was called with. Without that the tests pin only the script's
+# reaction to an answer, never the question it asked -- and the question is most of the gate.
+# Dropping head_sha, branch, event or --paginate leaves it asking about the wrong set of runs while
+# every reaction test stays green.
+CALLS=""
+
 # write_gh <runs-output> <run-output> [runs-exit] [run-exit]
 write_gh() {
+  CALLS="$workspace/gh-calls"
+  : >"$CALLS"
   cat >"$workspace/bin/gh" <<EOF
 #!/usr/bin/env bash
+printf '%s\n' "\$*" >>"$CALLS"
 if [[ "\$*" == *"/runs?"* ]]; then
   printf '%s' '$1'
   [[ -n '$1' ]] && echo
@@ -32,6 +41,18 @@ printf '%s\n' '$2'
 exit ${4:-0}
 EOF
   chmod +x "$workspace/bin/gh"
+}
+
+assert_called_with() {
+  local name="$1" needle="$2"
+  if grep -qF -- "$needle" "$CALLS"; then
+    echo "ok    $name"
+    ((passed++))
+  else
+    echo "FAIL  $name: no gh call contained '$needle'"
+    echo "      calls: $(tr '\n' '|' <"$CALLS")"
+    ((failed++))
+  fi
 }
 
 check() {
@@ -98,6 +119,60 @@ check "reading the run fails" fail
 
 write_gh '7 not-a-number' 'completed success'
 check "unparseable run id" fail
+
+echo
+echo "== the query itself, not only the reaction to its answer"
+write_gh '7 111' 'completed success'
+PATH="$workspace/bin:$PATH" bash "$subject" owner/name "$SHA" ci.yml >/dev/null 2>&1
+assert_called_with "asks about this exact SHA" "head_sha=$SHA"
+assert_called_with "restricted to main" "branch=main"
+assert_called_with "restricted to push events" "event=push"
+assert_called_with "paginates" "--paginate"
+assert_called_with "asks about the repository given" "repos/owner/name/actions/workflows/ci.yml/runs"
+assert_called_with "re-reads the specific run" "repos/owner/name/actions/runs/111"
+
+echo
+echo "== every named workflow is checked, not only the first"
+write_gh '7 111' 'completed success'
+PATH="$workspace/bin:$PATH" bash "$subject" owner/name "$SHA" ci.yml codeql.yml >/dev/null 2>&1
+assert_called_with "asks about the first workflow" "workflows/ci.yml/runs"
+assert_called_with "asks about the second workflow" "workflows/codeql.yml/runs"
+
+# CI green, CodeQL red. A loop that stopped at the first success would pass this.
+cat >"$workspace/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"workflows/ci.yml"* ]]; then printf '7 111\n'; exit 0; fi
+if [[ "$*" == *"workflows/codeql.yml"* ]]; then printf '7 222\n'; exit 0; fi
+if [[ "$*" == *"/runs/222"* ]]; then echo 'completed failure'; exit 0; fi
+echo 'completed success'
+EOF
+chmod +x "$workspace/bin/gh"
+output="$(PATH="$workspace/bin:$PATH" bash "$subject" owner/name "$SHA" ci.yml codeql.yml 2>&1)"; status=$?
+if [[ $status -ne 0 && "$output" == *codeql* ]]; then
+  echo "ok    a red second workflow fails the gate"
+  ((passed++))
+else
+  echo "FAIL  red second workflow: exit=$status output=$output"
+  ((failed++))
+fi
+
+# CI green, CodeQL unreachable. An API error on the second workflow must not be covered by the
+# first workflow's success.
+cat >"$workspace/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$*" == *"workflows/ci.yml"* ]]; then printf '7 111\n'; exit 0; fi
+if [[ "$*" == *"workflows/codeql.yml"* ]]; then echo 'gh: 503'; exit 1; fi
+echo 'completed success'
+EOF
+chmod +x "$workspace/bin/gh"
+output="$(PATH="$workspace/bin:$PATH" bash "$subject" owner/name "$SHA" ci.yml codeql.yml 2>&1)"; status=$?
+if [[ $status -ne 0 ]]; then
+  echo "ok    an unreachable second workflow fails the gate"
+  ((passed++))
+else
+  echo "FAIL  unreachable second workflow: exit=$status"
+  ((failed++))
+fi
 
 echo
 echo "== argument handling"

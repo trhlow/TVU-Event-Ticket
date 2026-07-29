@@ -67,6 +67,33 @@ jobs:
           fi
           echo "SHA matches the tip of main."
 
+      # This job never needed the repository before: every step was an API call or SSH. The gate
+      # below is now a file in this repository, so it has to be here to be run at all -- without
+      # this step the job stops at "No such file or directory" and no deploy can happen.
+      #
+      # Checked out at DEPLOY_SHA rather than the default ref, so the gate that decides whether
+      # this commit is releasable is the version of the gate that this commit contains. Checking
+      # out main would let a later change to the gate govern the deploy of an earlier commit.
+      - name: Check out the commit being deployed
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref }}
+          # Nothing here pushes, and this job holds production SSH credentials. A checkout that
+          # leaves a usable token in .git/config widens what a compromised step can reach.
+          persist-credentials: false
+
+      - name: Confirm the checkout is the commit being deployed
+        # The ref above is an input. Asserting afterwards costs nothing and turns a silent
+        # substitution -- a moved tag, a race, a typo that happens to resolve -- into a stop.
+        run: |
+          set -euo pipefail
+          head="$(git rev-parse HEAD)"
+          if [ "$head" != "$DEPLOY_SHA" ]; then
+            echo "::error::checkout is at $head but the deploy target is $DEPLOY_SHA" >&2
+            exit 1
+          fi
+          echo "Checkout is at $DEPLOY_SHA."
+
       - name: Require CI and CodeQL to have passed for this exact SHA
         # The gate itself lives in .github/scripts so the publish workflow asks the same question
         # with the same code. Two implementations would eventually disagree about whether a commit
