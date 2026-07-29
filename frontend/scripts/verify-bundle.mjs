@@ -13,6 +13,16 @@ const LEGACY_STORAGE_KEYS = [
 ];
 const CLEANUP_MODULE = 'src/lib/legacyStorageCleanup.ts';
 
+// Addresses the product legitimately ships (support contact, organiser form
+// placeholder). Anything else found in the bundle is a real user's data.
+const EMAIL_ALLOWLIST = ['support@tvu.edu.vn', 'organizer@tvu.edu.vn'];
+const EMAIL = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+// Student ids are 8+ digits, and only count as evidence of leaked data when they
+// appear as a quoted string literal (serialized data), not a bare numeric literal --
+// minified bundles are full of the latter (hex colors, timestamps, MAX_SAFE_INTEGER)
+// and a bare-number scan is unusably noisy without fixtures to derive real values from.
+const STUDENT_ID = /["']\s*(\d{8,})\s*["']/g;
+
 function walk(directory, predicate) {
   const files = [];
   for (const name of readdirSync(directory)) {
@@ -95,6 +105,25 @@ function main() {
     failed = report(
       'no mock or fixture chunk in dist/assets',
       bundle.filter(({ name }) => /(mock|fixture)/i.test(name)).map(({ file }) => file),
+    ) || failed;
+
+    failed = report(
+      'no unexpected email address in dist/assets',
+      bundle.flatMap(({ file, source }) =>
+        [...new Set(source.match(EMAIL) ?? [])]
+          .filter((email) => !EMAIL_ALLOWLIST.includes(email))
+          .map((email) => `${file} contains ${email}`),
+      ),
+    ) || failed;
+
+    failed = report(
+      'no student id in dist/assets',
+      bundle.flatMap(({ file, source }) => {
+        const ids = new Set(
+          [...source.matchAll(new RegExp(STUDENT_ID.source, STUDENT_ID.flags))].map((m) => m[1]),
+        );
+        return [...ids].map((id) => `${file} contains ${id}`);
+      }),
     ) || failed;
   }
 
