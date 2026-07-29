@@ -133,7 +133,7 @@ export default function LoginPage() {
       <section className="auth-card relative z-10 w-full max-w-[460px] rounded-3xl px-6 py-7 text-center sm:px-8 sm:py-8">
         <div className="auth-logo-glow mx-auto w-fit">
           <img
-            src="/tvu_logo_1783065060265.jpg"
+            src="/logo-tvu.webp"
             alt="Logo Trường Đại học Trà Vinh"
             className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-blue-900/20"
           />

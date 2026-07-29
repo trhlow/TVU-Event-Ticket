@@ -60,7 +60,7 @@ export default function Header({
       <div className="flex items-center gap-2 sm:gap-3">
         <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
           <img
-            src="/tvu_logo_1783065060265.jpg"
+            src="/logo-tvu.webp"
             alt=""
             className="h-8 w-8 rounded-lg border border-blue-50 bg-white object-cover"
           />

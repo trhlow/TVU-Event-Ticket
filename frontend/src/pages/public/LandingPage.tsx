@@ -437,7 +437,7 @@ function LandingFooter() {
       <div className="mx-auto grid max-w-[1180px] gap-10 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-3">
-            <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-10 w-10 rounded-full bg-white object-contain ring-2 ring-white/15" />
+            <img src="/logo-tvu.webp" alt="Logo TVU" className="h-10 w-10 rounded-full bg-white object-contain ring-2 ring-white/15" />
             <p className="font-display text-xl font-extrabold text-white">TVU Ticket</p>
           </div>
           <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-400">
