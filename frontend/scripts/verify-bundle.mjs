@@ -1,130 +1,200 @@
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+#!/usr/bin/env node
+/**
+ * Proves the production bundle carries no fixture data.
+ *
+ * The acceptance criterion is evidence, not a flag: `VITE_USE_DEMO_DATA=false` only
+ * decided which branch ran, while the fixtures were imported at module top level and
+ * shipped to every user regardless. So this checks the artifact and the source tree,
+ * not the configuration.
+ *
+ * "No string that looks like an email" would be too broad -- it catches support
+ * addresses and placeholders. The gate is four narrower checks instead.
+ */
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const FIXTURE_SPECIFIER = /(?:^|\/)(?:data\/mock|test\/fixtures)(?:\/|$)/i;
-const STATIC_IMPORT = /\bfrom\s*["']([^"']+)["']/g;
-const DYNAMIC_IMPORT = /\bimport\s*\(\s*["']([^"']+)["']/g;
-const LEGACY_STORAGE_KEYS = [
+
+/** Keys the fixture layer used to persist demo state in the browser. */
+export const MOCK_STORAGE_KEYS = [
   'tvu_event_ticket_events_v1',
   'tvu_event_ticket_reservations_v1',
   'tvu_event_ticket_tickets_v1',
 ];
-const CLEANUP_MODULE = 'src/lib/legacyStorageCleanup.ts';
 
-// Addresses the product legitimately ships (support contact, organiser form
-// placeholder). Anything else found in the bundle is a real user's data.
-const EMAIL_ALLOWLIST = ['support@tvu.edu.vn', 'organizer@tvu.edu.vn'];
+/**
+ * Phase 1 (this release) allows the keys above in exactly one module: the one-shot
+ * cleanup that calls removeItem() on them. Forbidding them outright would make the
+ * very release that cleans users' browsers impossible to ship. Phase 2 deletes the
+ * module and this exemption together.
+ */
+export const CLEANUP_MODULE = 'src/lib/legacyStorageCleanup.ts';
+
+/**
+ * Addresses the product legitimately ships: the support contact in the footer and the
+ * placeholder on the organiser form. They are listed so that a fixture which happens
+ * to reuse one of them does not become an unexplained failure -- not as decoration.
+ */
+export const EMAIL_ALLOWLIST = ['support@tvu.edu.vn', 'organizer@tvu.edu.vn'];
+
+const FIXTURE_SPECIFIER = /data\/mock|test\/fixtures/i;
+const STATIC_IMPORT = /\bfrom\s*["']([^"']+)["']/g;
+const DYNAMIC_IMPORT = /\bimport\s*\(\s*["']([^"']+)["']/g;
 const EMAIL = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-// Student ids are 8+ digits, and only count as evidence of leaked data when they
-// appear as a quoted string literal (serialized data), not a bare numeric literal --
-// minified bundles are full of the latter (hex colors, timestamps, MAX_SAFE_INTEGER)
-// and a bare-number scan is unusably noisy without fixtures to derive real values from.
-const STUDENT_ID = /["']\s*(\d{8,})\s*["']/g;
+// Student ids are 9+ digits. A shorter run is a capacity, a page size, a year.
+const STUDENT_ID = /\b\d{8,}\b/g;
 
-function walk(directory, predicate) {
-  const files = [];
-  for (const name of readdirSync(directory)) {
-    const absolute = path.join(directory, name);
-    if (statSync(absolute).isDirectory()) {
-      files.push(...walk(absolute, predicate));
-    } else if (predicate(absolute)) {
-      files.push(absolute);
+function matchAll(source, regex) {
+  return [...source.matchAll(new RegExp(regex.source, regex.flags))].map((m) => m[1]);
+}
+
+/**
+ * Fixture imports reachable from application code. Dynamic imports count: lazy-loading
+ * a fixture still emits it into dist/, where anyone can fetch the chunk directly.
+ */
+export function findRuntimeMockImports(entries) {
+  const hits = [];
+  for (const { file, source } of entries) {
+    for (const specifier of [...matchAll(source, STATIC_IMPORT), ...matchAll(source, DYNAMIC_IMPORT)]) {
+      if (FIXTURE_SPECIFIER.test(specifier)) {
+        hits.push({ file, specifier });
+      }
     }
   }
-  return files;
+  return hits;
 }
 
-function toPosix(absolute) {
-  return path.relative(ROOT, absolute).split(path.sep).join('/');
+/** Emitted chunks named after a fixture module. */
+export function findMockChunks(fileNames) {
+  return fileNames.filter((name) => /mock/i.test(name));
 }
 
-function importSpecifiers(source) {
-  return [
-    ...source.matchAll(new RegExp(STATIC_IMPORT.source, STATIC_IMPORT.flags)),
-    ...source.matchAll(new RegExp(DYNAMIC_IMPORT.source, DYNAMIC_IMPORT.flags)),
-  ].map((match) => match[1]);
-}
-
-function runtimeSources() {
-  const sourceDirectory = path.join(ROOT, 'src');
-  return walk(sourceDirectory, (file) => /\.(ts|tsx)$/.test(file)).map((file) => ({
-    file: toPosix(file),
-    source: readFileSync(file, 'utf8'),
-  }));
-}
-
-function bundleSources() {
-  const assetsDirectory = path.join(ROOT, 'dist/assets');
-  if (!existsSync(assetsDirectory)) return null;
-  return walk(assetsDirectory, (file) => file.endsWith('.js')).map((file) => ({
-    file: toPosix(file),
-    name: path.basename(file),
-    source: readFileSync(file, 'utf8'),
-  }));
-}
-
-function report(label, failures) {
-  if (failures.length === 0) {
-    console.log(`  ok   ${label}`);
-    return false;
+/**
+ * Builds the denylist from the fixture files themselves. A hand-maintained list would
+ * silently rot the first time someone edits a fixture.
+ */
+export function collectFixtureTerms(sources) {
+  const terms = new Set();
+  for (const source of sources) {
+    for (const email of source.match(EMAIL) ?? []) terms.add(email);
+    for (const id of source.match(STUDENT_ID) ?? []) terms.add(id);
   }
-  console.error(`  FAIL ${label}`);
-  for (const failure of failures) console.error(`         ${failure}`);
-  return true;
+  return [...terms];
+}
+
+export function scanForTerms(entries, terms, allowlist) {
+  const denied = terms.filter((term) => !allowlist.includes(term));
+  const hits = [];
+  for (const { file, content } of entries) {
+    for (const term of denied) {
+      if (content.includes(term)) hits.push({ file, term });
+    }
+  }
+  return hits;
+}
+
+export function findStorageKeyViolations(entries, keys, cleanupModule) {
+  const hits = [];
+  for (const { file, source } of entries) {
+    if (file === cleanupModule) continue;
+    for (const key of keys) {
+      if (source.includes(key)) hits.push({ file, key });
+    }
+  }
+  return hits;
+}
+
+function walk(dir, predicate) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const full = path.join(dir, name);
+    if (statSync(full).isDirectory()) {
+      out.push(...walk(full, predicate));
+    } else if (predicate(full)) {
+      out.push(full);
+    }
+  }
+  return out;
+}
+
+const toPosix = (absolute) => path.relative(ROOT, absolute).split(path.sep).join('/');
+
+/** Application sources: everything under src/ that is not itself a test or fixture. */
+export function readRuntimeSources() {
+  const srcDir = path.join(ROOT, 'src');
+  const files = walk(srcDir, (f) => /\.(ts|tsx)$/.test(f));
+  return files
+    .map((f) => ({ file: toPosix(f), source: readFileSync(f, 'utf8') }))
+    .filter(
+      ({ file }) =>
+        !file.startsWith('src/test/') &&
+        !file.includes('/__tests__/') &&
+        !/\.test\.(ts|tsx)$/.test(file),
+    );
+}
+
+function readFixtureSources() {
+  const dir = path.join(ROOT, 'src/test/fixtures');
+  if (!existsSync(dir)) return [];
+  return walk(dir, (f) => /\.(ts|tsx)$/.test(f)).map((f) => readFileSync(f, 'utf8'));
+}
+
+function readBundle() {
+  const dir = path.join(ROOT, 'dist/assets');
+  if (!existsSync(dir)) return null;
+  return walk(dir, (f) => f.endsWith('.js')).map((f) => ({
+    file: toPosix(f),
+    name: path.basename(f),
+    content: readFileSync(f, 'utf8'),
+  }));
+}
+
+function report(title, hits, format) {
+  if (hits.length === 0) {
+    console.log(`  ok   ${title}`);
+    return 0;
+  }
+  console.error(`  FAIL ${title}`);
+  for (const hit of hits) console.error(`         ${format(hit)}`);
+  return 1;
 }
 
 function main() {
-  const sources = runtimeSources();
-  const bundle = bundleSources();
-  let failed = false;
+  const sources = readRuntimeSources();
+  let failed = 0;
 
-  failed = report(
-    'no runtime import of fixture or mock data',
-    sources.flatMap(({ file, source }) =>
-      importSpecifiers(source)
-        .filter((specifier) => FIXTURE_SPECIFIER.test(specifier))
-        .map((specifier) => `${file} imports ${specifier}`),
-    ),
-  ) || failed;
+  console.log('Bundle evidence check');
+  failed |= report(
+    'no runtime import of a fixture module',
+    findRuntimeMockImports(sources),
+    (h) => `${h.file} imports ${h.specifier}`,
+  );
+  failed |= report(
+    'no mock storage key outside the cleanup module',
+    findStorageKeyViolations(sources, MOCK_STORAGE_KEYS, CLEANUP_MODULE),
+    (h) => `${h.file} mentions ${h.key}`,
+  );
 
-  failed = report(
-    'no legacy mock storage key outside the cleanup module',
-    sources.flatMap(({ file, source }) =>
-      file === CLEANUP_MODULE
-        ? []
-        : LEGACY_STORAGE_KEYS.filter((key) => source.includes(key)).map((key) => `${file} contains ${key}`),
-    ),
-  ) || failed;
-
+  const bundle = readBundle();
   if (bundle === null) {
     console.error('  FAIL dist/assets not found -- run the production build first');
-    failed = true;
+    failed = 1;
   } else {
-    failed = report(
-      'no mock or fixture chunk in dist/assets',
-      bundle.filter(({ name }) => /(mock|fixture)/i.test(name)).map(({ file }) => file),
-    ) || failed;
+    failed |= report('no fixture chunk in dist/assets', findMockChunks(bundle.map((b) => b.name)), (n) => n);
 
-    failed = report(
-      'no unexpected email address in dist/assets',
-      bundle.flatMap(({ file, source }) =>
-        [...new Set(source.match(EMAIL) ?? [])]
-          .filter((email) => !EMAIL_ALLOWLIST.includes(email))
-          .map((email) => `${file} contains ${email}`),
-      ),
-    ) || failed;
-
-    failed = report(
-      'no student id in dist/assets',
-      bundle.flatMap(({ file, source }) => {
-        const ids = new Set(
-          [...source.matchAll(new RegExp(STUDENT_ID.source, STUDENT_ID.flags))].map((m) => m[1]),
-        );
-        return [...ids].map((id) => `${file} contains ${id}`);
-      }),
-    ) || failed;
+    const terms = collectFixtureTerms(readFixtureSources());
+    if (terms.length === 0) {
+      // Not a pass: it means the fixtures moved and this gate is now checking nothing.
+      console.error('  FAIL no fixture terms derived -- the denylist would be empty');
+      failed = 1;
+    } else {
+      failed |= report(
+        `no fixture data in the bundle (${terms.length} terms)`,
+        scanForTerms(bundle, terms, EMAIL_ALLOWLIST),
+        (h) => `${h.file} contains ${h.term}`,
+      );
+    }
   }
 
   if (failed) {
@@ -134,4 +204,6 @@ function main() {
   console.log('\nProduction bundle is clean.');
 }
 
-main();
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

@@ -133,6 +133,10 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
+      - name: Test
+        working-directory: frontend
+        run: npm run test -- --run
+
       - name: Build production artifact and prove it carries no test or mock code
         working-directory: frontend
         # build:production runs the bundle evidence gate: no fixture import, mock chunk,
