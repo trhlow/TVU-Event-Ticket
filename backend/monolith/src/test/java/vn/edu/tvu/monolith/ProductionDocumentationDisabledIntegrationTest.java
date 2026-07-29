@@ -22,10 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Behavioural counterpart to {@link ProductionHealthConfigTest}, which only proves the shipped
- * YAML still says the right thing. This boots the application with the same settings production
- * documentation settings production uses — not the prod profile itself, which needs the full set of
- * production secrets to start — and asks the running server, so the claim "the documentation is not
- * served" rests on a response rather than on a property file.
+ * YAML still says the right thing. This boots the application with the documentation settings
+ * production uses — not the prod profile itself, which needs the full set of production secrets to
+ * start — and asks the running server, so the claim "the documentation is not served" rests on a
+ * response rather than on a property file.
  *
  * <p>The paths matter more than they look. Disabling springdoc removes its own handlers, but
  * Spring Boot separately maps {@code /webjars/**} onto {@code classpath:/META-INF/resources/webjars/},

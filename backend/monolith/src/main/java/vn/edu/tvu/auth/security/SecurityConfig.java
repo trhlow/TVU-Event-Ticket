@@ -68,11 +68,13 @@ public class SecurityConfig {
                         // disabling springdoc does not close. Production also sets
                         // spring.web.resources.add-mappings=false, which removes the mapping outright;
                         // this is the layer that still holds if that property is ever overridden from
-                        // the environment. Under `authenticated()` — where this path sat before — any
-                        // signed-in student could fetch the bundle. Nothing legitimate uses the path:
-                        // measured on this branch, /swagger-ui/index.html and /swagger-ui/swagger-ui.css
-                        // already answer 401 in every profile — the UI page does not serve at all here,
-                        // only the OpenAPI JSON at /v3/api-docs does.
+                        // the environment. Under `authenticated()` — where this path sat before — a
+                        // student's token was enough, and that is measured, not inferred: remove this
+                        // line and SecurityConfigTest gets back "<!-- HTML for static distribution
+                        // bundle build -->", the Swagger UI page itself, for SINH_VIEN and SUPER_ADMIN
+                        // alike. Nothing legitimate uses the path — /swagger-ui/index.html answers 401
+                        // in every profile on this branch, so only the OpenAPI JSON at /v3/api-docs is
+                        // actually reachable, and it is served by springdoc, not from here.
                         .requestMatchers("/webjars/**").denyAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -47,11 +47,16 @@ class ProductionDocumentationValidatorTest {
         var environment = allDisabled();
         environment.setProperty(property, "true");
 
+        // Both halves are asserted. Whoever meets this at deploy time is looking at a container that
+        // will not start; the property name tells them what is wrong and the environment variable
+        // name tells them where to look, and naming only the first sends them into the source.
+        var environmentVariable = property.toUpperCase().replace('.', '_').replace('-', '_');
+
         assertThatIllegalStateException()
+                .as("failing without naming %s leaves the operator to guess the override", environmentVariable)
                 .isThrownBy(() -> new ProductionDocumentationValidator(environment))
                 .withMessageContaining(property)
-                .as("the message must name the property and the environment variable, or whoever hits"
-                        + " this at deploy time has to go reading source to find the override");
+                .withMessageContaining(environmentVariable);
     }
 
     @ParameterizedTest(name = "{0} absent refuses startup")
