@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router";
 import Header from "../components/common/Header";
 import PageGreeting from "../components/common/PageGreeting";
 import Sidebar from "../components/common/Sidebar";

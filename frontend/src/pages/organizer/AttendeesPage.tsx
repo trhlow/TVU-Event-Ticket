@@ -1,20 +1,28 @@
-import React, { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Download, Search, Users } from "lucide-react";
+import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
+import EmptyState from "../../components/common/EmptyState";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { formatDateTime } from "../../utils/formatDate";
 import { ticketService } from "../../services/ticketService";
-import { apiRequest } from "../../services/apiClient";
+import { eventService } from "../../services/eventService";
+import { requireCurrentUser } from "../../state/authSession";
 import { Ticket } from "../../types/ticket";
+import { Event } from "../../types/event";
 
 const PAGE_SIZE = 20;
 
 export default function AttendeesPage() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { eventId: routeEventId } = useParams<{ eventId: string }>();
+  const currentUser = requireCurrentUser();
   const { showToast } = useToast();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [selectedEventId, setSelectedEventId] = useState(routeEventId || "");
   const [attendees, setAttendees] = useState<Ticket[]>([]);
   const [search, setSearch] = useState("");
   const [keyword, setKeyword] = useState("");
@@ -23,6 +31,26 @@ export default function AttendeesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [sort, setSort] = useState("issuedAt,desc");
+
+  const loadEvents = useCallback(async () => {
+    setIsLoadingEvents(true);
+    try {
+      const data = await eventService.listByClubRemote(currentUser.clubId || "");
+      setEvents(data);
+      setSelectedEventId((current) => current || routeEventId || data[0]?.id || "");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  }, [currentUser.clubId, routeEventId, showToast]);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
+
+  const eventId = routeEventId || selectedEventId;
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -33,7 +61,13 @@ export default function AttendeesPage() {
   }, [search]);
 
   useEffect(() => {
-    if (!eventId) return;
+    if (!eventId) {
+      setIsLoading(false);
+      setAttendees([]);
+      setTotalPages(1);
+      setTotalElements(0);
+      return;
+    }
     let mounted = true;
     setIsLoading(true);
     ticketService
@@ -42,6 +76,7 @@ export default function AttendeesPage() {
         size: PAGE_SIZE,
         keyword: keyword || undefined,
         status: statusFilter === "ALL" ? undefined : statusFilter,
+        sort,
       })
       .then((result) => {
         if (!mounted) return;
@@ -58,7 +93,7 @@ export default function AttendeesPage() {
     return () => {
       mounted = false;
     };
-  }, [eventId, keyword, page, statusFilter, showToast]);
+  }, [eventId, keyword, page, sort, statusFilter, showToast]);
 
   const handleExportCSV = async () => {
     if (!eventId) {
@@ -66,8 +101,10 @@ export default function AttendeesPage() {
       return;
     }
     try {
-      const query = search.trim() ? `?keyword=${encodeURIComponent(search.trim())}` : "";
-      const csv = await apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${query}`);
+      const csv = await ticketService.exportAttendeesCsv(eventId, {
+        keyword: keyword || undefined,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+      });
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -102,19 +139,54 @@ export default function AttendeesPage() {
     },
   ];
 
+  if (!isLoadingEvents && events.length === 0) {
+    return (
+      <div className="space-y-6 text-left">
+        <PageHeader
+          title="Danh sách sinh viên tham dự"
+          description="Danh sách người tham dự theo sự kiện, chỉ trong phạm vi CLB của bạn — có phân trang và lọc."
+        />
+        <EmptyState title="Chưa có sự kiện" description="CLB chưa có sự kiện nào để xem danh sách tham dự." icon={Users} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 text-left">
       <PageHeader
         title="Danh sách sinh viên tham dự"
-        description="Đọc attendee JSON từ backend theo sự kiện và phạm vi CLB trong JWT, phân trang và lọc phía server."
+        description="Danh sách người tham dự theo sự kiện, chỉ trong phạm vi CLB của bạn — có phân trang và lọc."
         actions={
-          <Button onClick={handleExportCSV}>
-            <Download className="h-4 w-4" aria-hidden="true" /> Xuất CSV
-          </Button>
+          <div className="flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-end">
+            {!routeEventId && events.length > 0 && (
+              <label className="w-full sm:w-72">
+                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Sự kiện</span>
+                <select
+                  value={selectedEventId}
+                  onChange={(event) => {
+                    setPage(0);
+                    setSelectedEventId(event.target.value);
+                  }}
+                  className="tvu-input"
+                >
+                  {events.map((item) => (
+                    <option key={item.id} value={item.id}>{item.title}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <Button onClick={handleExportCSV}>
+              <Download className="h-4 w-4" aria-hidden="true" /> Xuất CSV
+            </Button>
+          </div>
         }
       />
 
-      <div className="enterprise-card grid grid-cols-1 gap-4 p-4 sm:grid-cols-2">
+      {isLoadingEvents ? (
+        <LoadingSkeleton type="card" count={1} />
+      ) : (
+        <>
+      <div className="enterprise-card grid grid-cols-1 gap-4 p-4 sm:grid-cols-3">
         <label className="space-y-1">
           <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Tìm kiếm</span>
           <div className="relative">
@@ -136,6 +208,23 @@ export default function AttendeesPage() {
             <option value="VALID">Còn hiệu lực</option>
             <option value="CHECKED_IN">Đã check-in</option>
             <option value="CANCELLED">Đã hủy</option>
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="block text-[10px] font-black uppercase tracking-wider text-slate-400">Sắp xếp</span>
+          <select
+            value={sort}
+            onChange={(event) => {
+              setPage(0);
+              setSort(event.target.value);
+            }}
+            className="tvu-input"
+          >
+            <option value="issuedAt,desc">Phát hành mới nhất</option>
+            <option value="issuedAt,asc">Phát hành cũ nhất</option>
+            <option value="checkedInAt,desc">Check-in mới nhất</option>
+            <option value="studentEmail,asc">Email A–Z</option>
+            <option value="studentMssv,asc">MSSV tăng dần</option>
           </select>
         </label>
       </div>
@@ -194,6 +283,8 @@ export default function AttendeesPage() {
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -80,4 +80,29 @@ describe("apiRequest", () => {
 
     await expect(apiRequest("/reservations", { method: "POST" })).rejects.toMatchObject({ status: 409 });
   });
+
+  it("deduplicates concurrent remembered-device refresh requests", async () => {
+    let refreshCount = 0;
+    const attempts = new Map<string, number>();
+    const fetchMock = vi.fn().mockImplementation(async (input: string) => {
+      const url = String(input);
+      if (url.includes("/auth/session/refresh")) {
+        refreshCount += 1;
+        await Promise.resolve();
+        return mockJsonResponse(200, {});
+      }
+      const count = attempts.get(url) ?? 0;
+      attempts.set(url, count + 1);
+      return count === 0
+        ? mockJsonResponse(401, { message: "Unauthorized" })
+        : mockJsonResponse(200, { data: { ok: true } });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await Promise.all([apiRequest("/admin/stats"), apiRequest("/events/stats")]);
+
+    expect(refreshCount).toBe(1);
+    expect(attempts.get("http://localhost:8080/api/admin/stats")).toBe(2);
+    expect(attempts.get("http://localhost:8080/api/events/stats")).toBe(2);
+  });
 });

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Calendar } from 'lucide-react';
 import EventCard from '../../components/events/EventCard';
 import EventFilter from '../../components/events/EventFilter';
@@ -14,8 +14,6 @@ export default function StudentEventListPage() {
 
   // Filter States
   const [searchValue, setSearchValue] = useState('');
-  const [selectedClubId, setSelectedClubId] = useState('ALL');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -42,33 +40,16 @@ export default function StudentEventListPage() {
     };
   }, []);
 
-  const categories = useMemo(() => {
-    const list = events.map(e => e.category);
-    return Array.from(new Set(list));
-  }, [events]);
-
-  const clubs = useMemo(() => {
-    const seen = new Map<string, string>();
-    events.forEach((evt) => {
-      if (evt.clubId && !seen.has(evt.clubId)) seen.set(evt.clubId, evt.clubName || evt.clubId);
-    });
-    return Array.from(seen, ([id, name]) => ({ id, name }));
-  }, [events]);
-
   const filteredEvents = useMemo(() => {
     return events.filter((evt) => {
       const matchSearch = evt.title.toLowerCase().includes(searchValue.toLowerCase().trim());
-      const matchClub = selectedClubId === 'ALL' || evt.clubId === selectedClubId;
-      const matchCategory = selectedCategory === 'ALL' || evt.category === selectedCategory;
       const matchStatus = selectedStatus === 'ALL' || evt.status === selectedStatus;
-      return matchSearch && matchClub && matchCategory && matchStatus;
+      return matchSearch && matchStatus;
     });
-  }, [events, searchValue, selectedClubId, selectedCategory, selectedStatus]);
+  }, [events, searchValue, selectedStatus]);
 
   const handleResetFilters = () => {
     setSearchValue('');
-    setSelectedClubId('ALL');
-    setSelectedCategory('ALL');
     setSelectedStatus('ALL');
   };
 
@@ -81,15 +62,9 @@ export default function StudentEventListPage() {
 
       {/* Filter panel */}
       <EventFilter
-        clubs={clubs}
-        categories={categories}
         searchValue={searchValue}
-        selectedClubId={selectedClubId}
-        selectedCategory={selectedCategory}
         selectedStatus={selectedStatus}
         onSearchChange={setSearchValue}
-        onClubChange={setSelectedClubId}
-        onCategoryChange={setSelectedCategory}
         onStatusChange={setSelectedStatus}
         onReset={handleResetFilters}
       />
@@ -114,7 +89,7 @@ export default function StudentEventListPage() {
         <EmptyState
           icon={Calendar}
           title="Không tìm thấy sự kiện nào"
-          description="Hãy điều chỉnh từ khóa tìm kiếm hoặc các tiêu chí lọc danh mục để hiển thị thêm thông tin sự kiện Đoàn Hội nhé."
+          description="Hãy thử điều chỉnh từ khóa tìm kiếm hoặc bộ lọc để xem thêm sự kiện."
           actionText="Đặt lại bộ lọc"
           onAction={handleResetFilters}
         />

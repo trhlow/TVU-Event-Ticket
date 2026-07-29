@@ -5,7 +5,7 @@ import DataTable from "../../components/common/DataTable";
 import StatusBadge from "../../components/common/StatusBadge";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { Input } from "../../components/ui/input";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";

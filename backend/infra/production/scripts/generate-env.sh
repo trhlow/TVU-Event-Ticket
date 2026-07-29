@@ -28,6 +28,29 @@ EOF
 
 domain="$1"
 admin_email="$2"
+
+# Example domains must never reach BOOTSTRAP_ADMIN_EMAIL. After a clean-slate reset the runner
+# creates a SUPER_ADMIN for every address listed, so one example value left in place silently
+# recreates a ghost administrator account nobody owns.
+IFS=',' read -r -a bootstrap_emails <<< "$admin_email"
+[[ ${#bootstrap_emails[@]} -ge 2 ]] || {
+  echo "ADMIN_EMAILS must list at least two real mailboxes, comma-separated" >&2
+  exit 2
+}
+for candidate in "${bootstrap_emails[@]}"; do
+  candidate="$(echo "$candidate" | tr -d '[:space:]')"
+  [[ "$candidate" == *@*.* ]] || {
+    echo "Not an email address: $candidate" >&2
+    exit 2
+  }
+  case "${candidate,,}" in
+    *@example.com|*@example.org|*@example.net|*@vidu.com|*@test.com|admin@*)
+      echo "Refusing placeholder bootstrap address: $candidate" >&2
+      echo "Use real mailboxes you can actually read — this creates live super admin accounts." >&2
+      exit 2
+      ;;
+  esac
+done
 microsoft_client_id="$3"
 microsoft_tenant_id="$4"
 
@@ -69,8 +92,13 @@ cat >"$env_file" <<EOF
 APP_DOMAIN=$domain
 
 POSTGRES_DB=tvu_app
-POSTGRES_USER=tvu_app
+# Two accounts, deliberately. POSTGRES_USER owns the schema and is used only by scripts/migrate.sh;
+# POSTGRES_APP_USER is what the application runs as and can only read and write rows. Keeping the
+# owner password out of the application container is the point — otherwise the split is decoration.
+POSTGRES_USER=tvu_owner
 POSTGRES_PASSWORD=$(random_secret)
+POSTGRES_APP_USER=tvu_app
+POSTGRES_APP_PASSWORD=$(random_secret)
 
 DB_POOL_MAX_SIZE=10
 DB_POOL_MIN_IDLE=2
@@ -86,6 +114,21 @@ JWT_KEY_ID=tvu-prod-$(date -u +%Y%m%d)
 CSRF_SIGNING_SECRET=$(random_secret)
 QR_SIGNING_SECRET=$(random_secret)
 BOOTSTRAP_ADMIN_EMAIL=$admin_email
+# Secret of its own: mixed into the HMAC of every one-time code so a Redis dump cannot hand over a
+# live admin code. Rotating it invalidates codes currently in flight, which is expected — users
+# simply request a new one.
+OTP_PEPPER=$(openssl rand -base64 32)
+
+# Standby SMTP (H14). Fill these in and REHEARSE the switch before cutover: admin sign-in is a
+# code sent by email and nothing else, so if the primary provider goes down and there is no tested
+# second one, nobody can administer the system — the break-glass SQL cannot help, because the
+# replacement admin also needs a code delivered by mail.
+# Note SPF/DKIM are per provider: the standby needs its own authorised sender address.
+#SMTP_STANDBY_HOST=
+#SMTP_STANDBY_PORT=587
+#SMTP_STANDBY_USERNAME=
+#SMTP_STANDBY_PASSWORD=
+#MAIL_FROM_ADDRESS_STANDBY=
 JWT_PRIVATE_KEY_PEM=$(flatten_pem "$private_key")
 JWT_PUBLIC_KEY_PEM=$(flatten_pem "$public_key")
 

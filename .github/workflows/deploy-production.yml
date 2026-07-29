@@ -1,15 +1,26 @@
 name: Deploy production
 
+# Deploying is a deliberate, reviewed action -- never a side effect of pushing.
+# The `push: [main]` trigger was removed: it deployed every merge in parallel with
+# CI, so a commit could reach production before (or despite) its tests failing.
+#
+# Rolling back to an older commit is NOT this workflow. It needs a verified backup,
+# a Flyway schema-compatibility check and a separate confirmation, because an older
+# JAR against a newer schema (V12-V15 add columns and constraints) is a live-data
+# hazard. Use the documented rollback runbook instead of dispatching an old SHA here.
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Commit SHA or branch to deploy
+        description: Full 40-character commit SHA to deploy. Must be the current tip of main.
         required: true
-        default: main
 
 permissions:
   contents: read
+  # Reading workflow runs for the deploy gate. Without this the API returns 403.
+  actions: read
+  # Reading open code scanning alerts for the triage gate.
+  security-events: read
 
 concurrency:
   group: production-deploy
@@ -20,23 +31,106 @@ jobs:
     name: Deploy monolith
     runs-on: ubuntu-latest
     environment: production
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      DEPLOY_SHA: ${{ inputs.ref }}
     steps:
-      - name: Validate deploy ref
+      - name: Validate deploy SHA and path
         env:
-          DEPLOY_REF: ${{ inputs.ref }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          # The ref is interpolated into a remote shell command, so restrict it to a safe charset
-          # (git ref names plus SHAs). This rejects quotes, spaces and shell metacharacters that could
-          # otherwise break out of the quoting and inject commands on the production host.
-          if ! printf '%s' "$DEPLOY_REF" | grep -Eq '^[A-Za-z0-9._/-]+$'; then
-            echo "Invalid ref '$DEPLOY_REF': only letters, digits and . _ / - are allowed" >&2
+          set -euo pipefail
+          # Only immutable full SHAs. Branch names and short SHAs are rejected: a branch
+          # is re-resolved at deploy time, so what CI verified and what ships can differ.
+          # The charset check also keeps the value safe to interpolate into the remote
+          # shell command below.
+          if ! printf '%s' "$DEPLOY_SHA" | grep -Eq '^[0-9a-fA-F]{40}$'; then
+            echo "::error::Invalid ref '$DEPLOY_SHA': a full 40-character commit SHA is required" >&2
             exit 1
           fi
           if ! printf '%s' "$DEPLOY_PATH" | grep -Eq '^/[A-Za-z0-9._/-]+$'; then
-            echo "DEPLOY_PATH must be an absolute path using letters, digits and . _ / -" >&2
+            echo "::error::DEPLOY_PATH must be an absolute path using letters, digits and . _ / -" >&2
             exit 1
           fi
+
+      - name: Require the SHA to be the current tip of main
+        run: |
+          set -euo pipefail
+          main_sha="$(gh api "repos/$REPO/commits/main" --jq '.sha')"
+          if [ "$DEPLOY_SHA" != "$main_sha" ]; then
+            echo "::error::$DEPLOY_SHA is not the current tip of main ($main_sha)." >&2
+            echo "An ancestor check would not be enough here: it accepts any commit that was" >&2
+            echo "ever on main, so a mistyped old SHA would ship a JAR that does not match the" >&2
+            echo "schema Flyway has already applied." >&2
+            exit 1
+          fi
+          echo "SHA matches the tip of main."
+
+      - name: Require CI and CodeQL to have passed for this exact SHA
+        run: |
+          set -euo pipefail
+          failed=0
+
+          # Workflow Runs API keyed by workflow FILE name, which survives renaming the
+          # workflow. Check-run names are not used anywhere in this gate: "CI" and
+          # "CodeQL" are workflow names, and the check-runs on a SHA are the individual
+          # job ids (changes/backend/frontend/analyze-java/...), several of which are
+          # conditional. The always-running ci-gate / codeql-gate jobs are what branch
+          # protection requires; here we assert on the run as a whole.
+          for workflow in ci.yml codeql.yml; do
+            # 1. Every run for this SHA on main from a push event, across all pages.
+            pairs="$(gh api --paginate \
+              "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$DEPLOY_SHA&branch=main&event=push&per_page=100" \
+              --jq '.workflow_runs[] | "\(.run_number) \(.id)"')"
+
+            # Fail closed: no run found means unverified, not "probably fine".
+            if [ -z "$pairs" ]; then
+              echo "::error::$workflow: no push run found for $DEPLOY_SHA on main"
+              failed=1
+              continue
+            fi
+
+            # 2. The LATEST run wins. Filtering by conclusion first would be fail-open:
+            #    an older successful run would hide a newer failing one for the same SHA.
+            run_id="$(printf '%s\n' "$pairs" | sort -nr -k1,1 | head -1 | cut -d' ' -f2)"
+
+            # 3. Re-read that specific run so we get its current attempt. run_attempt is
+            #    only meaningful within one run id -- it is never compared across runs.
+            read -r status conclusion <<<"$(gh api "repos/$REPO/actions/runs/$run_id" \
+              --jq '"\(.status) \(.conclusion)"')"
+
+            # 4. Only now does the verdict matter. cancelled / neutral / timed_out are
+            #    not a pass.
+            if [ "$status" != completed ] || [ "$conclusion" != success ]; then
+              echo "::error::$workflow: run $run_id is status='$status' conclusion='$conclusion'"
+              failed=1
+              continue
+            fi
+            echo "$workflow: run $run_id passed."
+          done
+
+          [ "$failed" -eq 0 ] || exit 1
+
+      - name: Require no open High/Critical code scanning alerts
+        run: |
+          set -euo pipefail
+          # A green CodeQL workflow only proves the analysis ran. The actual gate is
+          # "nothing High or Critical left untriaged" -- dismissing an alert with a
+          # documented reason clears it here, which is the intended escape hatch.
+          open="$(gh api --paginate "repos/$REPO/code-scanning/alerts?state=open&per_page=100" \
+            --jq '[.[] | select(.rule.security_severity_level == "high"
+                                or .rule.security_severity_level == "critical")] | length' \
+            | awk '{s+=$1} END {print s+0}')"
+          if [ "$open" -ne 0 ]; then
+            echo "::error::$open open High/Critical code scanning alert(s). Fix or dismiss with a reason before deploying." >&2
+            gh api --paginate "repos/$REPO/code-scanning/alerts?state=open&per_page=100" \
+              --jq '.[] | select(.rule.security_severity_level == "high"
+                                 or .rule.security_severity_level == "critical")
+                        | "  #\(.number) \(.rule.security_severity_level) \(.rule.id) \(.most_recent_instance.location.path)"' >&2
+            exit 1
+          fi
+          echo "No open High/Critical alerts."
 
       - name: Configure SSH
         env:
@@ -57,10 +151,9 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          DEPLOY_REF: ${{ inputs.ref }}
         run: |
           ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
-            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REF='$DEPLOY_REF' bash -s" <<'REMOTE'
+            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REF='$DEPLOY_SHA' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$DEPLOY_PATH"
           if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
@@ -70,5 +163,12 @@ jobs:
           previous_ref="$(git rev-parse HEAD)"
           git fetch --prune origin "$DEPLOY_REF"
           git checkout --detach FETCH_HEAD
+          # The verified SHA is what must end up checked out. If the fetch resolved to
+          # anything else, stop before deploy.sh touches the running stack.
+          checked_out="$(git rev-parse HEAD)"
+          if [[ "$checked_out" != "$DEPLOY_REF" ]]; then
+            echo "Checked out $checked_out but $DEPLOY_REF was verified; aborting" >&2
+            exit 1
+          fi
           PREVIOUS_REF="$previous_ref" bash backend/infra/production/scripts/deploy.sh
           REMOTE

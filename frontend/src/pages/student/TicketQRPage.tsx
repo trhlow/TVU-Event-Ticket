@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { Calendar, Mail, MapPin, UserRound } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
@@ -12,18 +12,21 @@ import { formatDateTime } from "../../utils/formatDate";
 import { Event } from "../../types/event";
 import { Ticket } from "../../types/ticket";
 
+// The event lookup below only reaches OPEN events (public discovery endpoint), so a ticket for an
+// event that has since closed falls back here. The reservation that produced the ticket already
+// carried the real title/location/time regardless of the event's current status — use that instead
+// of a placeholder whenever it's available.
 function fallbackEvent(ticket: Ticket): Event {
   return {
     id: ticket.eventId,
     clubId: "",
-    clubName: "Chưa có thông tin CLB",
-    title: "Sự kiện đang cập nhật thông tin",
+    clubName: "",
+    title: ticket.eventTitle || "Sự kiện đang cập nhật thông tin",
     description: "",
-    category: "Sự kiện",
     bannerUrl: "",
-    location: "Đang cập nhật địa điểm",
-    startAt: ticket.issuedAt,
-    endAt: ticket.issuedAt,
+    location: ticket.eventLocation || "Đang cập nhật địa điểm",
+    startAt: ticket.eventStartAt || ticket.issuedAt,
+    endAt: ticket.eventStartAt || ticket.issuedAt,
     registrationOpenAt: ticket.issuedAt,
     registrationCloseAt: ticket.issuedAt,
     capacity: 0,
@@ -100,22 +103,22 @@ export default function TicketQRPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Chi tiết vé QR điện tử"
-        description="Vé chỉ có QR khi backend đã cấp signed QR payload hợp lệ."
+        description="Mã QR được gửi qua email ngay khi vé được duyệt; trang này chưa hỗ trợ hiển thị lại mã QR."
       />
 
       <div className="grid max-w-5xl gap-8 lg:grid-cols-[390px_1fr]">
         <QRDisplayCard
           ticket={ticket}
           event={event}
-          onDownload={() => showToast("Backend chưa cung cấp file vé QR cho sinh viên.", "info")}
+          onDownload={() => showToast("Mã QR được gửi qua email, chưa hỗ trợ tải trực tiếp tại đây.", "info")}
           onPrint={() => window.print()}
         />
 
         <section className="enterprise-card p-6">
           <div className="border-b border-slate-100 pb-5">
-            <p className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700">{event.category}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-wider text-brand-700">Sự kiện</p>
             <h2 className="mt-2 font-display text-2xl font-extrabold leading-tight text-slate-950">{event.title}</h2>
-            <p className="mt-2 text-sm font-semibold text-slate-500">{event.clubName}</p>
+            {event.clubName && <p className="mt-2 text-sm font-semibold text-slate-500">{event.clubName}</p>}
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">

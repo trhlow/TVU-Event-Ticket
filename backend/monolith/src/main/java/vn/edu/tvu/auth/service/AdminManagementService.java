@@ -1,5 +1,6 @@
 package vn.edu.tvu.auth.service;
 
+import vn.edu.tvu.shared.audit.AuditDetail;
 import vn.edu.tvu.auth.domain.Club;
 import vn.edu.tvu.auth.domain.MssvStatus;
 import vn.edu.tvu.auth.domain.User;
@@ -13,7 +14,6 @@ import vn.edu.tvu.auth.dto.response.ClubResponse;
 import vn.edu.tvu.auth.dto.response.OrganizerResponse;
 import vn.edu.tvu.auth.repository.ClubRepository;
 import vn.edu.tvu.auth.repository.UserRepository;
-import vn.edu.tvu.auth.security.TokenRevocationService;
 
 import java.util.EnumMap;
 import java.util.List;
@@ -32,19 +32,16 @@ public class AdminManagementService {
     private final ClubRepository clubRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
-    private final TokenRevocationService tokenRevocationService;
     private final TrustedDeviceService trustedDeviceService;
 
     public AdminManagementService(
             ClubRepository clubRepository,
             UserRepository userRepository,
             AuditLogService auditLogService,
-            TokenRevocationService tokenRevocationService,
             TrustedDeviceService trustedDeviceService) {
         this.clubRepository = clubRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
-        this.tokenRevocationService = tokenRevocationService;
         this.trustedDeviceService = trustedDeviceService;
     }
 
@@ -66,7 +63,7 @@ public class AdminManagementService {
         }
         var club = clubRepository.save(new Club(name, trimToNull(request.description())));
         auditLogService.recordAudit(actorId, "auth.club.create", "club", club.getId(),
-                "{\"name\":\"" + club.getName() + "\"}");
+                AuditDetail.of("name", club.getName()));
         return clubResponse(club);
     }
 
@@ -83,16 +80,36 @@ public class AdminManagementService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.update(request.name().trim(), trimToNull(request.description()));
         auditLogService.recordAudit(actorId, "auth.club.update", "club", club.getId(),
-                "{\"name\":\"" + club.getName() + "\"}");
+                AuditDetail.of("name", club.getName()));
         return clubResponse(club);
     }
 
     @Transactional
     public void deactivateClub(UUID actorId, UUID clubId) {
-        var club = clubRepository.findById(clubId)
+        // Club first, then its users, in ascending id order — the one lock order every flow follows.
+        var club = clubRepository.findByIdForUpdate(clubId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
         club.deactivate();
+        // Deactivating the club used to leave the user rows untouched, so its organisers stayed
+        // ACTIVE, requested a fresh code and carried on working. Two things close that: the
+        // eligibility policy now refuses them a new session, and the bump below kills the sessions
+        // they already hold. Both are needed — the policy alone leaves live tokens working until
+        // they expire.
+        revokeSessionsOf(userRepository.findByClubIdForUpdate(clubId));
         auditLogService.recordAudit(actorId, "auth.club.deactivate", "club", club.getId(), "{}");
+    }
+
+    @Transactional
+    public ClubResponse reactivateClub(UUID actorId, UUID clubId) {
+        var club = clubRepository.findByIdForUpdate(clubId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Club not found"));
+        club.activate();
+        // Bump on the way back up as well. A token minted in the narrow race window while the club
+        // was being deactivated is rejected while the club stays inactive — but without this it
+        // would start working again the moment the club is reactivated.
+        revokeSessionsOf(userRepository.findByClubIdForUpdate(clubId));
+        auditLogService.recordAudit(actorId, "auth.club.reactivate", "club", club.getId(), "{}");
+        return clubResponse(club);
     }
 
     @Transactional(readOnly = true)
@@ -119,6 +136,12 @@ public class AdminManagementService {
     public void verifyMssv(UUID actorId, UUID userId) {
         var user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        // "Has a non-blank mssv" says nothing about whose row it is. Without this an admin could
+        // mark an organiser as a verified student — a shape V13 now refuses at the database level
+        // anyway, so the request has to stop here rather than fail as a constraint violation.
+        if (user.getRole() != UserRole.SINH_VIEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a student account has an MSSV to verify");
+        }
         if (user.getMssv() == null || user.getMssv().isBlank()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User has no MSSV to verify");
         }
@@ -140,7 +163,7 @@ public class AdminManagementService {
         var organizer = userRepository.save(
                 User.emailOtpOrganizer(email, request.displayName().trim(), club));
         auditLogService.recordAudit(actorId, "auth.organizer.create", "user", organizer.getId(),
-                "{\"email\":\"" + organizer.getEmail() + "\"}");
+                AuditDetail.of("email", organizer.getEmail()));
         return organizerResponse(organizer);
     }
 
@@ -154,10 +177,10 @@ public class AdminManagementService {
     @Transactional
     public OrganizerResponse lockOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
+        // lock() bumps auth_version in this same transaction, so the organiser's issued JWTs stop
+        // working when the lock commits -- not whenever they happen to expire. Their remembered
+        // browsers must stop refreshing too.
         organizer.lock();
-        // Locking must take effect now, not whenever the organizer's current JWT happens to expire, and
-        // their remembered browsers must stop refreshing too.
-        tokenRevocationService.revoke(organizer.getId());
         trustedDeviceService.revokeAll(organizer.getId());
         auditLogService.recordAudit(actorId, "auth.organizer.lock", "user", organizer.getId(), "{}");
         return organizerResponse(organizer);
@@ -166,8 +189,17 @@ public class AdminManagementService {
     @Transactional
     public void deleteOrganizer(UUID actorId, UUID organizerId) {
         var organizer = organizer(organizerId);
+        // Their remembered browsers must stop refreshing. The JWT dies with the row (the validator
+        // rejects a token whose user no longer exists), but a device cookie would otherwise remain
+        // in the table pointing at a deleted user.
+        trustedDeviceService.revokeAll(organizer.getId());
         userRepository.delete(organizer);
         auditLogService.recordAudit(actorId, "auth.organizer.delete", "user", organizerId, "{}");
+    }
+
+    /** Invalidates the JWTs already issued to these users, inside this transaction. */
+    private void revokeSessionsOf(java.util.List<User> users) {
+        users.forEach(User::revokeIssuedTokens);
     }
 
     private User organizer(UUID organizerId) {

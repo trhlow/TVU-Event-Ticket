@@ -52,7 +52,11 @@ public class SensitiveFlowRateLimitFilter extends OncePerRequestFilter {
     private boolean isLoginLike(String uri) {
         return "/api/auth/login".equals(uri)
                 || "/api/auth/otp/request".equals(uri)
-                || "/api/auth/otp/verify".equals(uri);
+                || "/api/auth/otp/verify".equals(uri)
+                // The endpoint that trades a device cookie for a JWT. It was the one sensitive flow
+                // left uncovered, despite being the cheapest to hammer: no code, no password, just a
+                // cookie guess per request.
+                || "/api/auth/session/refresh".equals(uri);
     }
 
     @Override

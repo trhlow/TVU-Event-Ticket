@@ -1,5 +1,6 @@
 package vn.edu.tvu.ticket.service;
 
+import vn.edu.tvu.shared.audit.AuditDetail;
 import vn.edu.tvu.ticket.client.EventLookup;
 import vn.edu.tvu.ticket.domain.TicketStatus;
 import vn.edu.tvu.ticket.dto.response.AttendeeResponse;
@@ -151,7 +152,7 @@ public class TicketingService {
     }
 
     private void recordAudit(UUID actorId, UUID ticketId, UUID eventId) {
-        var detail = "{\"eventId\":\"" + eventId + "\"}";
+        var detail = AuditDetail.of("eventId", eventId);
         auditRecorder.recordAudit(actorId, "audit.ticket.check-in", "ticket", ticketId, detail);
     }
 

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router";
 import ProtectedRoute from "../ProtectedRoute";
 import { setCurrentUser } from "../../state/authSession";
 import { ApiError } from "../../services/apiClient";

@@ -12,7 +12,12 @@ public class OtpConfiguration {
     // Ten sends a day is well above what a chair and vice-chair need — a trusted browser lasts 30 days —
     // and low enough that a resend loop cannot spend the mail provider's quota, which is the only way in.
     @Bean
-    OtpStore otpStore(OtpStore.Backend backend) {
-        return new OtpStore(backend, 5, 10);
+    OtpDigest otpDigest(OtpProperties properties) {
+        return new OtpDigest(properties.pepper());
+    }
+
+    @Bean
+    OtpStore otpStore(OtpStore.Backend backend, OtpDigest digest) {
+        return new OtpStore(backend, digest, 5, 10);
     }
 }

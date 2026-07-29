@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router";
 import { ArrowLeft, Calendar, Clock, Info, MapPin, ShieldAlert, Ticket } from "lucide-react";
 import { requireCurrentUser } from "../../state/authSession";
 import PageHeader from "../../components/common/PageHeader";
 import EventBanner from "../../components/events/EventBanner";
 import StatusBadge from "../../components/common/StatusBadge";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { eventService } from "../../services/eventService";
 import { registrationService } from "../../services/registrationService";
 import { formatDateTime } from "../../utils/formatDate";
@@ -98,18 +98,17 @@ export default function StudentEventDetailPage() {
         <div className="space-y-6 lg:col-span-2">
           <div className="enterprise-card overflow-hidden">
             <div className="relative h-64 overflow-hidden bg-slate-100 sm:h-80">
-              <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-64 w-full sm:h-80" />
+              <EventBanner src={event.bannerUrl} alt={event.title} className="h-64 w-full sm:h-80" />
               <div className="absolute left-4 top-4 flex gap-2">
-                <span className="rounded-xl bg-slate-950/80 px-3 py-1 text-xs font-black text-white backdrop-blur-xs">
-                  {event.category}
-                </span>
                 <StatusBadge type="event" status={event.status} />
               </div>
             </div>
 
             <div className="space-y-4 p-6 md:p-8">
               <div className="space-y-1">
-                <span className="block text-xs font-extrabold uppercase tracking-wider text-brand-600">{event.clubName}</span>
+                {event.clubName && (
+                  <span className="block text-xs font-extrabold uppercase tracking-wider text-brand-600">{event.clubName}</span>
+                )}
                 <h1 className="text-xl font-black leading-tight tracking-tight text-slate-950 md:text-2xl">{event.title}</h1>
               </div>
 
@@ -178,7 +177,7 @@ export default function StudentEventDetailPage() {
                       {existingReservation.status === "PENDING"
                         ? "Bạn đã gửi đăng ký. Vui lòng chờ Ban tổ chức CLB kiểm duyệt."
                         : existingReservation.status === "APPROVED"
-                          ? "Đăng ký đã được duyệt. Vé QR sẽ được backend/notification cấp qua email nếu sẵn sàng."
+                          ? "Đăng ký đã được duyệt. Mã QR vé đã được gửi tới email của bạn."
                           : "Yêu cầu của bạn đã bị từ chối."}
                     </p>
                   </div>
@@ -223,7 +222,7 @@ export default function StudentEventDetailPage() {
             </p>
             <p className="leading-relaxed">- Mỗi sinh viên chỉ gửi một đăng ký cho mỗi sự kiện.</p>
             <p className="leading-relaxed">- Vé QR hợp lệ được cấp sau khi Ban tổ chức duyệt đăng ký.</p>
-            <p className="leading-relaxed">- Frontend không tự tạo QR ký; check-in chỉ nhận payload do backend/notification cấp.</p>
+            <p className="leading-relaxed">- Mỗi mã QR chỉ dùng để check-in một lần, không chia sẻ cho người khác.</p>
           </div>
         </div>
       </div>

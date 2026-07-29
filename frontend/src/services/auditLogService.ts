@@ -1,6 +1,5 @@
-import { mockAuditLogs } from "../data/mockAuditLogs";
 import { AuditLog } from "../types/audit";
-import { apiConfig, apiRequest } from "./apiClient";
+import { apiRequest } from "./apiClient";
 
 interface AuditLogResponse {
   id: string;
@@ -30,9 +29,13 @@ export interface AuditLogPage {
 }
 
 export interface AuditLogQuery {
+  actorId?: string;
   action?: string;
+  from?: string;
+  to?: string;
   page?: number;
   size?: number;
+  sort?: string;
 }
 
 function mapAuditLog(response: AuditLogResponse): AuditLog {
@@ -49,18 +52,20 @@ function mapAuditLog(response: AuditLogResponse): AuditLog {
 }
 
 export const auditLogService = {
-  async listRemote({ action, page = 0, size = 20 }: AuditLogQuery = {}): Promise<AuditLogPage> {
-    if (apiConfig.useDemoData) {
-      return {
-        items: mockAuditLogs.slice(page * size, page * size + size),
-        page,
-        size,
-        totalElements: mockAuditLogs.length,
-        totalPages: Math.max(1, Math.ceil(mockAuditLogs.length / size)),
-      };
-    }
-    const params = new URLSearchParams({ page: String(page), size: String(size) });
+  async listRemote({
+    actorId,
+    action,
+    from,
+    to,
+    page = 0,
+    size = 20,
+    sort = "createdAt,desc",
+  }: AuditLogQuery = {}): Promise<AuditLogPage> {
+    const params = new URLSearchParams({ page: String(page), size: String(size), sort });
+    if (actorId) params.set("actorId", actorId);
     if (action) params.set("action", action);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
     const response = await apiRequest<AuditLogPageResponse>(`/admin/audit-log?${params.toString()}`);
     return {
       items: response.content.map(mapAuditLog),

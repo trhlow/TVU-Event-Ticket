@@ -1,12 +1,11 @@
 import React from "react";
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router";
 import {
-  BarChart3,
-  Bell,
   Calendar,
   ClipboardCheck,
   ClipboardList,
   FileClock,
+  GraduationCap,
   Grid2X2,
   KeyRound,
   Layers,
@@ -42,8 +41,6 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
           { to: "/student/tickets", label: "Vé QR của tôi", icon: Ticket },
           { to: "/student/registrations", label: "Đăng ký của tôi", icon: ClipboardList },
           { to: "/student/history", label: "Lịch sử tham gia", icon: FileClock },
-          { to: "/student/notifications", label: "Thông báo", icon: Bell },
-          { to: "/student/account", label: "Tài khoản", icon: User },
         ]
       : currentUser.role === "ORGANIZER"
         ? [
@@ -51,11 +48,9 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             { to: "/organizer/events", label: "Sự kiện CLB", icon: Calendar },
             { to: "/organizer/tickets", label: "Vé đã cấp", icon: Ticket },
             { to: "/organizer/members", label: "Thành viên", icon: Users },
-            { to: "/organizer/reports", label: "Báo cáo CLB", icon: BarChart3 },
             { to: "/organizer/reservations", label: "Duyệt đăng ký", icon: ClipboardCheck },
             { to: "/organizer/registration-qr", label: "QR đăng ký", icon: QrCode },
             { to: "/organizer/check-in", label: "Quét QR điểm danh", icon: ScanLine },
-            { to: "/organizer/notifications", label: "Thông báo", icon: Bell },
           ]
         : [
             { to: "/admin/dashboard", label: "Tổng quan", icon: Grid2X2, end: true },
@@ -63,10 +58,9 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             { to: "/admin/accounts", label: "Tài khoản BTC", icon: Users },
             { to: "/admin/clubs", label: "Câu lạc bộ", icon: Layers },
             { to: "/admin/users", label: "Người dùng", icon: User },
-            { to: "/admin/statistics", label: "Thống kê", icon: BarChart3 },
+            { to: "/admin/students", label: "Sinh viên", icon: GraduationCap },
             { to: "/admin/roles", label: "Phân quyền RBAC", icon: ShieldCheck, section: "SUPER ADMIN" },
             { to: "/admin/audit-logs", label: "Nhật ký hệ thống", icon: KeyRound },
-            { to: "/admin/notifications", label: "Thông báo", icon: Bell },
           ];
 
   const settingsPath =

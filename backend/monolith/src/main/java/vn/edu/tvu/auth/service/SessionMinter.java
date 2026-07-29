@@ -31,7 +31,8 @@ public class SessionMinter {
                 user.getRole(),
                 user.getClub() == null ? null : user.getClub().getId(),
                 user.getMssv(),
-                user.getMssvStatus() == MssvStatus.VERIFIED));
+                user.getMssvStatus() == MssvStatus.VERIFIED,
+                user.getAuthVersion()));
         return new LoginResult(profile(user), jwt, csrfTokenService.sign(jwt.jti(), jwt.expiresAt()));
     }
 

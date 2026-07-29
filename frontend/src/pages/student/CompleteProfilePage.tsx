@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { Info } from "lucide-react";
 import { requireCurrentUser } from "../../state/authSession";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import PageHeader from "../../components/common/PageHeader";
 import StudentProfileForm, { StudentProfileFormValues } from "../../components/student/StudentProfileForm";
 import { authService } from "../../services/authService";
@@ -51,7 +51,7 @@ export default function CompleteProfilePage() {
             <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
               <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
               <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-                Backend sẽ cấp lại cookie đăng nhập sau khi hồ sơ được cập nhật để đăng ký có MSSV hợp lệ.
+                Hệ thống sẽ làm mới phiên đăng nhập sau khi hồ sơ được lưu, để MSSV có hiệu lực ngay khi đăng ký sự kiện.
               </p>
             </div>
           }

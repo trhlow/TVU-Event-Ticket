@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OtpStoreTest {
 
     private final InMemoryOtpBackend backend = new InMemoryOtpBackend();
-    private final OtpStore store = new OtpStore(backend, 5, 10);
+    private final OtpStore store = new OtpStore(backend, new OtpDigest("test-pepper"), 5, 10);
 
     @Test
     void verify_acceptsTheCodeOnce() {
@@ -117,6 +117,29 @@ class OtpStoreTest {
         @Override
         public void put(String key, OtpStore.Entry entry, Duration ttl) {
             entries.put(key, entry);
+        }
+
+        /**
+         * Mirrors what the Lua script does in Redis. Single-threaded here, so this stands in for the
+         * atomicity rather than proving it — that is what the Redis integration test is for.
+         */
+        @Override
+        public OtpStore.Result consume(String key, String digest, int maxAttempts) {
+            var entry = entries.get(key);
+            if (entry == null) {
+                return OtpStore.Result.EXPIRED;
+            }
+            if (entry.digest().equals(digest)) {
+                entries.remove(key);
+                return OtpStore.Result.OK;
+            }
+            var attempts = entry.attempts() + 1;
+            if (attempts >= maxAttempts) {
+                entries.remove(key);
+            } else {
+                entries.put(key, new OtpStore.Entry(entry.digest(), attempts));
+            }
+            return OtpStore.Result.INVALID;
         }
 
         @Override

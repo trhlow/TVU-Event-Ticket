@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import PageHeader from '../../components/common/PageHeader';
 import EmptyState from '../../components/common/EmptyState';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import EventForm from '../../components/events/EventForm';
-import { useToast } from '../../components/common/ToastProvider';
+import { useToast } from '../../hooks/useToast';
 import { requireCurrentUser } from '../../state/authSession';
 import { eventService } from '../../services/eventService';
 import { Event } from '../../types/event';
@@ -23,7 +23,11 @@ export default function OrganizerEditEventPage() {
     async function loadEvent() {
       if (!eventId) return;
       setIsLoading(true);
-      const found = await eventService.getByIdRemote(eventId);
+      // The single-event GET /events/{id} endpoint only serves OPEN events (public discovery
+      // route) — DRAFT/CLOSED events an organizer owns 404 there. /events/mine returns every
+      // status for the caller's own club, matching OrganizerEventDetailPage's fetch.
+      const events = await eventService.listByClubRemote(currentUser.clubId || "");
+      const found = events.find((item) => item.id === eventId);
       if (mounted) {
         setEvent(found);
         setIsLoading(false);
@@ -35,7 +39,7 @@ export default function OrganizerEditEventPage() {
     return () => {
       mounted = false;
     };
-  }, [eventId]);
+  }, [eventId, currentUser.clubId]);
 
   if (!eventId) return <Navigate to="/organizer/events" replace />;
 
@@ -64,7 +68,7 @@ export default function OrganizerEditEventPage() {
 
   const handleSubmit = async (data: Partial<Event>) => {
     await eventService.update(event.id, data);
-    showToast(data.status === 'OPEN' ? 'Đã cập nhật và công bố sự kiện.' : 'Đã cập nhật sự kiện thành công.');
+    showToast('Đã cập nhật sự kiện thành công.');
     setTimeout(() => navigate(`/organizer/events/${event.id}`), 850);
   };
 
@@ -72,7 +76,7 @@ export default function OrganizerEditEventPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Chỉnh sửa sự kiện"
-        description="Cập nhật nội dung, thời gian đăng ký, số lượng vé và trạng thái phát hành cho sự kiện của câu lạc bộ."
+        description="Cập nhật nội dung, thời gian đăng ký và số lượng vé. Mở/đóng đăng ký từ danh sách sự kiện hoặc trang chi tiết."
       />
       <EventForm
         initialData={event}

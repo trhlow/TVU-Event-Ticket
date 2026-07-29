@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { AlertCircle, FlaskConical, ShieldCheck } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router";
+import { AlertCircle, ArrowLeft, FlaskConical } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -23,7 +23,6 @@ export default function LoginPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [rememberDevice, setRememberDevice] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -85,7 +84,7 @@ export default function LoginPage() {
     setErrorMsg("");
     setIsSubmitting(true);
     try {
-      const user = await authService.verifyOtp(adminEmail, otpCode, rememberDevice);
+      const user = await authService.verifyOtp(adminEmail, otpCode, false);
       navigate(homePathForRole(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Mã không đúng hoặc đã hết hạn. Vui lòng thử lại.");
@@ -115,19 +114,30 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-8 text-slate-950">
-      <section className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white px-6 py-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] sm:px-8 sm:py-9">
-        <img
-          src="/tvu_logo_1783065060265.jpg"
-          alt="Logo Trường Đại học Trà Vinh"
-          className="mx-auto h-[72px] w-[72px] rounded-full border border-blue-100 bg-white object-contain p-1.5 shadow-sm"
-        />
+    <main className="auth-scene grid min-h-screen place-items-center overflow-hidden px-4 pb-10 pt-20 text-slate-950 sm:py-10">
+      <div className="auth-orb h-[380px] w-[380px] bg-cyan-400/60" style={{ top: "-120px", right: "-80px" }} aria-hidden="true" />
+      <div className="auth-orb h-[420px] w-[420px] bg-indigo-500/60" style={{ bottom: "-140px", left: "-120px", animationDelay: "-5s" }} aria-hidden="true" />
+      <div className="auth-orb h-[260px] w-[260px] bg-blue-400/50" style={{ top: "38%", left: "58%", animationDelay: "-9s" }} aria-hidden="true" />
 
-        <h1 className="mt-6 font-display text-2xl font-extrabold leading-tight text-brand-800">TVU Ticket</h1>
-        <p className="mt-3 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
-        <p className="mx-auto mt-3 max-w-[340px] text-sm font-medium leading-6 text-slate-600">
-          Sinh viên đăng nhập bằng tài khoản Microsoft của trường. Ban tổ chức CLB và Quản trị viên đăng nhập bằng email nhận mã. Vai trò và quyền truy cập luôn do backend quyết định, frontend không cho chọn vai trò.
-        </p>
+      <Link
+        to="/"
+        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 text-sm font-bold text-white backdrop-blur-md sm:left-6 sm:top-6"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Về trang chủ
+      </Link>
+
+      <section className="auth-card relative z-10 w-full max-w-[460px] rounded-3xl px-6 py-7 text-center sm:px-8 sm:py-8">
+        <div className="auth-logo-glow mx-auto w-fit">
+          <img
+            src="/tvu_logo_1783065060265.jpg"
+            alt="Logo Trường Đại học Trà Vinh"
+            className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-blue-900/20"
+          />
+        </div>
+
+        <h1 className="mt-5 bg-gradient-to-r from-brand-800 via-brand-600 to-accent-600 bg-clip-text font-display text-2xl font-extrabold leading-tight text-transparent">TVU Ticket</h1>
+        <p className="mt-2 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
 
         {errorMsg && (
           <div className="mt-6 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-left text-xs font-semibold leading-5 text-rose-800">
@@ -136,52 +146,32 @@ export default function LoginPage() {
           </div>
         )}
 
-        {isMicrosoftProvider && (
-          <button
-            type="button"
-            onClick={handleMicrosoftLogin}
-            disabled={isSubmitting}
-            className="btn-press mt-8 flex min-h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#2848b8] px-4 text-sm font-bold text-white hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
-              <span className="bg-[#f25022]" />
-              <span className="bg-[#7fba00]" />
-              <span className="bg-[#00a4ef]" />
-              <span className="bg-[#ffb900]" />
-            </span>
-            {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
-          </button>
-        )}
-
-        <div className="mt-8 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-left">
-          <div className="flex items-center gap-2 text-slate-700">
-            <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="text-[11px] font-black uppercase tracking-[0.14em]">Ban tổ chức CLB · Quản trị viên</span>
-          </div>
+        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-left">
           {!otpSent ? (
-            <form onSubmit={handleRequestOtp} className="mt-4 space-y-3">
-              <input
-                type="email"
-                value={adminEmail}
-                onChange={(event) => setAdminEmail(event.target.value)}
-                placeholder="email-clb@vidu.com"
-                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
-                autoComplete="username"
-              />
+            <form onSubmit={handleRequestOtp} className="space-y-3">
+              <div className="space-y-1.5">
+                <label htmlFor="login-email" className="block text-xs font-bold text-slate-700">
+                  Email
+                </label>
+                <input
+                  id="login-email"
+                  type="email"
+                  value={adminEmail}
+                  onChange={(event) => setAdminEmail(event.target.value)}
+                  className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                  autoComplete="username"
+                />
+              </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang gửi..." : "Gửi mã đăng nhập"}
               </button>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOtp} className="mt-4 space-y-3">
-              <p className="text-xs font-medium leading-5 text-slate-600">
-                Nhập mã 6 số đã gửi tới <span className="font-bold">{adminEmail}</span>. Mã có hiệu lực 10
-                phút — nếu yêu cầu lại ngay, hệ thống vẫn giữ mã cũ nên hãy dùng email đã nhận.
-              </p>
+            <form onSubmit={handleVerifyOtp} className="space-y-3">
               <input
                 type="text"
                 inputMode="numeric"
@@ -193,19 +183,10 @@ export default function LoginPage() {
                 className="tvu-input min-h-11 rounded-lg text-center text-lg font-bold tracking-[0.3em]"
                 autoComplete="one-time-code"
               />
-              <label className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={rememberDevice}
-                  onChange={(event) => setRememberDevice(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300"
-                />
-                Ghi nhớ thiết bị này trong 30 ngày
-              </label>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang xác minh..." : "Xác minh và đăng nhập"}
               </button>
@@ -222,6 +203,30 @@ export default function LoginPage() {
             </form>
           )}
         </div>
+
+        {isMicrosoftProvider && (
+          <>
+            <div className="my-5 flex items-center gap-3" role="separator" aria-label="Hoặc">
+              <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
+              <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">hoặc</span>
+              <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
+            </div>
+            <button
+              type="button"
+              onClick={handleMicrosoftLogin}
+              disabled={isSubmitting}
+              className="btn-press flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#2848b8] px-4 text-sm font-bold text-white shadow-lg shadow-[#2848b8]/30 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
+                <span className="bg-[#f25022]" />
+                <span className="bg-[#7fba00]" />
+                <span className="bg-[#00a4ef]" />
+                <span className="bg-[#ffb900]" />
+              </span>
+              {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
+            </button>
+          </>
+        )}
 
         {/* import.meta.env.DEV is a build-time literal: Vite/Rollup dead-code-eliminates this
             entire branch from a `vite build` production bundle, so it cannot ship even if
@@ -265,18 +270,6 @@ export default function LoginPage() {
           </div>
         )}
 
-        <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-left text-xs font-semibold leading-5 text-brand-800">
-          <ShieldCheck className="mr-1 inline h-4 w-4 align-[-3px]" />
-          Role luôn lấy từ backend profile/session. Frontend không cho chọn role và không lưu JWT/token vào localStorage hoặc sessionStorage.
-        </div>
-
-        <div className="mt-8 rounded-xl border border-blue-100 bg-blue-50/60 px-3 py-3 text-left text-xs font-semibold leading-5 text-brand-900">
-          <span className="flex items-start gap-2">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-            Tài khoản Ban tổ chức CLB và Quản trị viên do quản trị viên nhà trường cấp sẵn bằng email — đăng nhập ở khung nhận mã phía trên,
-            không có bước đăng ký hay mật khẩu. Nếu email của bạn chưa được cấp quyền, hệ thống vẫn hiển thị như bình thường nhưng sẽ không gửi mã.
-          </span>
-        </div>
       </section>
 
       {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg("")} />}

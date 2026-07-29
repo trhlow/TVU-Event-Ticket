@@ -1,6 +1,5 @@
-import { getTickets, saveTickets } from "../data/mockTickets";
 import { Ticket } from "../types/ticket";
-import { apiConfig, apiRequest, createUnsupportedApiError } from "./apiClient";
+import { apiRequest } from "./apiClient";
 
 interface ReservationResponse {
   id: string;
@@ -9,6 +8,9 @@ interface ReservationResponse {
   status: "PENDING" | "APPROVED" | "REJECTED";
   requestedAt: string;
   ticketId?: string | null;
+  eventTitle?: string;
+  eventLocation?: string;
+  eventStartAt?: string;
 }
 
 interface TicketResponse {
@@ -88,8 +90,13 @@ function mapReservationTicket(response: ReservationResponse): Ticket | null {
     studentId: response.studentId,
     ticketCode: response.ticketId,
     status: "VALID",
-    checkInStatus: "PENDING",
+    // /reservations/me carries no check-in data at all — this is not "not checked in yet", it is
+    // genuinely unknown. See the Ticket.checkInStatus doc comment.
+    checkInStatus: "UNKNOWN",
     issuedAt: response.requestedAt,
+    eventTitle: response.eventTitle || undefined,
+    eventLocation: response.eventLocation || undefined,
+    eventStartAt: response.eventStartAt || undefined,
   };
 }
 
@@ -110,73 +117,31 @@ function mapAttendeeTicket(response: AttendeeResponse): Ticket {
   };
 }
 
-async function withTicketFallback<T>(request: () => Promise<T>, fallback: () => T): Promise<T> {
-  // Demo mode is the only sanctioned source of mock data; a failed real request always throws
-  // so the UI shows a genuine error state instead of silently masking it with fixture data.
-  if (apiConfig.useDemoData) return fallback();
-  return request();
-}
-
 export const ticketService = {
-  list(): Ticket[] {
-    return getTickets();
-  },
   async listRemote(): Promise<Ticket[]> {
-    return withTicketFallback(
-      async () => {
-        const reservations = await apiRequest<ReservationResponse[]>("/reservations/me");
-        return reservations.map(mapReservationTicket).filter((ticket): ticket is Ticket => ticket !== null);
-      },
-      () => getTickets(),
-    );
-  },
-  listByStudent(studentId: string): Ticket[] {
-    return getTickets().filter((ticket) => ticket.studentId === studentId);
+    const reservations = await apiRequest<ReservationResponse[]>("/reservations/me");
+    return reservations.map(mapReservationTicket).filter((ticket): ticket is Ticket => ticket !== null);
   },
   async listByStudentRemote(studentId: string): Promise<Ticket[]> {
-    return withTicketFallback(
-      async () => {
-        void studentId;
-        return this.listRemote();
-      },
-      () => getTickets().filter((ticket) => ticket.studentId === studentId),
-    );
-  },
-  listByEvents(eventIds: string[]): Ticket[] {
-    return getTickets().filter((ticket) => eventIds.includes(ticket.eventId));
+    void studentId;
+    return this.listRemote();
   },
   async listAttendeesPage(eventId: string, query: AttendeeQuery = {}): Promise<AttendeePage> {
-    return withTicketFallback(
-      async () => {
-        const { status, keyword, page = 0, size = 20, sort } = query;
-        const params = new URLSearchParams({ page: String(page), size: String(size) });
-        if (status) params.set("status", status);
-        if (keyword) params.set("keyword", keyword);
-        if (sort) params.set("sort", sort);
-        const response = await apiRequest<AttendeePageResponse>(
-          `/ticketing/events/${eventId}/attendees?${params.toString()}`,
-        );
-        return {
-          items: response.content.map(mapAttendeeTicket),
-          page: response.page,
-          size: response.size,
-          totalElements: response.totalElements,
-          totalPages: response.totalPages,
-        };
-      },
-      () => {
-        const all = getTickets().filter((ticket) => ticket.eventId === eventId);
-        const size = query.size ?? 20;
-        const page = query.page ?? 0;
-        return {
-          items: all.slice(page * size, page * size + size),
-          page,
-          size,
-          totalElements: all.length,
-          totalPages: Math.max(1, Math.ceil(all.length / size)),
-        };
-      },
+    const { status, keyword, page = 0, size = 20, sort } = query;
+    const params = new URLSearchParams({ page: String(page), size: String(size) });
+    if (status) params.set("status", status);
+    if (keyword) params.set("keyword", keyword);
+    if (sort) params.set("sort", sort);
+    const response = await apiRequest<AttendeePageResponse>(
+      `/ticketing/events/${eventId}/attendees?${params.toString()}`,
     );
+    return {
+      items: response.content.map(mapAttendeeTicket),
+      page: response.page,
+      size: response.size,
+      totalElements: response.totalElements,
+      totalPages: response.totalPages,
+    };
   },
   // Fetches every page of attendees for callers that need the full list (dashboards, CSV-adjacent
   // views). Real attendee lists are club-sized, not school-sized, so this stays bounded.
@@ -193,30 +158,20 @@ export const ticketService = {
   async availability(eventId: string): Promise<AvailabilityResponse> {
     return apiRequest<AvailabilityResponse>(`/ticketing/events/${eventId}/availability`);
   },
+  async exportAttendeesCsv(
+    eventId: string,
+    filters: Pick<AttendeeQuery, "status" | "keyword"> = {},
+  ): Promise<string> {
+    const params = new URLSearchParams();
+    if (filters.status) params.set("status", filters.status);
+    if (filters.keyword) params.set("keyword", filters.keyword);
+    const suffix = params.size > 0 ? `?${params.toString()}` : "";
+    return apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${suffix}`);
+  },
   async checkIn(qrPayload: string): Promise<Ticket> {
-    return withTicketFallback(
-      async () => mapTicket(await apiRequest<TicketResponse>("/ticketing/check-in", {
-        method: "POST",
-        body: JSON.stringify({ qrPayload }),
-      })),
-      () => {
-        const tickets = getTickets();
-        const index = tickets.findIndex((ticket) => ticket.ticketCode === qrPayload || ticket.qrCodeValue === qrPayload);
-        if (index === -1) throw new Error("Ticket not found");
-        if (tickets[index].status !== "VALID") throw new Error("Ticket is not valid");
-        if (tickets[index].checkInStatus === "CHECKED_IN") throw new Error("Ticket already checked in");
-        const checkedInAt = new Date().toISOString();
-        const updated: Ticket = { ...tickets[index], checkInStatus: "CHECKED_IN", checkedInAt, checkInAt: checkedInAt };
-        tickets[index] = updated;
-        saveTickets(tickets);
-        return updated;
-      },
-    );
-  },
-  getQrPayload(): never {
-    throw createUnsupportedApiError("QR ticket payload cho sinh vien");
-  },
-  save(tickets: Ticket[]): void {
-    saveTickets(tickets);
+    return mapTicket(await apiRequest<TicketResponse>("/ticketing/check-in", {
+      method: "POST",
+      body: JSON.stringify({ qrPayload }),
+    }));
   },
 };

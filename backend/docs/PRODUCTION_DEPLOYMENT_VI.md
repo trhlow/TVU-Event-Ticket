@@ -178,14 +178,29 @@ Các URL bắt buộc phải hoạt động:
 
 Smoke test hạ tầng chưa thay cho kiểm thử nghiệp vụ. Trước khi mở hệ thống:
 
-1. đăng nhập Microsoft bằng đúng tenant TVU;
-2. xác nhận token tenant khác bị từ chối;
-3. tạo một sự kiện thử;
-4. sinh viên đăng ký, ban tổ chức duyệt;
-5. xác nhận email và QR đến đúng người;
-6. quét QR một lần thành công và lần hai bị từ chối;
-7. kiểm tra RabbitMQ không có DLQ bất thường;
-8. chạy một backup và restore thử trên máy tách biệt.
+1. **Gate OTP quản trị — làm ĐẦU TIÊN, trước mọi mục khác.** Với **từng** địa chỉ
+   trong `BOOTSTRAP_ADMIN_EMAIL` (không phải chỉ một địa chỉ đại diện): yêu cầu OTP,
+   xác nhận **thư thật sự đến hòm thư đó**, rồi đăng nhập thành công.
+   - EMAIL_OTP là đường đăng nhập **duy nhất** của admin. Một địa chỉ gõ sai hay một
+     hòm thư đã đóng nghĩa là tài khoản đó vĩnh viễn không vào được, và không tài
+     khoản nào khác có quyền sửa.
+   - Kiểm tra `/actuator/health` báo mail `UP`. Từ nay `management.health.mail.enabled`
+     đã bật nên SMTP hỏng sẽ làm overall health DOWN → `smoke-test.sh` fail deploy và
+     `docker ps` báo monolith unhealthy. Đó là hành vi **cố ý**.
+   - ⛔ Chưa qua mục này thì **không tuyên bố production ready**, dù mọi mục dưới đều đạt.
+2. đăng nhập Microsoft bằng đúng tenant TVU;
+3. xác nhận token tenant khác bị từ chối;
+4. tạo một sự kiện thử;
+5. sinh viên đăng ký, ban tổ chức duyệt;
+6. xác nhận email và QR đến đúng người;
+7. quét QR một lần thành công và lần hai bị từ chối;
+8. kiểm tra RabbitMQ không có DLQ bất thường;
+9. chạy một backup và restore thử trên máy tách biệt.
+
+> ⚠️ **H1 chưa đóng sau mục 1.** Gate trên chỉ chứng minh SMTP đang hoạt động *lúc
+> nghiệm thu*. Điều kiện đóng H1 còn cần **H14** — SMTP dự phòng đã rehearsal thành
+> công, hoặc one-time recovery code ngoài băng. SQL đổi email trong `OPERATIONS.md`
+> **không** cứu được outage SMTP: admin mới vẫn phải nhận OTP qua chính SMTP đang chết.
 
 ## 9. Deploy bản cập nhật bằng GitHub Actions
 
@@ -251,7 +266,7 @@ không chạy; khi đó phải dùng kế hoạch migration tiến hoặc restor
 kiểm chứng:
 
 ```bash
-bash scripts/restore-postgres.sh --confirm /absolute/path/to/backup.dump
+bash scripts/restore-postgres-into-new-stack.sh --confirm /absolute/path/to/backup.dump
 ```
 
 Restore thay dữ liệu thật, flush Redis, purge queue và requeue một cửa sổ outbox

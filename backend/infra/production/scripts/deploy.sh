@@ -18,7 +18,18 @@ if [[ -n "$previous_ref" && "$previous_ref" != "$release_ref" ]]; then
 fi
 
 echo "Building release $release_ref"
-compose build --pull
+# No --pull. Base images are pinned by digest in the Dockerfiles and compose file, so there is
+# nothing newer to fetch under the same reference; --pull only added a way for two builds of the
+# same commit to differ. Building on the VPS at deploy time is still not reproducible-by-
+# construction — the target remains build once in CI, push to a registry, deploy by digest — but
+# with the digests pinned the same commit now produces the same layers.
+compose build
+
+echo "Applying database migrations as the schema owner"
+# A separate one-shot step: the application container carries only the runtime credentials and
+# runs with spring.flyway.enabled=false, so it cannot alter the schema itself. This also
+# re-applies the runtime grants, which matters after a migration adds a table.
+bash "$deployment_dir/scripts/migrate.sh"
 
 if [[ "${SKIP_DEPLOY_BACKUP:-0}" != "1" ]] \
   && compose ps --status running --services 2>/dev/null | grep -qx postgres; then

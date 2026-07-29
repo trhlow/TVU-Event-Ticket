@@ -16,12 +16,12 @@ jobs:
   analyze-java:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
         with:
           languages: java-kotlin
           build-mode: manual
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: '25'
@@ -29,13 +29,40 @@ jobs:
       - name: Build application
         working-directory: backend
         run: mvn -B -pl monolith -am -DskipTests package
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
 
   analyze-frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
         with:
           languages: javascript-typescript
-      - uses: github/codeql-action/analyze@v3
+      - uses: github/codeql-action/analyze@4187e74d05793876e9989daffde9c3e66b4acd07 # v3
+
+  # Aggregate gate, mirroring `ci-gate`: a job that always runs so branch protection
+  # has a stable context to require. Neither analysis is conditional, so unlike CI
+  # there is no legitimate reason for either to be skipped -- a skip is a failure.
+  codeql-gate:
+    needs: [analyze-java, analyze-frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate CodeQL results
+        env:
+          JAVA_RESULT: ${{ needs.analyze-java.result }}
+          FRONTEND_RESULT: ${{ needs.analyze-frontend.result }}
+        run: |
+          set -uo pipefail
+          failed=0
+          for pair in "analyze-java:$JAVA_RESULT" "analyze-frontend:$FRONTEND_RESULT"; do
+            name="${pair%%:*}"; result="${pair#*:}"
+            if [ "$result" != success ]; then
+              echo "::error::$name: expected success, got '$result'"
+              failed=1
+            fi
+          done
+          [ "$failed" -eq 0 ] || exit 1
+          echo "Both CodeQL analyses succeeded."
+          # NOTE: a green workflow only means the analysis ran. It says nothing about
+          # findings -- the open-alert gate lives in deploy-production.yml.

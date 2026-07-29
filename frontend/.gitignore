@@ -18,6 +18,9 @@ coverage
 .env
 .env.*
 !.env.example
+# Tracked on purpose: it holds only the invariants of a production build (no secrets),
+# so CI, docker build and a manual build read the same values. See the file header.
+!.env.production
 
 # Editor directories and files
 .vscode/*

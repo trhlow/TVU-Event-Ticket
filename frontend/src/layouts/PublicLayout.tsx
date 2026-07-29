@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Mail, MapPin, Menu, Phone, Share2, Users, X } from "lucide-react";
 import AnimatedOutlet from "../components/common/AnimatedOutlet";
 
@@ -7,7 +7,6 @@ const navItems = [
   { label: "Trang chủ", id: "home" },
   { label: "Sự kiện", id: "events" },
   { label: "Hướng dẫn", id: "guide" },
-  { label: "Hỏi đáp", id: "faq" },
 ];
 
 export default function PublicLayout() {
@@ -268,7 +267,6 @@ export default function PublicLayout() {
                 <Link to="/" className="hover:text-brand-800 hover:underline">Trang chủ</Link>
                 <Link to="/login" className="hover:text-brand-800 hover:underline">Đăng nhập</Link>
                 <Link to="/#guide" className="hover:text-brand-800 hover:underline">Hướng dẫn</Link>
-                <Link to="/#faq" className="hover:text-brand-800 hover:underline">Hỏi đáp</Link>
               </div>
               <div className="mt-4 flex gap-2 text-brand-800">
                 <Share2 className="h-4 w-4" aria-hidden="true" />

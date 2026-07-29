@@ -2,20 +2,22 @@ import React, { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
-import DemoDataBadge from "../../components/common/DemoDataBadge";
 import { Input } from "../../components/ui/input";
 import { formatDateTime } from "../../utils/formatDate";
 import { AuditLog } from "../../types/audit";
 import { auditLogService } from "../../services/auditLogService";
-import { apiConfig } from "../../services/apiClient";
 
 const PAGE_SIZE = 20;
 
 export default function SuperAdminLogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [available, setAvailable] = useState(apiConfig.useDemoData);
+  // Starts false so the page shows its loading state until the first request settles;
+  // it used to seed from the demo flag, which no longer exists.
+  const [available, setAvailable] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [actionFilter, setActionFilter] = useState("");
+  const [fromFilter, setFromFilter] = useState("");
+  const [toFilter, setToFilter] = useState("");
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [totalElements, setTotalElements] = useState(0);
@@ -23,7 +25,13 @@ export default function SuperAdminLogsPage() {
   useEffect(() => {
     let mounted = true;
     auditLogService
-      .listRemote({ action: actionFilter.trim() || undefined, page, size: PAGE_SIZE })
+      .listRemote({
+        action: actionFilter.trim() || undefined,
+        from: fromFilter ? new Date(fromFilter).toISOString() : undefined,
+        to: toFilter ? new Date(toFilter).toISOString() : undefined,
+        page,
+        size: PAGE_SIZE,
+      })
       .then((result) => {
         if (!mounted) return;
         setLogs(result.items);
@@ -40,7 +48,7 @@ export default function SuperAdminLogsPage() {
     return () => {
       mounted = false;
     };
-  }, [actionFilter, page]);
+  }, [actionFilter, fromFilter, page, toFilter]);
 
   const columns = [
     { header: "Thời gian", accessor: (log: AuditLog) => <span className="text-[10px] font-bold text-gray-400">{formatDateTime(log.createdAt)}</span> },
@@ -55,39 +63,61 @@ export default function SuperAdminLogsPage() {
       <PageHeader
         title="Nhật ký bảo mật và hoạt động"
         description="Audit log các thao tác quản trị, đọc trực tiếp từ GET /api/admin/audit-log."
-        actions={
-          available && (
-            <div className="w-full sm:w-72">
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động (khớp chính xác)</span>
-                <Input
-                  value={actionFilter}
-                  onChange={(event) => {
-                    setPage(0);
-                    setActionFilter(event.target.value);
-                  }}
-                  placeholder="vd: auth.club.create"
-                  className="tvu-input"
-                />
-              </label>
-            </div>
-          )
-        }
-      />
+      >
+        {available && (
+          <div className="grid w-full gap-2 sm:grid-cols-3">
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Hành động (khớp chính xác)</span>
+              <Input
+                value={actionFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setActionFilter(event.target.value);
+                }}
+                placeholder="vd: auth.club.create"
+                className="tvu-input"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Từ thời điểm</span>
+              <Input
+                type="datetime-local"
+                value={fromFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setFromFilter(event.target.value);
+                }}
+                className="tvu-input"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-[11px] font-extrabold uppercase tracking-wider text-slate-500">Đến thời điểm</span>
+              <Input
+                type="datetime-local"
+                value={toFilter}
+                onChange={(event) => {
+                  setPage(0);
+                  setToFilter(event.target.value);
+                }}
+                className="tvu-input"
+              />
+            </label>
+          </div>
+        )}
+      </PageHeader>
 
       {!available ? (
         <BackendPendingNotice
           title={loadError ? "Không thể tải audit log" : "Đang tải audit log"}
           description={
             loadError
-              ? "Không thể gọi GET /api/admin/audit-log (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend)."
-              : "Đang tải nhật ký hoạt động từ backend."
+              ? "Không thể tải nhật ký hoạt động. Vui lòng kiểm tra quyền truy cập hoặc kết nối máy chủ."
+              : "Đang tải nhật ký hoạt động..."
           }
         />
       ) : (
         <div className="space-y-4">
           <div className="flex justify-end">
-            <DemoDataBadge />
           </div>
           <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
             <table className="w-full text-left text-xs font-semibold text-slate-600">

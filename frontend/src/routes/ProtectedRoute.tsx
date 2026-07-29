@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate, Outlet } from "react-router";
 import { WifiOff } from "lucide-react";
 import { getCurrentUser, isAuthenticated, setCurrentUser } from "../state/authSession";
 import { authService } from "../services/authService";
@@ -82,8 +82,8 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
           <WifiOff className="mx-auto h-8 w-8 text-rose-500" aria-hidden="true" />
           <p className="mt-3 text-sm font-extrabold text-rose-800">Không thể kết nối máy chủ</p>
           <p className="mt-1 text-xs font-semibold leading-5 text-rose-700">
-            Không thể xác minh phiên đăng nhập vì backend không phản hồi. Đây không phải lỗi đăng nhập — vui lòng kiểm tra kết nối
-            hoặc trạng thái backend rồi thử lại.
+            Không thể xác minh phiên đăng nhập vì máy chủ không phản hồi. Đây không phải lỗi đăng nhập — vui lòng kiểm tra kết nối
+            mạng rồi thử lại.
           </p>
           <button
             type="button"

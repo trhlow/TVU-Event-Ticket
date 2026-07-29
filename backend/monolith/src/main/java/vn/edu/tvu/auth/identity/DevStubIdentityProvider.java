@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 @Component
-@Profile({"dev", "test"})
+@Profile("(dev | test) & !microsoft")
 public class DevStubIdentityProvider implements IdentityProvider {
 
     @Override

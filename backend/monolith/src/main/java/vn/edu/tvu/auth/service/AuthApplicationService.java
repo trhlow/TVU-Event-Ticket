@@ -1,9 +1,12 @@
 package vn.edu.tvu.auth.service;
 
+import vn.edu.tvu.auth.domain.AuthMethod;
 import vn.edu.tvu.auth.domain.User;
 import vn.edu.tvu.auth.domain.UserStatus;
 import vn.edu.tvu.auth.dto.request.LoginRequest;
+import vn.edu.tvu.auth.dto.request.UpdateDisplayNameRequest;
 import vn.edu.tvu.auth.dto.request.UpdateProfileRequest;
+import vn.edu.tvu.shared.domain.UserRole;
 import vn.edu.tvu.auth.dto.response.AuthProfileResponse;
 import vn.edu.tvu.auth.identity.ExternalIdentity;
 import vn.edu.tvu.auth.identity.IdentityProvider;
@@ -42,7 +45,10 @@ public class AuthApplicationService {
         if (user.getClub() != null && !user.getClub().isActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Club is inactive");
         }
-        var saved = userRepository.save(user);
+        // saveAndFlush, not save: with save() the INSERT happens at commit, outside this method and
+        // outside any catch, so a losing race would surface as an opaque 500 from the framework
+        // rather than the 409 it is.
+        var saved = userRepository.saveAndFlush(user);
         return sessionMinter.mint(saved);
     }
 
@@ -66,17 +72,58 @@ public class AuthApplicationService {
     }
 
     /**
+     * Student display names are owned by the identity provider and get overwritten on every login
+     * ({@link #resolveUser}), so a student edit here would silently revert — only the emailed-code
+     * accounts (organizer, super admin), which have no external identity, may rename themselves.
+     */
+    @Transactional
+    public LoginResult updateDisplayName(UUID userId, UpdateDisplayNameRequest request) {
+        var user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getRole() == UserRole.SINH_VIEN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Student display name is managed by the identity provider");
+        }
+        user.rename(request.displayName().trim());
+        return sessionMinter.mint(userRepository.save(user));
+    }
+
+    /**
      * The Entra subject is the stable, non-reassignable identifier and is now the only thing this flow
      * matches on. Admin accounts live on the emailed-code path and carry no subject, so Entra cannot reach
      * them by address — a reissued email pointing at a brand-new subject simply becomes a new student.
      */
     private User resolveUser(ExternalIdentity identity) {
-        return userRepository.findByExtSubject(identity.subject())
+        return userRepository.findByExtSubjectAndAuthMethod(identity.subject(), AuthMethod.MICROSOFT)
                 .map(user -> {
+                    // Fail closed. A non-student on the Microsoft path is a shape V13 forbids, so
+                    // reaching here means the data is wrong; minting a session for it would hand
+                    // out admin rights on the strength of a row that should not exist.
+                    if (user.getRole() != UserRole.SINH_VIEN) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                                "This account cannot sign in with Microsoft");
+                    }
                     user.updateIdentity(identity.subject(), identity.email(), identity.displayName());
                     return user;
                 })
-                .orElseGet(() -> User.student(identity.subject(), identity.email(), identity.displayName()));
+                .orElseGet(() -> newStudent(identity));
+    }
+
+    /**
+     * Creates the student a first-time Entra login represents, refusing the address if it already
+     * belongs to someone.
+     *
+     * <p>Email is unique across both sign-in methods, so a Microsoft login presenting an address an
+     * admin already uses cannot become a new account. Checked here so the common case is a clear
+     * 409 rather than a constraint violation surfacing from somewhere further down; the database
+     * constraint remains the real guarantee, for the race this check cannot cover.
+     */
+    private User newStudent(ExternalIdentity identity) {
+        if (userRepository.findByEmail(identity.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "That email address is already in use");
+        }
+        return User.student(identity.subject(), identity.email(), identity.displayName());
     }
 
 }

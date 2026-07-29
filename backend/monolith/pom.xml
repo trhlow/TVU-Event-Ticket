@@ -18,7 +18,11 @@
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-flyway</artifactId></dependency>
         <dependency><groupId>org.flywaydb</groupId><artifactId>flyway-database-postgresql</artifactId></dependency>
         <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope></dependency>
-        <dependency><groupId>org.springdoc</groupId><artifactId>springdoc-openapi-starter-webmvc-ui</artifactId><version>${springdoc.version}</version></dependency>
+        <!-- The api starter, not the ui one. This application never rendered Swagger UI: only
+             /v3/api-docs was reachable, and the UI page answered 401 everywhere. The ui starter's
+             only visible effect was to package the swagger-ui webjar, which is where the DOMPurify
+             CVE came from and which any signed-in user could fetch through /webjars/**. -->
+        <dependency><groupId>org.springdoc</groupId><artifactId>springdoc-openapi-starter-webmvc-api</artifactId><version>${springdoc.version}</version></dependency>
         <dependency><groupId>org.mapstruct</groupId><artifactId>mapstruct</artifactId><version>1.6.2</version></dependency>
         <dependency><groupId>com.google.zxing</groupId><artifactId>core</artifactId><version>3.5.3</version></dependency>
         <dependency><groupId>com.google.zxing</groupId><artifactId>javase</artifactId><version>3.5.3</version></dependency>
@@ -35,4 +39,26 @@
         <plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin>
         <plugin><groupId>org.apache.maven.plugins</groupId><artifactId>maven-compiler-plugin</artifactId><configuration><annotationProcessorPaths><path><groupId>org.mapstruct</groupId><artifactId>mapstruct-processor</artifactId><version>1.6.2</version></path></annotationProcessorPaths></configuration></plugin>
     </plugins></build>
+
+    <profiles>
+        <!--
+          The image shipped to production packaged application-dev.yml, which carries a
+          default bootstrap-admin address and the demo-otp block. Nothing activates it
+          under the prod profile, so this was configuration leakage rather than a bypass -
+          but an artifact should not contain credentials-shaped config it can never use.
+
+          Only the config file is excluded. DemoOtpProperties and FixedOtpCodeIssuer stay
+          on the classpath on purpose: ProductionSecretsValidator imports DemoOtpProperties
+          and takes it in its constructor, so dropping those classes breaks the build. They
+          remain inert behind @Profile({"dev","test"}) plus that validator.
+        -->
+        <profile>
+            <id>prod</id>
+            <build><resources><resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes><exclude>application-dev.yml</exclude></excludes>
+            </resource></resources></build>
+        </profile>
+    </profiles>
 </project>

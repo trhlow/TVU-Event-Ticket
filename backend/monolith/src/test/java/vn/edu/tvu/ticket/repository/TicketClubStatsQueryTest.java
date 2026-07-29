@@ -92,7 +92,9 @@ class TicketClubStatsQueryTest extends AbstractPostgresIntegrationTest {
         var studentId = ParentRows.user(jdbcTemplate, UUID.randomUUID());
         var reservation = Reservation.pending(eventId, clubId, studentId,
                 "student@example.com", "110122001", UUID.randomUUID().toString());
-        reservation.approve(ParentRows.user(jdbcTemplate, UUID.randomUUID(), null, "ORGANIZER"));
+        // The reviewer needs a club of its own: V13 requires every organiser to have one.
+        reservation.approve(ParentRows.user(jdbcTemplate, UUID.randomUUID(),
+                ParentRows.club(jdbcTemplate, UUID.randomUUID()), "ORGANIZER"));
         reservationRepository.saveAndFlush(reservation);
         var ticket = repository.saveAndFlush(Ticket.issue(reservation));
         jdbcTemplate.update("update tickets set status = ?, issued_at = ?, checked_in_at = ? where id = ?",

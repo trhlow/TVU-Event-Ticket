@@ -15,28 +15,33 @@ jobs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3
         id: filter
         with:
           filters: |
+            # The workflow and its scripts appear under BOTH filters on purpose. Without that, a
+            # change touching only CI could skip both jobs while ci-gate still reported success —
+            # a green gate that verified nothing.
             backend:
               - 'backend/pom.xml'
               - 'backend/Dockerfile'
               - 'backend/monolith/**'
               - 'backend/infra/**'
+              - '.github/workflows/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/**'
 
   backend:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up JDK 25
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
         with:
           distribution: temurin
           java-version: '25'
@@ -47,7 +52,7 @@ jobs:
         run: mvn -B -pl monolith -am verify
 
       - name: Cache dependency vulnerability data
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: dependency-check-${{ runner.os }}-v1
@@ -97,28 +102,28 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
 
   frontend:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     env:
-      # Safe, non-production defaults so the build never needs real secrets and never ships
-      # with DevStub, demo data, or mock fallback baked in.
-      VITE_APP_ENV: production
-      VITE_AUTH_PROVIDER: microsoft
-      VITE_USE_DEMO_DATA: 'false'
-      VITE_ENABLE_MOCK_FALLBACK: 'false'
+      # VITE_APP_ENV and VITE_AUTH_PROVIDER now come from frontend/.env.production, which
+      # docker-compose and a manual build read too -- listing them here again is how CI and
+      # the deployed artifact used to drift. Only per-environment values stay.
       VITE_API_BASE_URL: http://localhost:8080/api
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '22'
+          # Must match frontend/Dockerfile (which builds the artifact that ships) and .nvmrc.
+          # Three different Node versions meant a green CI said nothing about the real image:
+          # the same suite passes on 22 and fails on 26.
+          node-version-file: frontend/.nvmrc
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
@@ -134,31 +139,106 @@ jobs:
         working-directory: frontend
         run: npm run test -- --run
 
-      - name: Build (production-safe env)
+      - name: Build production artifact and prove it carries no fixture data
         working-directory: frontend
-        run: npm run build
+        # build:production runs the bundle evidence gate: no fixture import, no fixture
+        # chunk, no fixture email/student id, no stray mock storage key.
+        run: npm run build:production
 
-      - name: Audit dependencies (non-blocking)
+      - name: Audit dependencies
         working-directory: frontend
-        run: npm audit --audit-level=high || true
+        # No `|| true`. Fail-open meant a known high-severity CVE left the gate green, which is the
+        # same as not running it. If a finding has to be accepted, accept it explicitly with
+        # `npm audit --omit=dev` scope or an override, in a commit someone reviewed.
+        run: npm audit --audit-level=high
 
       - name: Fail if a real .env file was accidentally committed
         run: |
-          if git ls-files frontend | grep -E '^frontend/\.env($|\.[^.]*$)' | grep -v '\.env\.example$'; then
+          # .env.production is tracked on purpose: it carries the invariants of a
+          # production build so CI, docker and manual builds cannot disagree. Everything
+          # else that looks like an env file is still a mistake.
+          if git ls-files frontend | grep -E '^frontend/\.env($|\.[^.]*$)' \
+             | grep -vE '\.env\.(example|production)$'; then
             echo "A real .env file is tracked in git — remove it and rotate any secrets it held."
             exit 1
           fi
-          echo "No tracked .env file found."
-
-      - name: Fail if the production bundle contains DevStub UI or demo account strings
-        working-directory: frontend
-        run: |
-          if grep -rl "DEV ONLY\|admin@example.com" dist/assets/*.js 2>/dev/null; then
-            echo "Production bundle contains dev-only login UI or a default admin account string."
+          # A tracked env file is only safe while it holds no secrets, and it ends up in
+          # the bundle either way, so check rather than trust the comment in it.
+          # Only assignment lines: the file's own comment explains why secrets are banned,
+          # and matching that comment would fail the build on its own documentation.
+          if grep -vE '^\s*#' frontend/.env.production \
+             | grep -inE '(secret|password|token|private[_-]?key)'; then
+            echo "frontend/.env.production is committed and shipped in the bundle — it must not hold secrets."
             exit 1
           fi
-          echo "Production bundle is clean."
+          echo "No unexpected tracked .env file, and .env.production holds no secrets."
+
+      - name: Fail if the production bundle contains DevStub UI
+        working-directory: frontend
+        # Fixture data is covered by the evidence gate in build:production above; this
+        # only guards the dev-only sign-in UI, which is not fixture data.
+        run: |
+          if grep -rl "DEV ONLY" dist/assets/*.js 2>/dev/null; then
+            echo "Production bundle contains dev-only login UI."
+            exit 1
+          fi
+          echo "No dev-only login UI in the bundle."
 
       - name: Build deployable frontend image
         working-directory: frontend
         run: docker build -t tvu/frontend:ci .
+
+  # Aggregate gate. `backend` and `frontend` are skipped by their own `if:` when the
+  # path filter does not match, and `dependency-review` does not exist at all on push
+  # events -- requiring those contexts directly in branch protection would block every
+  # PR that happens not to touch them. This job always runs, so it is the one safe
+  # context to require on main.
+  ci-gate:
+    needs: [changes, backend, frontend, dependency-review]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate CI results
+        env:
+          EVENT: ${{ github.event_name }}
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          FRONTEND_RESULT: ${{ needs.frontend.result }}
+          DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
+          BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
+          FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
+        run: |
+          set -uo pipefail
+          failed=0
+          fail() { echo "::error::$1"; failed=1; }
+
+          # Everything else is gated on `changes`, so a skip or failure here makes the
+          # whole run untrustworthy. It must have run and passed.
+          [ "$CHANGES_RESULT" = success ] || fail "changes: expected success, got '$CHANGES_RESULT'"
+
+          # A skipped path job counts as a pass ONLY when the filter genuinely reported
+          # "unchanged". A blanket "skipped is fine" rule would be fail-open: a job
+          # skipped for any unforeseen reason would silently satisfy the gate.
+          check_path_job() {
+            name="$1"; result="$2"; changed="$3"
+            case "$result" in
+              success) ;;
+              skipped)
+                if [ "$changed" != false ]; then
+                  fail "$name: skipped but changes.outputs.$name='$changed' (expected 'false')"
+                fi
+                ;;
+              *) fail "$name: expected success, got '$result'" ;;
+            esac
+          }
+          check_path_job backend "$BACKEND_RESULT" "$BACKEND_CHANGED"
+          check_path_job frontend "$FRONTEND_RESULT" "$FRONTEND_CHANGED"
+
+          # dependency-review runs on pull_request only; on push it is skipped by design.
+          if [ "$EVENT" = pull_request ]; then
+            [ "$DEPENDENCY_REVIEW_RESULT" = success ] \
+              || fail "dependency-review: expected success on pull_request, got '$DEPENDENCY_REVIEW_RESULT'"
+          fi
+
+          [ "$failed" -eq 0 ] || exit 1
+          echo "All CI jobs accounted for."

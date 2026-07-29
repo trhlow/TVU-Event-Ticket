@@ -1,90 +1,107 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Award, Calendar, Layers, ShieldCheck, Ticket, Activity } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Activity, Calendar, Gauge, Layers, ShieldCheck, Ticket, Users } from "lucide-react";
 import BarChartCard from "../../components/charts/BarChartCard";
 import DonutChartCard from "../../components/charts/DonutChartCard";
-import LineChartCard from "../../components/charts/LineChartCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import BackendPendingNotice from "../../components/common/BackendPendingNotice";
-import DemoDataBadge from "../../components/common/DemoDataBadge";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import type { AuditLog } from "../../types/audit";
-import { mockClubs } from "../../data/mockClubs";
-import { getEvents } from "../../data/mockEvents";
-import { getReservations } from "../../data/mockReservations";
+import type { ClubStatsSummary } from "../../types/clubStats";
 import { formatDateTime } from "../../utils/formatDate";
-import { apiConfig } from "../../services/apiClient";
 import { auditLogService } from "../../services/auditLogService";
+import { clubStatsService } from "../../services/clubStatsService";
 import { SchoolWideOverview, statisticsService } from "../../services/statisticsService";
 
 export default function SuperAdminDashboard() {
   const [overview, setOverview] = useState<SchoolWideOverview | null>(null);
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
-  const [loadError, setLoadError] = useState(false);
-  const [auditLogUnavailable, setAuditLogUnavailable] = useState(false);
+  const [clubStats, setClubStats] = useState<ClubStatsSummary[]>([]);
+  const [loadError, setLoadError] = useState("");
+  const [auditLogError, setAuditLogError] = useState("");
+  const [clubStatsError, setClubStatsError] = useState("");
 
   useEffect(() => {
     let mounted = true;
-    statisticsService
-      .overview()
-      .then((overviewResult) => {
-        if (mounted) setOverview(overviewResult);
-      })
-      .catch(() => {
-        if (mounted) setLoadError(true);
-      });
-    // Audit log is a separate, independently-failing data source (some backends don't expose it
-    // yet) — its failure must not blank out the stats/charts that did load successfully.
-    auditLogService
-      .listRemote({ size: 5 })
-      .then((logsResult) => {
-        if (mounted) setRecentLogs(logsResult.items);
-      })
-      .catch(() => {
-        if (mounted) setAuditLogUnavailable(true);
-      });
+    Promise.allSettled([
+      statisticsService.overview(),
+      auditLogService.listRemote({ size: 5 }),
+      clubStatsService.listSummaries({ page: 0, size: 100 }),
+    ]).then(([overviewResult, logsResult, clubsResult]) => {
+      if (!mounted) return;
+
+      if (overviewResult.status === "fulfilled") {
+        setOverview(overviewResult.value);
+      } else {
+        setLoadError(
+          overviewResult.reason instanceof Error
+            ? overviewResult.reason.message
+            : "Không thể tải số liệu toàn trường.",
+        );
+      }
+
+      if (logsResult.status === "fulfilled") {
+        setRecentLogs(logsResult.value.items);
+      } else {
+        setAuditLogError(
+          logsResult.reason instanceof Error ? logsResult.reason.message : "Không thể tải nhật ký hoạt động.",
+        );
+      }
+
+      if (clubsResult.status === "fulfilled") {
+        setClubStats(clubsResult.value.items);
+      } else {
+        setClubStatsError(
+          clubsResult.reason instanceof Error ? clubsResult.reason.message : "Không thể tải thống kê theo CLB.",
+        );
+      }
+    });
     return () => {
       mounted = false;
     };
   }, []);
 
-  const available = apiConfig.useDemoData ? true : overview !== null;
-
-  const events = useMemo(() => getEvents(), []);
-  const reservations = useMemo(() => getReservations(), []);
-
-  const clubDistributionData = useMemo(
-    () =>
-      mockClubs.map((club) => ({
-        name: club.code,
-        "Số sự kiện": events.filter((event) => event.clubId === club.id).length,
-      })),
-    [events],
-  );
-
-  const monthlyData = useMemo(() => {
-    const counts = new Map<string, number>();
-    reservations.forEach((reservation) => {
-      const month = new Date(reservation.createdAt).getMonth() + 1;
-      const key = `T${month}`;
-      counts.set(key, (counts.get(key) || 0) + 1);
-    });
-    return Array.from(counts, ([name, value]) => ({ name, "Lượt đăng ký": value })).sort(
-      (a, b) => Number(a.name.slice(1)) - Number(b.name.slice(1)),
+  if (loadError) {
+    return (
+      <BackendPendingNotice
+        title="Không thể tải dashboard toàn trường"
+        description={loadError}
+      />
     );
-  }, [reservations]);
+  }
 
-  const totalClubs = overview?.admin.totalClubs ?? mockClubs.length;
-  const totalEvents = overview?.events.totalEvents ?? events.length;
-  const studentsCount = overview?.admin.usersByRole.SINH_VIEN ?? reservations.filter((item) => item.status === "APPROVED").length;
-  const ticketsIssued = overview?.tickets.ticketsIssued ?? 0;
-  const checkedIn = overview?.tickets.checkedIn ?? 0;
+  if (!overview) {
+    return <LoadingSkeleton type="card" count={5} />;
+  }
 
+  const clubDistributionData = clubStats.map((club) => ({
+    name: club.clubName,
+    "Sự kiện": club.totalEvents,
+    "Vé phát hành": club.ticketsIssued,
+    "Đã check-in": club.checkedIn,
+  }));
+  const eventStatusData = Object.entries(overview.events.eventsByStatus).map(([status, value]) => ({
+    name: status === "DRAFT" ? "Bản nháp" : status === "OPEN" ? "Đang mở" : "Đã đóng",
+    value: value ?? 0,
+  }));
   const auditColumns = [
-    { header: "Người thực hiện", accessor: (log: AuditLog) => <span className="block font-extrabold text-slate-950">{log.userName || log.actorName}</span> },
-    { header: "Vai trò", accessor: (log: AuditLog) => <span className="text-xs font-bold text-slate-500">{log.role || log.actorRole}</span> },
-    { header: "Hành động", accessor: (log: AuditLog) => <span className="font-semibold text-slate-700">{log.action}</span> },
-    { header: "Thời gian", accessor: (log: AuditLog) => <span className="text-xs font-bold text-slate-500">{formatDateTime(log.createdAt)}</span> },
+    {
+      header: "Người thực hiện",
+      accessor: (log: AuditLog) => (
+        <span className="block font-extrabold text-slate-950">{log.userName || log.actorName}</span>
+      ),
+    },
+    {
+      header: "Hành động",
+      accessor: (log: AuditLog) => <span className="font-semibold text-slate-700">{log.action}</span>,
+    },
+    {
+      header: "Thời gian",
+      accessor: (log: AuditLog) => (
+        <span className="text-xs font-bold text-slate-500">{formatDateTime(log.createdAt)}</span>
+      ),
+    },
   ];
 
   return (
@@ -93,69 +110,86 @@ export default function SuperAdminDashboard() {
         eyebrow="Trung tâm điều hành hệ thống"
         icon={Activity}
         title="Dashboard toàn trường"
-        description="Giám sát CLB, tài khoản Ban tổ chức, sự kiện, vé QR và nhật ký vận hành của TVU Event & Ticketing Platform."
-        actions={
-          <div className="rounded-2xl border border-info-100 bg-info-50 px-4 py-3 text-right">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-brand-700">Hệ thống</p>
-            <p className="mt-1 text-2xl font-black text-slate-950">Ổn định</p>
-          </div>
-        }
+        description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in theo thời gian thực."
       />
 
-      {!available ? (
-        <BackendPendingNotice
-          title={loadError ? "Không thể tải số liệu toàn trường" : "Đang chờ dữ liệu backend"}
-          description={
-            loadError
-              ? "Không thể gọi API thống kê hoặc audit log (kiểm tra quyền SUPER_ADMIN hoặc kết nối backend)."
-              : "Đang tải số liệu toàn trường từ backend."
-          }
+      <div className="flex justify-end">
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatisticCard label="Tổng CLB" value={overview.admin.totalClubs} icon={Layers} />
+        <StatisticCard label="Tổng người dùng" value={overview.admin.totalUsers} icon={Users} />
+        <StatisticCard label="Tổng sự kiện" value={overview.events.totalEvents} icon={Calendar} color="warning" />
+        <StatisticCard label="Vé phát hành" value={overview.tickets.ticketsIssued} icon={Ticket} color="success" />
+        <StatisticCard label="Lượt check-in" value={overview.tickets.checkedIn} icon={ShieldCheck} color="success" />
+        <StatisticCard
+          label="Tỷ lệ check-in"
+          value={overview.tickets.checkInRate == null ? "Chưa có dữ liệu" : `${Math.round(overview.tickets.checkInRate * 100)}%`}
+          icon={Gauge}
+          color="success"
         />
-      ) : (
-        <div className="space-y-7">
-          <div className="flex justify-end">
-            <DemoDataBadge />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <StatisticCard label="Tổng CLB" value={totalClubs} icon={Layers} />
-            <StatisticCard label="Tổng sự kiện" value={totalEvents} icon={Calendar} color="warning" />
-            <StatisticCard label="Sinh viên" value={studentsCount} icon={Award} />
-            <StatisticCard label="Vé phát hành" value={ticketsIssued} icon={Ticket} color="success" />
-            <StatisticCard label="Lượt điểm danh" value={checkedIn} icon={ShieldCheck} color="success" />
-          </div>
+      </div>
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <BarChartCard title="Sự kiện theo CLB" data={clubDistributionData} xAxisKey="name" dataKeys={[{ key: "Số sự kiện", name: "Số sự kiện", color: "#2563eb" }]} />
-            <div className="lg:col-span-2">
-              <LineChartCard title="Lượt đăng ký theo tháng" data={monthlyData} xAxisKey="name" dataKeys={[{ key: "Lượt đăng ký", name: "Lượt đăng ký", color: "#00a896" }]} />
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <DonutChartCard
-              title="Tỷ lệ điểm danh toàn trường"
-              data={[
-                { name: "Đã điểm danh", value: checkedIn || 1 },
-                { name: "Chưa điểm danh", value: Math.max(ticketsIssued - checkedIn, 1) },
-              ]}
-              colors={["#10b981", "#cbd5e1"]}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {clubStatsError ? (
+            <BackendPendingNotice
+              title="Không thể tải thống kê theo CLB"
+              description={clubStatsError}
             />
-            <section className="space-y-3">
-              <div>
-                <h2 className="section-heading">Hoạt động gần đây</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">Audit log mới nhất từ các vai trò trong hệ thống</p>
-              </div>
-              {auditLogUnavailable ? (
-                <p className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-xs font-semibold text-slate-500">
-                  Backend hiện chưa expose API audit log (GET /admin/audit-log).
-                </p>
-              ) : (
-                <DataTable data={recentLogs} columns={auditColumns} searchPlaceholder="Tìm kiếm hành động..." searchField="action" pageSize={5} />
-              )}
-            </section>
-          </div>
+          ) : (
+            <BarChartCard
+              title="Hoạt động theo câu lạc bộ"
+              data={clubDistributionData}
+              xAxisKey="name"
+              dataKeys={[
+                { key: "Sự kiện", name: "Sự kiện", color: "#2563eb" },
+                { key: "Vé phát hành", name: "Vé phát hành", color: "#f59e0b" },
+                { key: "Đã check-in", name: "Đã check-in", color: "#10b981" },
+              ]}
+            />
+          )}
         </div>
-      )}
+        <div className="space-y-6">
+          <DonutChartCard
+            title="Tỷ lệ check-in"
+            data={[
+              { name: "Đã check-in", value: overview.tickets.checkedIn },
+              {
+                name: "Chưa check-in",
+                value: Math.max(overview.tickets.ticketsIssued - overview.tickets.checkedIn, 0),
+              },
+            ]}
+            colors={["#10b981", "#cbd5e1"]}
+          />
+          <DonutChartCard
+            title="Trạng thái sự kiện toàn trường"
+            data={eventStatusData}
+            colors={["#94a3b8", "#10b981", "#f59e0b"]}
+          />
+        </div>
+      </div>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="section-heading">Hoạt động gần đây</h2>
+          <p className="mt-1 text-sm font-semibold text-slate-500">Audit log mới nhất của hệ thống</p>
+        </div>
+        {auditLogError ? (
+          <BackendPendingNotice
+            title="Không thể tải audit log"
+            description={auditLogError}
+          />
+        ) : (
+          <DataTable
+            data={recentLogs}
+            columns={auditColumns}
+            searchPlaceholder="Tìm kiếm hành động..."
+            searchField="action"
+            pageSize={5}
+          />
+        )}
+      </section>
     </div>
   );
 }

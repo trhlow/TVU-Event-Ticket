@@ -35,7 +35,10 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/login", "/api/auth/otp/request",
-                                "/api/auth/otp/verify", "/api/auth/session/refresh", "/.well-known/**",
+                                "/api/auth/otp/verify", "/api/auth/session/refresh",
+                                // Logging out must work with an expired or invalid JWT: otherwise a
+                                // user whose token just expired cannot clear their own cookies.
+                                "/api/auth/logout", "/.well-known/**",
                                 "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/mine").hasRole("ORGANIZER")
@@ -51,6 +54,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/ticketing/stats").hasRole("SUPER_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/admin/clubs/stats",
                                 "/api/admin/clubs/*/stats").hasRole("SUPER_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/admin/events").hasRole("SUPER_ADMIN")
                         // ORGANIZER only, deliberately. A super-admin administers club accounts
                         // (/api/admin/**) and reads cross-club statistics (/api/ticketing/stats,
                         // /api/events/stats); it does not act inside a club's scope. The service layer
@@ -58,8 +62,33 @@ public class SecurityConfig {
                         // instead of relying on every future club-scoped endpoint to re-check.
                         .requestMatchers("/api/reservations/**", "/api/ticketing/**", "/api/tickets/**")
                         .hasRole("ORGANIZER")
+                        // Nobody, at any role, in any profile. Spring Boot maps /webjars/** onto
+                        // classpath:/META-INF/resources/webjars/, independently of springdoc. The
+                        // swagger-ui webjar that used to sit there is gone with the ui starter, so this
+                        // rule guards a path that has nothing to serve today — and keeps it that way if
+                        // any webjar returns to the classpath. Production also sets
+                        // spring.web.resources.add-mappings=false, which removes the mapping outright;
+                        // this is the layer that still holds if that property is ever overridden from
+                        // the environment. Under `authenticated()` — where this path sat before — a
+                        // student's token was enough, and that is measured, not inferred: remove this
+                        // line and SecurityConfigTest gets back "<!-- HTML for static distribution
+                        // bundle build -->", the Swagger UI page itself, for SINH_VIEN and SUPER_ADMIN
+                        // alike. Nothing legitimate uses the path — /swagger-ui/index.html answers 401
+                        // in every profile on this branch, so only the OpenAPI JSON at /v3/api-docs is
+                        // actually reachable, and it is served by springdoc, not from here.
+                        .requestMatchers("/webjars/**").denyAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        // Spring registers /.well-known/oauth-protected-resource automatically when
+                        // oauth2ResourceServer is enabled, and its built-in default advertises
+                        // tlsClientCertificateBoundAccessTokens(true). This application does not
+                        // verify certificate-bound tokens (RFC 8705), so that default is simply
+                        // untrue, and a client reading the metadata to decide how to present a token
+                        // would be misled. Not a bypass — the endpoint grants nothing — but metadata
+                        // that lies is worse than no metadata.
+                        .protectedResourceMetadata(metadata -> metadata
+                                .protectedResourceMetadataCustomizer(builder ->
+                                        builder.tlsClientCertificateBoundAccessTokens(false)))
                         .bearerTokenResolver(bearerTokenResolver())
                         .jwt(jwt -> jwt
                                 .decoder(jwtDecoder)
@@ -72,6 +101,13 @@ public class SecurityConfig {
     BearerTokenResolver bearerTokenResolver() {
         var headerResolver = new DefaultBearerTokenResolver();
         return request -> {
+            // Resolve no token at all for logout. permitAll alone is not enough: the resolver would
+            // still pick up the TVU_AUTH cookie, and an expired or revoked token makes the resource
+            // server reject the request with 401 before it reaches a permitAll endpoint — so the one
+            // person who most needs to log out could not.
+            if ("POST".equals(request.getMethod()) && "/api/auth/logout".equals(request.getRequestURI())) {
+                return null;
+            }
             var headerToken = headerResolver.resolve(request);
             if (StringUtils.hasText(headerToken)) {
                 return headerToken;
@@ -98,11 +134,11 @@ public class SecurityConfig {
 
     @Bean
     JwtDecoder jwtDecoder(RsaKeyManager keyManager, JwtProperties properties,
-                          TokenRevocationService tokenRevocationService) {
+                          AuthVersionLookup authVersionLookup) {
         var decoder = NimbusJwtDecoder.withPublicKey(keyManager.publicKey()).build();
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(properties.issuer()),
-                new RevokedTokenValidator(tokenRevocationService)));
+                new AuthVersionValidator(authVersionLookup)));
         return decoder;
     }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router';
 import AppRoutes from './routes/AppRoutes';
 import EnvConfigErrorScreen from './components/common/EnvConfigErrorScreen';
 import ProductionSafetyBanner from './components/common/ProductionSafetyBanner';

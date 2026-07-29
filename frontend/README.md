@@ -49,7 +49,8 @@ is bundled into the client-side JS and is publicly readable.
   typed into the code panel behaves exactly like an unknown one — every outcome is the same silent
   202 on request and the same 401 on verify, so neither flow reveals which addresses are admins.
 - Ticking "Ghi nhớ thiết bị này trong 30 ngày" stores a rotating device token; `/auth/session/refresh`
-  then mints a session without a code. The token is single-use and rotates on every exchange.
+  then mints a session without a code. The token is single-use and rotates on every exchange, and
+  concurrent refresh attempts are deduplicated client-side onto a single in-flight request.
 - A code costs a send slot: one mail per address per minute and ten per day. Asking again too soon
   changes nothing on screen — the request still answers 202 — but no new mail is sent and the code
   already in the inbox stays valid for its full ten minutes.
@@ -123,8 +124,12 @@ The following are **not frontend bugs** — the frontend is deliberately showing
 on backend" state instead of fabricating data. Full detail in
 [backend/docs/BACKEND_SECURITY_REQUIREMENTS.md](../backend/docs/BACKEND_SECURITY_REQUIREMENTS.md):
 
-- Several Super Admin pages still render `BackendPendingNotice` rather than data — the analytics and
-  audit-log APIs exist, but those screens have not had their integration pass yet.
+- Organizer/Super Admin accounts intentionally have no password: they sign in with an emailed OTP.
+  Super Admin can provision Organizer accounts with email, display name, and club assignment.
+- Organizer dashboards, per-event dashboards, school-wide statistics, per-club statistics, users,
+  MSSV verification, and audit logs are connected to live backend APIs.
+- `EventResponse`/`ReservationResponse` don't include a club display name or a student display
+  name — those fields render as a neutral placeholder rather than a fabricated value.
 - **No endpoint returns a student's signed ticket QR.** It is delivered by email once, at approval.
   `qrCodeValue` is therefore optional on `Ticket`, and a student who loses the mail cannot recover the
   code in the app. Rendering itself is wired up: `QRDisplayCard` draws a real scannable image with

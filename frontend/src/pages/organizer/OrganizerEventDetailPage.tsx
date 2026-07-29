@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router";
 import { Award, Calendar, CheckCircle2, ChevronLeft, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { formatDateTime } from "../../utils/formatDate";
 import EventBanner from "../../components/events/EventBanner";
 import { eventService } from "../../services/eventService";
@@ -74,7 +74,7 @@ export default function OrganizerEventDetailPage() {
     setActionId(reservationId);
     try {
       await registrationService.updateStatus(reservationId, "APPROVED");
-      showToast("Đã duyệt đăng ký. Backend sẽ cấp vé và gửi email QR bất đồng bộ nếu notification đã sẵn sàng.");
+      showToast("Đã duyệt đăng ký. Hệ thống sẽ cấp vé và gửi email QR cho sinh viên trong ít phút.");
       await loadEventData();
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Không thể duyệt đăng ký.", "error");
@@ -128,7 +128,7 @@ export default function OrganizerEventDetailPage() {
           </Link>
           <div className="space-y-0.5">
             <h2 className="text-xl font-black tracking-tight text-slate-950">{event.title}</h2>
-            <p className="text-xs font-semibold text-slate-500">{event.clubName} · {event.category}</p>
+            <p className="text-xs font-semibold text-slate-500">{currentUser.clubName || "CLB"}</p>
           </div>
         </div>
         <StatusBadge type="event" status={event.status} />
@@ -144,7 +144,7 @@ export default function OrganizerEventDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-1">
           <div className="enterprise-card overflow-hidden">
-            <EventBanner src={event.bannerUrl} alt={event.title} category={event.category} className="h-44 w-full" />
+            <EventBanner src={event.bannerUrl} alt={event.title} className="h-44 w-full" />
             <div className="space-y-4 p-5">
               <h3 className="text-sm font-extrabold text-slate-900">Thông tin cơ bản</h3>
               <div className="space-y-3">
@@ -247,7 +247,7 @@ export default function OrganizerEventDetailPage() {
         <ConfirmModal
           isOpen={!!rejectTargetId}
           title="Từ chối đăng ký"
-          description="Backend hiện chỉ nhận thao tác từ chối, không có trường lưu lý do từ chối."
+          description="Hệ thống hiện chỉ ghi nhận việc từ chối, chưa hỗ trợ lưu lý do từ chối."
           onConfirm={() => void handleReject()}
           onCancel={() => setRejectTargetId(null)}
           confirmText="Từ chối"

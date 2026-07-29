@@ -1,13 +1,6 @@
-import { Bell, Menu } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Menu } from "lucide-react";
 import { getCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
-
-const notificationsPathByRole: Record<string, string> = {
-  SINH_VIEN: "/student/notifications",
-  ORGANIZER: "/organizer/notifications",
-  SUPER_ADMIN: "/admin/notifications",
-};
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -25,7 +18,6 @@ export default function Header({
   showWorkspaceTitle = true,
 }: HeaderProps) {
   const currentUser = getCurrentUser();
-  const navigate = useNavigate();
 
   if (!currentUser) return null;
 
@@ -66,14 +58,6 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <button
-          type="button"
-          onClick={() => navigate(notificationsPathByRole[currentUser.role] || "/notifications")}
-          className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 shadow-sm hover:border-brand-200 hover:bg-blue-50 hover:text-brand-700"
-          aria-label="Thông báo"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
         <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
           <img
             src="/tvu_logo_1783065060265.jpg"

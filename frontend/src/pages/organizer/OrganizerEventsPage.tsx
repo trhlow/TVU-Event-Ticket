@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router";
 import { BarChart3, CheckSquare, Edit2, Eye, Lock, Plus, QrCode, Trash2, Unlock } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";
@@ -7,7 +7,7 @@ import DataTable from "../../components/common/DataTable";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import StatusBadge from "../../components/common/StatusBadge";
 import { Button } from "../../components/ui/button";
-import { useToast } from "../../components/common/ToastProvider";
+import { useToast } from "../../hooks/useToast";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { formatDateTime } from "../../utils/formatDate";
@@ -46,7 +46,7 @@ export default function OrganizerEventsPage() {
       await loadEvents();
     } catch (error) {
       showToast(
-        error instanceof Error ? error.message : "Chỉ có thể xóa sự kiện ở trạng thái nháp (DRAFT) theo quy định backend.",
+        error instanceof Error ? error.message : "Chỉ có thể xóa sự kiện đang ở trạng thái nháp.",
         "error",
       );
     }
@@ -82,12 +82,9 @@ export default function OrganizerEventsPage() {
 
   const columns = [
     {
-      header: "Tên sự kiện / Thể loại",
+      header: "Tên sự kiện",
       accessor: (event: Event) => (
-        <div className="text-left font-semibold">
-          <span className="block font-bold text-slate-950">{event.title}</span>
-          <span className="mt-1 block text-[10px] font-extrabold uppercase tracking-wider text-slate-400">{event.category}</span>
-        </div>
+        <span className="block font-bold text-slate-950">{event.title}</span>
       ),
     },
     {
@@ -173,7 +170,7 @@ export default function OrganizerEventsPage() {
         <ConfirmModal
           isOpen={!!deletingEventId}
           title="Xác nhận xóa sự kiện"
-          description="Backend chỉ cho phép xóa sự kiện ở trạng thái nháp (DRAFT). Thao tác sẽ bị từ chối nếu sự kiện đã OPEN/CLOSED."
+          description="Chỉ có thể xóa sự kiện đang ở trạng thái nháp. Sự kiện đã mở hoặc đã đóng đăng ký sẽ không thể xóa."
           onConfirm={handleConfirmDelete}
           onCancel={() => setDeletingEventId(null)}
           confirmText="Xóa sự kiện"

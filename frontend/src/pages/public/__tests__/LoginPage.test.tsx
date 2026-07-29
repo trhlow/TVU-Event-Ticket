@@ -1,9 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 
 vi.mock("../../../services/authService", () => ({
-  authService: { me: vi.fn(), loginWithMicrosoft: vi.fn(), loginWithDevStub: vi.fn(), logout: vi.fn() },
+  authService: {
+    me: vi.fn(),
+    loginWithMicrosoft: vi.fn(),
+    loginWithDevStub: vi.fn(),
+    requestOtp: vi.fn(),
+    verifyOtp: vi.fn(),
+    logout: vi.fn(),
+  },
 }));
 
 async function renderLoginPage() {
@@ -19,25 +26,26 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-describe("LoginPage with the default (microsoft) provider", () => {
-  it("shows a single, role-neutral Microsoft login button and no DevStub panel", async () => {
+describe("LoginPage with the default Microsoft provider", () => {
+  it("shows the role-neutral Microsoft login button and no DevStub panel", async () => {
     await renderLoginPage();
     expect(screen.getByRole("button", { name: /Đăng nhập bằng tài khoản Microsoft/i })).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: /Hoặc/i })).toBeInTheDocument();
     expect(screen.queryByText(/DEV ONLY/i)).not.toBeInTheDocument();
   });
 
-  it("never lets the user pick their own role", async () => {
+  it("never lets the user choose their own role", async () => {
     await renderLoginPage();
     expect(screen.queryByRole("radio")).not.toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
     expect(screen.queryByText(/SUPER_ADMIN|ORGANIZER|SINH_VIEN/)).not.toBeInTheDocument();
   });
 
-  it("tells Organizer/Super Admin to use the same Microsoft button instead of a fake internal form", async () => {
+  it("offers backend OTP login for Organizer and Super Admin without a password field", async () => {
     await renderLoginPage();
-    expect(screen.queryByPlaceholderText("admin@tvu.edu.vn")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Đăng nhập nội bộ/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/do quản trị viên nhà trường cấp sẵn/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gửi mã đăng nhập/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /^Email$/i })).toHaveAttribute("type", "email");
+    expect(screen.queryByPlaceholderText("email-clb@vidu.com")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/mật khẩu/i)).not.toBeInTheDocument();
   });
 });
 
