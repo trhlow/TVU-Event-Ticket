@@ -15,6 +15,7 @@ had to be restored by hand, which is also why its results were only reproducible
 Usage:  python3 .github/scripts/publish-decision.mutations.py
 Exit:   0 if every mutation was caught, 1 otherwise.
 """
+import os
 import pathlib
 import shutil
 import subprocess
@@ -22,6 +23,11 @@ import sys
 import tempfile
 
 HERE = pathlib.Path(__file__).resolve().parent
+# Which bash runs the suite. On a Linux runner the default is the only one there is; on a Windows
+# workstation `bash` on PATH is WSL's, which cannot see the interpreter this script was started
+# with, so every run reported the baseline red and no mutation was ever exercised. A red baseline is
+# refused rather than reported as a result, so this only ever cost a run -- but it cost every run.
+BASH = os.environ.get("PUBLISH_DECISION_BASH", "bash")
 SUBJECT = "publish-decision.sh"
 SUITE = "publish-decision.test.sh"
 
@@ -71,6 +77,34 @@ MUTATIONS = {
         "pass"),
     "skipped_reason_unchecked": (
         'require(lookup.get("reason") in SKIP_REASONS,', "require(True,"),
+    "registry_unchecked": (
+        'require(type(expected.get("registry")) is str and expected["registry"],',
+        "require(True,"),
+    "queried_ref_scope_ignored": (
+        'require(ref.startswith(scope + ":") or ref.startswith(scope + "@"),',
+        "require(True,"),
+    "skipped_ref_unchecked": (
+        "require(ref is None,", "require(True,"),
+    "verification_predicate_ignored": (
+        'predicate = verification.get("predicateType")\n'
+        "    if type(predicate) is not str or not predicate:",
+        'predicate = verification.get("predicateType")\n    if False:'),
+    "evidence_kinds_narrowed": (
+        'for kind in ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"):',
+        'for kind in ("sbom", "vulnerabilityScan"):'),
+    "evidence_predicate_ignored": (
+        '                predicate = entry.get("predicateType")\n'
+        "                if type(predicate) is not str or not predicate:",
+        '                predicate = entry.get("predicateType")\n                if False:'),
+    "evidence_result_ignored": (
+        'if entry.get("passed") is not True:', "if False:"),
+    "installed_rank_unchecked": (
+        "if type(rank) is not int or rank < 1:", "if False:"),
+    "repeatable_duplicates_allowed": (
+        "if script in seen_repeatables:", "if False:"),
+    "canonical_order_ignored": (
+        'ordered = sorted(migrations, key=lambda record: record["installedRank"])',
+        "ordered = migrations"),
 }
 
 
@@ -82,7 +116,7 @@ SUITE_TIMEOUT_SECONDS = 120
 def run_suite(directory):
     """Returns (exit code, failing cases, timed_out)."""
     try:
-        result = subprocess.run(["bash", SUITE], cwd=directory, capture_output=True, text=True,
+        result = subprocess.run([BASH, SUITE], cwd=directory, capture_output=True, text=True,
                                 timeout=SUITE_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
         return None, 0, True

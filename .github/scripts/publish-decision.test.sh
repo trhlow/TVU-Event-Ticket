@@ -34,9 +34,10 @@ marker() {
 import hashlib, json, sys
 overrides = json.loads(sys.argv[1] or "{}")
 mono, front, mdigest, sha, fp = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]
-migrations = [{"version": "16", "type": "SQL", "script": "V16__x.sql",
+migrations = [{"installedRank": 1, "version": "16", "type": "SQL", "script": "V16__x.sql",
                "checksum": 123456789, "success": True}]
-canonical = json.dumps(migrations, sort_keys=True, separators=(",", ":"))
+canonical = json.dumps(sorted(migrations, key=lambda r: r["installedRank"]),
+                       sort_keys=True, separators=(",", ":"))
 base = {
   "status": "present",
   "queriedRef": "ghcr.io/owner/name:release-" + sha,
@@ -44,7 +45,8 @@ base = {
   "verification": {
     "attestationVerified": True, "subjectDigest": mdigest,
     "signerRepository": "owner/name", "signerWorkflow": ".github/workflows/publish.yml",
-    "sourceRevision": sha, "policyPassed": True,
+    "sourceRevision": sha, "predicateType": "https://slsa.dev/provenance/v1",
+    "policyPassed": True,
   },
   "content": {
     "commit": sha, "environment": "production", "frontendConfigFingerprint": fp,
@@ -52,16 +54,32 @@ base = {
     "provenance": {"monolith": {"revision": sha, "subjectDigest": mono},
                    "frontend": {"revision": sha, "subjectDigest": front}},
     "evidence": {
-      "sbom": {"monolith": {"digest": "sha256:" + "a"*64, "subjectDigest": mono},
-               "frontend": {"digest": "sha256:" + "b"*64, "subjectDigest": front}},
-      "vulnerabilityScan": {"monolith": {"digest": "sha256:" + "c"*64, "subjectDigest": mono},
-                            "frontend": {"digest": "sha256:" + "d"*64, "subjectDigest": front}},
+      kind: {"monolith": {"digest": "sha256:" + letter*64, "subjectDigest": mono,
+                          "predicateType": "https://tvu.example/" + kind, "passed": True},
+             "frontend": {"digest": "sha256:" + letter*63 + "e", "subjectDigest": front,
+                          "predicateType": "https://tvu.example/" + kind, "passed": True}}
+      for kind, letter in (("sbom", "a"), ("vulnerabilityScan", "b"),
+                           ("layerSecretScan", "c"), ("filesystemSecretScan", "d"))
     },
     "flywayInventory": {"boundTo": mono,
                         "checksum": hashlib.sha256(canonical.encode()).hexdigest(),
                         "migrations": migrations},
   },
 }
+# Replacing the migration list has to replace the checksum with it: a deep merge would leave the
+# old hash in place, and every such case would then be caught by the checksum guard rather than by
+# the one it was written for.
+if "_migrations" in overrides:
+    replacement = overrides.pop("_migrations")
+    base["content"]["flywayInventory"]["migrations"] = replacement
+    try:
+        ordered = sorted(replacement, key=lambda r: r["installedRank"])
+    except (TypeError, KeyError):
+        ordered = replacement
+    recomputed = json.dumps(ordered, sort_keys=True, separators=(",", ":"))
+    base["content"]["flywayInventory"]["checksum"] = hashlib.sha256(
+        recomputed.encode()).hexdigest()
+
 def merge(a, b):
     for k, v in b.items():
         if isinstance(v, dict) and isinstance(a.get(k), dict):
@@ -77,13 +95,13 @@ present() { printf '{"status":"present","queriedRef":"ghcr.io/owner/name@%s","di
 absent='{"status":"absent","observedCode":404,"queriedRef":"ghcr.io/owner/name:sha-x"}'
 # A digest object cannot be queried before a marker names one, so a clean slate skips it. Claiming
 # absence there would assert an observation nobody made.
-skipped='{"status":"skipped","reason":"no_claimed_digest"}'
+skipped='{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}'
 
 # observation <final> <prepared> <monoTag> <frontTag> [monoObj] [frontObj] [monoCand] [frontCand]
 observation() {
   cat <<EOF
 {"schemaVersion":1,"commit":"$SHA","environment":"production",
- "expected":{"repository":"owner/name","frontendConfigFingerprint":"$FP","signerWorkflow":".github/workflows/publish.yml"},
+ "expected":{"repository":"owner/name","frontendConfigFingerprint":"$FP","signerWorkflow":".github/workflows/publish.yml","registry":"ghcr.io"},
  "lookups":{"finalMarker":$1,"preparedMarker":$2,"monolithTag":$3,"frontendTag":$4,
             "monolithDigestObject":${5:-$(present "$MONO")},
             "frontendDigestObject":${6:-$(present "$FRONT")},
@@ -179,7 +197,7 @@ o=json.load(sys.stdin); o["lookups"]["finlMarker"]={"status":"absent"}; print(js
 # reached UNKNOWN through the missing-key check either way and could not tell the two apart.
 assert_decision "duplicate keys cannot hide an error behind an absence" \
   "{\"schemaVersion\":1,\"commit\":\"$SHA\",\"environment\":\"production\",
-    \"expected\":{\"repository\":\"owner/name\",\"frontendConfigFingerprint\":\"$FP\",\"signerWorkflow\":\".github/workflows/publish.yml\"},
+    \"expected\":{\"repository\":\"owner/name\",\"frontendConfigFingerprint\":\"$FP\",\"signerWorkflow\":\".github/workflows/publish.yml\",\"registry\":\"ghcr.io\"},
     \"lookups\":{\"finalMarker\":{\"status\":\"error\",\"code\":503},
                  \"finalMarker\":$absent,
                  \"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent,
@@ -271,7 +289,7 @@ done
 echo
 echo "== the schema rejects values that merely resemble the right ones"
 base_obs() { observation "$absent" "$absent" "$absent" "$absent"; }
-for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
+for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"ghcr.io/owner/name:r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"ghcr.io/owner/name:r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
   code="${tweak%%|*}"; label="${tweak##*|}"
   assert_decision "$label"     "$(base_obs | python3 -c "
 import json,sys
@@ -309,8 +327,90 @@ assert_decision "a status that is not a string"   "$(observation '{"status":[]}'
 assert_decision "a status that is a number"   "$(observation '{"status":404}' "$absent" "$absent" "$absent")"   UNKNOWN '[]' false false
 # skipped is the one status that asserts a question was never asked, so its reason is the whole
 # justification and an unrecognised one means nobody knows why the lookup is missing.
-assert_decision "skipped for an unrecognised reason"   "$(observation "$absent" "$absent" "$absent" "$absent" '{"status":"skipped","reason":"felt_like_it"}' "$skipped")"   UNKNOWN '[]' false false
-assert_decision "only a digest object may be skipped"   "$(observation '{"status":"skipped","reason":"no_claimed_digest"}' "$absent" "$absent" "$absent" "$skipped" "$skipped")"   UNKNOWN '[]' false false
+assert_decision "skipped for an unrecognised reason"   "$(observation "$absent" "$absent" "$absent" "$absent" '{"status":"skipped","reason":"felt_like_it","queriedRef":null}' "$skipped")"   UNKNOWN '[]' false false
+assert_decision "only a digest object may be skipped"   "$(observation '{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}' "$absent" "$absent" "$absent" "$skipped" "$skipped")"   UNKNOWN '[]' false false
+
+echo
+echo "== the observation and the schema agree on what a lookup is"
+assert_decision "no expected registry" \
+  "$(base_obs | python3 -c '
+import json,sys
+o=json.load(sys.stdin); del o["expected"]["registry"]; print(json.dumps(o))')" \
+  UNKNOWN '[]' false false
+# A well-formed observation of somebody else'"'"'s repository answers a question nobody asked, and its
+# absences would authorise a build here.
+assert_decision "a lookup made outside the expected repository" \
+  "$(observation '{"status":"absent","observedCode":404,"queriedRef":"ghcr.io/someone/else:sha-x"}' \
+     "$absent" "$absent" "$absent" "$skipped" "$skipped")" \
+  UNKNOWN '[]' false false
+assert_decision "a lookup made in another registry" \
+  "$(observation '{"status":"absent","observedCode":404,"queriedRef":"docker.io/owner/name:sha-x"}' \
+     "$absent" "$absent" "$absent" "$skipped" "$skipped")" \
+  UNKNOWN '[]' false false
+# The prefix must end at a reference separator, or ghcr.io/owner/name-evil passes as ghcr.io/owner/name.
+assert_decision "a repository whose name merely starts with the expected one" \
+  "$(observation '{"status":"absent","observedCode":404,"queriedRef":"ghcr.io/owner/name-evil:sha-x"}' \
+     "$absent" "$absent" "$absent" "$skipped" "$skipped")" \
+  UNKNOWN '[]' false false
+# Nothing was queried, so a reference here describes a lookup that never happened.
+assert_decision "skipped carrying a queried reference" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" \
+     '{"status":"skipped","reason":"no_claimed_digest","queriedRef":"ghcr.io/owner/name@'"$MONO"'"}' \
+     "$skipped")" \
+  UNKNOWN '[]' false false
+assert_decision "skipped without the queriedRef key at all" \
+  "$(observation "$absent" "$absent" "$absent" "$absent" \
+     '{"status":"skipped","reason":"no_claimed_digest"}' "$skipped")" \
+  UNKNOWN '[]' false false
+
+echo
+echo "== evidence answers four questions, and each one has to have been answered"
+for entry in \
+  '{"verification":{"predicateType":null}}|verification does not say what was attested' \
+  '{"verification":{"predicateType":""}}|attested predicate type is empty' \
+  '{"content":{"evidence":{"layerSecretScan":null}}}|no layer secret scan' \
+  '{"content":{"evidence":{"filesystemSecretScan":null}}}|no filesystem secret scan' \
+  '{"content":{"evidence":{"sbom":{"monolith":{"predicateType":null}}}}}|sbom does not say what it states' \
+  '{"content":{"evidence":{"vulnerabilityScan":{"monolith":{"passed":false}}}}}|vulnerability scan did not pass' \
+  '{"content":{"evidence":{"layerSecretScan":{"frontend":{"passed":"true"}}}}}|layer scan result is a string' \
+  '{"content":{"evidence":{"filesystemSecretScan":{"monolith":{"passed":null}}}}}|filesystem scan has no result' \
+  ; do
+  override="${entry%%|*}"; label="${entry##*|}"
+  assert_decision "prepared marker: $label" \
+    "$(observation "$absent" "$(marker "$override")" "$absent" "$absent")" \
+    CONFLICT '[]' false false
+done
+
+echo
+echo "== the Flyway inventory records the order Flyway applied things in"
+for entry in \
+  '[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]|a migration with no installedRank' \
+  '[{"installedRank":0,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]|installedRank below one' \
+  '[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true},{"installedRank":1,"version":"2","type":"SQL","script":"V2__b.sql","checksum":2,"success":true}]|two migrations with the same installedRank' \
+  '[{"installedRank":1,"version":null,"type":"SQL","script":"R__view.sql","checksum":1,"success":true},{"installedRank":2,"version":null,"type":"SQL","script":"R__view.sql","checksum":2,"success":true}]|the same repeatable listed twice' \
+  ; do
+  migrations="${entry%%|*}"; label="${entry##*|}"
+  assert_decision "prepared marker: $label" \
+    "$(observation "$absent" "$(marker "{\"_migrations\":$migrations}")" "$absent" "$absent")" \
+    CONFLICT '[]' false false
+done
+# Two repeatables are not a duplicate merely because both lack a version -- requiring a unique
+# version string would have rejected the first release that added one, and the schema, not the
+# release, would have been wrong.
+assert_decision "several repeatables share the absence of a version" \
+  "$(observation "$absent" "$(marker '{"_migrations":[{"installedRank":1,"version":null,"type":"SQL","script":"R__one.sql","checksum":1,"success":true},{"installedRank":2,"version":null,"type":"SQL","script":"R__two.sql","checksum":2,"success":true}]}')" "$absent" "$absent")" \
+  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
+# Flyway records no checksum for some entries, and a release must not be blocked by an absence
+# Flyway itself produced.
+assert_decision "a migration Flyway recorded no checksum for" \
+  "$(observation "$absent" "$(marker '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":null,"success":true}]}')" "$absent" "$absent")" \
+  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
+# The canonical form is ordered by installedRank, so the order the collector happened to read the
+# table in cannot change the checksum. Both of these hash to the same value by construction: the
+# fixture sorts before hashing, and the subject has to do the same or one of them is rejected.
+assert_decision "migrations listed out of order still hash the same" \
+  "$(observation "$absent" "$(marker '{"_migrations":[{"installedRank":2,"version":"2","type":"SQL","script":"V2__b.sql","checksum":2,"success":true},{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]}')" "$absent" "$absent")" \
+  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 
 echo
 echo "== UNKNOWN outranks everything and proposes nothing"

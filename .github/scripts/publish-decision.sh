@@ -61,7 +61,10 @@ LOOKUP_FIELDS = {
     "error": ({"status", "queriedRef"}, {"status", "queriedRef", "code", "timeout", "detail"}),
     # A digest object cannot be queried before a marker names a digest. "skipped" says the question
     # was never asked, which is different from asking and being told no.
-    "skipped": ({"status", "reason"}, {"status", "reason"}),
+    # queriedRef is carried even here, and must be null: the key's presence records that the
+    # collector considered the lookup and decided against asking, while omitting it entirely is
+    # indistinguishable from a collector that forgot the field existed.
+    "skipped": ({"status", "reason", "queriedRef"}, {"status", "reason", "queriedRef"}),
     "present": ({"status", "queriedRef"}, {"status", "queriedRef", "digest", "markerDigest",
                                            "verification", "content"}),
 }
@@ -121,6 +124,12 @@ def validate(obs):
     exact_str(expected.get("frontendConfigFingerprint"), "expected.frontendConfigFingerprint", HEX64)
     require(type(expected.get("signerWorkflow")) is str and expected["signerWorkflow"],
             "expected.signerWorkflow must be a non-empty string")
+    require(type(expected.get("registry")) is str and expected["registry"],
+            "expected.registry must be a non-empty string")
+    # Every lookup has to have been made inside the repository this run is publishing to. A
+    # well-formed observation of somebody else's repository answers a question nobody asked, and
+    # its absences would authorise a build here.
+    scope = f"{expected['registry']}/{expected['repository']}"
 
     lookups = as_dict(obs.get("lookups"), "lookups")
     missing = [name for name in REQUIRED_LOOKUPS if name not in lookups]
@@ -144,6 +153,16 @@ def validate(obs):
         require(present_fields <= allowed_fields,
                 f"lookups.{name} carries fields that do not belong to status {status!r}: "
                 f"{', '.join(sorted(present_fields - allowed_fields))}")
+
+        ref = lookup.get("queriedRef")
+        if status == "skipped":
+            require(ref is None,
+                    f"lookups.{name}.queriedRef must be null; nothing was queried, and a reference "
+                    f"here claims otherwise")
+        else:
+            require(type(ref) is str and ref, f"lookups.{name}.queriedRef must be a non-empty string")
+            require(ref.startswith(scope + ":") or ref.startswith(scope + "@"),
+                    f"lookups.{name}.queriedRef {ref!r} is outside {scope}")
 
         if status == "skipped":
             require(lookup.get("reason") in SKIP_REASONS,
@@ -194,6 +213,12 @@ def marker_problems(marker, obs, where):
     if verification.get("sourceRevision") != obs["commit"]:
         problems.append(f"{where}.verification.sourceRevision is "
                         f"{verification.get('sourceRevision')!r}, expected {obs['commit']!r}")
+    predicate = verification.get("predicateType")
+    if type(predicate) is not str or not predicate:
+        # Which statement was verified, not merely that something was. An attestation of one
+        # predicate type says nothing about the claim another predicate type would have made.
+        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a non-empty "
+                        f"string naming what was attested")
     if verification.get("policyPassed") is not True:
         problems.append(f"{where}.verification.policyPassed is "
                         f"{verification.get('policyPassed')!r}, must be boolean true")
@@ -235,7 +260,11 @@ def marker_problems(marker, obs, where):
     if type(evidence) is not dict:
         problems.append(f"{where}.content.evidence must be an object")
     else:
-        for kind in ("sbom", "vulnerabilityScan"):
+        # Four separate results, because they answer different questions and a single overall pass
+        # hides which of them was never run. The two secret scans are not one check: a filesystem
+        # scan sees the final tree, so a credential added in one layer and deleted in a later one is
+        # invisible to it and present in the image anyone can pull apart.
+        for kind in ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"):
             per_image = evidence.get(kind)
             if type(per_image) is not dict:
                 problems.append(f"{where}.content.evidence.{kind} must be an object keyed by image")
@@ -251,6 +280,15 @@ def marker_problems(marker, obs, where):
                 if entry.get("subjectDigest") != images.get(image):
                     problems.append(f"{where}.content.evidence.{kind}.{image} describes "
                                     f"{entry.get('subjectDigest')!r}, not the image it covers")
+                predicate = entry.get("predicateType")
+                if type(predicate) is not str or not predicate:
+                    problems.append(f"{where}.content.evidence.{kind}.{image}.predicateType is "
+                                    f"{predicate!r}, must name what the document states")
+                if entry.get("passed") is not True:
+                    # A digest proves a file was produced. It does not say the scan behind it found
+                    # nothing, and a failing scan filed as evidence is evidence against release.
+                    problems.append(f"{where}.content.evidence.{kind}.{image}.passed is "
+                                    f"{entry.get('passed')!r}, must be boolean true")
 
     problems.extend(inventory_problems(content.get("flywayInventory"), images.get("monolith"),
                                        f"{where}.content.flywayInventory"))
@@ -271,11 +309,24 @@ def inventory_problems(inventory, monolith_digest, where):
         return problems + [f"{where}.migrations must be a non-empty list"]
 
     seen_versions = set()
+    seen_repeatables = set()
+    seen_ranks = set()
     for index, record in enumerate(migrations):
         at = f"{where}.migrations[{index}]"
         if type(record) is not dict:
             problems.append(f"{at} must be an object")
             continue
+        # installed_rank is Flyway's own application order, and it is the only thing that says which
+        # migration ran before which. List position is an artifact of however the collector happened
+        # to read the table, so two inventories describing the same schema must not hash differently
+        # because a query came back in another order.
+        rank = record.get("installedRank")
+        if type(rank) is not int or rank < 1:
+            problems.append(f"{at}.installedRank must be a positive integer, got {rank!r}")
+        elif rank in seen_ranks:
+            problems.append(f"{at}.installedRank {rank} appears twice; Flyway assigns it once")
+        else:
+            seen_ranks.add(rank)
         # Repeatable migrations (R__) have no version in Flyway's history table, and several of
         # them share that absence. Requiring a unique string would have blocked the first release
         # that added one -- and the schema, not the release, would have been wrong.
@@ -285,11 +336,12 @@ def inventory_problems(inventory, monolith_digest, where):
         for field in ("type", "script"):
             if type(record.get(field)) is not str or not record[field]:
                 problems.append(f"{at}.{field} must be a non-empty string")
-        if type(record.get("checksum")) is not int:
-            # Flyway's own checksum is a CRC32 integer. A string here means someone reformatted the
-            # history table on the way through and the comparison against the database would never
-            # match.
-            problems.append(f"{at}.checksum must be an integer")
+        checksum = record.get("checksum")
+        if checksum is not None and type(checksum) is not int:
+            # Flyway's own checksum is a CRC32 integer, and null where it records none. A string
+            # here means someone reformatted the history table on the way through and the
+            # comparison against the database would never match.
+            problems.append(f"{at}.checksum must be an integer or null")
         if record.get("success") is not True:
             problems.append(f"{at}.success is {record.get('success')!r}; a failed migration must "
                             f"not be released")
@@ -297,13 +349,22 @@ def inventory_problems(inventory, monolith_digest, where):
             if version in seen_versions:
                 problems.append(f"{at}.version {version!r} appears twice")
             seen_versions.add(version)
+        elif version is None and type(record.get("script")) is str:
+            # A repeatable has no version, and every repeatable shares that absence, so uniqueness
+            # for them is the script name. Without this a history could list the same repeatable
+            # twice and nothing above would notice.
+            script = record["script"]
+            if script in seen_repeatables:
+                problems.append(f"{at}.script {script!r} appears twice among repeatables")
+            seen_repeatables.add(script)
 
     if problems:
         return problems
 
     # Recomputed, not merely present. A checksum nobody derives from the content is a field, and a
     # field can be copied from a different release.
-    canonical = json.dumps(migrations, sort_keys=True, separators=(",", ":"))
+    ordered = sorted(migrations, key=lambda record: record["installedRank"])
+    canonical = json.dumps(ordered, sort_keys=True, separators=(",", ":"))
     computed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     if inventory.get("checksum") != computed:
         problems.append(f"{where}.checksum is {inventory.get('checksum')!r} but the migrations "
