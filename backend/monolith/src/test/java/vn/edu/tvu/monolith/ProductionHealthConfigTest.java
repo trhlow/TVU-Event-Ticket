@@ -48,7 +48,9 @@ class ProductionHealthConfigTest {
         assertThat(productionProperties().getProperty("springdoc.api-docs.enabled"))
                 .as("Caddy not routing /v3/api-docs and the container not publishing a port are"
                         + " properties of the environment: one stray `ports:` line added while debugging"
-                        + " undoes both. Not creating the endpoint is a property of the artifact")
+                        + " undoes both. This default ships with the artifact instead. It guards the"
+                        + " shipped file only — an environment variable can still override it, which is"
+                        + " what smoke-test.sh checks against the running application")
                 .isEqualTo(false);
     }
 

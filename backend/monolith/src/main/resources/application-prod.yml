@@ -105,9 +105,15 @@ tvu:
 # Off in production, on everywhere else. SecurityConfig still permits /v3/api-docs and
 # /swagger-ui so the documentation works in dev and test; here the endpoints are simply never
 # created. Caddy not routing them and the container not publishing a port are properties of the
-# environment — one `ports:` line added while debugging undoes both — whereas this is a property
-# of the artifact. It also stops serving the swagger-ui webjar's third-party JavaScript in
-# production, which is what made the DOMPurify CVE reachable in the first place. The webjar is
+# environment — one `ports:` line added while debugging undoes both — whereas this default ships
+# and is tested with the artifact itself.
+#
+# A default, though, not an invariant: SPRINGDOC_API_DOCS_ENABLED=true in the environment still
+# overrides this file and nothing in the build would notice. That is why smoke-test.sh asks the
+# running application over its own loopback instead of trusting this YAML.
+#
+# It also stops serving the swagger-ui webjar's third-party JavaScript in production, which is
+# what made the DOMPurify CVE reachable in the first place. The webjar is
 # still packaged — BOOT-INF/lib/swagger-ui-*.jar is in the fat JAR either way — so the dependency
 # scan must keep checking it; this setting removes the route to it, not the code.
 springdoc:
