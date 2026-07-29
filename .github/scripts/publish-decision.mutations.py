@@ -74,10 +74,20 @@ MUTATIONS = {
 }
 
 
+# Long enough for a slow runner, short enough that a mutation which introduces a loop fails the
+# lint job in minutes rather than occupying it until the job timeout.
+SUITE_TIMEOUT_SECONDS = 120
+
+
 def run_suite(directory):
-    result = subprocess.run(["bash", SUITE], cwd=directory, capture_output=True, text=True)
+    """Returns (exit code, failing cases, timed_out)."""
+    try:
+        result = subprocess.run(["bash", SUITE], cwd=directory, capture_output=True, text=True,
+                                timeout=SUITE_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        return None, 0, True
     red = sum(1 for line in result.stdout.splitlines() if line.startswith("FAIL"))
-    return result.returncode, red
+    return result.returncode, red, False
 
 
 def main():
@@ -88,7 +98,12 @@ def main():
         pristine = (workspace / SUBJECT).read_text(encoding="utf-8")
 
         # A suite that is already red proves nothing about any mutation.
-        code, red = run_suite(workspace)
+        code, red, timed_out = run_suite(workspace)
+        if timed_out:
+            # The baseline hanging is a defect in the suite or the runner, not a result about any
+            # guard, so it must not be reported as one.
+            print(f"the suite did not finish within {SUITE_TIMEOUT_SECONDS}s before any mutation")
+            return 1
         if code != 0:
             print(f"the suite is red before any mutation ({red} failing); fix that first")
             return 1
@@ -103,7 +118,14 @@ def main():
                 survivors.append(name)
                 continue
             (workspace / SUBJECT).write_text(pristine.replace(old, new, 1), encoding="utf-8")
-            code, red = run_suite(workspace)
+            code, red, timed_out = run_suite(workspace)
+            if timed_out:
+                # A mutant that hangs was still detected -- the suite noticed something -- but it is
+                # worth distinguishing from a clean red, because the cause is a loop rather than an
+                # assertion.
+                print(f"caught   {name} (by timeout)")
+                (workspace / SUBJECT).write_text(pristine, encoding="utf-8")
+                continue
             if code == 0:
                 print(f"SURVIVED {name}: the suite stayed green without this guard")
                 survivors.append(name)
