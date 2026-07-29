@@ -1,0 +1,46 @@
+# Development image. Separate file rather than a target in the production Dockerfile, so that the
+# production one contains no VITE_* build argument at all -- an argument that exists is an argument
+# someone can pass, and the whole point of moving the configuration into .env.production was that a
+# commit should determine its bundle.
+#
+# Builds in development mode on purpose. That is what keeps this image away from .env.production:
+# Vite only loads that file for a production-mode build, so a dev image cannot accidentally ship the
+# production Microsoft registration or redirect users at evts.id.vn.
+#
+# Still nginx serving a static bundle, same as production, because the dev stack proxies /api to the
+# monolith through backend/infra/frontend.dev.conf. This is not a hot-reload dev server.
+FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS build
+
+WORKDIR /app
+
+# Dev values only. Defaults point at localhost so `docker compose up` works with no arguments; the
+# compose file supplies the development app registration.
+ARG VITE_API_BASE_URL=/api
+ARG VITE_APP_ENV=development
+ARG VITE_AUTH_PROVIDER=microsoft
+ARG VITE_MICROSOFT_CLIENT_ID
+ARG VITE_MICROSOFT_TENANT_ID
+ARG VITE_MICROSOFT_REDIRECT_URI=http://localhost:5173
+
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
+ENV VITE_APP_ENV=${VITE_APP_ENV}
+ENV VITE_AUTH_PROVIDER=${VITE_AUTH_PROVIDER}
+ENV VITE_MICROSOFT_CLIENT_ID=${VITE_MICROSOFT_CLIENT_ID}
+ENV VITE_MICROSOFT_TENANT_ID=${VITE_MICROSOFT_TENANT_ID}
+ENV VITE_MICROSOFT_REDIRECT_URI=${VITE_MICROSOFT_REDIRECT_URI}
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+# `--mode development` is load-bearing, not cosmetic: it is what stops Vite reading
+# .env.production. The bundle evidence gate is deliberately not run here -- it checks a production
+# artifact, and this is not one.
+RUN npm run build -- --mode development
+
+FROM nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6 AS development
+
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
+
+EXPOSE 8080

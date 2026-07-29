@@ -31,12 +31,10 @@ services:
     build:
       context: ../../../frontend
       dockerfile: Dockerfile
-      args:
-        # VITE_APP_ENV comes from frontend/.env.production, shared with CI and manual builds.
-        VITE_API_BASE_URL: /api
-        VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
-        VITE_MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
-        VITE_MICROSOFT_REDIRECT_URI: https://${APP_DOMAIN}
+      # No build arguments. The frontend configuration lives in frontend/.env.production and is
+      # fingerprinted by scripts/frontend-config.sh, so a given commit builds a given bundle
+      # wherever the build runs. Arguments here were how the deployment host could change the
+      # bundle without changing the commit.
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
