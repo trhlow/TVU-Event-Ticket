@@ -29,9 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * <p>The paths matter more than they look. Disabling springdoc removes its own handlers, but
  * Spring Boot separately maps {@code /webjars/**} onto {@code classpath:/META-INF/resources/webjars/},
- * and the swagger-ui webjar is still inside the jar — so {@code /webjars/swagger-ui/index.html}
- * reaches the same UI by another road, and webjars-locator-lite resolves the versionless form.
- * {@code spring.web.resources.add-mappings=false} is what closes that road.
+ * which is how {@code /webjars/swagger-ui/index.html} used to serve the UI while the ui starter
+ * packaged that webjar. The webjar is gone now; {@code spring.web.resources.add-mappings=false}
+ * keeps the road closed if one ever returns.
  */
 @SpringBootTest(classes = MonolithApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
@@ -52,8 +52,7 @@ class ProductionDocumentationDisabledIntegrationTest extends AbstractPostgresInt
         "/v3/api-docs",
         "/v3/api-docs/swagger-config",
         "/swagger-ui/index.html",
-        "/webjars/swagger-ui/index.html",
-        "/webjars/swagger-ui/5.32.11/index.html"
+        "/webjars/swagger-ui/index.html"
     })
     void documentationPathsAreNotServed(String path) throws Exception {
         var request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).build();
@@ -75,7 +74,7 @@ class ProductionDocumentationDisabledIntegrationTest extends AbstractPostgresInt
      * HTTP ones stay green, which is precisely the gap it exists to cover.
      */
     @Test
-    @DisplayName("no resource handler is mapped for /webjars/**, so the packaged UI has no second road")
+    @DisplayName("no resource handler is mapped for /webjars/**, so no webjar can serve by that road")
     void noResourceHandlerServesWebjars() {
         // With add-mappings=false the bean resolves to null outright; with the default it is a
         // SimpleUrlHandlerMapping whose url map contains /webjars/**. Both shapes are handled so the
@@ -86,8 +85,8 @@ class ProductionDocumentationDisabledIntegrationTest extends AbstractPostgresInt
 
         assertThat(servesWebjars)
                 .as("Spring Boot maps /webjars/** onto classpath:/META-INF/resources/webjars/ by"
-                        + " default, and swagger-ui is still packaged there; disabling springdoc does"
-                        + " not touch that mapping")
+                        + " default; disabling springdoc does not touch that mapping, and any webjar"
+                        + " on the classpath would serve through it")
                 .isFalse();
     }
 }

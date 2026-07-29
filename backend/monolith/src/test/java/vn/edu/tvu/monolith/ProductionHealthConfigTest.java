@@ -59,18 +59,20 @@ class ProductionHealthConfigTest {
     void staticResourceMappingsDisabledInProduction() throws IOException {
         assertThat(productionProperties().getProperty("spring.web.resources.add-mappings"))
                 .as("Disabling springdoc removes springdoc's handlers, not Spring Boot's default"
-                        + " /webjars/** mapping onto classpath:/META-INF/resources/webjars/, where the"
-                        + " packaged swagger-ui still lives. This monolith serves no static resources"
-                        + " of its own, so the mapping is pure attack surface")
+                        + " /webjars/** mapping onto classpath:/META-INF/resources/webjars/, which is"
+                        + " where the swagger-ui webjar used to serve from. This monolith serves no"
+                        + " static resources of its own, so the mapping is pure attack surface")
                 .isEqualTo(false);
     }
 
     @Test
-    @DisplayName("Swagger UI is off in production — its bundle is the part that carries CVEs")
+    @DisplayName("Swagger UI is off in production — the switch outlives the dependency it disabled")
     void swaggerUiDisabledInProduction() throws IOException {
         assertThat(productionProperties().getProperty("springdoc.swagger-ui.enabled"))
-                .as("The swagger-ui webjar is third-party JavaScript shipped inside our jar; it is"
-                        + " what forced the DOMPurify pin. Production has no reason to serve it")
+                .as("The swagger-ui webjar was third-party JavaScript inside our jar and is what"
+                        + " forced the DOMPurify pin; the project moved to springdoc's api starter and"
+                        + " it is gone. This stays so that adding the ui starter back does not quietly"
+                        + " start serving it in production")
                 .isEqualTo(false);
     }
 }

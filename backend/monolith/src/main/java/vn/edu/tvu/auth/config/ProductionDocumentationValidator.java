@@ -36,7 +36,7 @@ public class ProductionDocumentationValidator {
             "springdoc.swagger-ui.enabled",
             "serves the Swagger UI bundle, third-party JavaScript that has carried CVEs",
             "spring.web.resources.add-mappings",
-            "maps /webjars/** onto the packaged swagger-ui webjar, reaching the same UI by another path"));
+            "maps /webjars/** onto the classpath, which is how a re-added swagger-ui webjar would serve again"));
 
     public ProductionDocumentationValidator(Environment environment) {
         MUST_BE_FALSE.forEach((property, consequence) -> {

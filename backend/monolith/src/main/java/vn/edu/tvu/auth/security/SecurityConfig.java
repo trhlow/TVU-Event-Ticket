@@ -63,9 +63,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/reservations/**", "/api/ticketing/**", "/api/tickets/**")
                         .hasRole("ORGANIZER")
                         // Nobody, at any role, in any profile. Spring Boot maps /webjars/** onto
-                        // classpath:/META-INF/resources/webjars/, and the swagger-ui webjar is packaged
-                        // inside the jar, so this path is a second road to the API documentation that
-                        // disabling springdoc does not close. Production also sets
+                        // classpath:/META-INF/resources/webjars/, independently of springdoc. The
+                        // swagger-ui webjar that used to sit there is gone with the ui starter, so this
+                        // rule guards a path that has nothing to serve today — and keeps it that way if
+                        // any webjar returns to the classpath. Production also sets
                         // spring.web.resources.add-mappings=false, which removes the mapping outright;
                         // this is the layer that still holds if that property is ever overridden from
                         // the environment. Under `authenticated()` — where this path sat before — a

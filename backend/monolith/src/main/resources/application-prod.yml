@@ -4,7 +4,7 @@ server:
 
 spring:
   # No static resource mappings in production. See the springdoc block at the end of this file:
-  # this is what stops /webjars/** from serving the packaged Swagger UI by a second road.
+  # this is defence in depth for /webjars/**, which no longer has a swagger-ui webjar to serve.
   web:
     resources:
       add-mappings: false
@@ -110,7 +110,9 @@ tvu:
 # Off in production, on everywhere else. SecurityConfig still permits /v3/api-docs and
 # /swagger-ui, so dev and test keep the OpenAPI document; here the endpoints are simply never
 # created. (Measured, not assumed: only the document serves anywhere — the Swagger UI page itself
-# answers 401 in every profile on this branch, so what production loses is the JSON.) Caddy not routing them and the container not publishing a port are properties of the
+# answers 401 in every profile on this branch, so what production loses is the JSON.)
+#
+# Caddy not routing these paths and the container not publishing a port are properties of the
 # environment — one `ports:` line added while debugging undoes both — whereas this default ships
 # and is tested with the artifact itself.
 #
@@ -118,10 +120,10 @@ tvu:
 # overrides this file and nothing in the build would notice. That is why smoke-test.sh asks the
 # running application over its own loopback instead of trusting this YAML.
 #
-# It also stops serving the swagger-ui webjar's third-party JavaScript in production, which is
-# what made the DOMPurify CVE reachable in the first place. The webjar is
-# still packaged — BOOT-INF/lib/swagger-ui-*.jar is in the fat JAR either way — so the dependency
-# scan must keep checking it; this setting removes the route to it, not the code.
+# The swagger-ui webjar that carried the DOMPurify CVE is no longer packaged at all: the project
+# uses springdoc's api starter, so there is no BOOT-INF/lib/swagger-ui-*.jar and nothing for the
+# dependency scan to find. These settings stay as the layer that holds if the ui starter is ever
+# added back by habit or by a transitive pull.
 springdoc:
   api-docs:
     enabled: false
@@ -129,10 +131,9 @@ springdoc:
     enabled: false
 
 # Turning springdoc off removes springdoc's handlers, not Spring Boot's. Boot maps /webjars/**
-# onto classpath:/META-INF/resources/webjars/ by default, the swagger-ui webjar is still packaged
-# there, and webjars-locator-lite resolves the versionless form — so /webjars/swagger-ui/index.html
-# reaches the same UI by a second road. Today that road is behind `anyRequest().authenticated()`,
-# which means any signed-in student, not the public; it is one permitAll edit away from worse.
+# onto classpath:/META-INF/resources/webjars/ by default. While the ui starter was present that
+# served the Swagger UI page to any signed-in user — measured, not guessed — and it is the road
+# that reopens the moment a webjar returns to the classpath.
 #
 # This monolith serves no static resources of its own — the frontend is a separate Nginx container
 # and there is no src/main/resources/static — so dropping the mappings costs nothing here.
