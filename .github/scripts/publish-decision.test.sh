@@ -271,7 +271,7 @@ done
 echo
 echo "== the schema rejects values that merely resemble the right ones"
 base_obs() { observation "$absent" "$absent" "$absent" "$absent"; }
-for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503}|absent carrying an error code'   ; do
+for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
   code="${tweak%%|*}"; label="${tweak##*|}"
   assert_decision "$label"     "$(base_obs | python3 -c "
 import json,sys
@@ -297,6 +297,20 @@ echo "== markers must be the same artifact, and the bytes must still be there"
 assert_decision "markers agree on images but are different artifacts"   "$(observation "$(marker)" "$(marker '' '' '' 'sha256:4444444444444444444444444444444444444444444444444444444444444444')" "$(present "$MONO")" "$(present "$FRONT")")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to exist"   "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")" "$absent" "$absent")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to match"   "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")" "$(present "$OTHER")")"   CONFLICT '[]' false false
+
+echo
+echo "== guards that the mutation runner found untested"
+# Content-addressed storage cannot produce two different contents under one digest, so an
+# observation showing it contradicts itself and nothing here can choose which half to believe.
+assert_decision "same marker digest but different content"   "$(observation "$(marker)" "$(marker '{"content":{"environment":"production","provenance":{"monolith":{"revision":"'"$SHA"'","subjectDigest":"'"$MONO"'","extra":"different"}}}}')" "$(present "$MONO")" "$(present "$FRONT")")"   CONFLICT '[]' false false
+# A status that is not a string used to raise TypeError out of the membership test: traceback,
+# exit 1, and no decision for the caller to read at all.
+assert_decision "a status that is not a string"   "$(observation '{"status":[]}' "$absent" "$absent" "$absent")"   UNKNOWN '[]' false false
+assert_decision "a status that is a number"   "$(observation '{"status":404}' "$absent" "$absent" "$absent")"   UNKNOWN '[]' false false
+# skipped is the one status that asserts a question was never asked, so its reason is the whole
+# justification and an unrecognised one means nobody knows why the lookup is missing.
+assert_decision "skipped for an unrecognised reason"   "$(observation "$absent" "$absent" "$absent" "$absent" '{"status":"skipped","reason":"felt_like_it"}' "$skipped")"   UNKNOWN '[]' false false
+assert_decision "only a digest object may be skipped"   "$(observation '{"status":"skipped","reason":"no_claimed_digest"}' "$absent" "$absent" "$absent" "$skipped" "$skipped")"   UNKNOWN '[]' false false
 
 echo
 echo "== UNKNOWN outranks everything and proposes nothing"

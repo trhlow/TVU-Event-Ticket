@@ -289,6 +289,8 @@ jobs:
         run: |
           bash .github/scripts/require-green-run.test.sh
           bash .github/scripts/publish-decision.test.sh
+          # A guard nobody can delete without a test going red is the only kind that is evidence.
+          python3 .github/scripts/publish-decision.mutations.py
 
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
