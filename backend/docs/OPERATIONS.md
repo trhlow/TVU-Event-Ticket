@@ -65,6 +65,31 @@ SELECT message_id, started_at, attempt_no, last_error
 2. Test restore in an isolated database using `restore-postgres-into-new-stack.sh` at least quarterly.
 3. Record the restore time and data age; treat an untested backup as unavailable.
 
+## Base image digests — who bumps them, and when
+
+Every third-party image in `infra/production/compose.yaml` and both Dockerfiles is pinned by
+digest, and every GitHub Action is pinned by commit SHA. Pinning is what makes a rollback land on
+the bytes that were tested; it also means **nothing picks up a security patch on its own**. A pin
+left alone is a CVE waiting to be inherited.
+
+**Owner:** the repository maintainer. This is not shared or implicit — if no one holds it, the
+digests rot.
+
+**Cadence:** review digests and outstanding CVEs at least monthly, and again before every
+production release. Critical or High severity advisories against a pinned image are assessed as
+soon as they are known, not at the next monthly window.
+
+**Procedure for a bump:**
+
+1. Resolve the new digest for the intended tag (`docker manifest inspect <image>:<tag>`). Pin the
+   multi-platform index digest, not a per-architecture one — production is `linux/amd64` but
+   development machines are not always.
+2. `docker pull` the new digest and run the service standalone; check it with the same command
+   its Compose healthcheck uses.
+3. Run the affected test suite, then let CI run in full.
+4. Commit with both versions in the message — the old digest and the new one, plus the upstream
+   version each resolves to. A digest alone is unreadable six months later.
+
 ## Incident checklist
 
 1. Check readiness, error rate, database pool saturation, Redis availability, RabbitMQ consumers, and DLQ depth.
