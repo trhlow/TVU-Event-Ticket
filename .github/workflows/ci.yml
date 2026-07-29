@@ -256,12 +256,32 @@ jobs:
   # events -- requiring those contexts directly in branch protection would block every
   # PR that happens not to touch them. This job always runs, so it is the one safe
   # context to require on main.
-  shellcheck:
-    # Unconditional: these scripts are the deploy path. A run that skipped them because the filter
-    # saw no shell change is a run that says nothing about them, and they are cheap to check.
+  lint:
+    # Unconditional: these scripts are the deploy path and these workflows are what decide whether
+    # anything reaches production. A run that skipped them because the filter saw no change is a run
+    # that says nothing about them, and both checks are seconds.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Lint workflows
+        # actionlint is what reads the `run:` blocks in these files. The shellcheck step below only
+        # sees backend/infra/production/scripts, which is how two SC2086 findings recorded under M11
+        # survived the commit that added it.
+        #
+        # Downloaded and checksummed rather than taken from an action, so the thing that inspects
+        # every workflow is itself pinned to bytes rather than to a tag someone else can move.
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          curl --fail --silent --show-error --location --output "$archive" "$url"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" actionlint
+          # -shellcheck= wires shellcheck into the `run:` blocks; ubuntu-latest ships it.
+          ./actionlint -color -shellcheck=shellcheck
 
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
@@ -293,7 +313,7 @@ jobs:
           shellcheck --severity=warning -x --source-path=SCRIPTDIR "${scripts[@]}"
 
   ci-gate:
-    needs: [changes, backend, frontend, dependency-review, shellcheck]
+    needs: [changes, backend, frontend, dependency-review, lint]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -304,7 +324,7 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
-          SHELLCHECK_RESULT: ${{ needs.shellcheck.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
         run: |
@@ -340,8 +360,8 @@ jobs:
               || fail "dependency-review: expected success on pull_request, got '$DEPENDENCY_REVIEW_RESULT'"
           fi
 
-          # shellcheck has no path filter, so there is no legitimate reason for it to be skipped.
-          [ "$SHELLCHECK_RESULT" = success ]             || fail "shellcheck: expected success, got '$SHELLCHECK_RESULT'"
+          # lint has no path filter, so there is no legitimate reason for it to be skipped.
+          [ "$LINT_RESULT" = success ]             || fail "lint: expected success, got '$LINT_RESULT'"
 
           [ "$failed" -eq 0 ] || exit 1
           echo "All CI jobs accounted for."
