@@ -28,26 +28,37 @@ FP=fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477
 
 python_json() { python3 -c "$1" "${@:2}"; }
 
-# marker [json-overrides] [images-monolith] [images-frontend]
+# marker [json-overrides] [images-monolith] [images-frontend] [marker-digest]
 marker() {
   python_json '
-import json, sys
+import hashlib, json, sys
 overrides = json.loads(sys.argv[1] or "{}")
-mono, front = sys.argv[2], sys.argv[3]
+mono, front, mdigest, sha, fp = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]
+migrations = [{"version": "16", "type": "SQL", "script": "V16__x.sql",
+               "checksum": 123456789, "success": True}]
+canonical = json.dumps(migrations, sort_keys=True, separators=(",", ":"))
 base = {
-  "status": "present", "attested": True, "attestedRepository": "owner/name",
-  "markerDigest": sys.argv[4],
+  "status": "present",
+  "markerDigest": mdigest,
+  "verification": {
+    "attestationVerified": True, "subjectDigest": mdigest,
+    "signerRepository": "owner/name", "signerWorkflow": ".github/workflows/publish.yml",
+    "sourceRevision": sha, "policyPassed": True,
+  },
   "content": {
-    "commit": sys.argv[5], "environment": "production",
-    "frontendConfigFingerprint": sys.argv[6],
+    "commit": sha, "environment": "production", "frontendConfigFingerprint": fp,
     "images": {"monolith": mono, "frontend": front},
-    "provenance": {"monolith": {"revision": sys.argv[5]}, "frontend": {"revision": sys.argv[5]}},
+    "provenance": {"monolith": {"revision": sha, "subjectDigest": mono},
+                   "frontend": {"revision": sha, "subjectDigest": front}},
     "evidence": {
-      "sbom": {"monolith": "sha256:" + "a"*64, "frontend": "sha256:" + "b"*64},
-      "vulnerabilityScan": {"monolith": "sha256:" + "c"*64, "frontend": "sha256:" + "d"*64},
+      "sbom": {"monolith": {"digest": "sha256:" + "a"*64, "subjectDigest": mono},
+               "frontend": {"digest": "sha256:" + "b"*64, "subjectDigest": front}},
+      "vulnerabilityScan": {"monolith": {"digest": "sha256:" + "c"*64, "subjectDigest": mono},
+                            "frontend": {"digest": "sha256:" + "d"*64, "subjectDigest": front}},
     },
-    "flywayInventory": {"boundTo": mono, "checksum": "e"*64,
-                        "migrations": [{"version": "16", "script": "V16__x.sql", "checksum": 1}]},
+    "flywayInventory": {"boundTo": mono,
+                        "checksum": hashlib.sha256(canonical.encode()).hexdigest(),
+                        "migrations": migrations},
   },
 }
 def merge(a, b):
@@ -58,17 +69,17 @@ def merge(a, b):
             a[k] = v
 merge(base, overrides)
 print(json.dumps(base))
-' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$MARKER_DIGEST" "$SHA" "$FP"
+' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "${4:-$MARKER_DIGEST}" "$SHA" "$FP"
 }
 
 present() { printf '{"status":"present","digest":"%s"}' "$1"; }
-absent='{"status":"absent"}'
+absent='{"status":"absent","observedCode":404}'
 
 # observation <final> <prepared> <monoTag> <frontTag> [monoObj] [frontObj] [monoCand] [frontCand]
 observation() {
   cat <<EOF
 {"schemaVersion":1,"commit":"$SHA","environment":"production",
- "expected":{"repository":"owner/name","frontendConfigFingerprint":"$FP"},
+ "expected":{"repository":"owner/name","frontendConfigFingerprint":"$FP","signerWorkflow":".github/workflows/publish.yml"},
  "lookups":{"finalMarker":$1,"preparedMarker":$2,"monolithTag":$3,"frontendTag":$4,
             "monolithDigestObject":${5:-$(present "$MONO")},
             "frontendDigestObject":${6:-$(present "$FRONT")},
@@ -79,8 +90,17 @@ EOF
 # assert_decision <name> <observation> <state> <actions-json> <cleanupDebt> <retryable>
 assert_decision() {
   local name="$1" obs="$2" want_state="$3" want_actions="$4" want_debt="$5" want_retry="$6"
-  local got
+  local got exit_code
   got="$(printf '%s' "$obs" | bash "$subject" 2>&1)"
+  exit_code=$?
+  if [[ $exit_code -ne 0 ]]; then
+    # Valid JSON on stdout with a non-zero exit is a script that failed while looking like it
+    # worked; the caller reading stdout would never notice.
+    echo "FAIL  $name: subject exited $exit_code"
+    echo "      output: $got"
+    ((failed++))
+    return
+  fi
   local check
   # The comparison prints PASS or the reasons, and anything else -- including nothing, which is
   # what a crashed checker produces -- counts as a failure. An earlier version treated empty
@@ -136,7 +156,7 @@ print("; ".join(problems) if problems else "PASS")
 
 echo "== absence must be observed, never inferred"
 for bad in '{}' '[]' 'null' '{"schemaVersion":1}' \
-  '{"schemaVersion":2,"commit":"'"$SHA"'","environment":"production","expected":{"repository":"owner/name","frontendConfigFingerprint":"'"$FP"'"},"lookups":{}}' ; do
+  '{"schemaVersion":2,"commit":"'"$SHA"'","environment":"production","expected":{"repository":"owner/name","frontendConfigFingerprint":"'"$FP"'","signerWorkflow":"w"},"lookups":{}}' ; do
   assert_decision "unusable observation: $bad" "$bad" UNKNOWN '[]' false false
 done
 assert_decision "a missing lookup is not an absent one" \
@@ -155,7 +175,7 @@ o=json.load(sys.stdin); o["lookups"]["finlMarker"]={"status":"absent"}; print(js
 # reached UNKNOWN through the missing-key check either way and could not tell the two apart.
 assert_decision "duplicate keys cannot hide an error behind an absence" \
   "{\"schemaVersion\":1,\"commit\":\"$SHA\",\"environment\":\"production\",
-    \"expected\":{\"repository\":\"owner/name\",\"frontendConfigFingerprint\":\"$FP\"},
+    \"expected\":{\"repository\":\"owner/name\",\"frontendConfigFingerprint\":\"$FP\",\"signerWorkflow\":\".github/workflows/publish.yml\"},
     \"lookups\":{\"finalMarker\":{\"status\":\"error\",\"code\":503},
                  \"finalMarker\":$absent,
                  \"preparedMarker\":$absent,\"monolithTag\":$absent,\"frontendTag\":$absent,
@@ -207,20 +227,13 @@ assert_decision "tag disagrees with the prepared marker" \
 assert_decision "final marker present but a tag is absent" \
   "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$absent")" \
   CONFLICT '[]' false false
-assert_decision "final and prepared markers bind different digests" \
-  "$(observation "$(marker)" "$(marker '' "$OTHER")" "$(present "$MONO")" "$(present "$FRONT")")" \
-  CONFLICT '[]' false false
 assert_decision "final trustworthy, prepared beside it is not" \
-  "$(observation "$(marker)" "$(marker '{"attested":false}')" "$(present "$MONO")" "$(present "$FRONT")")" \
+  "$(observation "$(marker)" "$(marker '{"verification":{"policyPassed":false}}')" "$(present "$MONO")" "$(present "$FRONT")")" \
   CONFLICT '[]' false false
 
 echo
 echo "== a marker that cannot be trusted is not a marker"
 untrustworthy=(
-  '{"attested":false}|unattested'
-  '{"attested":"false"}|attested is the string false'
-  '{"attested":1}|attested is a number'
-  '{"attestedRepository":"someone/else"}|attested to another repository'
   '{"markerDigest":"nonsense"}|marker digest malformed'
   '{"content":{"commit":"'"$OTHER_SHA"'"}}|records another commit'
   '{"content":{"environment":"staging"}}|records another environment'
@@ -247,10 +260,47 @@ for entry in "${untrustworthy[@]}"; do
 done
 
 echo
+echo "== the schema rejects values that merely resemble the right ones"
+base_obs() { observation "$absent" "$absent" "$absent" "$absent"; }
+for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503}|absent carrying an error code'   ; do
+  code="${tweak%%|*}"; label="${tweak##*|}"
+  assert_decision "$label"     "$(base_obs | python3 -c "
+import json,sys
+o=json.load(sys.stdin); $code; print(json.dumps(o))")"     UNKNOWN '[]' false false
+done
+
+echo
+echo "== a marker is believed only after the collector verified it"
+for entry in   '{"verification":null}|no verification block'   '{"verification":{"attestationVerified":false}}|attestation not verified'   '{"verification":{"attestationVerified":"true"}}|verification flag is a string'   '{"verification":{"subjectDigest":"'"$OTHER"'"}}|verified a different subject'   '{"verification":{"signerRepository":"someone/else"}}|signed by another repository'   '{"verification":{"signerWorkflow":".github/workflows/evil.yml"}}|signed by another workflow'   '{"verification":{"sourceRevision":"'"$OTHER_SHA"'"}}|built from another revision'   '{"verification":{"policyPassed":false}}|policy did not pass'   ; do
+  override="${entry%%|*}"; label="${entry##*|}"
+  assert_decision "prepared marker: $label"     "$(observation "$absent" "$(marker "$override")" "$absent" "$absent")"     CONFLICT '[]' false false
+done
+
+echo
+echo "== the Flyway inventory has to be an inventory"
+for entry in   '{"content":{"flywayInventory":{"migrations":[true]}}}|migrations are booleans'   '{"content":{"flywayInventory":{"migrations":[null]}}}|migrations are nulls'   '{"content":{"flywayInventory":{"migrations":[{}]}}}|migration records are empty'   '{"content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":"1","success":true}]}}}|checksum is a string'   '{"content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":false}]}}}|a migration failed'   '{"content":{"flywayInventory":{"checksum":"'"$(printf 'f%.0s' {1..64})"'"}}}|checksum does not match the migrations'   ; do
+  override="${entry%%|*}"; label="${entry##*|}"
+  assert_decision "prepared marker: $label"     "$(observation "$absent" "$(marker "$override")" "$absent" "$absent")"     CONFLICT '[]' false false
+done
+
+echo
+echo "== markers must be the same artifact, and the bytes must still be there"
+assert_decision "markers agree on images but are different artifacts"   "$(observation "$(marker)" "$(marker '' '' '' 'sha256:4444444444444444444444444444444444444444444444444444444444444444')" "$(present "$MONO")" "$(present "$FRONT")")"   CONFLICT '[]' false false
+assert_decision "COMPLETE requires the digest objects to exist"   "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")" "$absent" "$absent")"   CONFLICT '[]' false false
+assert_decision "COMPLETE requires the digest objects to match"   "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(present "$FRONT")" "$(present "$OTHER")")"   CONFLICT '[]' false false
+
+echo
 echo "== UNKNOWN outranks everything and proposes nothing"
 error_lookup() { printf '{"status":"error","code":%s}' "$1"; }
 for code in 408 429 500 502 503 504; do
   assert_decision "code $code is retryable" \
+    "$(observation "$(error_lookup "$code")" "$absent" "$absent" "$absent")" \
+    UNKNOWN '[]' false true
+done
+# Not only the four common ones. Enumerating 500/502/503/504 left 501 and 507 failing immediately
+# when they are exactly as worth one more attempt.
+for code in 501 507; do
+  assert_decision "code $code is retryable as well" \
     "$(observation "$(error_lookup "$code")" "$absent" "$absent" "$absent")" \
     UNKNOWN '[]' false true
 done
@@ -259,6 +309,9 @@ for code in 401 403 404; do
     "$(observation "$(error_lookup "$code")" "$absent" "$absent" "$absent")" \
     UNKNOWN '[]' false false
 done
+assert_decision "cleanup debt survives an unknown" \
+  "$(observation "$(error_lookup 503)" "$absent" "$absent" "$absent" "" "" "$(present "$MONO")")" \
+  UNKNOWN '[]' true true
 assert_decision "an error outranks an otherwise complete release" \
   "$(observation "$(marker)" "$(marker)" "$(present "$MONO")" "$(error_lookup 500)")" \
   UNKNOWN '[]' false true
