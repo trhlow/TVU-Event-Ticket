@@ -292,6 +292,16 @@ jobs:
           # A guard nobody can delete without a test going red is the only kind that is evidence.
           python3 .github/scripts/publish-decision.mutations.py
 
+      - name: Check the contract and the decision still agree
+        # The schema and the decision function state the same rules in two languages, and they have
+        # already drifted apart once -- for two commits no observation could satisfy both. This runs
+        # every fixture through both halves. jsonschema is pinned and installed rather than assumed:
+        # the test refuses to run without it instead of reporting the green of a check that did
+        # nothing.
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check jsonschema==4.26.0
+          bash .github/scripts/contract-agreement.test.sh
+
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
         # refuse an image built for a different environment, and its first version returned the hash

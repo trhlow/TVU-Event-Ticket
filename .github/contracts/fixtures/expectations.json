@@ -1,0 +1,80 @@
+{
+  "invalid-semantics/duplicate-installed-rank.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/evidence-vouches-for-another-image.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/inventory-checksum-copied.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/lookup-in-a-foreign-repository.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "UNKNOWN"
+  },
+  "invalid-semantics/marker-signed-by-another-workflow.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/absent-without-a-404.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/evidence-missing-layer-secret-scan.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/migration-without-installed-rank.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/schema-version-is-boolean.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/skipped-carrying-a-reference.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/unexpected-lookup-key.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "valid/nothing-published.json": {
+    "actions": [
+      "build_new"
+    ],
+    "schema": "accepts",
+    "state": "ABSENT"
+  },
+  "valid/prepared-only.json": {
+    "actions": [
+      "promote_monolith_tag",
+      "promote_frontend_tag",
+      "publish_final_marker"
+    ],
+    "schema": "accepts",
+    "state": "PARTIAL"
+  },
+  "valid/published.json": {
+    "actions": [
+      "verify_only"
+    ],
+    "schema": "accepts",
+    "state": "COMPLETE"
+  }
+}
