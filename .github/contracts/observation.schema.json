@@ -1,0 +1,306 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/trhlow/TVU-Event-Ticket/.github/contracts/observation.schema.json",
+  "title": "Publish observation, version 1",
+  "description": "What a collector saw in the registry for one commit. The publish decision reads only this: it never queries anything itself, so every fact it acts on has to be stated here, and anything the collector could not determine has to be stated as such rather than omitted. additionalProperties is false throughout on purpose -- an unexpected key is a typo in a key the collector believed it was setting, and silently ignoring it is how an observation ends up describing something other than what was queried.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "commit", "environment", "expected", "lookups"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Exactly the integer 1. A JSON true or 1.0 compares equal to 1 in some readers and must not be accepted here."
+    },
+    "commit": {
+      "$ref": "#/$defs/sha1",
+      "description": "The commit being published. Full 40 characters: a short SHA matches nothing in the registry or the API, so a lookup keyed on one reads as absence rather than as a bad argument."
+    },
+    "environment": { "type": "string", "minLength": 1 },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "frontendConfigFingerprint", "signerWorkflow", "registry"],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+          "description": "owner/name. Both the repository a marker must be signed by and the one every queriedRef must point into."
+        },
+        "frontendConfigFingerprint": {
+          "$ref": "#/$defs/hex64",
+          "description": "From scripts/frontend-config.sh at this commit. A frontend image is only valid for the configuration it was built from, and this is how a marker built elsewhere is caught."
+        },
+        "signerWorkflow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full path, e.g. .github/workflows/ci.yml. A marker signed by any other workflow in the same repository is not this pipeline's."
+        },
+        "registry": { "type": "string", "minLength": 1, "examples": ["ghcr.io"] }
+      }
+    },
+    "lookups": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Exactly eight, no more and no fewer. A missing one is a fact nobody established; an extra one is a misspelling of a key the collector meant to set, and both are unusable rather than partial.",
+      "required": [
+        "finalMarker", "preparedMarker",
+        "monolithTag", "frontendTag",
+        "monolithDigestObject", "frontendDigestObject",
+        "monolithCandidate", "frontendCandidate"
+      ],
+      "properties": {
+        "finalMarker": { "$ref": "#/$defs/markerLookup" },
+        "preparedMarker": { "$ref": "#/$defs/markerLookup" },
+        "monolithTag": { "$ref": "#/$defs/objectLookup" },
+        "frontendTag": { "$ref": "#/$defs/objectLookup" },
+        "monolithDigestObject": { "$ref": "#/$defs/skippableObjectLookup" },
+        "frontendDigestObject": { "$ref": "#/$defs/skippableObjectLookup" },
+        "monolithCandidate": { "$ref": "#/$defs/objectLookup" },
+        "frontendCandidate": { "$ref": "#/$defs/objectLookup" }
+      }
+    }
+  },
+
+  "$defs": {
+    "sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+
+    "absent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observedCode", "queriedRef"],
+      "properties": {
+        "status": { "const": "absent" },
+        "observedCode": {
+          "const": 404,
+          "description": "Only a 404 says 'this is not there'. Any other code says 'I did not get an answer', which is an error, not an absence -- and the difference decides whether a publish is allowed to build."
+        },
+        "queriedRef": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "queriedRef"],
+      "properties": {
+        "status": { "const": "error" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "code": { "type": "integer" },
+        "timeout": { "type": "boolean" },
+        "detail": { "type": "string" }
+      }
+    },
+
+    "skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "queriedRef"],
+      "description": "The question was never asked, which is different from asking and being told no. A digest object cannot be queried before a marker names a digest, and reporting absence there would assert an observation nobody made.",
+      "properties": {
+        "status": { "const": "skipped" },
+        "reason": { "enum": ["no_claimed_digest"] },
+        "queriedRef": { "type": "null", "description": "Null, because nothing was queried." }
+      }
+    },
+
+    "presentObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "queriedRef", "digest"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+
+    "presentMarker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "queriedRef", "markerDigest", "verification", "content"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "markerDigest": { "$ref": "#/$defs/digest" },
+        "verification": { "$ref": "#/$defs/verification" },
+        "content": { "$ref": "#/$defs/markerContent" }
+      }
+    },
+
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the collector verified, not what the marker says about itself. A document asserting its own trustworthiness proves nothing; these fields are outcomes of an attestation check against the registry and must be filled in from it.",
+      "required": ["attestationVerified", "subjectDigest", "signerRepository", "signerWorkflow",
+                   "sourceRevision", "predicateType", "policyPassed"],
+      "properties": {
+        "attestationVerified": { "const": true },
+        "subjectDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "The digest the attestation was verified against. Must equal markerDigest, or the verification describes a different object."
+        },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "policyPassed": { "const": true }
+      }
+    },
+
+    "markerContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "environment", "frontendConfigFingerprint", "images", "provenance",
+                   "evidence", "flywayInventory"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/sha1" },
+        "environment": { "type": "string", "minLength": 1 },
+        "frontendConfigFingerprint": { "$ref": "#/$defs/hex64" },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monolith", "frontend"],
+          "properties": {
+            "monolith": { "$ref": "#/$defs/digest" },
+            "frontend": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monolith", "frontend"],
+          "properties": {
+            "monolith": { "$ref": "#/$defs/provenanceEntry" },
+            "frontend": { "$ref": "#/$defs/provenanceEntry" }
+          }
+        },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "flywayInventory": { "$ref": "#/$defs/flywayInventory" }
+      }
+    },
+
+    "provenanceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "subjectDigest"],
+      "description": "Binds an image to the source it was built from. Without it a marker records which digests it chose, not that they came from the commit being released.",
+      "properties": {
+        "revision": { "$ref": "#/$defs/sha1" },
+        "subjectDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Four separate results, because they answer different questions. A single overall pass hides which of them was never run.",
+      "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
+      "properties": {
+        "sbom": { "$ref": "#/$defs/perImageEvidence" },
+        "vulnerabilityScan": { "$ref": "#/$defs/perImageEvidence" },
+        "layerSecretScan": { "$ref": "#/$defs/perImageEvidence" },
+        "filesystemSecretScan": { "$ref": "#/$defs/perImageEvidence" }
+      }
+    },
+
+    "perImageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["monolith", "frontend"],
+      "properties": {
+        "monolith": { "$ref": "#/$defs/evidenceEntry" },
+        "frontend": { "$ref": "#/$defs/evidenceEntry" }
+      }
+    },
+
+    "evidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Existence, subject, predicate type and outcome. A digest alone proves a file was produced, not that it describes this image or that anything passed.",
+      "required": ["digest", "subjectDigest", "predicateType", "passed"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "subjectDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "The image this evidence is about. Must equal the image it is filed under; otherwise a scan of one image vouches for another."
+        },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "passed": { "const": true }
+      }
+    },
+
+    "flywayInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Read from flyway_schema_history inside the candidate monolith image, not from the source tree: the point is what the image will actually apply.",
+      "required": ["boundTo", "checksum", "migrations"],
+      "properties": {
+        "boundTo": {
+          "$ref": "#/$defs/digest",
+          "description": "The monolith digest this inventory was read from."
+        },
+        "checksum": {
+          "$ref": "#/$defs/hex64",
+          "description": "sha256 of the canonical migration list. Recomputed by the reader; a checksum nobody derives from the content is a field, and a field can be copied from another release."
+        },
+        "migrations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/migration" }
+        }
+      }
+    },
+
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One row of flyway_schema_history. Ordered by installedRank in the canonical form, which is the order Flyway applied them.",
+      "required": ["installedRank", "version", "type", "script", "checksum", "success"],
+      "properties": {
+        "installedRank": { "type": "integer", "minimum": 1 },
+        "version": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Null for a repeatable migration, and several repeatables share that. Versioned migrations must be unique; repeatables are distinguished by script instead."
+        },
+        "type": { "type": "string", "minLength": 1, "examples": ["SQL"] },
+        "script": { "type": "string", "minLength": 1 },
+        "checksum": {
+          "type": ["integer", "null"],
+          "description": "Flyway's CRC32, an integer. Null where Flyway records none. A string here means the history was reformatted on the way through and would never compare equal to the database."
+        },
+        "success": {
+          "const": true,
+          "description": "A failed migration must not be released."
+        }
+      }
+    },
+
+    "markerLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentMarker" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "objectLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentObject" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "skippableObjectLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentObject" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" },
+        { "$ref": "#/$defs/skipped" }
+      ]
+    }
+  }
+}
