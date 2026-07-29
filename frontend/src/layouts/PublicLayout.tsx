@@ -123,7 +123,7 @@ export default function PublicLayout() {
         <div className="mx-auto flex h-16 max-w-[1180px] items-center justify-between gap-4">
           <button type="button" onClick={() => handleNavClick("home")} className="public-logo-link flex min-w-0 items-center gap-3 text-left">
             <img
-              src="/logo-tvu.webp"
+              src="/logo-tvu.webp?v=20260729"
               alt="Logo Trường Đại học Trà Vinh"
               className="h-9 w-9 shrink-0 rounded-full bg-white object-contain p-1 shadow-sm ring-1 ring-blue-100"
             />
@@ -244,7 +244,7 @@ export default function PublicLayout() {
           <div className="mx-auto grid max-w-[1180px] gap-6 md:grid-cols-[1.3fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-3">
-                <img src="/logo-tvu.webp" alt="Logo TVU" className="h-9 w-9 rounded-full object-contain ring-1 ring-blue-100" />
+                <img src="/logo-tvu.webp?v=20260729" alt="Logo TVU" className="h-9 w-9 rounded-full object-contain ring-1 ring-blue-100" />
                 <p className="font-display text-lg font-extrabold text-brand-800">TVU Ticket</p>
               </div>
               <p className="mt-3 max-w-xl leading-6">
