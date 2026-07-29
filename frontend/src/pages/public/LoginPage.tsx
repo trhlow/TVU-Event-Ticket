@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { AlertCircle, ArrowLeft, FlaskConical } from "lucide-react";
 import Toast from "../../components/common/Toast";
@@ -16,7 +16,10 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTarget = (location.state as { from?: string } | null)?.from;
-  const resolveDestination = (role: User["role"]) => redirectTarget || homePathForRole(role);
+  const resolveDestination = useCallback(
+    (role: User["role"]) => redirectTarget || homePathForRole(role),
+    [redirectTarget],
+  );
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,7 +51,7 @@ export default function LoginPage() {
       .catch(() => {
         setErrorMsg("Không thể xác minh phiên đăng nhập. Vui lòng thử lại.");
       });
-  }, [location.pathname, location.search, navigate]);
+  }, [location.pathname, location.search, navigate, resolveDestination]);
 
   const handleMicrosoftLogin = async () => {
     setErrorMsg("");
