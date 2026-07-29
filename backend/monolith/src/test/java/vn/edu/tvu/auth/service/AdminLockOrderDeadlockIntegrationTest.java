@@ -23,6 +23,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,10 +50,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *       session cannot survive the deactivation by slipping through the race.
  * </ul>
  *
- * <p>Neither test asserts "an exception did not happen". Both flows are allowed to fail: whichever
- * loses the race legitimately rejects its caller. What must not happen is a transaction dying
- * <em>because of the lock order</em>, and what must hold afterwards is that no token minted during
- * the race still works.
+ * <p>Neither test asserts "an exception did not happen", nor accepts "some exception happened".
+ * The refresh may lose the race, but only by rejecting its caller with 401; the admin action has no
+ * business reason to fail at all. Anything else — a null pointer, a broken transaction — is a
+ * different defect, and accepting it would keep this test green while it proved nothing.
+ *
+ * <p>The barrier synchronises the two calls, not the two first lock acquisitions; the exact
+ * interleaving is still the scheduler's to decide. That is why the round count matters, and why
+ * the mutation check below is the real evidence of sensitivity rather than the barrier itself.
  */
 @SpringBootTest(classes = MonolithApplication.class,
         properties = "spring.rabbitmq.listener.simple.auto-startup=false")
@@ -183,12 +189,32 @@ class AdminLockOrderDeadlockIntegrationTest extends AbstractPostgresIntegrationT
      * that could not be taken, 40001 a serialization failure.
      */
     private void assertNoLockOrderFailure(Outcomes outcomes, int round) {
+        // Deadlock first, so its diagnostic is what a reader sees rather than a downstream symptom.
         for (var failure : outcomes.failures()) {
             var sqlState = sqlStateOf(failure);
             assertThat(sqlState)
                     .as("round %d: a transaction died from the lock order, not from the race resolving."
                             + " Root cause: %s", round, describe(failure))
                     .isNotIn("40P01", "55P03", "40001");
+        }
+
+        // Then narrow to exactly which failures are legitimate. "Some exception happened" would let
+        // a NullPointerException or a broken transaction pass as if it were the race resolving —
+        // the test would stay green while proving nothing.
+        assertThat(outcomes.adminFailure())
+                .as("round %d: the admin action has no business reason to fail — the seed data is a"
+                        + " valid organizer in a valid club. Any failure here is a defect, not a race",
+                        round)
+                .isNull();
+
+        if (outcomes.refreshFailure() != null) {
+            assertThat(outcomes.refreshFailure())
+                    .as("round %d: refresh may lose the race, but only by rejecting its caller."
+                            + " Anything else is a different bug wearing the same clothes", round)
+                    .isInstanceOf(ResponseStatusException.class);
+            assertThat(((ResponseStatusException) outcomes.refreshFailure()).getStatusCode())
+                    .as("round %d: losing the race must read as 401, not as a server error", round)
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
         }
     }
 
@@ -198,17 +224,28 @@ class AdminLockOrderDeadlockIntegrationTest extends AbstractPostgresIntegrationT
      * written on its way past.
      */
     private void assertNoSessionSurvives(String originalToken, Object refreshResult, int round) {
-        assertThatThrownBy(() -> adminOtpService.refresh(originalToken))
-                .as("round %d: the original device cookie still refreshes after the account was"
-                        + " locked or its club deactivated", round)
-                .isInstanceOf(Exception.class);
+        assertRefusedWith401(originalToken,
+                "round " + round + ": the original device cookie still refreshes after the account"
+                        + " was locked or its club deactivated");
 
         if (refreshResult instanceof AdminSession session && session.deviceToken() != null) {
-            assertThatThrownBy(() -> adminOtpService.refresh(session.deviceToken()))
-                    .as("round %d: the successor cookie written during the race outlived the"
-                            + " revocation — this is the gap H8 was raised for", round)
-                    .isInstanceOf(Exception.class);
+            assertRefusedWith401(session.deviceToken(),
+                    "round " + round + ": the successor cookie written during the race outlived the"
+                            + " revocation — this is the gap H8 was raised for");
         }
+    }
+
+    /**
+     * Specifically 401, not "threw something". A database that has fallen over also throws, and
+     * reading that as "the cookie was revoked" is how a test keeps passing after the thing it
+     * guards has stopped working.
+     */
+    private void assertRefusedWith401(String deviceToken, String description) {
+        assertThatThrownBy(() -> adminOtpService.refresh(deviceToken))
+                .as(description)
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(failure -> ((ResponseStatusException) failure).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
     }
 
     private User seedOrganizer(String suffix) {
