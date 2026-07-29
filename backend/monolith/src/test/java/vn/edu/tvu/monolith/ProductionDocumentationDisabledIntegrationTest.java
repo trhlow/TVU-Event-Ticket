@@ -23,8 +23,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Behavioural counterpart to {@link ProductionHealthConfigTest}, which only proves the shipped
  * YAML still says the right thing. This boots the application with the same settings production
- * uses and asks the running server, so the claim "the documentation is not served" rests on a
- * response rather than on a property file.
+ * documentation settings production uses — not the prod profile itself, which needs the full set of
+ * production secrets to start — and asks the running server, so the claim "the documentation is not
+ * served" rests on a response rather than on a property file.
  *
  * <p>The paths matter more than they look. Disabling springdoc removes its own handlers, but
  * Spring Boot separately maps {@code /webjars/**} onto {@code classpath:/META-INF/resources/webjars/},
@@ -59,9 +60,10 @@ class ProductionDocumentationDisabledIntegrationTest extends AbstractPostgresInt
         var response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
 
         assertThat(response.statusCode())
-                .as("%s must not serve content in production; 200 or a redirect to it means a route"
-                        + " to the packaged Swagger UI is still open", path)
-                .isNotIn(200, 301, 302, 307, 308);
+                .as("%s must answer with a refusal, not content. An allowlist, not a blocklist: a 500"
+                        + " does not serve the documentation either, but it is not evidence the route is"
+                        + " closed and must not let a deploy go green", path)
+                .isIn(401, 404);
     }
 
     /**

@@ -62,6 +62,18 @@ public class SecurityConfig {
                         // instead of relying on every future club-scoped endpoint to re-check.
                         .requestMatchers("/api/reservations/**", "/api/ticketing/**", "/api/tickets/**")
                         .hasRole("ORGANIZER")
+                        // Nobody, at any role, in any profile. Spring Boot maps /webjars/** onto
+                        // classpath:/META-INF/resources/webjars/, and the swagger-ui webjar is packaged
+                        // inside the jar, so this path is a second road to the API documentation that
+                        // disabling springdoc does not close. Production also sets
+                        // spring.web.resources.add-mappings=false, which removes the mapping outright;
+                        // this is the layer that still holds if that property is ever overridden from
+                        // the environment. Under `authenticated()` — where this path sat before — any
+                        // signed-in student could fetch the bundle. Nothing legitimate uses the path:
+                        // measured on this branch, /swagger-ui/index.html and /swagger-ui/swagger-ui.css
+                        // already answer 401 in every profile — the UI page does not serve at all here,
+                        // only the OpenAPI JSON at /v3/api-docs does.
+                        .requestMatchers("/webjars/**").denyAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         // Spring registers /.well-known/oauth-protected-resource automatically when

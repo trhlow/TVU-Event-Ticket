@@ -108,8 +108,9 @@ tvu:
       secret: ${QR_SIGNING_SECRET}
 
 # Off in production, on everywhere else. SecurityConfig still permits /v3/api-docs and
-# /swagger-ui so the documentation works in dev and test; here the endpoints are simply never
-# created. Caddy not routing them and the container not publishing a port are properties of the
+# /swagger-ui, so dev and test keep the OpenAPI document; here the endpoints are simply never
+# created. (Measured, not assumed: only the document serves anywhere — the Swagger UI page itself
+# answers 401 in every profile on this branch, so what production loses is the JSON.) Caddy not routing them and the container not publishing a port are properties of the
 # environment — one `ports:` line added while debugging undoes both — whereas this default ships
 # and is tested with the artifact itself.
 #

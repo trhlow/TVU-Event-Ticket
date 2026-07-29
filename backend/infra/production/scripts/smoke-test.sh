@@ -61,11 +61,17 @@ assert_endpoint_not_served() {
     || die "Could not reach the application on loopback while checking $path"
   status="$(awk '{print $2}' <<<"$response" | tr -d '\r')"
   [[ -n "$status" ]] || die "No HTTP status line while checking $path"
+  # An allowlist, not a blocklist. 401 is what a disabled endpoint answers here (404 forwarded to
+  # /error, refused there) and 404 is what it would answer if /error were ever permitted. Anything
+  # else — 403, 500, a redirect — may well not be serving the documentation either, but it is not
+  # evidence that the route is closed, and a deploy must not go green on the absence of proof.
   case "$status" in
-    2??|30[1278])
-      die "Documentation absence invariant failed: $path returned HTTP $status." \
-          "Check for a SPRINGDOC_* or SPRING_WEB_RESOURCES_ADD_MAPPINGS override in the environment" \
-          "— those override the values shipped in application-prod.yml"
+    401|404) ;;
+    *)
+      die "Documentation absence invariant failed: $path returned HTTP $status, expected 401 or 404." \
+          "If this is 2xx or a redirect the documentation is being served; check the environment for" \
+          "SPRINGDOC_* or SPRING_WEB_RESOURCES_ADD_MAPPINGS overrides, which beat application-prod.yml." \
+          "Any other status means the check could not prove the route is closed"
       ;;
   esac
 }
