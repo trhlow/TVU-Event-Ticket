@@ -101,21 +101,37 @@ signing secrets.
 5. Replace `OTP_PEPPER` in the production `.env`, run `preflight.sh`, then **recreate** the
    container — a restart does not reload the environment:
 
+   Run this from `backend/infra/production` — every path below is relative to it:
+
    ```bash
+   cd backend/infra/production
    bash scripts/preflight.sh
-   docker compose ps -q monolith            # note the container id
 
-   docker compose \
-     --env-file .env \
-     -f compose.yaml \
-     up -d --no-deps --force-recreate --wait monolith
+   # Subshell on purpose: a failed check exits the block, not your SSH session.
+   (
+     set -u
+     before_id="$(docker compose -f compose.yaml ps -q monolith)"
+     test -n "$before_id" || { echo "FAIL: monolith is not running; nothing to recreate" >&2; exit 1; }
 
-   docker compose ps -q monolith            # must be a different id
+     docker compose \
+       --env-file .env \
+       -f compose.yaml \
+       up -d --no-deps --force-recreate --wait monolith || exit 1
+
+     after_id="$(docker compose -f compose.yaml ps -q monolith)"
+     test -n "$after_id" || { echo "FAIL: monolith did not come back up" >&2; exit 1; }
+     test "$before_id" != "$after_id" || {
+       echo "FAIL: container id unchanged — it was restarted, not recreated, so the old pepper is still loaded" >&2
+       exit 1
+     }
+     echo "ok: recreated ${before_id:0:12} -> ${after_id:0:12}"
+   )
    ```
 
-   A changed container id is the proof that the new environment was loaded. `docker compose
-   restart` leaves the id — and the old pepper — in place, which is the failure this step exists
-   to prevent. The same pattern is used by `failover-smtp.sh`.
+   The comparison is written as a check rather than something to eyeball, because an unchanged id
+   is exactly the failure that otherwise passes silently: `docker compose restart` leaves the id —
+   and the old pepper — in place while every later step still looks green. The recreate invocation
+   itself is the one `failover-smtp.sh:83` already uses.
 6. Verify the rotation actually happened, in this order:
    1. Submit the code from step 4 **before `issued_at` + 10 minutes**. It must be rejected.
       Past the TTL a rejection proves nothing — the entry expired on its own — so record the

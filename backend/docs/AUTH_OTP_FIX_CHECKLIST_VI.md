@@ -772,8 +772,12 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 >   CSRF/QR/JWT/SMTP.
 > - TTL gốc được đọc bằng `PTTL` rồi đặt lại bằng `PEXPIRE` sau mỗi lần đoán
 >   sai → đoán sai cách quãng **không** kéo dài tuổi thọ mã.
-> - `ProductionSecretsValidator` kiểm **độ mạnh** pepper (≥44 ký tự = 32 byte
->   Base64), không chỉ "khác rỗng".
+> - `ProductionSecretsValidator` chặn pepper **rỗng**, **giá trị development**
+>   (`OtpProperties.DEV_PEPPER`) và **dưới 44 ký tự** (= 32 byte Base64) — mạnh
+>   hơn "khác rỗng", nhưng **không phải** kiểm độ mạnh: một chuỗi 44 ký tự yếu
+>   vẫn qua. Validator không đo được entropy; tính ngẫu nhiên đến từ **quy trình
+>   sinh** (`openssl rand -base64 32` trong `generate-env.sh`), không từ kiểm
+>   tra lúc khởi động. Runbook rotate trong `OPERATIONS.md` ghi đúng điều này.
 > - ⚠️ Bằng chứng test **có bite**: tạm thay Lua bằng đúng cách cũ
 >   (read-then-write) thì **2 test đồng thời đỏ ngay** —
 >   `consume_letsExactlyOneOfTwoConcurrentCorrectCodesThrough` và
@@ -826,14 +830,24 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
         được OTP admin và đăng nhập trong TTL.
     - Secret riêng `OTP_PEPPER`; lưu `HMAC-SHA256(pepper, code)`.
     - KHÔNG dùng SHA-256 trần: OTP 6 số chỉ có 10^6 khả năng, brute-force
-      offline tức thì. Pepper là thứ duy nhất làm dump Redis vô dụng.
+      offline tức thì. Pepper là thứ duy nhất khiến một bản dump Redis **không
+      đủ** để khôi phục mã — kẻ lấy được dump mà không có pepper thì không dựng
+      lại được OTP. (Bản v15 viết "làm dump Redis vô dụng" — quá tuyệt đối:
+      dump vẫn lộ userId, TTL còn lại và số lần đoán sai.)
     - Lua nhận digest của code người dùng nhập và so digest với digest lưu —
       code gốc không bao giờ vào Redis.
     - Thêm secret vào `generate-env.sh`, preflight (`common.sh`) và
-      `ProductionSecretsValidator`. Validator phải kiểm **độ mạnh**, không chỉ
-      "khác rỗng": tối thiểu **32 byte ngẫu nhiên** (sinh bằng
-      `openssl rand -base64 32`), fail startup ở prod nếu thiếu, là
-      placeholder, hoặc ngắn hơn ngưỡng.
+      `ProductionSecretsValidator`. Validator fail startup ở prod nếu pepper
+      **rỗng**, là **giá trị development**, hoặc **ngắn hơn 44 ký tự** (độ dài
+      của 32 byte Base64).
+      - ⚠️ **Đính chính yêu cầu (2026-07-29):** bản v15 viết "validator phải
+        kiểm tối thiểu 32 byte **ngẫu nhiên**". Đó là yêu cầu **bất khả thi** —
+        không thể đo entropy của một chuỗi cho trước; `"aaaa…"` 44 ký tự và một
+        giá trị `openssl` 44 ký tự là không phân biệt được với validator. Tính
+        ngẫu nhiên chỉ có thể bảo đảm ở **khâu sinh** (`openssl rand -base64
+        32`), nên yêu cầu được viết lại thành ba điều kiện kiểm được ở trên.
+        Đây là sửa câu chữ của spec, không phải nới lỏng phạm vi: phần code đã
+        làm đúng những gì kiểm được.
     - `OTP_PEPPER` phải là secret **riêng** — không tái dùng JWT private key,
       CSRF secret, QR signing key hay SMTP password.
     - Ghi vào docs: **rotate pepper sẽ vô hiệu hóa mọi OTP đang chờ** (digest
