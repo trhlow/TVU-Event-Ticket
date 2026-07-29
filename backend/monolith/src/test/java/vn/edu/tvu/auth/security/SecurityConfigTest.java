@@ -225,6 +225,32 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * The integration tests only ever ask anonymously, and an anonymous 401 says nothing about
+     * whether {@code denyAll()} is in force — an unmapped path answers the same way. These carry a
+     * real token, so a 403 is the rule refusing a caller it recognises.
+     *
+     * <p>Two roles, not one. "Deny all" is a claim about everybody; testing the least privileged
+     * role would leave the possibility that a super admin walks through.
+     */
+    @Test
+    void webjarsRouteRejectsStudentRole() throws Exception {
+        var token = token(UserRole.SINH_VIEN);
+
+        mockMvc.perform(get("/webjars/swagger-ui/index.html")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void webjarsRouteRejectsSuperAdminRole() throws Exception {
+        var token = token(UserRole.SUPER_ADMIN);
+
+        mockMvc.perform(get("/webjars/swagger-ui/index.html")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
     @Test
     void updateDisplayNameRouteRequiresAuthentication() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders

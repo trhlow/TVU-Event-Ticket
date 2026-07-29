@@ -1116,10 +1116,26 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 > Bằng chứng: 16 test mới (6 policy, 7 `auth_version`, 3 logout family), full
 > suite **315 pass / 0 fail / 0 skipped**.
 >
-> ⬜ **Vẫn nợ**: test deadlock song song `refresh()` ⟂ `deactivateClub()` bắt
-> `40P01`. Giờ đã đủ điều kiện viết (cả hai đường đều khoá), nhưng chưa viết.
+> ✅ **XONG 2026-07-29** — `AdminLockOrderDeadlockIntegrationTest`, Testcontainers
+> PostgreSQL thật, 12 vòng, hai luồng vào transaction cùng lúc qua `CyclicBarrier`,
+> mỗi future có timeout 30s nên treo thì đỏ chứ không treo CI.
+>
+> ⚠️ **Đính chính phạm vi:** cặp `refresh()` ⟂ `deactivateClub()` mà bản v15 nêu
+> **không** tạo chu trình — `deactivateClub` khoá *club → users* và không chạm
+> `trusted_devices`, còn `refresh` khoá *user → device*, chỉ giao nhau ở một tài
+> nguyên. Chu trình thật nằm ở **`refresh()` ⟂ `lockOrganizer()`**:
+> `lockOrganizer` bump `auth_version` (khoá user row lúc flush) rồi `revokeAll`
+> device — tức *user → device*, đúng chiều mà `refresh` từng đi ngược. Test phủ
+> **cả hai cặp**: cặp thứ nhất canh bất biến nghiệp vụ, cặp thứ hai canh thứ tự khoá.
+>
+> ⚠️ **Bằng chứng test có bite:** tạm đảo `refresh()` về thứ tự device-first của
+> bản cũ → **đỏ ngay ở round 0** với `SQLState: 40P01` / `ERROR: deadlock detected`
+> / `CannotAcquireLockException`; khôi phục code thì xanh. Chạy lặp **5 lần** đều
+> xanh, không flaky. Full clean suite **350 pass / 0 fail / 0 skipped**.
 
-- [ ] **H7. Deactivate club bị vượt qua bằng đăng nhập OTP mới** (nâng từ M3
+- [x] ✅ **H7. Deactivate club bị vượt qua bằng đăng nhập OTP mới** — **ĐÓNG
+      2026-07-29** (khoản nợ cuối là test deadlock, đã trả — xem ghi chú trên).
+      Mô tả lỗi gốc, giữ lại làm hồ sơ (nâng từ M3
       — M3 chỉ thu hồi phiên ĐANG có, không chặn phiên MỚI). `activeAdmin()`
       (`AdminOtpService.java:103-106`) chỉ lọc `EMAIL_OTP + status ACTIVE`,
       không xét `user.getClub().isActive()`; `refresh()` (`:95-98`) lọc y hệt.
@@ -1244,10 +1260,10 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 >   đỏ (`exchange_replayOfStaleGenerationLeavesCurrentDevicesAlone`), rồi khôi
 >   phục. Test cũ khẳng định hành vi `revokeAll` — chính là bug M1 phải bỏ —
 >   nên đã viết lại chứ không sửa cho xanh.
-> - ⬜ **Còn nợ, không làm được ở mục này**: test deadlock song song
->   `refresh()` ⟂ `deactivateClub()` (bắt `40P01`). `deactivateClub` chưa khoá
->   user — đó là **H7**, nên chưa có hai chiều khoá để mà deadlock. Phải viết
->   test đó **cùng H7**, đừng coi là đã phủ.
+> - ✅ **XONG 2026-07-29** — test deadlock đã viết cùng H7, xem khối ghi chú của
+>   H7 ở trên: `AdminLockOrderDeadlockIntegrationTest`. Kèm đính chính rằng cặp
+>   sinh deadlock thật là `refresh()` ⟂ `lockOrganizer()`, không phải
+>   `deactivateClub()`.
 > - ⬜ Logout revoke theo family: `revokeFamily()` đã có, phần nối vào endpoint
 >   logout thuộc **H5**.
 > - Full suite: **288 pass, 0 fail, 0 skipped**.
@@ -1256,6 +1272,10 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 > `auth_version`, `AuthVersionValidator` thay `RevokedTokenValidator`, và
 > `lockOrganizer` bump trong cùng transaction. **Pha 2 (lineage V14 + race
 > trusted-device) CHƯA làm** — vẫn ở bước 3c.
+>
+> ⚠️ **Ghi chú này đã cũ (viết 28/07 trước khi pha 2 hoàn thành).** Pha 2 xong
+> cùng ngày — xem khối `H8 PHA 2 + M1 XONG` ngay dưới. Giữ nguyên câu trên để
+> thấy diễn biến, đừng đọc như trạng thái hiện tại.
 > - Đã xoá hẳn `TokenRevocationService` + `RevokedTokenValidator`. Đường kiểm
 >   JWT nay **không chạm Redis**.
 > - `User.lock()` tự gọi `revokeIssuedTokens()` nên không thể quên bump khi
@@ -1270,7 +1290,9 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
 >   `LockOrganizer` — đúng dự kiến, không chạm ticketing/event.
 > - Full suite: **260 test pass, 0 fail, 0 skipped**.
 
-- [ ] **H8. Revocation kiểu boolean chặn nhầm JWT mới cấp** —
+- [x] ✅ **H8. Revocation kiểu boolean chặn nhầm JWT mới cấp** — **ĐÓNG
+      2026-07-29** (pha 1 + pha 2 xong 28/07, test deadlock xong 29/07). Mô tả
+      lỗi gốc giữ lại làm hồ sơ —
       `TokenRevocationService.revoke()` (`:29-31`) ghi `"1"` theo userId sống
       15 phút; `RevokedTokenValidator` (`:21-28`) từ chối **mọi** JWT có
       subject đó khi key còn tồn tại, kể cả token mint SAU thời điểm revoke:
@@ -1380,9 +1402,12 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
       token còn active, trạng thái user/club, và `auth_version`. Giá trị đọc ở
       bước 1 (không khóa) chỉ để định vị row, **không được dùng để ra quyết
       định**.
-    - [ ] Test deadlock: chạy song song N lần `refresh()` và `deactivateClub()`
-          trên cùng một club/user, assert **không có transaction nào bị
-          PostgreSQL huỷ vì deadlock** (bắt `40P01`).
+    - [x] ✅ **XONG 2026-07-29** — Test deadlock: 12 vòng song song, assert
+          **không transaction nào bị PostgreSQL huỷ vì thứ tự khoá** (`40P01`,
+          `55P03`, `40001`) và bất biến nghiệp vụ vẫn giữ (không cookie nào —
+          kể cả successor sinh ra trong lúc race — còn refresh được sau khi
+          khoá/deactivate commit). Phủ cả `deactivateClub()` lẫn
+          `lockOrganizer()`; cặp sau mới là cặp có chu trình thật.
     - **CỘNG** lineage `device_family_id` + `issued_auth_version`
       (`V14__trusted_device_lineage.sql`, xem C3.-1) để đóng nốt ca đó và để
       M1 phân biệt được thế hệ.
