@@ -283,6 +283,11 @@ jobs:
           # -shellcheck= wires shellcheck into the `run:` blocks; ubuntu-latest ships it.
           ./actionlint -color -shellcheck=shellcheck
 
+      - name: Test the CI gate helpers
+        # These decide whether an artifact may be published and whether a deploy may proceed.
+        # Linting them is not running them.
+        run: bash .github/scripts/require-green-run.test.sh
+
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
         # refuse an image built for a different environment, and its first version returned the hash
@@ -297,7 +302,7 @@ jobs:
         # path with a space in it. shellcheck is the only thing in this pipeline that looks for that.
         run: |
           shopt -s nullglob
-          scripts=(backend/infra/production/scripts/*.sh)
+          scripts=(backend/infra/production/scripts/*.sh .github/scripts/*.sh)
           if [ ${#scripts[@]} -eq 0 ]; then
             echo "No scripts matched — the path must have moved. Failing rather than passing on an"
             echo "empty set, which is how this check would quietly stop checking anything."

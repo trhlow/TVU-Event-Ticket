@@ -68,49 +68,11 @@ jobs:
           echo "SHA matches the tip of main."
 
       - name: Require CI and CodeQL to have passed for this exact SHA
-        run: |
-          set -euo pipefail
-          failed=0
-
-          # Workflow Runs API keyed by workflow FILE name, which survives renaming the
-          # workflow. Check-run names are not used anywhere in this gate: "CI" and
-          # "CodeQL" are workflow names, and the check-runs on a SHA are the individual
-          # job ids (changes/backend/frontend/analyze-java/...), several of which are
-          # conditional. The always-running ci-gate / codeql-gate jobs are what branch
-          # protection requires; here we assert on the run as a whole.
-          for workflow in ci.yml codeql.yml; do
-            # 1. Every run for this SHA on main from a push event, across all pages.
-            pairs="$(gh api --paginate \
-              "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$DEPLOY_SHA&branch=main&event=push&per_page=100" \
-              --jq '.workflow_runs[] | "\(.run_number) \(.id)"')"
-
-            # Fail closed: no run found means unverified, not "probably fine".
-            if [ -z "$pairs" ]; then
-              echo "::error::$workflow: no push run found for $DEPLOY_SHA on main"
-              failed=1
-              continue
-            fi
-
-            # 2. The LATEST run wins. Filtering by conclusion first would be fail-open:
-            #    an older successful run would hide a newer failing one for the same SHA.
-            run_id="$(printf '%s\n' "$pairs" | sort -nr -k1,1 | head -1 | cut -d' ' -f2)"
-
-            # 3. Re-read that specific run so we get its current attempt. run_attempt is
-            #    only meaningful within one run id -- it is never compared across runs.
-            read -r status conclusion <<<"$(gh api "repos/$REPO/actions/runs/$run_id" \
-              --jq '"\(.status) \(.conclusion)"')"
-
-            # 4. Only now does the verdict matter. cancelled / neutral / timed_out are
-            #    not a pass.
-            if [ "$status" != completed ] || [ "$conclusion" != success ]; then
-              echo "::error::$workflow: run $run_id is status='$status' conclusion='$conclusion'"
-              failed=1
-              continue
-            fi
-            echo "$workflow: run $run_id passed."
-          done
-
-          [ "$failed" -eq 0 ] || exit 1
+        # The gate itself lives in .github/scripts so the publish workflow asks the same question
+        # with the same code. Two implementations would eventually disagree about whether a commit
+        # is releasable, and the disagreement would appear as an artifact published from a red
+        # commit. The script has its own tests, run by the lint job.
+        run: bash .github/scripts/require-green-run.sh "$REPO" "$DEPLOY_SHA" ci.yml codeql.yml
 
       - name: Require no open High/Critical code scanning alerts
         run: |
