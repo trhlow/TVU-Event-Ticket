@@ -39,7 +39,42 @@
              CVE-2026-44891, CVE-2026-55831 and CVE-2026-55833 (all fixed in 4.2.16.Final). Netty
              arrives transitively through Lettuce; drop this once the BOM catches up. -->
         <netty.version>4.2.16.Final</netty.version>
+        <!-- Ahead of the Spring Boot 4.0.7 BOM (2.25.4), which dependency-check flags for
+             CVE-2026-49844, fixed in 2.25.5. This one property covers both modules that arrive
+             through spring-boot-starter-logging — log4j-to-slf4j and the log4j-api underneath it —
+             so they cannot drift apart. Drop it once the BOM catches up. -->
+        <log4j2.version>2.25.5</log4j2.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Jackson 2, and only Jackson 2. Two Jackson lines are on this classpath: Spring Boot
+                 4 uses tools.jackson 3.x for its own binding, while springdoc pulls
+                 com.fasterxml.jackson 2.x through swagger-core. The 2.x line is the one
+                 dependency-check flags — CVE-2026-54515 against jackson-databind 2.21.4, fixed in
+                 2.21.5.
+
+                 Imported as a BOM rather than pinned per artifact, so databind, core,
+                 dataformat-yaml and datatype-jsr310 move together; pinning databind alone is how a
+                 classpath ends up with two halves of the same library at different versions.
+
+                 jackson-annotations stays at 2.21 and that is correct, not drift: since 2.20
+                 upstream deliberately dropped the patch component from that one artifact, and the
+                 2.21.5 BOM itself declares it as 2.21.
+
+                 NOT done by overriding Spring Boot's jackson-bom.version property: that property
+                 resolves to 3.1.4 and points at the Jackson 3 line, so raising it would move the
+                 binding Spring Boot actually uses while leaving the vulnerable 2.x artifacts
+                 exactly where they were. -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>2.21.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
 
     <build>
