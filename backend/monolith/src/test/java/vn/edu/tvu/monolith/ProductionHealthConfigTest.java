@@ -55,6 +55,17 @@ class ProductionHealthConfigTest {
     }
 
     @Test
+    @DisplayName("static resource mappings are off, closing /webjars/** as a second road to the UI")
+    void staticResourceMappingsDisabledInProduction() throws IOException {
+        assertThat(productionProperties().getProperty("spring.web.resources.add-mappings"))
+                .as("Disabling springdoc removes springdoc's handlers, not Spring Boot's default"
+                        + " /webjars/** mapping onto classpath:/META-INF/resources/webjars/, where the"
+                        + " packaged swagger-ui still lives. This monolith serves no static resources"
+                        + " of its own, so the mapping is pure attack surface")
+                .isEqualTo(false);
+    }
+
+    @Test
     @DisplayName("Swagger UI is off in production — its bundle is the part that carries CVEs")
     void swaggerUiDisabledInProduction() throws IOException {
         assertThat(productionProperties().getProperty("springdoc.swagger-ui.enabled"))

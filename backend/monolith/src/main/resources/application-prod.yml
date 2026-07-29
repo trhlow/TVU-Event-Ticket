@@ -3,6 +3,11 @@ server:
   shutdown: graceful
 
 spring:
+  # No static resource mappings in production. See the springdoc block at the end of this file:
+  # this is what stops /webjars/** from serving the packaged Swagger UI by a second road.
+  web:
+    resources:
+      add-mappings: false
   lifecycle:
     timeout-per-shutdown-phase: 30s
   datasource:
@@ -121,3 +126,14 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+# Turning springdoc off removes springdoc's handlers, not Spring Boot's. Boot maps /webjars/**
+# onto classpath:/META-INF/resources/webjars/ by default, the swagger-ui webjar is still packaged
+# there, and webjars-locator-lite resolves the versionless form — so /webjars/swagger-ui/index.html
+# reaches the same UI by a second road. Today that road is behind `anyRequest().authenticated()`,
+# which means any signed-in student, not the public; it is one permitAll edit away from worse.
+#
+# This monolith serves no static resources of its own — the frontend is a separate Nginx container
+# and there is no src/main/resources/static — so dropping the mappings costs nothing here.
+# The setting itself lives in the `spring:` block at the top of this file, next to the rest of the
+# framework configuration; it is `spring.web.resources.add-mappings: false`.

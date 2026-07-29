@@ -46,7 +46,12 @@ done
 #
 # Same bash + /dev/tcp shape as the monolith healthcheck in compose.yaml, so no extra image and
 # nothing new to pin.
-assert_endpoint_absent() {
+# Not "expect 404". A missing path is forwarded to /error, which `anyRequest().authenticated()`
+# also covers, so an unauthenticated request to a disabled endpoint answers 401, not 404. Demanding
+# 404 would fail every deploy while the application was configured correctly. What must hold is
+# narrower and is the actual invariant: the documentation is not served. 2xx means it is; a
+# redirect is how swagger-ui hands out its index page, so that counts too.
+assert_endpoint_not_served() {
   local path="$1"
   local response status
   response="$(compose exec -T monolith bash -c \
@@ -55,13 +60,20 @@ assert_endpoint_absent() {
      && head -n 1 <&3")" \
     || die "Could not reach the application on loopback while checking $path"
   status="$(awk '{print $2}' <<<"$response" | tr -d '\r')"
-  [[ "$status" == "404" ]] \
-    || die "$path returned HTTP ${status:-<none>}; expected 404. Springdoc is enabled in production" \
-           "— check for a SPRINGDOC_* override in the environment"
+  [[ -n "$status" ]] || die "No HTTP status line while checking $path"
+  case "$status" in
+    2??|30[1278])
+      die "Documentation absence invariant failed: $path returned HTTP $status." \
+          "Check for a SPRINGDOC_* or SPRING_WEB_RESOURCES_ADD_MAPPINGS override in the environment" \
+          "— those override the values shipped in application-prod.yml"
+      ;;
+  esac
 }
 
-assert_endpoint_absent /v3/api-docs
-assert_endpoint_absent /swagger-ui/index.html
+assert_endpoint_not_served /v3/api-docs
+assert_endpoint_not_served /swagger-ui/index.html
+# Spring Boot's own /webjars/** mapping, which disabling springdoc does not touch.
+assert_endpoint_not_served /webjars/swagger-ui/index.html
 
 health="$(curl "${curl_options[@]}" "$base_url/actuator/health")"
 grep -q '"status":"UP"' <<<"$health" || die "Public health endpoint did not report UP"
