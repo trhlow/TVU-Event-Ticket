@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { AlertCircle, ArrowLeft, FlaskConical } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
-import { isDevStubProvider, isMicrosoftProvider } from "../../lib/env";
 
 function homePathForRole(role: User["role"]): string {
   if (role === "SUPER_ADMIN") return "/admin/dashboard";
@@ -23,8 +22,6 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [devCredential, setDevCredential] = useState("");
-  const [devDisplayName, setDevDisplayName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -94,27 +91,6 @@ export default function LoginPage() {
       navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Mã không đúng hoặc đã hết hạn. Vui lòng thử lại.");
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDevStubLogin = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setErrorMsg("");
-
-    if (!devCredential.trim()) {
-      setErrorMsg("Nhập một địa chỉ email hợp lệ để đăng nhập thử nghiệm.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      // Role is never chosen here — it is whatever role the backend already assigned to this
-      // email, read back from GET /auth/me after login (see authService.loginWithDevStub).
-      const user = await authService.loginWithDevStub(devCredential, devDisplayName);
-      navigate(resolveDestination(user.role), { replace: true });
-    } catch (error) {
-      setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập thử nghiệm. Vui lòng thử lại.");
       setIsSubmitting(false);
     }
   };
@@ -223,71 +199,25 @@ export default function LoginPage() {
           )}
         </div>
 
-        {isMicrosoftProvider && (
-          <>
-            <div className="my-5 flex items-center gap-3" role="separator" aria-label="Hoặc">
-              <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
-              <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">hoặc</span>
-              <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
-            </div>
-            <button
-              type="button"
-              onClick={handleMicrosoftLogin}
-              disabled={isSubmitting}
-              className="btn-press flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#2848b8] px-4 text-sm font-bold text-white shadow-lg shadow-[#2848b8]/30 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
-            >
-              <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
-                <span className="bg-[#f25022]" />
-                <span className="bg-[#7fba00]" />
-                <span className="bg-[#00a4ef]" />
-                <span className="bg-[#ffb900]" />
-              </span>
-              {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
-            </button>
-          </>
-        )}
-
-        {/* import.meta.env.DEV is a build-time literal: Vite/Rollup dead-code-eliminates this
-            entire branch from a `vite build` production bundle, so it cannot ship even if
-            VITE_AUTH_PROVIDER is misconfigured at runtime. */}
-        {import.meta.env.DEV && isDevStubProvider && (
-          <div className="mt-8 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 p-4 text-left">
-            <div className="flex items-center gap-2 text-amber-800">
-              <FlaskConical className="h-4 w-4 shrink-0" aria-hidden="true" />
-              <span className="text-[11px] font-black uppercase tracking-[0.14em]">DEV ONLY · Đăng nhập thử nghiệm</span>
-            </div>
-            <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">
-              Đây là đăng nhập thử nghiệm dành riêng cho môi trường phát triển cục bộ, không phải cơ chế xác thực production. Backend
-              chấp nhận bất kỳ email hợp lệ nào, không kiểm tra mật khẩu. Vai trò trả về sau khi đăng nhập là vai trò backend đã gán
-              sẵn cho email đó — form này không cho bạn tự chọn vai trò.
-            </p>
-            <form onSubmit={handleDevStubLogin} className="mt-4 space-y-3">
-              <input
-                type="email"
-                value={devCredential}
-                onChange={(event) => setDevCredential(event.target.value)}
-                placeholder="ten@vidu.dev"
-                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
-                autoComplete="off"
-              />
-              <input
-                type="text"
-                value={devDisplayName}
-                onChange={(event) => setDevDisplayName(event.target.value)}
-                placeholder="Tên hiển thị (tuỳ chọn)"
-                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
-                autoComplete="off"
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-amber-600 px-4 text-sm font-extrabold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập thử nghiệm (DEV ONLY)"}
-              </button>
-            </form>
-          </div>
-        )}
+        <div className="my-5 flex items-center gap-3" role="separator" aria-label="Hoặc">
+          <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
+          <span className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">hoặc</span>
+          <span className="h-px flex-1 bg-slate-200" aria-hidden="true" />
+        </div>
+        <button
+          type="button"
+          onClick={handleMicrosoftLogin}
+          disabled={isSubmitting}
+          className="btn-press flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#2848b8] px-4 text-sm font-bold text-white shadow-lg shadow-[#2848b8]/30 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+        >
+          <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
+            <span className="bg-[#f25022]" />
+            <span className="bg-[#7fba00]" />
+            <span className="bg-[#00a4ef]" />
+            <span className="bg-[#ffb900]" />
+          </span>
+          {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập bằng tài khoản Microsoft"}
+        </button>
 
       </section>
 

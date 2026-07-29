@@ -72,10 +72,6 @@ services:
       args:
         # Same-origin: the browser calls /api and the dev nginx below proxies it to the monolith.
         VITE_API_BASE_URL: /api
-        VITE_APP_ENV: development
-        VITE_AUTH_PROVIDER: microsoft
-        VITE_USE_DEMO_DATA: "false"
-        VITE_ENABLE_MOCK_FALLBACK: "false"
         VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID:-a66edf35-e74b-4564-9ed5-1df4cecca5d3}
         VITE_MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID:-e76c9cee-253d-47f7-bae3-a36caaa916c1}
         VITE_MICROSOFT_REDIRECT_URI: ${MICROSOFT_REDIRECT_URI:-http://localhost:5173}

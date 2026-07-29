@@ -2,9 +2,8 @@ FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432
 
 WORKDIR /app
 
-# Only per-environment values are build arguments. VITE_APP_ENV and VITE_AUTH_PROVIDER
-# live in frontend/.env.production so this image, CI and a manual build cannot disagree
-# about what "production" means.
+# Only per-environment values are build arguments. VITE_APP_ENV lives in
+# frontend/.env.production so this image, CI and a manual build agree about production mode.
 ARG VITE_API_BASE_URL
 ARG VITE_MICROSOFT_CLIENT_ID
 ARG VITE_MICROSOFT_TENANT_ID
@@ -19,7 +18,7 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-# build:production fails the image build if any fixture data reached the bundle.
+# build:production fails the image build if test or mock code reached the bundle.
 RUN npm run build:production
 
 # Unprivileged variant: the stock nginx image runs its master process as root, which Trivy flags

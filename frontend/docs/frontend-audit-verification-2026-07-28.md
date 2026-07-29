@@ -19,8 +19,8 @@ Chú thích: ✅ Xác nhận đúng · ⚠️ Xác nhận một phần · ❌ Kh
 **✅ Xác nhận đúng** — chưa nâng Critical
 
 - `userService.ts:1` import tĩnh `mockUsers` từ `mockUsers.ts` → bị đóng gói vào bundle production bất kể `apiConfig.useDemoData` (cờ chỉ quyết định có *chạy* code đó hay không tại runtime, không loại code khỏi bundle qua tree-shaking vì các hàm export vẫn tham chiếu tới `mockUsers` một cách vô điều kiện).
-- `mockUsers.ts:8`: email `tranphudinh2405@gmail.com` gán cho tài khoản SUPER_ADMIN mẫu — trùng khớp với email cá nhân thật.
-- **Kết luận**: giữ mức **Cao**. Toàn bộ các bản ghi còn lại (MSSV, tên, IP audit log) là dữ liệu demo dàn dựng, không phải người dùng thật. Riêng dòng email Gmail cá nhân nên được thay bằng địa chỉ giả lập (`admin@tvu.edu.vn` chẳng hạn) để loại rủi ro, kể cả khi chỉ là seed test — đồng ý cần loại bỏ ngay, nhưng bản thân việc này không đủ căn cứ để nâng toàn bộ finding lên Critical vì phần dữ liệu còn lại không phải PII thật.
+- `mockUsers.ts:8` từng chứa một địa chỉ tài khoản cá nhân trong fixture.
+- **Kết luận**: giữ mức **Cao**. Toàn bộ các bản ghi còn lại (MSSV, tên, IP audit log) là dữ liệu demo dàn dựng, không phải người dùng thật. Riêng tài khoản cá nhân phải được loại bỏ hoàn toàn, kể cả khi chỉ là seed test; bản thân việc này không đủ căn cứ để nâng toàn bộ finding lên Critical vì phần dữ liệu còn lại không phải PII thật.
 
 ### 2. Camera QR chỉ là giao diện mô phỏng
 **✅ Xác nhận đúng hoàn toàn**

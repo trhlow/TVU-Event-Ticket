@@ -22,7 +22,7 @@ Chú thích: ✅ Xác nhận đúng · ❌ Không xác nhận được / đã đ
 
 - `auditLogService.ts:1`, `userService.ts:1`, `registrationService.ts:1`, `clubService.ts:1`, `eventService.ts:1`, `ticketService.ts:1`, `clubStatsService.ts:1-3` đều import tĩnh (`import { mockX } from "../data/mockX"`) — không có nhánh dynamic `import()`, nên bundler đưa toàn bộ dữ liệu fixture vào bundle production bất kể `apiConfig.useDemoData`.
 - Build thực tế (`npm run build`) xác nhận `dist/assets/mockClubs-*.js`, `mockEvents-*.js`, `mockTickets-*.js` tồn tại thành chunk riêng; nội dung `mockUsers.ts` (email/MSSV mẫu) và `mockAuditLogs.ts` (tên người dùng mẫu, IP `172.16.12.44`, hành động) được inline thẳng vào `dist/assets/userService-*.js` và `dist/assets/auditLogService-*.js`.
-- Email Gmail cá nhân thật (`tranphudinh2405@gmail.com`) đã được thay bằng `admin@tvu.edu.vn` ở lần sửa trước — xác nhận **không còn** trong bundle. Tuy nhiên đây chỉ là phần dữ liệu nhạy cảm nhất, còn kiến trúc gốc (mock data luôn nằm trong production bundle) chưa được xử lý.
+- Chuỗi tài khoản cá nhân từng xuất hiện trong fixture đã được loại bỏ ở lần sửa trước — xác nhận **không còn** trong bundle. Tuy nhiên đây chỉ là phần dữ liệu nhạy cảm nhất, còn kiến trúc gốc (mock data luôn nằm trong production bundle) chưa được xử lý tại thời điểm báo cáo.
 - **Kết luận**: đúng, mức **Cao** — cần chuyển các import mock sang `dynamic import()` bên trong nhánh `useDemoData`, hoặc tách mock data khỏi các service production hoàn toàn (ví dụ dùng MSW/fixture riêng cho môi trường dev/test).
 
 ---

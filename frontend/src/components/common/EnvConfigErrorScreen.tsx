@@ -20,8 +20,7 @@ export default function EnvConfigErrorScreen({ errors }: EnvConfigErrorScreenPro
         </div>
 
         <p className="mt-5 text-sm font-medium leading-6 text-slate-300">
-          Biến môi trường frontend đang ở trạng thái không an toàn hoặc không hợp lệ. Ứng dụng chủ động dừng lại thay vì chạy với
-          cấu hình có thể gây rò rỉ chế độ phát triển (DevStub) hoặc dữ liệu demo vào môi trường thật.
+          Biến môi trường frontend đang thiếu hoặc không hợp lệ. Ứng dụng đã dừng để tránh kết nối sai dịch vụ.
         </p>
 
         <ul className="mt-5 space-y-3">
@@ -33,11 +32,9 @@ export default function EnvConfigErrorScreen({ errors }: EnvConfigErrorScreenPro
         </ul>
 
         <p className="mt-6 text-xs font-semibold leading-5 text-slate-400">
-          Kiểm tra lại các biến <code className="rounded bg-slate-800 px-1.5 py-0.5">VITE_AUTH_PROVIDER</code>,{" "}
-          <code className="rounded bg-slate-800 px-1.5 py-0.5">VITE_APP_ENV</code>,{" "}
-          <code className="rounded bg-slate-800 px-1.5 py-0.5">VITE_USE_DEMO_DATA</code> và{" "}
-          <code className="rounded bg-slate-800 px-1.5 py-0.5">VITE_ENABLE_MOCK_FALLBACK</code> trong file cấu hình môi trường
-          (xem <code className="rounded bg-slate-800 px-1.5 py-0.5">frontend/.env.example</code>) rồi build lại.
+          Kiểm tra lại <code className="rounded bg-slate-800 px-1.5 py-0.5">VITE_APP_ENV</code>,{" "}
+          <code className="rounded bg-slate-800 px-1.5 py-0.5">VITE_API_BASE_URL</code> và cấu hình Microsoft trong{" "}
+          <code className="rounded bg-slate-800 px-1.5 py-0.5">frontend/.env.example</code>, rồi build lại.
         </p>
       </section>
     </main>

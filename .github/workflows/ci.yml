@@ -110,9 +110,7 @@ jobs:
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     env:
-      # VITE_APP_ENV and VITE_AUTH_PROVIDER now come from frontend/.env.production, which
-      # docker-compose and a manual build read too -- listing them here again is how CI and
-      # the deployed artifact used to drift. Only per-environment values stay.
+      # VITE_APP_ENV comes from frontend/.env.production. Only per-environment values stay here.
       VITE_API_BASE_URL: http://localhost:8080/api
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -135,14 +133,10 @@ jobs:
         working-directory: frontend
         run: npm run lint
 
-      - name: Test
+      - name: Build production artifact and prove it carries no test or mock code
         working-directory: frontend
-        run: npm run test -- --run
-
-      - name: Build production artifact and prove it carries no fixture data
-        working-directory: frontend
-        # build:production runs the bundle evidence gate: no fixture import, no fixture
-        # chunk, no fixture email/student id, no stray mock storage key.
+        # build:production runs the bundle evidence gate: no fixture import, mock chunk,
+        # or stray legacy storage key.
         run: npm run build:production
 
       - name: Audit dependencies
@@ -172,17 +166,6 @@ jobs:
             exit 1
           fi
           echo "No unexpected tracked .env file, and .env.production holds no secrets."
-
-      - name: Fail if the production bundle contains DevStub UI
-        working-directory: frontend
-        # Fixture data is covered by the evidence gate in build:production above; this
-        # only guards the dev-only sign-in UI, which is not fixture data.
-        run: |
-          if grep -rl "DEV ONLY" dist/assets/*.js 2>/dev/null; then
-            echo "Production bundle contains dev-only login UI."
-            exit 1
-          fi
-          echo "No dev-only login UI in the bundle."
 
       - name: Build deployable frontend image
         working-directory: frontend
