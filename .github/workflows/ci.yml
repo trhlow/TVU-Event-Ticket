@@ -171,6 +171,17 @@ jobs:
           fi
           echo "No unexpected tracked .env file, and .env.production holds no secrets."
 
+      - name: Fail if the production bundle contains DevStub UI
+        working-directory: frontend
+        # Fixture data is covered by the evidence gate in build:production above; this
+        # only guards the dev-only sign-in UI, which is not fixture data.
+        run: |
+          if grep -rl "DEV ONLY" dist/assets/*.js 2>/dev/null; then
+            echo "Production bundle contains dev-only login UI."
+            exit 1
+          fi
+          echo "No dev-only login UI in the bundle."
+
       - name: Build deployable frontend image
         working-directory: frontend
         run: docker build -t tvu/frontend:ci .
