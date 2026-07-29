@@ -27,8 +27,14 @@ compose_file="$deployment_dir/compose.yaml"
 restore=0
 [[ "${1:-}" == "--restore" ]] && restore=1
 
-# shellcheck disable=SC1090
-set -a; source "$env_file"; set +a
+# The path is only known at deploy time, so shellcheck cannot follow it -- source=/dev/null says
+# "do not try" rather than suppressing a finding. Directive must sit immediately above the `source`:
+# on the previous one-line form (`set -a; source ...; set +a`) it attached to `set -a` instead and
+# did nothing, which is why this warning survived a suppression that looked correct.
+set -a
+# shellcheck source=/dev/null
+source "$env_file"
+set +a
 
 if [[ $restore -eq 0 ]]; then
   : "${SMTP_STANDBY_HOST:?SMTP_STANDBY_HOST is not set — there is no standby to fail over to}"
