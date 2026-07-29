@@ -15,11 +15,19 @@ interface ClubRequest {
   description?: string;
 }
 
+// Backend has no dedicated club-code field (ClubResponse carries no `code`). Deriving one from the
+// name broke on Vietnamese diacritics/whitespace and collided whenever two clubs shared a prefix.
+// Fall back to a stable id-derived tag instead — it's still a client-side placeholder, but at least
+// unique and unaffected by renames.
+function deriveClubCode(id: string): string {
+  return id.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase() || "CLB";
+}
+
 function mapClub(response: ClubResponse): Club {
   return {
     id: response.id,
     name: response.name,
-    code: response.name.slice(0, 8).toUpperCase(),
+    code: deriveClubCode(response.id),
     description: response.description || "",
     status: response.status,
     createdAt: response.createdAt,
@@ -56,14 +64,17 @@ export const clubService = {
         method: "POST",
         body: JSON.stringify(data),
       })),
-      () => ({
-        id: `club_${Date.now()}`,
-        name: data.name,
-        code: data.name.slice(0, 8).toUpperCase(),
-        description: data.description || "",
-        status: "ACTIVE",
-        createdAt: new Date().toISOString(),
-      }),
+      () => {
+        const id = `club_${Date.now()}`;
+        return {
+          id,
+          name: data.name,
+          code: deriveClubCode(id),
+          description: data.description || "",
+          status: "ACTIVE",
+          createdAt: new Date().toISOString(),
+        };
+      },
     );
   },
   async update(clubId: string, data: ClubRequest): Promise<Club> {

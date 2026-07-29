@@ -24,6 +24,7 @@ interface EventResponse {
 interface EventRequest {
   title: string;
   description?: string;
+  bannerUrl?: string;
   capacity: number;
   registrationOpenAt: string;
   registrationCloseAt: string;
@@ -41,7 +42,7 @@ interface AvailabilityResponse {
 
 type EventPayload = Partial<Event>;
 
-function mapRemoteEvent(event: EventResponse, availability?: AvailabilityResponse): Event {
+function mapRemoteEvent(event: EventResponse, availability?: AvailabilityResponse, availabilityUnknown = false): Event {
   return {
     id: event.id,
     clubId: event.clubId,
@@ -58,6 +59,7 @@ function mapRemoteEvent(event: EventResponse, availability?: AvailabilityRespons
     registrationCloseAt: event.registrationCloseAt,
     capacity: availability?.totalCapacity ?? event.capacity,
     remainingTickets: availability?.remaining ?? event.capacity,
+    availabilityUnknown: !availability && availabilityUnknown,
     status: event.status,
   };
 }
@@ -66,6 +68,7 @@ function toEventRequest(data: EventPayload): EventRequest {
   return {
     title: data.title?.trim() || "",
     description: data.description?.trim() || "",
+    bannerUrl: data.bannerUrl?.trim() || "",
     capacity: Number(data.capacity || 0),
     registrationOpenAt: toInstant(data.registrationOpenAt),
     registrationCloseAt: toInstant(data.registrationCloseAt),
@@ -80,14 +83,16 @@ function toInstant(value?: string): string {
   return new Date(value).toISOString();
 }
 
-async function loadAvailability(eventIds: string[]): Promise<Map<string, AvailabilityResponse>> {
-  if (eventIds.length === 0) return new Map();
+async function loadAvailability(eventIds: string[]): Promise<{ data: Map<string, AvailabilityResponse>; failed: boolean }> {
+  if (eventIds.length === 0) return { data: new Map(), failed: false };
   try {
     const params = encodeURIComponent(eventIds.slice(0, 100).join(","));
     const response = await apiRequest<Record<string, AvailabilityResponse>>(`/ticketing/events/availability?ids=${params}`);
-    return new Map(Object.entries(response));
+    return { data: new Map(Object.entries(response)), failed: false };
   } catch {
-    return new Map();
+    // Surface the failure so callers can mark remainingTickets as unverified instead of
+    // silently presenting the fallback (event.capacity) as if it were the real vé count.
+    return { data: new Map(), failed: true };
   }
 }
 
@@ -110,7 +115,7 @@ export const eventService = {
       async () => {
         const events = await apiRequest<EventResponse[]>("/events");
         const availability = await loadAvailability(events.map((event) => event.id));
-        return events.map((event) => mapRemoteEvent(event, availability.get(event.id)));
+        return events.map((event) => mapRemoteEvent(event, availability.data.get(event.id), availability.failed));
       },
       () => getEvents(),
     );
@@ -130,7 +135,7 @@ export const eventService = {
         void clubId;
         const events = await apiRequest<EventResponse[]>("/events/mine");
         const availability = await loadAvailability(events.map((event) => event.id));
-        return events.map((event) => mapRemoteEvent(event, availability.get(event.id)));
+        return events.map((event) => mapRemoteEvent(event, availability.data.get(event.id), availability.failed));
       },
       () => getEvents().filter((event) => event.clubId === clubId),
     );
@@ -143,7 +148,7 @@ export const eventService = {
       async () => {
         const event = await apiRequest<EventResponse>(`/events/${eventId}`);
         const availability = await loadAvailability([event.id]);
-        return mapRemoteEvent(event, availability.get(event.id));
+        return mapRemoteEvent(event, availability.data.get(event.id), availability.failed);
       },
       () => getEvents().find((event) => event.id === eventId),
     );

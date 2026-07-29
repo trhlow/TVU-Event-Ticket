@@ -5,6 +5,7 @@ import DataTable from "../../components/common/DataTable";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import Dialog from "../../components/common/Dialog";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { useToast } from "../../hooks/useToast";
 import { Reservation } from "../../types/reservation";
@@ -15,6 +16,7 @@ export default function OrganizerReservationsPage() {
   const { showToast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [pendingAction, setPendingAction] = useState<{ id: string; type: "APPROVE" | "REJECT" } | null>(null);
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   // The pending-queue endpoint drops a reservation the moment it's approved/rejected, so there's
   // no server-side count to show for "processed" — this tracks it locally for this page visit only.
@@ -77,7 +79,11 @@ export default function OrganizerReservationsPage() {
       className: "text-right",
       accessor: (reservation: Reservation) => (
         <div className="flex justify-end gap-2">
-          <button className="btn-press grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50" title="Xem chi tiết">
+          <button
+            onClick={() => setSelectedReservation(reservation)}
+            className="btn-press grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+            title="Xem chi tiết"
+          >
             <Eye className="h-4 w-4" />
           </button>
           {reservation.status === "PENDING" && (
@@ -112,6 +118,58 @@ export default function OrganizerReservationsPage() {
       ) : (
         <DataTable data={reservations} columns={columns} searchPlaceholder="Tìm sinh viên, MSSV, email..." searchField={(row) => `${row.studentName} ${row.mssv} ${row.email}`} />
       )}
+
+      <Dialog
+        isOpen={!!selectedReservation}
+        onClose={() => setSelectedReservation(null)}
+        title="Chi tiết đăng ký"
+        footer={
+          <button
+            onClick={() => setSelectedReservation(null)}
+            className="btn-press min-h-11 w-full rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700"
+          >
+            Đóng
+          </button>
+        }
+      >
+        {selectedReservation && (
+          <div className="space-y-3 text-xs font-semibold text-slate-600">
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Sinh viên</span>
+              <span className="text-right font-extrabold text-slate-950">{selectedReservation.studentName || selectedReservation.email}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Email</span>
+              <span className="text-right font-bold text-slate-900">{selectedReservation.email}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">MSSV</span>
+              <span className="text-right font-mono font-bold text-slate-900">{selectedReservation.mssv || "N/A"}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Lớp</span>
+              <span className="text-right font-bold text-slate-900">{selectedReservation.className || "N/A"}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Sự kiện</span>
+              <span className="text-right font-bold text-slate-900">{selectedReservation.eventTitle || "N/A"}</span>
+            </div>
+            <div className="flex justify-between gap-4">
+              <span className="text-slate-400">Thời gian gửi</span>
+              <span className="text-right font-bold text-slate-900">{formatDateTime(selectedReservation.createdAt)}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-slate-400">Trạng thái</span>
+              <StatusBadge type="reservation" status={selectedReservation.status} />
+            </div>
+            {selectedReservation.rejectReason && (
+              <div className="rounded-xl border border-danger-100 bg-danger-50 p-3 text-danger-700">
+                Lý do từ chối: {selectedReservation.rejectReason}
+              </div>
+            )}
+          </div>
+        )}
+      </Dialog>
 
       {pendingAction && (
         <ConfirmModal

@@ -5,6 +5,7 @@ import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import DetailDrawer from "../../components/common/DetailDrawer";
 import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
+import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { useToast } from "../../hooks/useToast";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
@@ -38,10 +39,14 @@ export default function MyTicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [eventsById, setEventsById] = useState<Record<string, Event>>({});
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const { showToast } = useToast();
 
   useEffect(() => {
     let mounted = true;
+    setIsLoading(true);
+    setLoadFailed(false);
     ticketService.listRemote()
       .then((items) => {
         if (mounted) setTickets(items);
@@ -52,7 +57,13 @@ export default function MyTicketsPage() {
         setEventsById(Object.fromEntries(events.filter((event): event is Event => Boolean(event)).map((event) => [event.id, event])));
       })
       .catch((error) => {
-        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải ví vé.", "error");
+        if (mounted) {
+          setLoadFailed(true);
+          showToast(error instanceof Error ? error.message : "Không thể tải ví vé.", "error");
+        }
+      })
+      .finally(() => {
+        if (mounted) setIsLoading(false);
       });
     return () => {
       mounted = false;
@@ -70,7 +81,11 @@ export default function MyTicketsPage() {
         description="Vé xuất hiện sau khi Ban tổ chức duyệt đăng ký và hệ thống cấp mã vé."
       />
 
-      {tickets.length > 0 ? (
+      {isLoading ? (
+        <LoadingSkeleton type="card" count={2} />
+      ) : loadFailed ? (
+        <EmptyState icon={TicketIcon} title="Không thể tải ví vé" description="Đã xảy ra lỗi khi tải danh sách vé. Vui lòng tải lại trang." />
+      ) : tickets.length > 0 ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {tickets.map((ticket) => (
             <TicketCard key={ticket.id} ticket={ticket} event={eventFor(ticket)} onViewQR={setSelectedTicketId} />
@@ -83,14 +98,20 @@ export default function MyTicketsPage() {
       <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
         <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
         <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-          Mã QR của mỗi vé được gửi qua email ngay khi vé được duyệt. Trang này chưa hỗ trợ hiển thị lại mã QR — vui lòng kiểm tra email nếu cần xuất trình mã khi check-in.
+          Mã QR tự động hiển thị trong thẻ vé bên dưới ngay khi Ban tổ chức duyệt đăng ký. Nếu vé chưa
+          có mã QR để hiển thị, hệ thống đã gửi mã qua email — vui lòng kiểm tra hộp thư của bạn.
         </p>
       </div>
 
       {activeTicket && activeEvent && (
         <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thông tin vé">
           <div className="p-1">
-            <QRDisplayCard ticket={activeTicket} event={activeEvent} onDownload={() => showToast("Mã QR được gửi qua email, chưa hỗ trợ tải trực tiếp tại đây.", "info")} />
+            <QRDisplayCard
+              ticket={activeTicket}
+              event={activeEvent}
+              onDownload={() => showToast("Mã QR được gửi qua email, chưa hỗ trợ tải trực tiếp tại đây.", "info")}
+              onPrint={() => window.print()}
+            />
           </div>
         </DetailDrawer>
       )}

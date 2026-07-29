@@ -25,7 +25,7 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
         }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      <div className={isAdmin ? "grid gap-6" : "grid gap-6 lg:grid-cols-[1fr_320px]"}>
         <section className="enterprise-card p-6">
           <div className="border-b border-slate-100 pb-4">
             <h2 className="section-heading">Thông tin định danh</h2>
@@ -68,23 +68,23 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
           </div>
         </section>
 
-        <aside className="enterprise-card h-fit p-5">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-info-50 text-brand-700">
-            <Building2 className="h-6 w-6" aria-hidden="true" />
-          </div>
-          <h2 className="mt-4 font-display text-base font-semibold text-slate-950">{isAdmin ? "Phạm vi quản trị" : "Câu lạc bộ phụ trách"}</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-            {isAdmin
-              ? "Tài khoản này có quyền quản trị toàn hệ thống, xem audit logs, quản lý CLB và tài khoản Ban tổ chức."
-              : `${user.clubName || "CLB được phân công"}: chỉ thao tác với sự kiện, đăng ký, vé QR và check-in thuộc phạm vi CLB của mình.`}
-          </p>
-          <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Bảo mật</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
-              Hệ thống dùng phiên đăng nhập từ máy chủ. Không lưu JWT trong localStorage hoặc sessionStorage ở frontend.
+        {!isAdmin && (
+          <aside className="enterprise-card h-fit p-5">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-info-50 text-brand-700">
+              <Building2 className="h-6 w-6" aria-hidden="true" />
+            </div>
+            <h2 className="mt-4 font-display text-base font-semibold text-slate-950">Câu lạc bộ phụ trách</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+              {`${user.clubName || "CLB được phân công"}: chỉ thao tác với sự kiện, đăng ký, vé QR và check-in thuộc phạm vi CLB của mình.`}
             </p>
-          </div>
-        </aside>
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Bảo mật</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+                Hệ thống dùng phiên đăng nhập từ máy chủ. Không lưu JWT trong localStorage hoặc sessionStorage ở frontend.
+              </p>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

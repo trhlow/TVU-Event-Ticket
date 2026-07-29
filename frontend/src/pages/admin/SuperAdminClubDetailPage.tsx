@@ -21,13 +21,12 @@ import { Event } from '../../types/event';
 
 const EVENT_STATUS_LABELS: Record<string, string> = { DRAFT: 'Bản nháp', OPEN: 'Đang mở', CLOSED: 'Đã đóng' };
 
-type TabKey = 'overview' | 'members' | 'events' | 'logs';
+type TabKey = 'overview' | 'members' | 'events';
 
 const TABS: Array<[TabKey, string]> = [
   ['overview', 'Tổng quan'],
   ['members', 'Thành viên'],
   ['events', 'Sự kiện'],
-  ['logs', 'Nhật ký thao tác'],
 ];
 
 export default function SuperAdminClubDetailPage() {
@@ -248,11 +247,6 @@ export default function SuperAdminClubDetailPage() {
         )
       )}
 
-      {activeTab === 'logs' && (
-        <BackendPendingNotice
-          description="Hệ thống chưa hỗ trợ xem nhật ký thao tác lọc riêng theo từng CLB."
-        />
-      )}
     </div>
   );
 }

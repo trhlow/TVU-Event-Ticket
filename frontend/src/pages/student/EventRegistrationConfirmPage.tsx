@@ -80,6 +80,12 @@ export default function EventRegistrationConfirmPage() {
       return;
     }
 
+    const now = new Date();
+    if (now < new Date(event.registrationOpenAt) || now > new Date(event.registrationCloseAt)) {
+      showToast('Đã ngoài thời gian cho phép đăng ký sự kiện này.', 'error');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const currentReservations = await registrationService.listByStudentRemote(currentUser.id);

@@ -15,6 +15,8 @@ function homePathForRole(role: User["role"]): string {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const redirectTarget = (location.state as { from?: string } | null)?.from;
+  const resolveDestination = (role: User["role"]) => redirectTarget || homePathForRole(role);
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,6 +25,7 @@ export default function LoginPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -40,7 +43,7 @@ export default function LoginPage() {
     void authService
       .me()
       .then((user) => {
-        if (user) navigate(homePathForRole(user.role), { replace: true });
+        if (user) navigate(resolveDestination(user.role), { replace: true });
       })
       .catch(() => {
         setErrorMsg("Không thể xác minh phiên đăng nhập. Vui lòng thử lại.");
@@ -52,7 +55,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const user = await authService.loginWithMicrosoft();
-      navigate(homePathForRole(user.role), { replace: true });
+      navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập bằng Microsoft. Vui lòng thử lại.");
       setIsSubmitting(false);
@@ -84,8 +87,8 @@ export default function LoginPage() {
     setErrorMsg("");
     setIsSubmitting(true);
     try {
-      const user = await authService.verifyOtp(adminEmail, otpCode, false);
-      navigate(homePathForRole(user.role), { replace: true });
+      const user = await authService.verifyOtp(adminEmail, otpCode, rememberDevice);
+      navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Mã không đúng hoặc đã hết hạn. Vui lòng thử lại.");
       setIsSubmitting(false);
@@ -106,7 +109,7 @@ export default function LoginPage() {
       // Role is never chosen here — it is whatever role the backend already assigned to this
       // email, read back from GET /auth/me after login (see authService.loginWithDevStub).
       const user = await authService.loginWithDevStub(devCredential, devDisplayName);
-      navigate(homePathForRole(user.role), { replace: true });
+      navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập thử nghiệm. Vui lòng thử lại.");
       setIsSubmitting(false);
@@ -172,7 +175,11 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-3">
+              <label htmlFor="login-otp" className="block text-xs font-bold text-slate-700">
+                Mã đăng nhập (OTP)
+              </label>
               <input
+                id="login-otp"
                 type="text"
                 inputMode="numeric"
                 pattern="\d{6}"
@@ -183,6 +190,15 @@ export default function LoginPage() {
                 className="tvu-input min-h-11 rounded-lg text-center text-lg font-bold tracking-[0.3em]"
                 autoComplete="one-time-code"
               />
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={rememberDevice}
+                  onChange={(event) => setRememberDevice(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Ghi nhớ thiết bị này (duy trì phiên đăng nhập lâu hơn)
+              </label>
               <button
                 type="submit"
                 disabled={isSubmitting}

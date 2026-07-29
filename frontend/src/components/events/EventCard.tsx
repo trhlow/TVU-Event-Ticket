@@ -55,7 +55,11 @@ export default function EventCard({
           </div>
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-brand-600" />
-            <span>Còn {event.remainingTickets}/{event.capacity} vé</span>
+            <span>
+              {event.availabilityUnknown
+                ? "Số vé còn lại: không xác định"
+                : `Còn ${event.remainingTickets}/${event.capacity} vé`}
+            </span>
           </div>
         </div>
 
@@ -73,7 +77,7 @@ export default function EventCard({
           <div>
             <p className="text-[10px] font-bold uppercase text-slate-400">Trạng thái vé</p>
             <p className={`mt-1 text-sm font-bold ${isSoldOut ? "text-amber-700" : "text-emerald-600"}`}>
-              {isSoldOut ? "Hết vé" : `${event.remainingTickets} vé còn lại`}
+              {event.availabilityUnknown ? "Không xác định" : isSoldOut ? "Hết vé" : `${event.remainingTickets} vé còn lại`}
             </p>
           </div>
           <div className="flex gap-2">

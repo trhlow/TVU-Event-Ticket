@@ -42,8 +42,16 @@ export default function OrganizerRegistrationQRPage() {
   const registrationLink = event ? `${window.location.origin}/student/events/${event.id}/register` : "";
 
   const copyLink = async () => {
-    await navigator.clipboard?.writeText(registrationLink);
-    showToast("Đã sao chép liên kết đăng ký sự kiện.");
+    if (!navigator.clipboard) {
+      showToast("Trình duyệt không hỗ trợ sao chép tự động. Vui lòng bôi đen và sao chép liên kết thủ công.", "error");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(registrationLink);
+      showToast("Đã sao chép liên kết đăng ký sự kiện.");
+    } catch {
+      showToast("Không thể sao chép liên kết (trình duyệt từ chối quyền truy cập clipboard).", "error");
+    }
   };
 
   return (

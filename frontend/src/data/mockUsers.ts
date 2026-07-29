@@ -5,7 +5,7 @@ export const mockUsers: User[] = [
   {
     id: 'user_admin_1',
     fullName: 'Trần Phú Định',
-    email: 'tranphudinh2405@gmail.com',
+    email: 'admin@tvu.edu.vn',
     role: 'SUPER_ADMIN',
     profileComplete: true,
     status: 'ACTIVE',

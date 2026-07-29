@@ -1,7 +1,9 @@
-﻿import React, { useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 import { QrCode, Search, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
 import { Ticket } from "../../types/ticket";
 import { Event } from "../../types/event";
+import { apiConfig } from "../../services/apiClient";
 
 interface QRScannerPanelProps {
   tickets: Ticket[];
@@ -21,11 +23,17 @@ export default function QRScannerPanel({
     success: boolean;
     message: string;
   } | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Guards against the rAF decode loop firing onCheckIn again for the same QR while the previous
+  // check-in request is still in flight, and lets the same code be re-scanned once it resolves.
+  const isProcessingRef = useRef(false);
 
-  // Danh sách vé hợp lệ giúp thao tác nhanh khi thiết bị quét chưa sẵn sàng.
-  const pendingTickets = tickets.filter(
-    (t) => t.status === "VALID" && t.checkInStatus === "PENDING",
-  );
+  // Danh sách vé hợp lệ chỉ dùng để thao tác nhanh trong môi trường demo — backend thật không trả
+  // về payload QR đã ký cho attendee list, nên mã hiển thị ở đây (ticketCode) không phải QR thật.
+  const pendingTickets = apiConfig.useDemoData
+    ? tickets.filter((t) => t.status === "VALID" && t.checkInStatus === "PENDING")
+    : [];
 
   const handleScanSubmit = async (codeToScan: string) => {
     const code = codeToScan || ticketCode;
@@ -35,6 +43,58 @@ export default function QRScannerPanel({
     setScanResult(result);
     setTicketCode("");
   };
+
+  useEffect(() => {
+    if (cameraPermission !== "granted") return;
+    let stream: MediaStream | null = null;
+    let rafId = 0;
+    let cancelled = false;
+
+    async function startScanning() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      } catch {
+        return;
+      }
+      if (cancelled || !videoRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play().catch(() => undefined);
+
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d", { willReadFrequently: true });
+
+      const tick = () => {
+        if (cancelled) return;
+        const video = videoRef.current;
+        if (video && canvas && context && video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (code?.data && !isProcessingRef.current) {
+            isProcessingRef.current = true;
+            void onCheckIn(code.data).then((result) => {
+              setScanResult(result);
+              isProcessingRef.current = false;
+            });
+          }
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    }
+
+    void startScanning();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [cameraPermission, onCheckIn]);
 
   const getEventTitle = (eventId: string) => {
     return events.find((e) => e.id === eventId)?.title || "Sự kiện không xác định";
@@ -79,21 +139,24 @@ export default function QRScannerPanel({
               </div>
             )}
 
+            <video
+              ref={videoRef}
+              muted
+              playsInline
+              className={`absolute inset-0 h-full w-full object-cover ${cameraPermission === "granted" ? "" : "hidden"}`}
+            />
+            <canvas ref={canvasRef} className="hidden" />
+
             {cameraPermission === "granted" && (
               <>
                 {/* Visual camera guides */}
-                <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-brand-500"></div>
-                <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-brand-500"></div>
-                <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-brand-500"></div>
-                <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-brand-500"></div>
-
-                <QrCode className="w-16 h-16 text-gray-700/80 mb-3" />
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest block leading-none">
-                  MÁY QUÉT SẴN SÀNG
-                </span>
+                <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-brand-500 z-10"></div>
+                <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-brand-500 z-10"></div>
+                <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-brand-500 z-10"></div>
+                <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-brand-500 z-10"></div>
 
                 {/* Scanning line animation */}
-                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 animate-scan-line top-1/2"></div>
+                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 animate-scan-line top-1/2 z-10"></div>
               </>
             )}
           </div>
@@ -125,12 +188,14 @@ export default function QRScannerPanel({
           </div>
         </>
 
-        {/* Manual check-in helper panel */}
+        {/* Manual check-in helper panel — demo-mode only: production check-in has no way to know
+            the signed QR payload of a pending ticket ahead of a real scan, so this shortcut would
+            be misleading (clicking it would not send a valid payload) outside demo data. */}
+        {apiConfig.useDemoData && (
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 text-xs font-semibold text-amber-900 space-y-2">
             <p className="font-extrabold flex items-center gap-1">
-              <AlertCircle className="w-4 h-4 text-amber-600" /> Công cụ hỗ trợ nhập
-              mã:
+              <AlertCircle className="w-4 h-4 text-amber-600" /> Công cụ hỗ trợ nhập mã (chỉ môi trường demo):
             </p>
             <p className="text-[11px] text-amber-800 leading-relaxed font-semibold">
               Nhấp trực tiếp vào danh sách vé hợp lệ dưới đây để kiểm tra phản hồi
@@ -171,6 +236,7 @@ export default function QRScannerPanel({
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Result feedback message */}

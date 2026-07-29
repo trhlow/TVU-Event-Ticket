@@ -21,6 +21,7 @@ export default function StudentEventDetailPage() {
   const [event, setEvent] = useState<Event | undefined>();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [reservationHistoryFailed, setReservationHistoryFailed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -29,13 +30,18 @@ export default function StudentEventDetailPage() {
       if (!eventId) return;
       setIsLoading(true);
       try {
+        let historyFailed = false;
         const [eventData, reservationData] = await Promise.all([
           eventService.getPublicEventById(eventId),
-          registrationService.listByStudentRemote(currentUser.id).catch(() => [] as Reservation[]),
+          registrationService.listByStudentRemote(currentUser.id).catch(() => {
+            historyFailed = true;
+            return [] as Reservation[];
+          }),
         ]);
         if (!mounted) return;
         setEvent(eventData);
         setReservations(reservationData);
+        setReservationHistoryFailed(historyFailed);
       } catch (error) {
         if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải chi tiết sự kiện.", "error");
       } finally {
@@ -82,6 +88,10 @@ export default function StudentEventDetailPage() {
   }
 
   const isSoldOut = event.remainingTickets <= 0 || event.status === "FULL";
+  const now = new Date();
+  const isWithinRegistrationWindow =
+    now >= new Date(event.registrationOpenAt) && now <= new Date(event.registrationCloseAt);
+  const canRegister = event.status === "OPEN" && !isSoldOut && isWithinRegistrationWindow;
 
   return (
     <div className="space-y-6 text-left">
@@ -144,9 +154,14 @@ export default function StudentEventDetailPage() {
               <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Tình trạng vé</span>
               <div className="mt-2 flex items-baseline gap-2">
                 <span className={`text-2xl font-black ${isSoldOut ? "text-danger-600" : "text-success-600"}`}>
-                  {isSoldOut ? "HẾT VÉ" : event.remainingTickets}
+                  {event.availabilityUnknown ? "?" : isSoldOut ? "HẾT VÉ" : event.remainingTickets}
                 </span>
-                {!isSoldOut && <span className="text-xs font-bold text-slate-500">vé khả dụng / {event.capacity} chỗ</span>}
+                {!isSoldOut && !event.availabilityUnknown && (
+                  <span className="text-xs font-bold text-slate-500">vé khả dụng / {event.capacity} chỗ</span>
+                )}
+                {event.availabilityUnknown && (
+                  <span className="text-xs font-bold text-slate-500">không xác định số vé còn lại</span>
+                )}
               </div>
             </div>
 
@@ -190,9 +205,14 @@ export default function StudentEventDetailPage() {
                     </Link>
                   )}
                 </div>
+              ) : reservationHistoryFailed ? (
+                <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                  <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
+                  <span>Không thể xác định bạn đã đăng ký sự kiện này hay chưa (lỗi tải dữ liệu). Vui lòng tải lại trang trước khi đăng ký để tránh gửi trùng.</span>
+                </div>
               ) : (
                 <div className="space-y-4">
-                  {event.status === "OPEN" && !isSoldOut ? (
+                  {canRegister ? (
                     <button
                       onClick={handleRegisterClick}
                       className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-xs font-black text-white shadow-sm hover:bg-brand-700"
@@ -201,7 +221,11 @@ export default function StudentEventDetailPage() {
                     </button>
                   ) : (
                     <button disabled className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3 text-xs font-black text-slate-400">
-                      {isSoldOut ? "Hết vé tham dự" : "Sự kiện hiện không mở đăng ký"}
+                      {isSoldOut
+                        ? "Hết vé tham dự"
+                        : event.status !== "OPEN"
+                          ? "Sự kiện hiện không mở đăng ký"
+                          : "Ngoài thời gian cho phép đăng ký"}
                     </button>
                   )}
 

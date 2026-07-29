@@ -78,14 +78,14 @@ export const registrationService = {
       () => getReservations().filter((reservation) => reservation.status === "PENDING"),
     );
   },
-  async submit(data: Pick<Reservation, "eventId">): Promise<Reservation> {
+  async submit(data: Pick<Reservation, "eventId"> & { note?: string }): Promise<Reservation> {
     return withReservationFallback(
       async () => mapReservation(await apiRequest<ReservationResponse>("/reservations", {
         method: "POST",
         headers: {
           "Idempotency-Key": createRequestId(),
         },
-        body: JSON.stringify({ eventId: data.eventId }),
+        body: JSON.stringify({ eventId: data.eventId, note: data.note }),
       })),
       () => {
         const reservation = data as Reservation;

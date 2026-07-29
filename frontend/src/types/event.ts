@@ -12,5 +12,7 @@ export interface Event {
   registrationCloseAt: string;
   capacity: number;
   remainingTickets: number;
+  /** True when the ticket-availability lookup failed and remainingTickets is a fallback, not real data. */
+  availabilityUnknown?: boolean;
   status: 'DRAFT' | 'OPEN' | 'UPCOMING' | 'CLOSED' | 'FULL' | 'ENDED';
 }
