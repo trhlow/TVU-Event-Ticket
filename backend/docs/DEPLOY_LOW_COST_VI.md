@@ -29,9 +29,11 @@ Việc cần làm tiếp, theo thứ tự:
    **SPA**: `https://evts.id.vn` (nếu chưa khai đúng giá trị này).
 4. Vào Brevo → Senders & Domains → thêm domain `evts.id.vn`, tạo các bản ghi
    DNS (DKIM/SPF) mà Brevo yêu cầu, để gửi được từ `no-reply@evts.id.vn`.
-5. Làm theo PRODUCTION_DEPLOYMENT_VI.md mục 2–8 trên VPS. Khi chạy
-   `generate-env.sh`, truyền đúng: domain `evts.id.vn`, client ID và tenant ID
-   ở bảng trên; sau đó điền SMTP Brevo vào `.env`.
+5. Làm theo PRODUCTION_DEPLOYMENT_VI.md mục 2–8 trên VPS. `generate-env.sh` chỉ
+   nhận **hai** tham số — domain `evts.id.vn` và danh sách email admin. Client ID
+   và tenant ID được đọc từ `frontend/.env.production` chứ không nhập tay nữa,
+   nên bảng trên là nguồn để *điền vào file đó*, không phải để gõ vào CLI. Sau đó
+   điền SMTP Brevo vào `.env`.
 
 > **Bảo mật SMTP key**: key Brevo đã từng được gửi qua chat trong lúc trao
 > đổi. Trước ngày demo, vào Brevo tạo SMTP key mới, cập nhật `.env` trên
@@ -187,7 +189,8 @@ Chuẩn bị tài khoản (làm song song được, tổng ~1–2 buổi):
 
 Sau đó làm theo **PRODUCTION_DEPLOYMENT_VI.md từ mục 2 đến mục 8** trên VPS:
 firewall → cài Docker → clone repo đúng commit SHA đã qua CI → chạy
-`scripts/generate-env.sh <domain> <email> <client-id> <tenant-id>` → điền SMTP
+`scripts/generate-env.sh <domain> <emails>` (client/tenant ID đọc từ
+`frontend/.env.production`) → điền SMTP
 Brevo vào `.env` → `scripts/preflight.sh` → `scripts/deploy.sh` → chạy
 checklist nghiệm thu chức năng.
 

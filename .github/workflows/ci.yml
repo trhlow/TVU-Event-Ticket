@@ -172,9 +172,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    env:
-      # VITE_APP_ENV comes from frontend/.env.production. Only per-environment values stay here.
-      VITE_API_BASE_URL: http://localhost:8080/api
+    # No job-level VITE_* here, deliberately. Vite gives an actual environment variable precedence
+    # over .env.production, so a value set at this level reached `npm run build:production` and the
+    # bundle the evidence gate inspected was built with it -- while the image built two steps later
+    # never saw it and baked the value from the tracked file instead. CI was verifying one bundle
+    # and shipping another, which is the specific thing H10 exists to prevent.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -260,6 +262,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Test the frontend config canonicaliser
+        # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
+        # refuse an image built for a different environment, and its first version returned the hash
+        # of the empty string with exit 0 when python3 was unusable -- a check that could not fail.
+        # Executed here so a regression cannot merge.
+        run: bash backend/infra/production/scripts/frontend-config.test.sh
 
       - name: Lint deployment and operations scripts
         # These scripts run on the production host with set -euo pipefail and no one watching. The

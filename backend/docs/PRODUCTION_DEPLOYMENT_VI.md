@@ -100,12 +100,16 @@ Script sau sinh độc lập password cho PostgreSQL, Redis, RabbitMQ, CSRF và 
 
 ```bash
 cd /srv/tvu-event-ticket/backend/infra/production
-bash scripts/generate-env.sh \
-  events.example.com \
-  admin@example.com \
-  MICROSOFT_APPLICATION_CLIENT_ID \
-  MICROSOFT_DIRECTORY_TENANT_ID
+bash scripts/generate-env.sh evts.id.vn chair@tvu.edu.vn,vice@tvu.edu.vn
 ```
+
+Chỉ **hai** tham số. Client ID và tenant ID **không còn nhập tay** — script đọc
+chúng từ `frontend/.env.production` (được Git theo dõi), đúng file mà bundle
+frontend được build ra. Nhập lại ở đây nghĩa là hai nguồn cho một sự thật, và một
+lỗi gõ sẽ tạo ra backend từ chối mọi token frontend lấy được.
+
+Domain truyền vào phải khớp `VITE_MICROSOFT_REDIRECT_URI` trong file đó; lệch thì
+script dừng ngay, vì Entra so redirect URI theo từng byte.
 
 Script không ghi đè `.env` có sẵn. Mở `.env` và thay cấu hình SMTP:
 

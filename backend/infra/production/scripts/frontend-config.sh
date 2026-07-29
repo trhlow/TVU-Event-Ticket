@@ -25,12 +25,19 @@ set -euo pipefail
 # Must be present and non-blank. Everything else beginning with VITE_ is also fingerprinted, so a
 # new variable changes the hash without anyone remembering to add it to a list here.
 readonly FRONTEND_CONFIG_REQUIRED=(
-  VITE_API_BASE_URL
-  VITE_APP_ENV
-  VITE_AUTH_PROVIDER
   VITE_MICROSOFT_CLIENT_ID
   VITE_MICROSOFT_TENANT_ID
   VITE_MICROSOFT_REDIRECT_URI
+)
+
+# Three values are not merely required, they have exactly one correct value in production. Checking
+# only that they are non-empty let a development configuration -- provider devstub, app env
+# development, an API pointed at localhost -- hash cleanly and be published as a production build.
+# A fingerprint over a wrong configuration is stable and useless.
+readonly FRONTEND_CONFIG_EXACT=(
+  "VITE_APP_ENV=production"
+  "VITE_AUTH_PROVIDER=microsoft"
+  "VITE_API_BASE_URL=/api"
 )
 
 # Demo mode was removed, not made configurable. src/lib/env.ts still reads both and refuses to start
@@ -64,6 +71,7 @@ _frontend_config_run() {
 
   python3 - "$mode" "$env_file" \
     "${#FRONTEND_CONFIG_REQUIRED[@]}" "${FRONTEND_CONFIG_REQUIRED[@]}" \
+    "${#FRONTEND_CONFIG_EXACT[@]}" "${FRONTEND_CONFIG_EXACT[@]}" \
     "${FRONTEND_CONFIG_FORBIDDEN[@]}" <<'PYTHON'
 import hashlib
 import json
@@ -73,7 +81,10 @@ import sys
 mode, env_path, required_count, *rest = sys.argv[1:]
 required_count = int(required_count)
 required = rest[:required_count]
-forbidden = rest[required_count:]
+rest = rest[required_count:]
+exact_count = int(rest[0])
+exact = dict(pair.split("=", 1) for pair in rest[1:1 + exact_count])
+forbidden = rest[1 + exact_count:]
 
 GUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
@@ -106,6 +117,18 @@ for key in required:
     value = values.get(key)
     if not value:
         problems.append(f"{key} is missing or blank")
+
+for key, wanted in exact.items():
+    value = values.get(key)
+    if value != wanted:
+        problems.append(f"{key} must be exactly {wanted!r} in a production build, not {value!r}")
+
+for key in values:
+    if not key.startswith("VITE_"):
+        # Vite ignores it, so it never reaches the bundle and never reaches the fingerprint. Left
+        # accepted, it would sit in the file looking like configuration that does something.
+        problems.append(f"{key} is not a VITE_ variable; Vite would ignore it and it would not be "
+                        f"part of the fingerprint")
 
 for key, value in sorted(values.items()):
     if not key.startswith("VITE_"):

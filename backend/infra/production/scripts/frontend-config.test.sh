@@ -145,6 +145,20 @@ expect_failure "demo flag reintroduced" \
 expect_failure "legacy mock fallback flag reintroduced" \
   "$VALID_CONFIG"$'\n''VITE_ENABLE_MOCK_FALLBACK=false' "must not appear"
 
+# Non-empty was the whole check for these three until a review pointed out that a development
+# configuration passes it: provider devstub, app env development, an API pointed at localhost all
+# fingerprint cleanly and stably, and a stable fingerprint over the wrong configuration is worse
+# than none -- it looks like verification.
+expect_failure "development app env" \
+  "${VALID_CONFIG/VITE_APP_ENV=production/VITE_APP_ENV=development}" "must be exactly"
+expect_failure "devstub auth provider" \
+  "${VALID_CONFIG/VITE_AUTH_PROVIDER=microsoft/VITE_AUTH_PROVIDER=devstub}" "must be exactly"
+expect_failure "api base url pointed elsewhere" \
+  "${VALID_CONFIG//VITE_API_BASE_URL=\/api/VITE_API_BASE_URL=http:\/\/localhost:8080\/api}" \
+  "must be exactly"
+expect_failure "key Vite would ignore" \
+  "$VALID_CONFIG"$'\n''NOT_A_VITE_KEY=x' "not a VITE_ variable"
+
 echo
 echo "== missing file"
 rm -f "$workspace/frontend/.env.production"
