@@ -1,20 +1,13 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import { QrCode, Search, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
-import { Ticket } from "../../types/ticket";
-import { Event } from "../../types/event";
-import { useDemoData } from "../../lib/env";
 
 interface QRScannerPanelProps {
-  tickets: Ticket[];
-  events: Event[];
   onCheckIn: (ticketCode: string) => Promise<{ success: boolean; message: string }>;
   cameraPermission: "idle" | "granted" | "denied";
 }
 
 export default function QRScannerPanel({
-  tickets,
-  events,
   onCheckIn,
   cameraPermission,
 }: QRScannerPanelProps) {
@@ -25,15 +18,12 @@ export default function QRScannerPanel({
   } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  // Guards against the rAF decode loop firing onCheckIn again for the same QR while the previous
-  // check-in request is still in flight, and lets the same code be re-scanned once it resolves.
+  // Guards against overlapping onCheckIn calls while a request is in flight.
   const isProcessingRef = useRef(false);
-
-  // Danh sách vé hợp lệ chỉ dùng để thao tác nhanh trong môi trường demo — backend thật không trả
-  // về payload QR đã ký cho attendee list, nên mã hiển thị ở đây (ticketCode) không phải QR thật.
-  const pendingTickets = useDemoData
-    ? tickets.filter((t) => t.status === "VALID" && t.checkInStatus === "PENDING")
-    : [];
+  // Tracks the last decoded value that was submitted so the same QR sitting in frame doesn't get
+  // resubmitted on every animation frame. Cleared as soon as a frame decodes no QR at all, so moving
+  // the ticket out of view (even briefly) is what re-arms scanning — not a fixed timeout.
+  const lastScannedCodeRef = useRef<string | null>(null);
 
   const handleScanSubmit = async (codeToScan: string) => {
     const code = codeToScan || ticketCode;
@@ -75,8 +65,13 @@ export default function QRScannerPanel({
           context.drawImage(video, 0, 0, canvas.width, canvas.height);
           const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
           const code = jsQR(imageData.data, imageData.width, imageData.height);
-          if (code?.data && !isProcessingRef.current) {
+          if (!code?.data) {
+            // Nothing in frame right now — the next QR shown (even if it's the same ticket) counts
+            // as a fresh scan.
+            lastScannedCodeRef.current = null;
+          } else if (!isProcessingRef.current && code.data !== lastScannedCodeRef.current) {
             isProcessingRef.current = true;
+            lastScannedCodeRef.current = code.data;
             void onCheckIn(code.data).then((result) => {
               setScanResult(result);
               isProcessingRef.current = false;
@@ -92,13 +87,10 @@ export default function QRScannerPanel({
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafId);
+      lastScannedCodeRef.current = null;
       stream?.getTracks().forEach((track) => track.stop());
     };
   }, [cameraPermission, onCheckIn]);
-
-  const getEventTitle = (eventId: string) => {
-    return events.find((e) => e.id === eventId)?.title || "Sự kiện không xác định";
-  };
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm max-w-5xl mx-auto text-left space-y-6">
@@ -188,55 +180,6 @@ export default function QRScannerPanel({
           </div>
         </>
 
-        {/* Manual check-in helper panel — demo-mode only: production check-in has no way to know
-            the signed QR payload of a pending ticket ahead of a real scan, so this shortcut would
-            be misleading (clicking it would not send a valid payload) outside demo data. */}
-        {useDemoData && (
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 text-xs font-semibold text-amber-900 space-y-2">
-            <p className="font-extrabold flex items-center gap-1">
-              <AlertCircle className="w-4 h-4 text-amber-600" /> Công cụ hỗ trợ nhập mã (chỉ môi trường demo):
-            </p>
-            <p className="text-[11px] text-amber-800 leading-relaxed font-semibold">
-              Nhấp trực tiếp vào danh sách vé hợp lệ dưới đây để kiểm tra phản hồi
-              tức thời của máy quét mà không cần nhập phím.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
-              Danh sách vé chờ điểm danh ({pendingTickets.length})
-            </span>
-            <div className="border border-gray-100 rounded-xl overflow-hidden max-h-44 overflow-y-auto divide-y divide-gray-100 bg-gray-50/20">
-              {pendingTickets.length > 0 ? (
-                pendingTickets.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => handleScanSubmit(t.ticketCode)}
-                    className="w-full text-left p-2.5 text-[11px] font-semibold hover:bg-brand-50/50 hover:text-brand-900 flex items-center justify-between cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <span className="font-bold text-gray-900 font-mono block">
-                        {t.ticketCode}
-                      </span>
-                      <span className="text-[10px] text-gray-400 mt-0.5 block truncate max-w-[200px]">
-                        {getEventTitle(t.eventId)}
-                      </span>
-                    </div>
-                    <span className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded-md font-bold text-gray-500">
-                      Chọn quét
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <div className="p-4 text-center text-[11px] text-gray-400 font-bold">
-                  Không còn vé nào đang ở trạng thái chờ điểm danh
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-        )}
       </div>
 
       {/* Result feedback message */}
