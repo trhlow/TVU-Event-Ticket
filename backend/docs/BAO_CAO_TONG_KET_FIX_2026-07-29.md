@@ -1,17 +1,38 @@
 # Báo cáo tổng kết — thi công checklist AUTH_OTP_FIX (28–29/07/2026)
 
-Nhánh: `hlow` · 19 commit · 158 file · +8.956 / −1.604 dòng
-Bắt đầu từ `26a9896`, kết thúc ở `d0ce623`.
+Nhánh: `hlow` (local) · phạm vi đợt fix `26a9896..d0ce623`:
+**25 commit · 154 file · +6.050 / −1.634 dòng**.
+(Tính từ `origin/hlow` = `31622c3` thì là 26 commit / 158 file / +8.956 / −1.604
+— khác baseline, đừng trộn hai bộ số.)
+
+> ⛔ **Trạng thái release: ĐỎ — chưa sẵn sàng production.**
+>
+> **Toàn bộ thay đổi mới chỉ tồn tại trên nhánh local.** Chưa push, chưa merge,
+> chưa có lượt CI nào chạy trên các commit này. Tại thời điểm viết:
+> local `hlow` = `8538ad4`, đi trước `origin/hlow` (`31622c3`) **27 commit**;
+> `origin/main` = `8cef2d7`. Mọi con số test dưới đây là kết quả chạy trên máy
+> local, **không phải** trạng thái GitHub hay production.
 
 ---
 
 ## 1. Tóm tắt trong một đoạn
 
 Checklist `AUTH_OTP_FIX_CHECKLIST_VI.md` có 32 mục (3 Critical, 14 High,
-14 Medium, 1 Low). Tôi đã làm **28 mục**, còn **4 mục chưa làm** — tất cả đều
-được nêu rõ ở mục 5, không mục nào bị bỏ lặng lẽ. Toàn bộ test đang xanh:
-backend **326 pass / 0 fail / 0 skipped**, frontend **100 pass**, lint và
-typecheck sạch, cổng kiểm tra bundle đạt 4/4.
+14 Medium, 1 Low). **29 mục đã có implementation, code hoặc tài liệu** — nhưng
+theo đúng tiêu chí đóng mục của chính checklist thì con số phân rã là:
+
+- **21 mục đóng hoàn toàn.**
+- **8 mục mới xong một phần** (C3, H1, H2, H7, H8, H10, H13, H14) — còn chờ
+  chạy thật trên máy chủ, chờ diễn tập, chờ test hoặc chờ tài liệu.
+- **3 mục chưa bắt đầu** (M2, M5, M13).
+
+Bảng đầy đủ ở mục 5. Bản trước của báo cáo này ghi "28 mục hoàn thành, còn 4
+mục" — cách đếm đó **sai**: nó gộp "đã có code" thành "đã đóng", và tính test
+deadlock còn thiếu như một mục thứ 33 độc lập thay vì như bằng chứng còn nợ của
+H7/H8.
+
+Toàn bộ test local đang xanh: backend **326 pass / 0 fail / 0 skipped**,
+frontend **100 pass**, lint và typecheck sạch, cổng kiểm tra bundle đạt 4/4.
 
 ---
 
@@ -85,13 +106,25 @@ hạn, có các bước cụ thể.
 - Container frontend chạy quyền `root` → chuyển sang tài khoản thường.
 - Ứng dụng dùng chính tài khoản **sở hữu** database, tức một lỗ hổng có thể xoá
   sạch cấu trúc dữ liệu → tách thành hai tài khoản, ứng dụng chỉ đọc/ghi.
-- Mọi image nền dùng tag có thể thay đổi → ghim theo mã băm, nên deploy lại cùng
-  một commit sẽ ra cùng một kết quả.
+- Mọi image nền dùng tag có thể thay đổi → **toàn bộ base image trong hai
+  Dockerfile, các image dịch vụ bên thứ ba trong Compose production và mọi
+  GitHub Action đã được pin bằng digest/SHA** — đạt *mức tối thiểu* của H10.
+  **Image ứng dụng vẫn được build lại trên VPS** (`deploy.sh:20-24` tự ghi nhận),
+  nên **H10 chưa đóng** và chưa thể khẳng định "deploy lại cùng một commit ra
+  cùng kết quả". Đích đến vẫn là build một lần trong CI → đẩy lên registry →
+  deploy bằng digest. Compose dev nằm **ngoài phạm vi H10** và hiện chưa pin.
+  - Ghim cuối cùng còn thiếu là RabbitMQ, pin ngày 29/07 (`@sha256:a51ed990cb43…`
+    → upstream 4.2.9). Vì pin đồng nghĩa **đóng băng cả bản vá bảo mật**, chính
+    sách bump digest (ai chịu trách nhiệm, tần suất, quy trình) đã ghi vào
+    `OPERATIONS.md`.
 - Khôi phục database có thể để hệ thống ở trạng thái nửa vời → đổi tên script cho
   đúng phạm vi thật và chặn không cho chạy thẳng lên production.
 - Nếu nhà cung cấp email chết thì **không ai** vào được hệ thống quản trị, kể cả
-  dùng lệnh SQL khẩn cấp (vì admin mới vẫn phải nhận mã qua email đó) → thêm nhà
-  cung cấp email dự phòng và quy trình chuyển đổi.
+  dùng lệnh SQL khẩn cấp (vì admin mới vẫn phải nhận mã qua email đó) → đã thêm
+  **cơ chế, cấu hình mẫu và runbook** chuyển sang SMTP dự phòng (script đổi
+  provider, biến môi trường mẫu, checklist diễn tập). Nhưng credential vẫn là
+  placeholder và **provider thật chưa từng được diễn tập** — nên H14 chưa đóng,
+  và kéo theo H1 cũng chưa đóng.
 
 ### Nhóm vừa (Medium)
 
@@ -161,23 +194,44 @@ hơn không có test.
 
 ---
 
-## 5. Bốn mục CHƯA làm
+## 5. Những mục CHƯA đóng được
+
+### 5.1 Ba mục chưa bắt đầu
 
 | Mục | Nội dung | Vì sao chưa |
 |---|---|---|
 | **M2** | Chống dò email bằng cách xử lý mọi request qua cùng một đường | Cần viết lại luồng gửi OTP theo kiểu bất đồng bộ, đụng vào đường đăng nhập. Rủi ro cao, nên tôi không làm khi bạn không có mặt để xem xét. |
 | **M5** | Ghi nhận mã commit thật đang chạy trên máy chủ | **Cần truy cập VPS**, tôi không có. Đây là việc phải làm trực tiếp trên máy chủ. |
 | **M13** | Dựng Prometheus/Grafana + cảnh báo thật | Là hạng mục hạ tầng riêng, cần quyết định về công cụ và chi phí. |
-| — | **Test phát hiện deadlock** giữa hai luồng khoá | Trước đây chưa viết được vì chưa có hai chiều khoá; giờ đã đủ điều kiện nhưng tôi chưa viết. |
 
-Ngoài ra còn vài việc **phải làm trên máy chủ thật**, không thể làm từ đây:
+### 5.2 Tám mục mới xong một phần — **không được tính là hoàn tất**
 
-- Chạy script đếm dữ liệu để chốt việc làm sạch.
-- Diễn tập chuyển sang nhà cung cấp email dự phòng (bắt buộc trước khi mở hệ
-  thống — cấu hình chưa từng thử không phải là phương án dự phòng).
-- Diễn tập khôi phục database vào một hệ thống tạm.
-- Ghi tài liệu: đổi khoá bí mật OTP sẽ làm mọi mã đang chờ hết hiệu lực (đúng
-  như thiết kế, người dùng chỉ cần xin mã mới).
+| Mục | Đã có | Còn thiếu để đóng |
+|---|---|---|
+| **C3** | Runbook clean-slate blue-green + script đếm dữ liệu | Chưa chạy inventory thật, chưa cutover production |
+| **H1** | Đường khôi phục quyền admin + checklist nghiệm thu | Checklist quy định H1 **chỉ đóng sau khi H14 đã cấu hình và diễn tập thành công** |
+| **H2** | Mã OTP đã băm kèm pepper | Còn nợ tài liệu vận hành: rotate `OTP_PEPPER` làm mọi mã đang chờ hết hiệu lực |
+| **H7** | Khoá theo id tăng dần khi vô hiệu hoá CLB | **Test deadlock** `refresh()` ⟂ `deactivateClub()` — đây là bằng chứng đóng H7, không phải một mục riêng |
+| **H8** | Version phiên trong DB + trusted-device lineage | Cùng test deadlock trên; checklist ghi rõ H8 vẫn dừng ở bước 3c |
+| **H10** | Đạt *mức tối thiểu*: pin digest toàn bộ base image (2 Dockerfile + 4 image dịch vụ trong Compose production, RabbitMQ pin 29/07) và pin SHA mọi GitHub Action | Image ứng dụng vẫn build trên VPS lúc deploy → chưa build-once-in-CI / deploy-by-digest, chưa reproducible-by-construction |
+| **H13** | Mới xong **H13.1** (delivery ledger trong PostgreSQL) | Chưa diễn tập restore cho **cả hai loại message**; chưa chạy drill có kiểm quyền |
+| **H14** | Script chuyển provider, biến cấu hình mẫu, runbook + checklist rehearsal | Credential vẫn là placeholder; **provider dự phòng chưa từng được cấu hình và diễn tập** |
+
+### 5.3 Follow-up phát sinh **ngoài phạm vi** checklist
+
+Phát hiện trong lúc thi công, **không** được thêm vào `AUTH_OTP_FIX_CHECKLIST_VI.md`
+(file đó là biên bản của đợt review AUTH_OTP, giữ nguyên 32 mục):
+
+| Mức | Nội dung |
+|---|---|
+| **Medium** | **RabbitMQ lệch phiên bản giữa ba môi trường**: dev `docker-compose.monolith.yml:17` = **3**-management-alpine, Testcontainers `AbstractRabbitIntegrationTest.java:29` = **4.1**, production = **4.2.9**. Test đang chứng minh hành vi trên một phiên bản khác với phiên bản chạy thật. Cần đồng bộ dev + Testcontainers lên ngang production, rồi **chạy lại toàn bộ test notification / retry / DLQ** — đó mới là phần rủi ro, không phải việc đổi tag. Cố ý **không** gộp vào commit pin digest. |
+
+### 5.4 Việc phải làm trên máy chủ thật
+
+- Chạy script đếm dữ liệu để chốt việc làm sạch (C3).
+- Cấu hình và diễn tập nhà cung cấp email dự phòng — cấu hình chưa từng thử
+  không phải là phương án dự phòng (H14 → H1).
+- Diễn tập khôi phục database vào một hệ thống tạm, cả hai loại message (H13).
 
 ---
 
@@ -205,7 +259,10 @@ Ngoài ra còn vài việc **phải làm trên máy chủ thật**, không thể
 | Cổng kiểm tra bundle | 4/4 đạt |
 | Migration | V1 → **V15**, đúng thứ tự, có test chạy trên dữ liệu thật |
 
-Một lưu ý nhỏ: test `QrSignerTest` **thỉnh thoảng đỏ** do nó sinh dữ liệu ngẫu
-nhiên mỗi lần chạy, khiến thư viện đọc mã QR đôi khi không giải mã được. Đây là
-lỗi **có sẵn từ trước**, không liên quan tới đợt sửa này, và nên được xử lý riêng
-bằng cách dùng dữ liệu cố định.
+Một lưu ý nhỏ: test `QrSignerTest` **thỉnh thoảng đỏ**. Test có dùng
+`UUID.randomUUID()` và `Instant.now()`, nên tôi **nghi ngờ** nguyên nhân là dữ
+liệu ngẫu nhiên mỗi lần chạy khiến thư viện đọc mã QR đôi khi giải mã trượt —
+nhưng **chưa chứng minh được**: lượt clean test gần nhất vẫn xanh, chưa tái hiện
+được lỗi. Đây là hiện tượng **có sẵn từ trước**, không liên quan tới đợt sửa
+này. Hướng xử lý đề xuất (dùng dữ liệu cố định) cần được kiểm chứng bằng một
+lượt chạy lặp nhiều lần trước khi kết luận.

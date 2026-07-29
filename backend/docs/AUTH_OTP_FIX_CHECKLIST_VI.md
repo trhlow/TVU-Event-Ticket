@@ -1659,9 +1659,26 @@ trước. Riêng C1 là cấu hình GitHub ngoài Git — không áp quy tắc c
   - [ ] Đích đến: build + test + scan **một lần trong CI** → push image lên
         registry → deploy bằng **digest** (`@sha256:...`), không bằng tag → lưu
         digest cùng release record để rollback trỏ đúng bytes.
-  - [ ] Mức tối thiểu nếu chưa dựng được registry trong phạm vi đồ án: pin
-        **toàn bộ** base image bằng digest và pin mọi GitHub Action bằng commit
-        SHA. Ghi rõ đây là giải pháp tạm và vẫn còn rủi ro build-on-VPS.
+  - [x] ✅ **XONG 2026-07-29 — Mức tối thiểu** (registry chưa dựng trong phạm vi
+        đồ án): pin **toàn bộ** base image bằng digest và pin mọi GitHub Action
+        bằng commit SHA. Đây là **giải pháp tạm**, vẫn còn rủi ro build-on-VPS.
+        - `frontend/Dockerfile:1` (`node:24-alpine`), `:28`
+          (`nginxinc/nginx-unprivileged:1.29-alpine`) — đã pin.
+        - `compose.yaml`: Caddy `2.10-alpine`, PostgreSQL `18.4-alpine`, Redis
+          `7.4-alpine` đã pin trước đó; **RabbitMQ `4.2-management-alpine` pin
+          2026-07-29** (`@sha256:a51ed990cb43…`, index đa nền tảng, resolve ra
+          upstream **4.2.9**; manifest `linux/amd64` = `sha256:28f3010648c9…`).
+          Kiểm chứng: `docker compose config` parse được digest, và container
+          chạy độc lập theo digest pass đúng lệnh healthcheck của compose
+          (`rabbitmq-diagnostics -q ping`) + `check_running` +
+          `check_port_connectivity`.
+        - Mọi `uses:` trong `.github/workflows/` đã pin bằng commit SHA 40 ký tự.
+        - Chính sách bump digest (chủ sở hữu, tần suất, quy trình) đã ghi ở
+          `OPERATIONS.md` mục "Base image digests".
+  - [ ] ⬜ **H10 cha vẫn MỞ.** Sau lần pin trên, lý do duy nhất còn lại là:
+        image ứng dụng vẫn được **build trên VPS lúc deploy**
+        (`scripts/deploy.sh:20-24` tự ghi nhận), chưa phải build-once-in-CI →
+        push registry → deploy-by-digest.
 
 - [ ] **H11. Ứng dụng chạy bằng tài khoản owner của PostgreSQL** (mới, v15):
   - `compose.yaml:64-66` truyền **cùng** `${POSTGRES_USER}` cho cả việc khởi
