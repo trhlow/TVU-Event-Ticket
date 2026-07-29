@@ -184,9 +184,14 @@ class AdminLockOrderDeadlockIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     /**
-     * Either flow may reject its caller — that is the race resolving, not a defect. Only a database
-     * error caused by the locking itself is a failure: 40P01 is a detected deadlock, 55P03 a lock
-     * that could not be taken, 40001 a serialization failure.
+     * The refresh flow may reject its caller — that is the race resolving, not a defect. The admin
+     * action may not: it is asserted to succeed, because nothing in the seed data gives it grounds
+     * to refuse.
+     *
+     * <p>Checked in two passes, order deliberate. First the SQLSTATEs a lock order failure produces
+     * — 40P01 a detected deadlock, 55P03 a lock that could not be taken, 40001 a serialization
+     * failure — so that a deadlock is reported as a deadlock rather than as whatever it causes
+     * downstream. Then the narrower question of which failures are legitimate at all.
      */
     private void assertNoLockOrderFailure(Outcomes outcomes, int round) {
         // Deadlock first, so its diagnostic is what a reader sees rather than a downstream symptom.
