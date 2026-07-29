@@ -265,7 +265,12 @@ jobs:
           fi
           echo "Linting ${#scripts[@]} script(s):"
           for script in "${scripts[@]}"; do echo "  $script"; done
-          shellcheck --severity=warning "${scripts[@]}"
+          # -x lets shellcheck read the sourced file at all; without it `source common.sh` is opaque
+          # and every helper it defines reads as an unassigned variable. --source-path=SCRIPTDIR
+          # resolves the relative `# shellcheck source=common.sh` directives against each script's
+          # own directory rather than the working directory, which here is the repository root.
+          # Both are required: with only one of them this job reports SC2154 on working scripts.
+          shellcheck --severity=warning -x --source-path=SCRIPTDIR "${scripts[@]}"
 
   ci-gate:
     needs: [changes, backend, frontend, dependency-review, shellcheck]
