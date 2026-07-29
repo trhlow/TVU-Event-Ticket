@@ -15,7 +15,6 @@ interface TicketCardProps {
 
 export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps) {
   const isCheckedIn = ticket.checkInStatus === "CHECKED_IN";
-  const isCheckInUnknown = ticket.checkInStatus === "UNKNOWN";
   const canShowQR = ticket.status === "VALID" && !isCheckedIn;
   const tiltRef = useCardTilt<HTMLDivElement>({ maxTilt: 2.5 });
 
@@ -32,9 +31,6 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
         <div className="mt-3">
           <StatusBadge type="ticket" status={ticket.status} checkInStatus={ticket.checkInStatus} />
         </div>
-        {isCheckInUnknown && (
-          <span className="mt-2 block text-[10px] font-semibold text-slate-400">Chưa có dữ liệu điểm danh</span>
-        )}
       </div>
 
       <div className="flex flex-1 flex-col justify-between p-5">

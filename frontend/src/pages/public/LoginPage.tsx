@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { AlertCircle, ArrowLeft, FlaskConical } from "lucide-react";
 import Toast from "../../components/common/Toast";
@@ -15,6 +15,11 @@ function homePathForRole(role: User["role"]): string {
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const redirectTarget = (location.state as { from?: string } | null)?.from;
+  const resolveDestination = useCallback(
+    (role: User["role"]) => redirectTarget || homePathForRole(role),
+    [redirectTarget],
+  );
   const [errorMsg, setErrorMsg] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,6 +28,7 @@ export default function LoginPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
+  const [rememberDevice, setRememberDevice] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -40,19 +46,19 @@ export default function LoginPage() {
     void authService
       .me()
       .then((user) => {
-        if (user) navigate(homePathForRole(user.role), { replace: true });
+        if (user) navigate(resolveDestination(user.role), { replace: true });
       })
       .catch(() => {
         setErrorMsg("Không thể xác minh phiên đăng nhập. Vui lòng thử lại.");
       });
-  }, [location.pathname, location.search, navigate]);
+  }, [location.pathname, location.search, navigate, resolveDestination]);
 
   const handleMicrosoftLogin = async () => {
     setErrorMsg("");
     setIsSubmitting(true);
     try {
       const user = await authService.loginWithMicrosoft();
-      navigate(homePathForRole(user.role), { replace: true });
+      navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập bằng Microsoft. Vui lòng thử lại.");
       setIsSubmitting(false);
@@ -84,8 +90,8 @@ export default function LoginPage() {
     setErrorMsg("");
     setIsSubmitting(true);
     try {
-      const user = await authService.verifyOtp(adminEmail, otpCode, false);
-      navigate(homePathForRole(user.role), { replace: true });
+      const user = await authService.verifyOtp(adminEmail, otpCode, rememberDevice);
+      navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Mã không đúng hoặc đã hết hạn. Vui lòng thử lại.");
       setIsSubmitting(false);
@@ -106,7 +112,7 @@ export default function LoginPage() {
       // Role is never chosen here — it is whatever role the backend already assigned to this
       // email, read back from GET /auth/me after login (see authService.loginWithDevStub).
       const user = await authService.loginWithDevStub(devCredential, devDisplayName);
-      navigate(homePathForRole(user.role), { replace: true });
+      navigate(resolveDestination(user.role), { replace: true });
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : "Không thể đăng nhập thử nghiệm. Vui lòng thử lại.");
       setIsSubmitting(false);
@@ -121,7 +127,7 @@ export default function LoginPage() {
 
       <Link
         to="/"
-        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 text-sm font-bold text-white backdrop-blur-md sm:left-6 sm:top-6"
+        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-white/85 sm:left-6 sm:top-6"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Về trang chủ
@@ -130,7 +136,7 @@ export default function LoginPage() {
       <section className="auth-card relative z-10 w-full max-w-[460px] rounded-3xl px-6 py-7 text-center sm:px-8 sm:py-8">
         <div className="auth-logo-glow mx-auto w-fit">
           <img
-            src="/tvu_logo_1783065060265.jpg"
+            src="/logo-tvu.webp?v=20260729"
             alt="Logo Trường Đại học Trà Vinh"
             className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-blue-900/20"
           />
@@ -172,7 +178,11 @@ export default function LoginPage() {
             </form>
           ) : (
             <form onSubmit={handleVerifyOtp} className="space-y-3">
+              <label htmlFor="login-otp" className="block text-xs font-bold text-slate-700">
+                Mã đăng nhập (OTP)
+              </label>
               <input
+                id="login-otp"
                 type="text"
                 inputMode="numeric"
                 pattern="\d{6}"
@@ -183,6 +193,15 @@ export default function LoginPage() {
                 className="tvu-input min-h-11 rounded-lg text-center text-lg font-bold tracking-[0.3em]"
                 autoComplete="one-time-code"
               />
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={rememberDevice}
+                  onChange={(event) => setRememberDevice(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                Ghi nhớ thiết bị này (duy trì phiên đăng nhập lâu hơn)
+              </label>
               <button
                 type="submit"
                 disabled={isSubmitting}

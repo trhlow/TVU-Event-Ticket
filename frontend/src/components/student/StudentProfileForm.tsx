@@ -62,48 +62,54 @@ export default function StudentProfileForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {errorMsg && (
-        <div className="flex gap-2 rounded-xl border border-danger-200 bg-danger-50 p-3.5 text-[11px] font-bold text-danger-700">
+        <div id="profile-form-error" role="alert" className="flex gap-2 rounded-xl border border-danger-200 bg-danger-50 p-3.5 text-[11px] font-bold text-danger-700">
           <ShieldAlert className="h-4 w-4 shrink-0 text-danger-600" aria-hidden="true" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       <div className="space-y-1.5">
-        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Họ và tên</label>
+        <label htmlFor="profile-fullname" className="block text-xs font-bold uppercase tracking-wider text-slate-700">Họ và tên</label>
         <div className="relative">
           <User className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-          <Input value={fullName} disabled className="bg-slate-100 pl-10 text-slate-500" />
+          <Input id="profile-fullname" value={fullName} disabled className="bg-slate-100 pl-10 text-slate-500" />
         </div>
         {fullNameHint && <p className="text-[10px] font-semibold text-slate-400">{fullNameHint}</p>}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Mã số sinh viên (MSSV) *</label>
+          <label htmlFor="profile-mssv" className="block text-xs font-bold uppercase tracking-wider text-slate-700">Mã số sinh viên (MSSV) *</label>
           <div className="relative">
             <CreditCard className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             {/* The example MSSV is masked on purpose: a fully-formed one would be some
                 real student's id, and it also collided with a fixture id in the bundle gate. */}
             <Input
+              id="profile-mssv"
               placeholder="ví dụ: 110121xxx"
               value={mssv}
               onChange={(event) => setMssv(event.target.value)}
               maxLength={30}
               className="pl-10 font-mono"
+              aria-invalid={!!errorMsg}
+              aria-describedby={errorMsg ? "profile-form-error" : undefined}
             />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">Lớp học sinh hoạt *</label>
+          <label htmlFor="profile-classname" className="block text-xs font-bold uppercase tracking-wider text-slate-700">Lớp học sinh hoạt *</label>
           <div className="relative">
             <Bookmark className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             <Input
+              id="profile-classname"
               placeholder="ví dụ: DA21TT"
               value={className}
               onChange={(event) => setClassName(event.target.value)}
               maxLength={50}
               className="pl-10 font-mono"
+              aria-invalid={!!errorMsg}
+              aria-describedby={errorMsg ? "profile-form-error" : undefined}
             />
           </div>
         </div>

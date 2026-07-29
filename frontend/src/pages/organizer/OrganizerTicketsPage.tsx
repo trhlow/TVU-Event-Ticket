@@ -26,20 +26,27 @@ export default function OrganizerTicketsPage() {
   const [filterEvent, setFilterEvent] = useState("ALL");
   const [filterCheckin, setFilterCheckin] = useState("ALL");
   const [isLoading, setIsLoading] = useState(true);
+  const [partialLoadFailed, setPartialLoadFailed] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
     async function loadTickets() {
       setIsLoading(true);
+      setPartialLoadFailed(false);
       try {
         const eventData = await eventService.listByClubRemote(currentUser.clubId || "");
+        let anyFailed = false;
         const attendeeGroups = await Promise.all(
-          eventData.map((event) => ticketService.listAttendees(event.id).catch(() => [] as Ticket[])),
+          eventData.map((event) => ticketService.listAttendees(event.id).catch(() => {
+            anyFailed = true;
+            return [] as Ticket[];
+          })),
         );
         if (!mounted) return;
 
         setEvents(eventData);
+        setPartialLoadFailed(anyFailed);
         setTickets(attendeeGroups.flatMap((group, index) => {
           const event = eventData[index];
           return group.map((ticket) => ({ ...ticket, eventTitle: event?.title || "Sự kiện đang cập nhật thông tin" }));
@@ -146,6 +153,12 @@ export default function OrganizerTicketsPage() {
           </select>
         </div>
       </div>
+
+      {partialLoadFailed && (
+        <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-xs font-semibold text-amber-800">
+          Một số sự kiện không tải được danh sách vé — số liệu bên dưới có thể thiếu. Vui lòng tải lại trang.
+        </div>
+      )}
 
       <div className="enterprise-card overflow-hidden p-1">
         {isLoading ? (

@@ -77,7 +77,6 @@ export default function AppRoutes() {
         <Route path="/huong-dan" element={<Navigate to="/#guide" replace />} />
         <Route path="/public/events" element={<Navigate to="/login" replace />} />
         <Route path="/public/guide" element={<Navigate to="/#guide" replace />} />
-        <Route path="/complete-profile" element={<CompleteProfilePage />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/500" element={<ServerErrorPage />} />
         <Route path="/404" element={<NotFound404Page />} />

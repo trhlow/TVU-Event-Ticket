@@ -57,10 +57,6 @@ export default function EventFilter({
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="OPEN">Đang mở đăng ký</option>
-            <option value="UPCOMING">Sắp mở</option>
-            <option value="CLOSED">Đã đóng</option>
-            <option value="FULL">Hết vé</option>
-            <option value="ENDED">Đã kết thúc</option>
           </select>
         </div>
       </div>

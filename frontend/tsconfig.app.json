@@ -15,6 +15,7 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "strict": true,
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "moduleDetection": "force",

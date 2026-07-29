@@ -12,17 +12,22 @@ export default function EventRegistrationResultPage() {
   const { reservationId } = useParams<{ reservationId: string }>();
   const currentUser = requireCurrentUser();
   const [reservation, setReservation] = useState<Reservation | null | undefined>(undefined);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
     if (!reservationId) return;
     let mounted = true;
+    setLoadFailed(false);
     registrationService
       .listByStudentRemote(currentUser.id)
       .then((items) => {
         if (mounted) setReservation(items.find((item) => item.id === reservationId) || null);
       })
       .catch(() => {
-        if (mounted) setReservation(null);
+        if (mounted) {
+          setLoadFailed(true);
+          setReservation(null);
+        }
       });
     return () => {
       mounted = false;
@@ -67,7 +72,11 @@ export default function EventRegistrationResultPage() {
   if (!reservation) {
     return (
       <div className="space-y-4 py-12 text-center font-bold text-slate-400">
-        <p>Không tìm thấy đơn đăng ký này trong tài khoản của bạn.</p>
+        <p>
+          {loadFailed
+            ? "Không thể tải đơn đăng ký do lỗi kết nối. Vui lòng tải lại trang."
+            : "Không tìm thấy đơn đăng ký này trong tài khoản của bạn."}
+        </p>
         <Link to="/student/home" className="text-brand-600 hover:underline">
           Quay lại trang chủ
         </Link>

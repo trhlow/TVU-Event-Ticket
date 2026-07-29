@@ -8,6 +8,8 @@ interface ReservationResponse {
   status: "PENDING" | "APPROVED" | "REJECTED";
   requestedAt: string;
   ticketId?: string | null;
+  ticketStatus?: "VALID" | "CHECKED_IN" | "CANCELLED" | null;
+  checkedInAt?: string | null;
   eventTitle?: string;
   eventLocation?: string;
   eventStartAt?: string;
@@ -83,17 +85,20 @@ function mapTicket(response: TicketResponse): Ticket {
 
 function mapReservationTicket(response: ReservationResponse): Ticket | null {
   if (response.status !== "APPROVED" || !response.ticketId) return null;
+  // /reservations/me now carries ticketStatus/checkedInAt directly (see
+  // ReservationResponse.java), so check-in state is genuinely known here — no more "UNKNOWN".
+  const checkedIn = response.ticketStatus === "CHECKED_IN" || Boolean(response.checkedInAt);
   return {
     id: response.ticketId,
     reservationId: response.id,
     eventId: response.eventId,
     studentId: response.studentId,
     ticketCode: response.ticketId,
-    status: "VALID",
-    // /reservations/me carries no check-in data at all — this is not "not checked in yet", it is
-    // genuinely unknown. See the Ticket.checkInStatus doc comment.
-    checkInStatus: "UNKNOWN",
+    status: response.ticketStatus === "CANCELLED" ? "CANCELLED" : "VALID",
+    checkInStatus: checkedIn ? "CHECKED_IN" : "PENDING",
     issuedAt: response.requestedAt,
+    checkedInAt: response.checkedInAt || undefined,
+    checkInAt: response.checkedInAt || undefined,
     eventTitle: response.eventTitle || undefined,
     eventLocation: response.eventLocation || undefined,
     eventStartAt: response.eventStartAt || undefined,

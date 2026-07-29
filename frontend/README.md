@@ -22,20 +22,15 @@ npm run dev
 | Variable | Purpose | Notes |
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | Base URL of the backend API (must include `/api`) | Never point production at `localhost` |
-| `VITE_APP_ENV` | `development` \| `production` | Defaults to Vite's own build mode if unset. When `production`, the app refuses to start if `VITE_AUTH_PROVIDER=devstub` |
-| `VITE_AUTH_PROVIDER` | `microsoft` \| `devstub` | `devstub` maps to the backend's dev-only, password-less identity stub. The DevStub login panel only exists in non-production builds (`import.meta.env.DEV`) — it is dead-code-eliminated from `npm run build` output regardless of this variable |
-| `VITE_USE_DEMO_DATA` | `true` \| `false` | When `true`, service layers serve fixture data instead of calling the real API — used for offline UI demos only |
-| `VITE_ENABLE_MOCK_FALLBACK` | `true` \| `false` | Legacy flag; no longer changes runtime behavior beyond `VITE_USE_DEMO_DATA` (see below). Kept only so a production deployment that sets it is still flagged by the startup warning banner |
-| `VITE_MICROSOFT_CLIENT_ID` / `VITE_MICROSOFT_TENANT_ID` / `VITE_MICROSOFT_REDIRECT_URI` | MSAL config for the Microsoft login button | Required when `VITE_AUTH_PROVIDER=microsoft` |
+| `VITE_APP_ENV` | `development` \| `production` | Defaults to Vite's own build mode if unset |
+| `VITE_MICROSOFT_CLIENT_ID` / `VITE_MICROSOFT_TENANT_ID` / `VITE_MICROSOFT_REDIRECT_URI` | MSAL config for the Microsoft login button | Required for student sign-in |
 
-App startup validates this configuration (`src/lib/env.ts`) and refuses to render at all if the
-combination is unsafe (e.g. `devstub` + production) rather than silently falling back to
-something insecure. Never put real secrets in a `VITE_*` variable — everything with that prefix
-is bundled into the client-side JS and is publicly readable.
+App startup validates this configuration (`src/lib/env.ts`). Never put real secrets in a `VITE_*`
+variable — everything with that prefix is bundled into the client-side JS and is publicly readable.
 
 ## Auth model
 
-- Students log in via Microsoft OAuth/OIDC (`VITE_AUTH_PROVIDER=microsoft`). Role, `clubId`, and
+- Students log in via Microsoft OAuth/OIDC. Role, `clubId`, and
   profile data always come from the backend session (`GET /auth/me`) — the frontend never lets a
   user pick their own role.
 - The session cache (`src/state/authSession.ts`) is an in-memory mirror of the authenticated
@@ -55,32 +50,11 @@ is bundled into the client-side JS and is publicly readable.
   changes nothing on screen — the request still answers 202 — but no new mail is sent and the code
   already in the inbox stays valid for its full ten minutes.
 
-## Demo mode
-
-Setting `VITE_USE_DEMO_DATA=true` makes every service layer serve fixture data from `src/data/`
-instead of calling the real API — useful for offline UI walkthroughs. Pages that show demo data
-render a visible "Dữ liệu demo" badge so it's never mistaken for production data. **Never enable
-this in a production deployment** — the app will show a persistent warning banner if it detects
-`VITE_APP_ENV=production` with demo data or mock fallback turned on.
-
 ## Production safety
 
-- `npm run build` with the default `.env.example` values produces a bundle with no DevStub UI, no
-  demo data, and no mock fallback — verified in CI (see below).
-- Setting `VITE_AUTH_PROVIDER=devstub` together with `VITE_APP_ENV=production` (or building with
-  Vite's own production mode) makes the app refuse to render at all, showing a configuration-error
-  screen instead.
-
-## Testing
-
-```bash
-npm run test        # vitest run (CI mode, single pass)
-npm run test:watch  # vitest in watch mode
-```
-
-Test stack: Vitest + React Testing Library + jsdom. Coverage focuses on auth/route-guard behavior,
-the API client's CSRF/credentials handling, the "no silent mock fallback on API error" contract,
-and the Super Admin pages that are honest about missing backend APIs.
+- The frontend contains no demo-account, fixture or mock-data mode. Service layers always call the
+  real backend API.
+- `npm run build:production` verifies that no mock/test import or mock chunk reached the bundle.
 
 ## Design system & motion
 
@@ -93,7 +67,7 @@ Shared building blocks:
 - `PageHeader` — eyebrow + title + description + actions, used across Student/Organizer/Super Admin routes.
   It still accepts an optional `breadcrumb`, but no route passes one: breadcrumbs were dropped from every
   page in the 2026-07 redesign, so `Breadcrumb` survives only as an unused component.
-- `EmptyState`, `BackendPendingNotice`, `DemoDataBadge`, `StatisticCard`, `EventCard`, `TicketCard`,
+- `EmptyState`, `BackendPendingNotice`, `StatisticCard`, `EventCard`, `TicketCard`,
   `QRDisplayCard` — all theme-token driven.
 
 Motion primitives (`src/hooks/`):
@@ -114,9 +88,8 @@ npm run typecheck  # tsc -b --pretty false
 npm run build       # tsc -b && vite build
 ```
 
-CI (`.github/workflows/ci.yml`, job `frontend`) runs `npm ci`, lint, test, build, a non-blocking
-`npm audit`, and two guard checks: no real `.env` file committed, and no DevStub/demo-account
-strings in the production bundle.
+CI (`.github/workflows/ci.yml`, job `frontend`) runs `npm ci`, lint, production build verification,
+`npm audit`, and a guard check that no real `.env` file is committed.
 
 ## Known backend limitations
 

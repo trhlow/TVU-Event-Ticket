@@ -1,18 +1,13 @@
-﻿import React, { useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
+import jsQR from "jsqr";
 import { QrCode, Search, ShieldCheck, AlertCircle, RefreshCw } from "lucide-react";
-import { Ticket } from "../../types/ticket";
-import { Event } from "../../types/event";
 
 interface QRScannerPanelProps {
-  tickets: Ticket[];
-  events: Event[];
   onCheckIn: (ticketCode: string) => Promise<{ success: boolean; message: string }>;
   cameraPermission: "idle" | "granted" | "denied";
 }
 
 export default function QRScannerPanel({
-  tickets,
-  events,
   onCheckIn,
   cameraPermission,
 }: QRScannerPanelProps) {
@@ -21,11 +16,14 @@ export default function QRScannerPanel({
     success: boolean;
     message: string;
   } | null>(null);
-
-  // Danh sách vé hợp lệ giúp thao tác nhanh khi thiết bị quét chưa sẵn sàng.
-  const pendingTickets = tickets.filter(
-    (t) => t.status === "VALID" && t.checkInStatus === "PENDING",
-  );
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Guards against overlapping onCheckIn calls while a request is in flight.
+  const isProcessingRef = useRef(false);
+  // Tracks the last decoded value that was submitted so the same QR sitting in frame doesn't get
+  // resubmitted on every animation frame. Cleared as soon as a frame decodes no QR at all, so moving
+  // the ticket out of view (even briefly) is what re-arms scanning — not a fixed timeout.
+  const lastScannedCodeRef = useRef<string | null>(null);
 
   const handleScanSubmit = async (codeToScan: string) => {
     const code = codeToScan || ticketCode;
@@ -36,9 +34,63 @@ export default function QRScannerPanel({
     setTicketCode("");
   };
 
-  const getEventTitle = (eventId: string) => {
-    return events.find((e) => e.id === eventId)?.title || "Sự kiện không xác định";
-  };
+  useEffect(() => {
+    if (cameraPermission !== "granted") return;
+    let stream: MediaStream | null = null;
+    let rafId = 0;
+    let cancelled = false;
+
+    async function startScanning() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+      } catch {
+        return;
+      }
+      if (cancelled || !videoRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      videoRef.current.srcObject = stream;
+      await videoRef.current.play().catch(() => undefined);
+
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d", { willReadFrequently: true });
+
+      const tick = () => {
+        if (cancelled) return;
+        const video = videoRef.current;
+        if (video && canvas && context && video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height);
+          if (!code?.data) {
+            // Nothing in frame right now — the next QR shown (even if it's the same ticket) counts
+            // as a fresh scan.
+            lastScannedCodeRef.current = null;
+          } else if (!isProcessingRef.current && code.data !== lastScannedCodeRef.current) {
+            isProcessingRef.current = true;
+            lastScannedCodeRef.current = code.data;
+            void onCheckIn(code.data).then((result) => {
+              setScanResult(result);
+              isProcessingRef.current = false;
+            });
+          }
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    }
+
+    void startScanning();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      lastScannedCodeRef.current = null;
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, [cameraPermission, onCheckIn]);
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm max-w-5xl mx-auto text-left space-y-6">
@@ -79,21 +131,24 @@ export default function QRScannerPanel({
               </div>
             )}
 
+            <video
+              ref={videoRef}
+              muted
+              playsInline
+              className={`absolute inset-0 h-full w-full object-cover ${cameraPermission === "granted" ? "" : "hidden"}`}
+            />
+            <canvas ref={canvasRef} className="hidden" />
+
             {cameraPermission === "granted" && (
               <>
                 {/* Visual camera guides */}
-                <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-brand-500"></div>
-                <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-brand-500"></div>
-                <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-brand-500"></div>
-                <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-brand-500"></div>
-
-                <QrCode className="w-16 h-16 text-gray-700/80 mb-3" />
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest block leading-none">
-                  MÁY QUÉT SẴN SÀNG
-                </span>
+                <div className="absolute top-4 left-4 w-6 h-6 border-t-2 border-l-2 border-brand-500 z-10"></div>
+                <div className="absolute top-4 right-4 w-6 h-6 border-t-2 border-r-2 border-brand-500 z-10"></div>
+                <div className="absolute bottom-4 left-4 w-6 h-6 border-b-2 border-l-2 border-brand-500 z-10"></div>
+                <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-brand-500 z-10"></div>
 
                 {/* Scanning line animation */}
-                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 animate-scan-line top-1/2"></div>
+                <div className="absolute left-0 right-0 h-0.5 bg-brand-500 animate-scan-line top-1/2 z-10"></div>
               </>
             )}
           </div>
@@ -125,52 +180,6 @@ export default function QRScannerPanel({
           </div>
         </>
 
-        {/* Manual check-in helper panel */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-amber-50/50 border border-amber-200/60 rounded-xl p-4 text-xs font-semibold text-amber-900 space-y-2">
-            <p className="font-extrabold flex items-center gap-1">
-              <AlertCircle className="w-4 h-4 text-amber-600" /> Công cụ hỗ trợ nhập
-              mã:
-            </p>
-            <p className="text-[11px] text-amber-800 leading-relaxed font-semibold">
-              Nhấp trực tiếp vào danh sách vé hợp lệ dưới đây để kiểm tra phản hồi
-              tức thời của máy quét mà không cần nhập phím.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
-              Danh sách vé chờ điểm danh ({pendingTickets.length})
-            </span>
-            <div className="border border-gray-100 rounded-xl overflow-hidden max-h-44 overflow-y-auto divide-y divide-gray-100 bg-gray-50/20">
-              {pendingTickets.length > 0 ? (
-                pendingTickets.map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => handleScanSubmit(t.ticketCode)}
-                    className="w-full text-left p-2.5 text-[11px] font-semibold hover:bg-brand-50/50 hover:text-brand-900 flex items-center justify-between cursor-pointer transition-colors"
-                  >
-                    <div>
-                      <span className="font-bold text-gray-900 font-mono block">
-                        {t.ticketCode}
-                      </span>
-                      <span className="text-[10px] text-gray-400 mt-0.5 block truncate max-w-[200px]">
-                        {getEventTitle(t.eventId)}
-                      </span>
-                    </div>
-                    <span className="text-[9px] bg-white border border-gray-200 px-2 py-0.5 rounded-md font-bold text-gray-500">
-                      Chọn quét
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <div className="p-4 text-center text-[11px] text-gray-400 font-bold">
-                  Không còn vé nào đang ở trạng thái chờ điểm danh
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Result feedback message */}

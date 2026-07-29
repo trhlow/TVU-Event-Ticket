@@ -8,10 +8,7 @@ export interface Ticket {
   studentEmail?: string;
   studentMssv?: string;
   status: 'VALID' | 'EXPIRED' | 'INVALID' | 'CANCELLED';
-  // 'UNKNOWN' means the source API doesn't carry check-in data at all (e.g. a student's own
-  // ticket derived from GET /reservations/me) — distinct from 'PENDING', which means the API
-  // that produced this ticket does report check-in state and it is genuinely not checked in yet.
-  checkInStatus: 'PENDING' | 'CHECKED_IN' | 'UNKNOWN';
+  checkInStatus: 'PENDING' | 'CHECKED_IN';
   issuedAt: string;
   checkedInAt?: string;
   checkInAt?: string; // compatibility alias

@@ -14,9 +14,9 @@ interface PermissionRow {
 }
 
 const PERMISSIONS: PermissionRow[] = [
-  { key: "event_manage", group: "Quản lý sự kiện", description: "Tạo, chỉnh sửa, công bố và theo dõi sự kiện.", student: false, organizer: true, admin: true },
-  { key: "registration_review", group: "Duyệt đăng ký", description: "Duyệt hoặc từ chối đăng ký tham gia sự kiện.", student: false, organizer: true, admin: true },
-  { key: "qr_scan", group: "Quét QR", description: "Quét QR vé điện tử để điểm danh sinh viên.", student: false, organizer: true, admin: true },
+  { key: "event_manage", group: "Quản lý sự kiện", description: "Tạo, chỉnh sửa, công bố và theo dõi sự kiện.", student: false, organizer: true, admin: false },
+  { key: "registration_review", group: "Duyệt đăng ký", description: "Duyệt hoặc từ chối đăng ký tham gia sự kiện.", student: false, organizer: true, admin: false },
+  { key: "qr_scan", group: "Quét QR", description: "Quét QR vé điện tử để điểm danh sinh viên.", student: false, organizer: true, admin: false },
   { key: "club_manage", group: "Quản lý CLB", description: "Tạo mới, cập nhật và giám sát trạng thái CLB.", student: false, organizer: false, admin: true },
   { key: "account_manage", group: "Quản lý tài khoản", description: "Cấp tài khoản, khóa tài khoản và gán vai trò.", student: false, organizer: false, admin: true },
   { key: "statistics_view", group: "Xem thống kê", description: "Xem dashboard thống kê sự kiện, vé và điểm danh.", student: true, organizer: true, admin: true },

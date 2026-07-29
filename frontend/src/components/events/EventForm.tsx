@@ -3,6 +3,7 @@ import { Event } from '../../types/event';
 import { Save, Info, FileText, MapPin, Users } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
+import { useToast } from '../../hooks/useToast';
 
 interface EventFormProps {
   initialData?: Event;
@@ -12,13 +13,23 @@ interface EventFormProps {
   onCancel: () => void;
 }
 
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
-  return <p className="text-[10px] text-rose-600 font-bold">{message}</p>;
+// datetime-local inputs read/write local wall-clock time; toISOString() formats in UTC,
+// so converting straight from an ISO instant would shift the displayed value by the UTC offset.
+function toDatetimeLocalValue(iso?: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-xs font-bold text-gray-700 uppercase tracking-wider block">{children}</label>;
+function FieldError({ id, message }: { id?: string; message?: string }) {
+  if (!message) return null;
+  return <p id={id} className="text-[10px] text-rose-600 font-bold">{message}</p>;
+}
+
+function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+  return <label htmlFor={htmlFor} className="text-xs font-bold text-gray-700 uppercase tracking-wider block">{children}</label>;
 }
 
 function SectionHeading({ icon: Icon, title }: { icon: React.ComponentType<{ className?: string }>; title: string }) {
@@ -42,15 +53,16 @@ export default function EventForm({
     description: initialData?.description || '',
     bannerUrl: initialData?.bannerUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60',
     location: initialData?.location || '',
-    startAt: initialData?.startAt ? new Date(initialData.startAt).toISOString().slice(0, 16) : '',
-    endAt: initialData?.endAt ? new Date(initialData.endAt).toISOString().slice(0, 16) : '',
-    registrationOpenAt: initialData?.registrationOpenAt ? new Date(initialData.registrationOpenAt).toISOString().slice(0, 16) : '',
-    registrationCloseAt: initialData?.registrationCloseAt ? new Date(initialData.registrationCloseAt).toISOString().slice(0, 16) : '',
+    startAt: toDatetimeLocalValue(initialData?.startAt),
+    endAt: toDatetimeLocalValue(initialData?.endAt),
+    registrationOpenAt: toDatetimeLocalValue(initialData?.registrationOpenAt),
+    registrationCloseAt: toDatetimeLocalValue(initialData?.registrationCloseAt),
     capacity: initialData?.capacity || 100,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { showToast } = useToast();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -95,6 +107,8 @@ export default function EventForm({
         clubName,
         remainingTickets: initialData ? initialData.remainingTickets : formData.capacity,
       });
+    } catch {
+      showToast('Không thể lưu sự kiện. Vui lòng thử lại.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -118,21 +132,25 @@ export default function EventForm({
         <SectionHeading icon={FileText} title="Thông tin cơ bản" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="md:col-span-2 space-y-1.5">
-            <FieldLabel>Tên sự kiện *</FieldLabel>
+            <FieldLabel htmlFor="event-title">Tên sự kiện *</FieldLabel>
             <Input
+              id="event-title"
               type="text"
               name="title"
               value={formData.title}
               onChange={handleChange}
               placeholder="Ví dụ: Hội thảo công nghệ phần mềm CLB Tin học..."
               className={errors.title ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? 'event-title-error' : undefined}
             />
-            <FieldError message={errors.title} />
+            <FieldError id="event-title-error" message={errors.title} />
           </div>
 
           <div className="md:col-span-2 space-y-1.5">
-            <FieldLabel>Mô tả chi tiết *</FieldLabel>
+            <FieldLabel htmlFor="event-description">Mô tả chi tiết *</FieldLabel>
             <textarea
+              id="event-description"
               name="description"
               value={formData.description}
               onChange={handleChange}
@@ -141,8 +159,10 @@ export default function EventForm({
               className={`w-full bg-gray-50/50 border rounded-xl px-4 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
                 errors.description ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
               }`}
+              aria-invalid={!!errors.description}
+              aria-describedby={errors.description ? 'event-description-error' : undefined}
             ></textarea>
-            <FieldError message={errors.description} />
+            <FieldError id="event-description-error" message={errors.description} />
           </div>
         </div>
       </section>
@@ -152,21 +172,25 @@ export default function EventForm({
         <SectionHeading icon={MapPin} title="Thời gian & địa điểm" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <FieldLabel>Địa điểm tổ chức *</FieldLabel>
+            <FieldLabel htmlFor="event-location">Địa điểm tổ chức *</FieldLabel>
             <Input
+              id="event-location"
               type="text"
               name="location"
               value={formData.location}
               onChange={handleChange}
               placeholder="Ví dụ: Hội trường E24, Đại học Trà Vinh..."
               className={errors.location ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.location}
+              aria-describedby={errors.location ? 'event-location-error' : undefined}
             />
-            <FieldError message={errors.location} />
+            <FieldError id="event-location-error" message={errors.location} />
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>Banner minh họa (URL)</FieldLabel>
+            <FieldLabel htmlFor="event-bannerUrl">Banner minh họa (URL)</FieldLabel>
             <Input
+              id="event-bannerUrl"
               type="text"
               name="bannerUrl"
               value={formData.bannerUrl}
@@ -176,51 +200,63 @@ export default function EventForm({
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>Thời gian bắt đầu *</FieldLabel>
+            <FieldLabel htmlFor="event-startAt">Thời gian bắt đầu *</FieldLabel>
             <Input
+              id="event-startAt"
               type="datetime-local"
               name="startAt"
               value={formData.startAt}
               onChange={handleChange}
               className={errors.startAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.startAt}
+              aria-describedby={errors.startAt ? 'event-startAt-error' : undefined}
             />
-            <FieldError message={errors.startAt} />
+            <FieldError id="event-startAt-error" message={errors.startAt} />
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>Thời gian kết thúc *</FieldLabel>
+            <FieldLabel htmlFor="event-endAt">Thời gian kết thúc *</FieldLabel>
             <Input
+              id="event-endAt"
               type="datetime-local"
               name="endAt"
               value={formData.endAt}
               onChange={handleChange}
               className={errors.endAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.endAt}
+              aria-describedby={errors.endAt ? 'event-endAt-error' : undefined}
             />
-            <FieldError message={errors.endAt} />
+            <FieldError id="event-endAt-error" message={errors.endAt} />
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>Mở đăng ký vé từ ngày *</FieldLabel>
+            <FieldLabel htmlFor="event-registrationOpenAt">Mở đăng ký vé từ ngày *</FieldLabel>
             <Input
+              id="event-registrationOpenAt"
               type="datetime-local"
               name="registrationOpenAt"
               value={formData.registrationOpenAt}
               onChange={handleChange}
               className={errors.registrationOpenAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.registrationOpenAt}
+              aria-describedby={errors.registrationOpenAt ? 'event-registrationOpenAt-error' : undefined}
             />
-            <FieldError message={errors.registrationOpenAt} />
+            <FieldError id="event-registrationOpenAt-error" message={errors.registrationOpenAt} />
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel>Đóng đăng ký vé vào ngày *</FieldLabel>
+            <FieldLabel htmlFor="event-registrationCloseAt">Đóng đăng ký vé vào ngày *</FieldLabel>
             <Input
+              id="event-registrationCloseAt"
               type="datetime-local"
               name="registrationCloseAt"
               value={formData.registrationCloseAt}
               onChange={handleChange}
               className={errors.registrationCloseAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.registrationCloseAt}
+              aria-describedby={errors.registrationCloseAt ? 'event-registrationCloseAt-error' : undefined}
             />
-            <FieldError message={errors.registrationCloseAt} />
+            <FieldError id="event-registrationCloseAt-error" message={errors.registrationCloseAt} />
           </div>
         </div>
       </section>
@@ -230,16 +266,19 @@ export default function EventForm({
         <SectionHeading icon={Users} title="Sức chứa" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <FieldLabel>Số lượng vé phát hành (Sức chứa) *</FieldLabel>
+            <FieldLabel htmlFor="event-capacity">Số lượng vé phát hành (Sức chứa) *</FieldLabel>
             <Input
+              id="event-capacity"
               type="number"
               name="capacity"
               value={formData.capacity}
               onChange={handleChange}
               min={1}
               className={errors.capacity ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              aria-invalid={!!errors.capacity}
+              aria-describedby={errors.capacity ? 'event-capacity-error' : undefined}
             />
-            <FieldError message={errors.capacity} />
+            <FieldError id="event-capacity-error" message={errors.capacity} />
           </div>
         </div>
       </section>

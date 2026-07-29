@@ -1,56 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import React, { useCallback, useEffect, useState } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
-import { useToast } from "../../hooks/useToast";
 import QRScannerPanel from "../../components/tickets/QRScannerPanel";
-import { requireCurrentUser } from "../../state/authSession";
-import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
-import { Event } from "../../types/event";
-import { Ticket } from "../../types/ticket";
 
 export default function OrganizerScanPage() {
-  const { eventId } = useParams<{ eventId: string }>();
-  const currentUser = requireCurrentUser();
-  const { showToast } = useToast();
-  const [events, setEvents] = useState<Event[]>([]);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [cameraPermission, setCameraPermission] = useState<"idle" | "granted" | "denied">("idle");
   const [scanHistory, setScanHistory] = useState<Array<{ code: string; message: string; success: boolean; time: string }>>([]);
-
-  useEffect(() => {
-    let mounted = true;
-    eventService
-      .listByClubRemote(currentUser.clubId || "")
-      .then((items) => {
-        if (mounted) setEvents(eventId ? items.filter((event) => event.id === eventId) : items);
-      })
-      .catch((error) => {
-        if (mounted) showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [currentUser.clubId, eventId, showToast]);
-
-  // Seeds the "click instead of type" helper list with tickets that are actually awaiting
-  // check-in. Without this, `tickets` only ever grows from check-in results, so the helper list
-  // stays permanently empty no matter how many valid tickets exist for the event(s).
-  useEffect(() => {
-    if (events.length === 0) return;
-    let mounted = true;
-    Promise.all(events.map((event) => ticketService.listAttendeesPage(event.id, { status: "VALID", size: 100 })))
-      .then((pages) => {
-        if (mounted) setTickets(pages.flatMap((page) => page.items));
-      })
-      .catch(() => {
-        // Best-effort UX sugar — manual QR entry still works even if this prefetch fails.
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [events]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,24 +29,25 @@ export default function OrganizerScanPage() {
     };
   }, []);
 
-  const handleCheckIn = async (qrPayload: string) => {
-    try {
-      const ticket = await ticketService.checkIn(qrPayload);
-      setTickets((items) => [ticket, ...items.filter((item) => item.id !== ticket.id)]);
-      return pushScanHistory(qrPayload, true, "Điểm danh thành công.");
-    } catch (error) {
-      return pushScanHistory(qrPayload, false, error instanceof Error ? error.message : "QR không hợp lệ hoặc vé đã check-in.");
-    }
-  };
-
-  const pushScanHistory = (code: string, success: boolean, message: string) => {
+  // Stable identity (useCallback with empty deps, only setState calls inside) so passing this to
+  // QRScannerPanel's onCheckIn prop doesn't re-trigger its camera-opening effect after every scan.
+  const pushScanHistory = useCallback((code: string, success: boolean, message: string) => {
     const result = { success, message };
     setScanHistory((items) => [
       { code: code.trim(), success, message, time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) },
       ...items,
     ].slice(0, 6));
     return result;
-  };
+  }, []);
+
+  const handleCheckIn = useCallback(async (qrPayload: string) => {
+    try {
+      await ticketService.checkIn(qrPayload);
+      return pushScanHistory(qrPayload, true, "Điểm danh thành công.");
+    } catch (error) {
+      return pushScanHistory(qrPayload, false, error instanceof Error ? error.message : "QR không hợp lệ hoặc vé đã check-in.");
+    }
+  }, [pushScanHistory]);
 
   return (
     <div className="space-y-6 text-left">
@@ -98,7 +55,7 @@ export default function OrganizerScanPage() {
         title="Quét QR điểm danh"
         description="Quét hoặc nhập mã QR đã gửi cho sinh viên qua email. Hệ thống luôn là nơi xác minh mã hợp lệ hay không."
       />
-      <QRScannerPanel tickets={tickets} events={events} onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
+      <QRScannerPanel onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
       <section className="enterprise-card p-5">
         <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
           <h2 className="section-heading">Lịch sử check-in gần đây</h2>

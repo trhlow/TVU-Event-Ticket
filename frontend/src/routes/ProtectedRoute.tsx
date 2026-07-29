@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, Outlet } from "react-router";
+import { Navigate, Outlet, useLocation } from "react-router";
 import { WifiOff } from "lucide-react";
 import { getCurrentUser, isAuthenticated, setCurrentUser } from "../state/authSession";
 import { authService } from "../services/authService";
@@ -11,6 +11,7 @@ interface ProtectedRouteProps {
 }
 
 export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+  const location = useLocation();
   const [currentUser, setRouteUser] = useState<User | null>(() => getCurrentUser());
   const [isLoadingSession, setIsLoadingSession] = useState(!isAuthenticated());
   const [sessionChecked, setSessionChecked] = useState(isAuthenticated());
@@ -102,7 +103,7 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
   }
 
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {

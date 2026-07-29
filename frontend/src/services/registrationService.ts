@@ -50,13 +50,13 @@ export const registrationService = {
   async listPendingForOrganizer(): Promise<Reservation[]> {
     return (await apiRequest<ReservationResponse[]>("/reservations/pending")).map(mapReservation);
   },
-  async submit(data: Pick<Reservation, "eventId">): Promise<Reservation> {
+  async submit(data: Pick<Reservation, "eventId"> & { note?: string }): Promise<Reservation> {
     return mapReservation(await apiRequest<ReservationResponse>("/reservations", {
       method: "POST",
       headers: {
         "Idempotency-Key": createRequestId(),
       },
-      body: JSON.stringify({ eventId: data.eventId }),
+      body: JSON.stringify({ eventId: data.eventId, note: data.note }),
     }));
   },
   async updateStatus(reservationId: string, status: Reservation["status"], rejectReason?: string): Promise<Reservation> {

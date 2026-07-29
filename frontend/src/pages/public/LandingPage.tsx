@@ -227,7 +227,6 @@ export default function LandingPage() {
         <RevealOnScroll as="section" id="features" className="scroll-mt-20 px-5 py-20 md:px-8 md:py-24">
           <div className="mx-auto max-w-[1180px]">
             <div className="landing-section-heading mx-auto max-w-2xl text-center">
-              <div className="mx-auto mb-5 h-1 w-12 rounded-full bg-gradient-to-r from-blue-700 to-cyan-400" aria-hidden="true" />
               <h2 id="features-title" className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
               <p className="mt-4 text-sm font-medium leading-7 text-slate-600 md:text-base">
                 Một nền tảng thống nhất cho toàn bộ hành trình sự kiện — từ đăng ký, xét duyệt đến check-in tại cổng.
@@ -439,7 +438,7 @@ function LandingFooter() {
       <div className="mx-auto grid max-w-[1180px] gap-10 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-3">
-            <img src="/tvu_logo_1783065060265.jpg" alt="Logo TVU" className="h-10 w-10 rounded-full bg-white object-contain ring-2 ring-white/15" />
+            <img src="/logo-tvu.webp?v=20260729" alt="Logo TVU" className="h-10 w-10 rounded-full bg-white object-contain ring-2 ring-white/15" />
             <p className="font-display text-xl font-extrabold text-white">TVU Ticket</p>
           </div>
           <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-400">

@@ -1,3 +1,5 @@
+import { isAuthenticated, setCurrentUser } from "../state/authSession";
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api";
 const CSRF_COOKIE_NAME = "XSRF-TOKEN";
 const CSRF_HEADER_NAME = "X-XSRF-TOKEN";
@@ -76,13 +78,18 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, retryO
     // A remembered admin browser holds a device cookie but only a 15-minute session. On the first 401,
     // trade the cookie for a fresh session and replay the request once. The refresh endpoint answers 401
     // for anyone without a valid device cookie (every student), so this is a no-op for them.
-    if (
-      response.status === 401 &&
-      retryOnAuthFailure &&
-      !path.includes("/auth/session/refresh") &&
-      (await tryRefreshSession())
-    ) {
-      return apiRequest<T>(path, init, false);
+    if (response.status === 401) {
+      if (
+        retryOnAuthFailure &&
+        !path.includes("/auth/session/refresh") &&
+        (await tryRefreshSession())
+      ) {
+        return apiRequest<T>(path, init, false);
+      }
+      // The session genuinely died (refresh failed or this already was the refresh call). If the
+      // app thought it was logged in, drop the stale cache and send the user back to /login instead
+      // of leaving them staring at a "protected" page that just quietly 401s on every action.
+      handleSessionExpired();
     }
     throw await createApiError(response);
   }
@@ -97,6 +104,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, retryO
   }
 
   return unwrapApiResponse(await response.json()) as T;
+}
+
+function handleSessionExpired(): void {
+  if (!isAuthenticated()) return;
+  setCurrentUser(null);
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
 }
 
 export const apiConfig = {

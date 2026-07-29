@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /**
  * Proves the production bundle carries no fixture data.
  *

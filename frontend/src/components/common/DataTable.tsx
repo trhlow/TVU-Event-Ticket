@@ -73,6 +73,10 @@ export default function DataTable<T>({
     setCurrentPage(1);
   }, [searchTerm, filterValue]);
 
+  React.useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
   return (
     <div className="enterprise-card overflow-hidden text-left" id={id}>
       <div className="flex flex-col gap-3 border-b border-blue-100 bg-slate-50/70 p-4 md:flex-row md:items-center md:justify-between">

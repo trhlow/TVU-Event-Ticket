@@ -32,8 +32,7 @@ services:
       context: ../../../frontend
       dockerfile: Dockerfile
       args:
-        # VITE_APP_ENV / VITE_AUTH_PROVIDER come from frontend/.env.production, shared
-        # with CI and manual builds so the three cannot drift.
+        # VITE_APP_ENV comes from frontend/.env.production, shared with CI and manual builds.
         VITE_API_BASE_URL: /api
         VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
         VITE_MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
