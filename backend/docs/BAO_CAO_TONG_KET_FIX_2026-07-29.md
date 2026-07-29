@@ -7,11 +7,22 @@ Nhánh: `hlow` (local) · phạm vi đợt fix `26a9896..d0ce623`:
 
 > ⛔ **Trạng thái release: ĐỎ — chưa sẵn sàng production.**
 >
-> **Toàn bộ thay đổi mới chỉ tồn tại trên nhánh local.** Chưa push, chưa merge,
-> chưa có lượt CI nào chạy trên các commit này. Tại thời điểm viết:
-> local `hlow` = `8538ad4`, đi trước `origin/hlow` (`31622c3`) **27 commit**;
-> `origin/main` = `8cef2d7`. Mọi con số test dưới đây là kết quả chạy trên máy
-> local, **không phải** trạng thái GitHub hay production.
+> **Cập nhật 29/07 sau merge.** PR #18 đã merge vào `main` (`78c95b2`), CI và
+> CodeQL xanh trên đúng merge SHA, `hlow` đã fast-forward về ngang `main`. Ba
+> cảnh báo bảo mật đã **đóng thật** trên default branch, kiểm bằng API chứ không
+> suy từ CI: CodeQL #5 (`js/xss-through-dom`), Dependabot #1 (postcss), #2
+> (react-router). Cổng deploy vì thế **không còn lý do kỹ thuật để chặn**.
+>
+> Nhưng cổng mở **không phải** đèn xanh. Release vẫn ĐỎ vì 5 mục partial + 3 mục
+> chưa bắt đầu, và vì **toàn bộ cơ chế mới chưa từng chạy trên VPS thật** —
+> runbook rotate pepper, smoke test tài liệu, failover SMTP, restore drill đều
+> mới là *cơ chế đã viết và test ở máy*, chưa có một lần chạy thật nào để lại
+> bằng chứng. Đó đúng là bài học H14: cấu hình chưa từng thử không phải phương
+> án dự phòng.
+>
+> Bản gốc của banner này (viết trước khi push) ghi "chưa push, chưa merge, chưa
+> có lượt CI" — giữ lại ghi chú đó ở đây để thấy trạng thái đã đổi, đừng đọc
+> phần thân báo cáo như thể vẫn còn ở local.
 
 ---
 
@@ -21,9 +32,9 @@ Checklist `AUTH_OTP_FIX_CHECKLIST_VI.md` có 32 mục (3 Critical, 14 High,
 14 Medium, 1 Low). **29 mục đã có implementation, code hoặc tài liệu** — nhưng
 theo đúng tiêu chí đóng mục của chính checklist thì con số phân rã là:
 
-- **22 mục đóng hoàn toàn.**
-- **7 mục mới xong một phần** (C3, H1, H7, H8, H10, H13, H14) — còn chờ chạy
-  thật trên máy chủ, chờ diễn tập, hoặc chờ test còn thiếu.
+- **24 mục đóng hoàn toàn.**
+- **5 mục mới xong một phần** (C3, H1, H10, H13, H14) — tất cả đều còn chờ chạy
+  thật trên máy chủ hoặc chờ diễn tập; không mục nào còn chờ code.
 - **3 mục chưa bắt đầu** (M2, M5, M13).
 
 Bảng đầy đủ ở mục 5. Bản trước của báo cáo này ghi "28 mục hoàn thành, còn 4
@@ -31,8 +42,9 @@ mục" — cách đếm đó **sai**: nó gộp "đã có code" thành "đã đ�
 deadlock còn thiếu như một mục thứ 33 độc lập thay vì như bằng chứng còn nợ của
 H7/H8.
 
-Toàn bộ test local đang xanh: backend **326 pass / 0 fail / 0 skipped**,
-frontend **100 pass**, lint và typecheck sạch, cổng kiểm tra bundle đạt 4/4.
+Toàn bộ test đang xanh: backend **350 pass / 0 fail / 0 skipped** (326 lúc viết
+bản đầu; +24 từ các vòng review và test deadlock), frontend **100 pass**, lint và
+typecheck sạch, cổng kiểm tra bundle đạt 4/4.
 
 ---
 
@@ -204,17 +216,22 @@ hơn không có test.
 | **M5** | Ghi nhận mã commit thật đang chạy trên máy chủ | **Cần truy cập VPS**, tôi không có. Đây là việc phải làm trực tiếp trên máy chủ. |
 | **M13** | Dựng Prometheus/Grafana + cảnh báo thật | Là hạng mục hạ tầng riêng, cần quyết định về công cụ và chi phí. |
 
-### 5.2 Bảy mục mới xong một phần — **không được tính là hoàn tất**
+### 5.2 Năm mục mới xong một phần — **không được tính là hoàn tất**
 
 | Mục | Đã có | Còn thiếu để đóng |
 |---|---|---|
 | **C3** | Runbook clean-slate blue-green + script đếm dữ liệu | Chưa chạy inventory thật, chưa cutover production |
 | **H1** | Đường khôi phục quyền admin + checklist nghiệm thu | Checklist quy định H1 **chỉ đóng sau khi H14 đã cấu hình và diễn tập thành công** |
-| **H7** | Khoá theo id tăng dần khi vô hiệu hoá CLB | **Test deadlock** `refresh()` ⟂ `deactivateClub()` — đây là bằng chứng đóng H7, không phải một mục riêng |
-| **H8** | Version phiên trong DB + trusted-device lineage | Cùng test deadlock trên; checklist ghi rõ H8 vẫn dừng ở bước 3c |
 | **H10** | Đạt *mức tối thiểu*: pin digest toàn bộ base image (2 Dockerfile + 4 image dịch vụ trong Compose production, RabbitMQ pin 29/07) và pin SHA mọi GitHub Action | Image ứng dụng vẫn build trên VPS lúc deploy → chưa build-once-in-CI / deploy-by-digest, chưa reproducible-by-construction |
 | **H13** | Mới xong **H13.1** (delivery ledger trong PostgreSQL) | Chưa diễn tập restore cho **cả hai loại message**; chưa chạy drill có kiểm quyền |
 | **H14** | Script chuyển provider, biến cấu hình mẫu, runbook + checklist rehearsal | Credential vẫn là placeholder; **provider dự phòng chưa từng được cấu hình và diễn tập** |
+
+> **Cập nhật 2026-07-29 (sau merge PR #18):** H7 và H8 đã **đóng**. Khoản nợ duy
+> nhất của cả hai là test deadlock, nay đã có: `AdminLockOrderDeadlockIntegrationTest`
+> chạy 12 vòng trên PostgreSQL thật. Test được chứng minh có bite bằng cách tạm đảo
+> `refresh()` về thứ tự device-first cũ — đỏ ngay round 0 với `40P01`. Kèm một đính
+> chính: cặp sinh deadlock thật là `refresh()` ⟂ `lockOrganizer()`, không phải
+> `deactivateClub()` như checklist ghi ban đầu.
 
 ### 5.3 Follow-up phát sinh **ngoài phạm vi** checklist
 
@@ -252,7 +269,7 @@ Phát hiện trong lúc thi công, **không** được thêm vào `AUTH_OTP_FIX_
 
 | Hạng mục | Kết quả |
 |---|---|
-| Backend | **326 pass / 0 fail / 0 skipped** |
+| Backend | **350 pass / 0 fail / 0 skipped** |
 | Frontend | **100 pass** (18 file) |
 | Lint + typecheck frontend | sạch |
 | Cổng kiểm tra bundle | 4/4 đạt |
