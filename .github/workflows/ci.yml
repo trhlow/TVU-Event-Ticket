@@ -121,16 +121,29 @@ jobs:
       - name: Fail if any test was skipped
         working-directory: backend
         run: |
-          reports=$(find monolith/target/surefire-reports -name 'TEST-*.xml' 2>/dev/null || true)
-          if [ -z "$reports" ]; then
+          # An array, not a word-split string: a path with a space in it would otherwise become two
+          # arguments and the count would be wrong in the direction that passes. This is the SC2086
+          # that M11 recorded and that the shellcheck job does not reach -- it lints the production
+          # scripts, not the `run:` blocks in this file. actionlint is what covers these.
+          #
+          # find's exit status is checked rather than discarded with `|| true`. Piping it into
+          # mapfile through a process substitution would report success whatever find did, so a
+          # find that failed halfway through would look exactly like a clean run with fewer files
+          # -- fewer files being the direction that passes this check.
+          if ! found=$(find monolith/target/surefire-reports -name 'TEST-*.xml' 2>&1); then
+            echo "Could not list surefire reports: $found"
+            exit 1
+          fi
+          if [ -z "$found" ]; then
             echo "No surefire reports found for monolith — the suite did not run."
             exit 1
           fi
-          skipped=$(grep -ho 'skipped="[0-9]*"' $reports | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
+          mapfile -t reports <<< "$found"
+          skipped=$(grep -ho 'skipped="[0-9]*"' "${reports[@]}" | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
           if [ "$skipped" -ne 0 ]; then
             echo "$skipped test(s) were skipped. Testcontainers tests skip silently without Docker —"
             echo "a skipped run is not a passing run. Failing the build."
-            grep -l 'skipped="[1-9]' $reports || true
+            grep -l 'skipped="[1-9]' "${reports[@]}" || true
             exit 1
           fi
           echo "No tests were skipped."
