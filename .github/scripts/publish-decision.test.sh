@@ -450,5 +450,29 @@ assert_decision "an unrecognised status is not a status" \
   UNKNOWN '[]' false false
 
 echo
+echo "== a lookup may carry only the fields its own kind has"
+# Both of these were rejected by the schema and accepted here. The tag keeps a valid digest and the
+# marker keeps every field it needs, so the only thing wrong with each is a field belonging to the
+# other kind -- otherwise the case would reach UNKNOWN through the missing-field check instead and
+# prove nothing.
+tag_with_marker_fields="$(base_obs | python_json '
+import json, sys
+o = json.loads(sys.stdin.read())
+o["lookups"]["monolithTag"] = {"status": "present",
+                               "queriedRef": "ghcr.io/owner/name:sha-" + sys.argv[1],
+                               "digest": sys.argv[2],
+                               "markerDigest": sys.argv[3],
+                               "verification": {"attestationVerified": True}}
+print(json.dumps(o))' "$SHA" "$MONO" "$MARKER_DIGEST")"
+assert_decision "a tag carrying marker fields" "$tag_with_marker_fields" UNKNOWN '[]' false false
+
+marker_with_digest="$(observation "$absent" "$(marker)" "$absent" "$absent" | python_json '
+import json, sys
+o = json.loads(sys.stdin.read())
+o["lookups"]["preparedMarker"]["digest"] = sys.argv[1]
+print(json.dumps(o))' "$MONO")"
+assert_decision "a marker carrying a digest" "$marker_with_digest" UNKNOWN '[]' false false
+
+echo
 echo "passed=$passed failed=$failed"
 [[ $failed -eq 0 ]]

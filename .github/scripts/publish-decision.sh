@@ -56,8 +56,22 @@ REQUIRED_LOOKUPS = (
     "monolithCandidate", "frontendCandidate",
 )
 
+MARKER_LOOKUPS = ("finalMarker", "preparedMarker")
+# A set, not a tuple, and the difference is load-bearing. Membership in a tuple compares with `==`
+# and accepts an unhashable status quietly; membership in a set hashes, so an unhashable one raises
+# out of this test unless the type check above it has already refused it. That check was written
+# because exactly that TypeError once escaped as a traceback instead of a decision -- with a tuple
+# here it would still be written, still be needed one day, and no longer be provable.
+VALID_STATUSES = frozenset({"present", "absent", "error", "skipped"})
+
 # Exactly the fields each observed state may carry. A lookup that says "absent" while carrying an
 # error code is two answers at once, and picking either is guessing.
+#
+# One shared set for every "present" lookup left two divergences alive after the reconciliation: a
+# tag carrying `verification` and `markerDigest`, and a marker carrying `digest`, are both rejected
+# by the schema and were both accepted here. The single guard further down (`"content" not in
+# lookup`) closed one of three doors, and no fixture touched the other two -- which is why the
+# agreement suite reported agreement anyway.
 LOOKUP_FIELDS = {
     # Every lookup records what it asked about. Without queriedRef an "absent" is an assertion with
     # no subject, and two lookups that queried different references look identical.
@@ -69,8 +83,16 @@ LOOKUP_FIELDS = {
     # collector considered the lookup and decided against asking, while omitting it entirely is
     # indistinguishable from a collector that forgot the field existed.
     "skipped": ({"status", "reason", "queriedRef"}, {"status", "reason", "queriedRef"}),
-    "present": ({"status", "queriedRef"}, {"status", "queriedRef", "digest", "markerDigest",
-                                           "verification", "content"}),
+}
+
+# Present is the one status whose fields depend on what was looked up, so it gets its own table.
+# Required equals allowed on purpose: there is no optional field on a present lookup, and an
+# optional one would be a fact nobody stated dressed up as a fact omitted.
+PRESENT_FIELDS = {
+    "marker": ({"status", "queriedRef", "markerDigest", "verification", "content"},
+               {"status", "queriedRef", "markerDigest", "verification", "content"}),
+    "object": ({"status", "queriedRef", "digest"},
+               {"status", "queriedRef", "digest"}),
 }
 
 SKIP_REASONS = {"no_claimed_digest"}
@@ -148,14 +170,19 @@ def validate(obs):
         # membership test, so the script died with a traceback and no decision at all -- a caller
         # reading stdout got nothing rather than UNKNOWN.
         require(type(status) is str, f"lookups.{name}.status must be a string, got {status!r}")
-        require(status in LOOKUP_FIELDS,
-                f"lookups.{name}.status must be present, absent or error, got {status!r}")
-        required_fields, allowed_fields = LOOKUP_FIELDS[status]
+        require(status in VALID_STATUSES,
+                f"lookups.{name}.status must be one of {sorted(VALID_STATUSES)}, got {status!r}")
+        if status == "present":
+            kind = "marker" if name in MARKER_LOOKUPS else "object"
+            required_fields, allowed_fields = PRESENT_FIELDS[kind]
+        else:
+            kind = status
+            required_fields, allowed_fields = LOOKUP_FIELDS[status]
         present_fields = set(lookup)
         require(required_fields <= present_fields,
                 f"lookups.{name} is missing {', '.join(sorted(required_fields - present_fields))}")
         require(present_fields <= allowed_fields,
-                f"lookups.{name} carries fields that do not belong to status {status!r}: "
+                f"lookups.{name} is a {kind} lookup and carries fields that do not belong to it: "
                 f"{', '.join(sorted(present_fields - allowed_fields))}")
 
         ref = lookup.get("queriedRef")
@@ -183,7 +210,6 @@ def validate(obs):
             require(code is None or type(code) is int, f"lookups.{name}.code must be an integer")
         elif name.endswith(("Tag", "Candidate", "DigestObject")):
             exact_str(lookup.get("digest"), f"lookups.{name}.digest", DIGEST)
-            require("content" not in lookup, f"lookups.{name} is a tag, not a marker")
     return obs
 
 

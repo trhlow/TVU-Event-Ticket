@@ -53,6 +53,18 @@ MUTATIONS = {
     "status_fields_not_enforced": (
         "require(present_fields <= allowed_fields,",
         "require(True or present_fields <= allowed_fields,"),
+    # The shared allowed-set restored, with required still chosen per kind: a tag may carry the
+    # marker's fields and a marker may carry a tag's digest, which is exactly the divergence the one
+    # shared "present" entry used to hide. It reddens the two field-set witnesses and nothing else.
+    #
+    # `kind = "marker"` was the obvious mutation and it is the wrong one. Judged as a marker, the tag
+    # is missing `content`, so it is still refused and both witnesses stay green, while every object
+    # lookup in every valid fixture becomes a marker and reddens a crowd of unrelated cases. It would
+    # have been reported as caught while proving nothing about the rule it names.
+    "present_allowed_fields_unioned": (
+        "required_fields, allowed_fields = PRESENT_FIELDS[kind]",
+        "required_fields = PRESENT_FIELDS[kind][0]\n"
+        '            allowed_fields = PRESENT_FIELDS["marker"][1] | PRESENT_FIELDS["object"][1]'),
     "marker_fork_ignored": (
         'if final["markerDigest"] != prepared["markerDigest"]:', "if False:"),
     "same_digest_different_content": (
