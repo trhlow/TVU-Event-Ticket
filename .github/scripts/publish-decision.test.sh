@@ -14,6 +14,8 @@ set -uo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 subject="$script_dir/publish-decision.sh"
+# shellcheck source=python-bin.sh
+source "$script_dir/python-bin.sh"
 
 passed=0
 failed=0
@@ -26,7 +28,7 @@ OTHER=sha256:9999999999999999999999999999999999999999999999999999999999999999
 MARKER_DIGEST=sha256:3333333333333333333333333333333333333333333333333333333333333333
 FP=fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477
 
-python_json() { python3 -c "$1" "${@:2}"; }
+python_json() { "$PYTHON" -c "$1" "${@:2}"; }
 
 # marker [json-overrides] [images-monolith] [images-frontend] [marker-digest]
 marker() {
@@ -182,12 +184,12 @@ for bad in '{}' '[]' 'null' '{"schemaVersion":1}' \
   assert_decision "unusable observation: $bad" "$bad" UNKNOWN '[]' false false
 done
 assert_decision "a missing lookup is not an absent one" \
-  "$(observation "$absent" "$absent" "$absent" "$absent" | python3 -c '
+  "$(observation "$absent" "$absent" "$absent" "$absent" | "$PYTHON" -c '
 import json,sys
 o=json.load(sys.stdin); del o["lookups"]["finalMarker"]; print(json.dumps(o))')" \
   UNKNOWN '[]' false false
 assert_decision "an unexpected lookup key is a typo, not a fact" \
-  "$(observation "$absent" "$absent" "$absent" "$absent" | python3 -c '
+  "$(observation "$absent" "$absent" "$absent" "$absent" | "$PYTHON" -c '
 import json,sys
 o=json.load(sys.stdin); o["lookups"]["finlMarker"]={"status":"absent"}; print(json.dumps(o))')" \
   UNKNOWN '[]' false false
@@ -291,7 +293,7 @@ echo "== the schema rejects values that merely resemble the right ones"
 base_obs() { observation "$absent" "$absent" "$absent" "$absent"; }
 for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"ghcr.io/owner/name:r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"ghcr.io/owner/name:r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
   code="${tweak%%|*}"; label="${tweak##*|}"
-  assert_decision "$label"     "$(base_obs | python3 -c "
+  assert_decision "$label"     "$(base_obs | "$PYTHON" -c "
 import json,sys
 o=json.load(sys.stdin); $code; print(json.dumps(o))")"     UNKNOWN '[]' false false
 done
@@ -333,7 +335,7 @@ assert_decision "only a digest object may be skipped"   "$(observation '{"status
 echo
 echo "== the observation and the schema agree on what a lookup is"
 assert_decision "no expected registry" \
-  "$(base_obs | python3 -c '
+  "$(base_obs | "$PYTHON" -c '
 import json,sys
 o=json.load(sys.stdin); del o["expected"]["registry"]; print(json.dumps(o))')" \
   UNKNOWN '[]' false false

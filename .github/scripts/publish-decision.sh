@@ -22,6 +22,10 @@
 # Usage: publish-decision.sh OBSERVATION_JSON_FILE   (or observation on stdin)
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=python-bin.sh
+source "$script_dir/python-bin.sh"
+
 # Read here rather than inside Python: the program arrives on Python's stdin through the heredoc,
 # so a read there comes back empty -- which once made every observation classify as UNKNOWN, the
 # safest possible wrong answer and therefore the easiest to miss.
@@ -31,7 +35,7 @@ else
   observation="$(cat -- "$1")"
 fi
 
-python3 - "$observation" <<'PYTHON'
+"$PYTHON" - "$observation" <<'PYTHON'
 import hashlib
 import json
 import re

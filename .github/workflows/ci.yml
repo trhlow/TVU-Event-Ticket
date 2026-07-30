@@ -289,6 +289,7 @@ jobs:
         run: |
           bash .github/scripts/require-green-run.test.sh
           bash .github/scripts/publish-decision.test.sh
+          bash .github/scripts/interpreter-override.test.sh
           # A guard nobody can delete without a test going red is the only kind that is evidence.
           python3 .github/scripts/publish-decision.mutations.py
 

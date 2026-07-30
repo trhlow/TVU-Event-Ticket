@@ -25,8 +25,10 @@ set -uo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/../.." && pwd)"
+# shellcheck source=python-bin.sh
+source "$script_dir/python-bin.sh"
 
-python3 - "$repo_root" "$script_dir/publish-decision.sh" <<'PYTHON'
+"$PYTHON" - "$repo_root" "$script_dir/publish-decision.sh" <<'PYTHON'
 import json
 import os
 import pathlib

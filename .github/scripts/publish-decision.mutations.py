@@ -30,6 +30,12 @@ HERE = pathlib.Path(__file__).resolve().parent
 BASH = os.environ.get("PUBLISH_DECISION_BASH", "bash")
 SUBJECT = "publish-decision.sh"
 SUITE = "publish-decision.test.sh"
+PYTHON_BIN_LIB = "python-bin.sh"
+
+# If this runner started at all, its own interpreter works, so hand that one down rather than
+# letting the children fall back to a `python3` that may be a stub. An explicit PYTHON_BIN still
+# wins: the caller may be testing a different interpreter on purpose.
+CHILD_ENV = {**os.environ, "PYTHON_BIN": os.environ.get("PYTHON_BIN") or sys.executable}
 
 # Each entry removes exactly one guard. The key is what gets reported when a mutation survives.
 MUTATIONS = {
@@ -117,7 +123,7 @@ def run_suite(directory):
     """Returns (exit code, failing cases, timed_out)."""
     try:
         result = subprocess.run([BASH, SUITE], cwd=directory, capture_output=True, text=True,
-                                timeout=SUITE_TIMEOUT_SECONDS)
+                                timeout=SUITE_TIMEOUT_SECONDS, env=CHILD_ENV)
     except subprocess.TimeoutExpired:
         return None, 0, True
     red = sum(1 for line in result.stdout.splitlines() if line.startswith("FAIL"))
@@ -127,7 +133,7 @@ def run_suite(directory):
 def main():
     with tempfile.TemporaryDirectory() as workspace:
         workspace = pathlib.Path(workspace)
-        for name in (SUBJECT, SUITE):
+        for name in (SUBJECT, SUITE, PYTHON_BIN_LIB):
             shutil.copy(HERE / name, workspace / name)
         pristine = (workspace / SUBJECT).read_text(encoding="utf-8")
 
