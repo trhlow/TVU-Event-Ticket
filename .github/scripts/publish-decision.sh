@@ -35,11 +35,17 @@ else
   observation="$(cat -- "$1")"
 fi
 
-"$PYTHON" - "$observation" <<'PYTHON'
+# The script directory goes first so the program can import the canonical form rather than restate
+# it. Two statements of one canonical form are two forms, and the second one drifts silently: it
+# produces different bytes, and different bytes are a different checksum for the same migrations.
+"$PYTHON" - "$script_dir" "$observation" <<'PYTHON'
 import hashlib
 import json
 import re
 import sys
+
+sys.path.insert(0, sys.argv[1])
+from canonical import canonical_bytes, strict_loads
 
 SCHEMA_VERSION = 1
 # fullmatch everywhere: `$` also matches before a trailing newline, so a digest with \n appended
@@ -100,17 +106,6 @@ SKIP_REASONS = {"no_claimed_digest"}
 
 class Invalid(Exception):
     """The observation cannot be reasoned about. Never a state -- always UNKNOWN, never retryable."""
-
-
-def no_duplicates(pairs):
-    seen = {}
-    for key, value in pairs:
-        if key in seen:
-            # Last-value-wins would let a later "absent" hide an earlier "error", turning an
-            # unreadable registry into permission to build.
-            raise Invalid(f"duplicate key {key!r}")
-        seen[key] = value
-    return seen
 
 
 def require(condition, message):
@@ -394,16 +389,11 @@ def inventory_problems(inventory, monolith_digest, where):
     # Recomputed, not merely present. A checksum nobody derives from the content is a field, and a
     # field can be copied from a different release.
     ordered = sorted(migrations, key=lambda record: record["installedRank"])
-    canonical = json.dumps(ordered, sort_keys=True, separators=(",", ":"))
-    computed = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    computed = hashlib.sha256(canonical_bytes(ordered)).hexdigest()
     if inventory.get("checksum") != computed:
         problems.append(f"{where}.checksum is {inventory.get('checksum')!r} but the migrations "
                         f"hash to {computed}")
     return problems
-
-
-def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"))
 
 
 def decide(obs):
@@ -441,7 +431,7 @@ def decide(obs):
         # Content-addressed storage makes "same digest, different content" impossible, so an
         # observation showing it is contradicting itself and nothing here can resolve which half to
         # believe.
-        if canonical(final["content"]) != canonical(prepared["content"]):
+        if canonical_bytes(final["content"]) != canonical_bytes(prepared["content"]):
             return conflict(f"final and prepared markers share digest {final['markerDigest']} but "
                             f"their content differs; the observation contradicts itself",
                             cleanup_debt)
@@ -524,12 +514,17 @@ def unknown(reason, retryable, cleanup_debt=False):
 
 
 try:
-    observation = json.loads(sys.argv[1], object_pairs_hook=no_duplicates)
+    observation = strict_loads(sys.argv[2])
     result = decide(validate(observation))
 except Invalid as error:
     result = unknown(f"observation is unusable: {error}", False)
-except json.JSONDecodeError as error:
-    result = unknown(f"observation is not JSON: {error}", False)
+except ValueError as error:
+    # Everything strict_loads refuses -- a duplicate key, a float, a BOM -- arrives as ValueError,
+    # and JSONDecodeError is one too. They mean the same thing here: the text could not be read as
+    # an observation, which is a fact about the collector rather than about the release. Last-value
+    # -wins on a duplicate key is the one worth naming: it would let a later "absent" hide an
+    # earlier "error", turning an unreadable registry into permission to build.
+    result = unknown(f"observation could not be read: {error}", False)
 
 print(json.dumps(result, sort_keys=True))
 PYTHON

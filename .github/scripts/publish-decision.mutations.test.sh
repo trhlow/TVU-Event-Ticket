@@ -34,7 +34,7 @@ trap 'rm -rf "$work"' EXIT
 # fake suite beside it and the real working tree is never involved.
 scripts="$work/scripts"
 mkdir -p "$scripts"
-for name in publish-decision.mutations.py publish-decision.sh python-bin.sh; do
+for name in publish-decision.mutations.py publish-decision.sh python-bin.sh canonical.py; do
   cp "$script_dir/$name" "$scripts/$name"
 done
 

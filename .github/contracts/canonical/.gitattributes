@@ -1,0 +1,6 @@
+# The golden files are compared byte for byte and hashed. On a workstation with core.autocrlf=true a
+# line-ending conversion would change the digest of a file whose entire purpose is to pin one, so
+# they are never treated as text. golden.bytes has no line ending at all today; this is what keeps
+# that true after somebody edits it on Windows.
+golden.bytes -text
+golden.digest -text

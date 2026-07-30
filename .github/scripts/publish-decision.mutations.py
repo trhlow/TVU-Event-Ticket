@@ -31,6 +31,9 @@ BASH = os.environ.get("PUBLISH_DECISION_BASH", "bash")
 SUBJECT = "publish-decision.sh"
 SUITE = "publish-decision.test.sh"
 PYTHON_BIN_LIB = "python-bin.sh"
+# The subject imports this rather than restating the canonical form, so it has to travel with the
+# scripts into the workspace. Without it the baseline is red and no mutation is exercised at all.
+CANONICAL_LIB = "canonical.py"
 
 # If this runner started at all, its own interpreter works, so hand that one down rather than
 # letting the children fall back to a `python3` that may be a stub. An explicit PYTHON_BIN still
@@ -68,7 +71,8 @@ MUTATIONS = {
     "marker_fork_ignored": (
         'if final["markerDigest"] != prepared["markerDigest"]:', "if False:"),
     "same_digest_different_content": (
-        'if canonical(final["content"]) != canonical(prepared["content"]):', "if False:"),
+        'if canonical_bytes(final["content"]) != canonical_bytes(prepared["content"]):',
+        "if False:"),
     "complete_skips_digest_objects": (
         '        problem = missing_or_mismatched(objects, claimed, "digest object")\n'
         "        if problem:\n"
@@ -178,7 +182,7 @@ def run_suite(directory):
 def main():
     with tempfile.TemporaryDirectory() as workspace:
         workspace = pathlib.Path(workspace)
-        for name in (SUBJECT, SUITE, PYTHON_BIN_LIB):
+        for name in (SUBJECT, SUITE, PYTHON_BIN_LIB, CANONICAL_LIB):
             shutil.copy(HERE / name, workspace / name)
         pristine = (workspace / SUBJECT).read_text(encoding="utf-8")
 

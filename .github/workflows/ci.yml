@@ -290,8 +290,16 @@ jobs:
           bash .github/scripts/require-green-run.test.sh
           bash .github/scripts/publish-decision.test.sh
           bash .github/scripts/interpreter-override.test.sh
+          # The canonical form is what a checksum is computed over, so a change to it silently
+          # invalidates every checksum already written down. Pinned against golden bytes and a
+          # digest taken with sha256sum rather than with the function under test.
+          bash .github/scripts/canonical.test.sh
           # A guard nobody can delete without a test going red is the only kind that is evidence.
           python3 .github/scripts/publish-decision.mutations.py
+          # Both of these drive a copy of their subject over a fake tree, so they catch a subject
+          # that has grown a dependency its callers do not carry -- which is how canonical.py
+          # arriving was noticed.
+          bash .github/scripts/publish-decision.mutations.test.sh
 
       - name: Check the contract and the decision still agree
         # The schema and the decision function state the same rules in two languages, and they have
@@ -302,6 +310,9 @@ jobs:
         run: |
           python3 -m pip install --quiet --disable-pip-version-check jsonschema==4.26.0
           bash .github/scripts/contract-agreement.test.sh
+          # How it reports a disagreement, which is the half that decides whether anyone can act on
+          # one. Runs here rather than beside the others because it needs the same jsonschema.
+          bash .github/scripts/contract-agreement.report.test.sh
 
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to

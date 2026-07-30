@@ -19,3 +19,7 @@ AGENTS.md
 CLAUDE.md
 skills-lock.json
 docs/superpowers/
+
+# publish-decision.sh imports canonical.py, so running it leaves bytecode beside the scripts.
+__pycache__/
+*.pyc
