@@ -27,6 +27,12 @@ Tiền đề: `observation.schema.json` và `publish-decision.sh` đã hoà gi�
 3b (spec riêng, viết cùng hôm nay, triển khai sau khi 3a xanh): `evidenceVerification` ngoài `content`,
 schema của ba custom Trivy predicate, và cách xác minh evidence thật.
 
+> **Payload không được đóng băng trước 3b.** Phương án A′ của 3b (evidence-set có manifest và tag neo giữ)
+> đổi hình dạng `evidence` bên trong 7 key: mỗi entry mang descriptor `{mediaType,digest,size}` thay cho
+> một digest trơ, payload mang thêm `evidenceSetDigest` cho mỗi image, và entry SBOM khác hình dạng ba
+> entry scan. Vì vậy `release-manifest.schema.json` là commit **cuối** của 3a, sau khi shape evidence của
+> 3b final — xem §10. Ba sửa lỗi độc lập của 3a không chờ điều đó.
+
 Ngoài phạm vi cả 3a và 3b:
 
 - **Collector** (mục 5). Spec này chỉ nói collector *phải khai* những gì.
@@ -57,7 +63,7 @@ digest khác nhau, và cùng một SHA không tái tạo được cùng một ar
 | `layers` | **đúng một** descriptor |
 | layer `mediaType` | `application/vnd.tvu.release-manifest.v1+json` |
 | layer field set | đúng `mediaType`, `digest`, `size`, không gì khác |
-| `subject` | **phải vắng** |
+| `subject` | **phải vắng** — xem ghi chú dưới, đây là luật của **marker**, không phải luật chung |
 | `annotations` | **key phải vắng hoàn toàn**, ở cả ba cấp: manifest, config descriptor, layer descriptor |
 
 ### Annotations: cấm, và cấm bằng cách vắng key
@@ -75,7 +81,10 @@ provenance, và ở tag `sha-<commit>`. Bản sao thứ tư chỉ thêm một đ
 
 Thủ tục producer bắt buộc, vì `oras push` không dựng được envelope này:
 
-1. Push canonical payload blob.
+1. Push canonical payload blob, **và push cả blob `{}` của empty config**. Registry được phép từ chối một
+   manifest tham chiếu blob chưa tồn tại, nên không được dựa vào `data` embedded một mình. Nếu muốn bỏ
+   bước push blob `{}` thì phải có integration test GHCR chứng minh descriptor `data` được chấp nhận —
+   không suy ra từ spec OCI.
 2. **Tự dựng** canonical OCI manifest JSON theo bảng trên.
 3. Push nó bằng `oras manifest push` (nhận manifest đã dựng sẵn, nên phù hợp với envelope chặt).
 4. Fetch raw manifest về.
@@ -92,6 +101,15 @@ executable.
 
 Bất biến vẫn giữ, nhưng vì lý do khác: **tạo artifact một lần, re-tag cùng digest, không rebuild final
 marker** — để promotion không phải là một lần dựng lại có thể khác đi.
+
+### `subject` vắng là luật của marker, không phải luật chung
+
+Evidence-set artifact của 3b **có** `subject` = digest của image mà nó nói về. Hai luật ngược nhau trên hai
+loại artifact khác nhau, có chủ đích: marker là gốc của release nên nó không treo dưới cái gì; evidence-set
+nói *về* một image nên nó treo dưới image đó. Đừng tổng quát hoá luật này sang artifact khác.
+
+Ở cả hai trường hợp, **tag là neo reachability chính**, không phải `subject`: hỗ trợ referrers API của GHCR
+không được coi là điều đã biết.
 
 ### Thứ tự bắt buộc ở collector
 
@@ -143,6 +161,28 @@ Không siết `environment`, `migration.type`, `migration.script`: producer đ�
 đoán hình dạng ở đây tạo ra chỗ mà một release đúng bị chặn.
 
 Observer phải rộng vì registry có thể chứa rác; producer thì không được tự phát minh predicate.
+
+### Canonicalizer dùng chung, và nó **không** phải JCS
+
+"Canonical payload" và "canonical manifest" phải là một thuật toán executable, không phải một tính từ. Nếu
+không, cùng một SHA cho ra digest khác sau một lần rerun và bất biến "tạo một lần, re-tag" mất nghĩa.
+
+Một canonicalizer duy nhất, dùng cho payload marker, manifest OCI tự dựng, và report của 3b. Nó **là**
+dạng đang có trong `publish-decision.sh:367`:
+
+```python
+json.dumps(value, sort_keys=True, separators=(",", ":"))  # UTF-8, không newline cuối
+```
+
+Đề xuất **không** chuyển sang JCS (RFC 8785), dù JCS là thứ đúng theo chuẩn: `flywayInventory.checksum`
+trong các fixture hiện có đã được tính bằng dạng trên, và JCS mã hoá số cùng escape unicode khác đi, nên
+đổi sẽ làm mọi checksum fixture sai và phải tính lại. Rẻ hơn và ít rủi ro hơn: **trích dạng đang có ra một
+hàm dùng chung, ghi rõ luật, và ghi rõ nó không phải JCS** để không ai giả định lẫn.
+
+Phải đóng băng thành văn bản: UTF-8 không BOM, `sort_keys` theo code point, `separators` không khoảng
+trắng, không newline cuối, số giữ nguyên dạng Python `json` phát ra, và thứ tự `findings` của 3b do schema
+quy định chứ không do scanner quyết. Kèm **golden bytes + golden digest fixture**: một document mẫu, bytes
+mong đợi, digest mong đợi. Không có fixture đó thì canonicalizer là một lời hứa.
 
 ## 4. Kết luận xác minh: `boolean`, và hai trust boundary
 
@@ -325,8 +365,19 @@ Ba URI `evts.id.vn` không cần "quan sát trước": workflow chủ động tr
 
 `release-manifest.schema.json` không thể là nguồn duy nhất cho `artifactType`, layer mediaType và marker
 provenance: chúng không thuộc payload 7 key. Chúng sống trong **`release-envelope.schema.json`** — một
-schema của một object thật (`ociEnvelope`), không phải một file metadata. Observation `$ref` sang nó để
-lấy shape; decision đọc hằng từ nó; `manifest-agreement.test.sh` đòi ba nguồn khớp nhau.
+schema của object thật, không phải một file metadata. Observation `$ref` sang nó để lấy shape; decision đọc
+hằng từ nó; `manifest-agreement.test.sh` đòi ba nguồn khớp nhau.
+
+File đó chia làm ba `$defs`, vì nó đang mô tả hai thứ khác nhau và một tập hằng:
+
+| `$defs` | Mô tả |
+|---|---|
+| `rawEnvelope` | OCI manifest thật, đúng như bytes trên registry. Không có field derived nào. |
+| `observedEnvelope` | Cái collector khai: `rawEnvelope` cộng các boolean derived (`digestVerified`, `sizeVerified`, `annotationsAbsent`) và `layerCount`. Đây là thứ `presentMarker.ociEnvelope` `$ref` tới. |
+| `constants` | `artifactType`, layer mediaType, config descriptor, năm predicate URI. Nguồn duy nhất. |
+
+Không trộn hai cái đầu: một schema vừa validate bytes registry vừa validate observation thì không schema
+nào trong hai việc đó còn nói được điều gì chính xác.
 
 Chống sai, không chỉ chống drift:
 
@@ -386,18 +437,29 @@ Mỗi commit chạy được và tự đứng vững. **Không commit trạng th
 sửa, không cần lưu nó lại; bằng chứng RED ghi trong commit body. **Không ghi số test cố định trong spec**:
 thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số thực tế đo được.
 
+0. `fix(ci): let the contract scripts name their interpreter` — `PYTHON_BIN` vào
+   `contract-agreement.test.sh:29` và `publish-decision.sh:34` (§11). Nhỏ, độc lập, và không có nó thì
+   không chạy được gì trên máy Windows để quan sát RED.
 1. `fix(ci): give each kind of lookup its own field set` — §6, **chỉ theo shape hiện có**, không chạm
    carrier. Kèm 2 fixture. Độc lập, sửa một lệch đang sống.
 2. `contract(ci): let the observation state a negative verdict` — §4, **bốn** boolean đang tồn tại
    (`attestationVerified`, `policyPassed`, `evidence.*.passed`, `migrations[].success`) + sửa mô tả Flyway
    ở `:237`. `digestVerified`/`sizeVerified` chưa tồn tại nên chưa nằm ở đây.
-3. `contract(ci): freeze the release manifest as a schema` — `release-manifest.schema.json`,
-   `manifest-agreement.test.sh`, release-manifest fixtures, nối vào `ci.yml`. **Phải đồng thời thêm
-   enforcement predicate exact vào decision, test và mutations** — không có nó, fixture predicate sai
-   không thể ra CONFLICT và điều 2 của §9 vô nghĩa.
-4. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json`, `ociEnvelope`
-   vào `presentMarker`, `digestVerified`/`sizeVerified`/`annotationsAbsent`, nhánh conditional của
-   `content`, hằng vào decision, 9 marker instance trong 8 fixture mỗi cái thêm envelope.
+3. `contract(ci): make canonical a function instead of an adjective` — trích canonicalizer ra một hàm dùng
+   chung, golden bytes + golden digest fixture, ghi rõ nó không phải JCS. Đứng trước mọi thứ nói "canonical".
+4. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với ba `$defs`
+   (§7), `ociEnvelope` vào `presentMarker`, `digestVerified`/`sizeVerified`/`annotationsAbsent`, nhánh
+   conditional của `content`, hằng vào decision, 9 marker instance trong 8 fixture mỗi cái thêm envelope.
+   `manifest-agreement.test.sh` sinh ra ở đây với hai điều kiểm được ngay (drift hằng envelope, và không
+   cổng schema trước decision), nối vào `ci.yml` kề dòng 303 trong **cùng** commit này.
+5. `contract(ci): freeze the release manifest payload as a schema` — **chỉ sau khi shape evidence của 3b
+   final.** `release-manifest.schema.json` (payload đã gồm `evidenceSetDigest` và descriptor cho từng
+   entry), release-manifest fixtures, mở rộng `manifest-agreement.test.sh` cho hai witness subset. **Phải
+   đồng thời thêm enforcement predicate exact vào decision, test và mutations** — không có nó, fixture
+   predicate sai không thể ra CONFLICT và điều 2 của §9 vô nghĩa.
+
+Commit 0-4 không phụ thuộc 3b và chạy được ngay. Commit 5 là ranh giới: nó đóng băng payload, nên nó chờ
+3b. Đây là thay đổi so với bản trước, khi commit đóng băng payload đứng thứ ba.
 
 ## 11. Chạy trên Windows
 
