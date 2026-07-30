@@ -6,7 +6,12 @@ Tiền đề: `observation.schema.json` và `publish-decision.sh` đã hoà gi�
 `contract-agreement.test.sh` (`bed2dcb`) giữ chúng khớp nhau trên 14 fixture.
 
 **3a và 3b là hai phần bắt buộc của cùng một release gate.** Xem
-`2026-07-30-evidence-verification-contract-design.md` cho 3b. Ba điều khoản không được vi phạm:
+`2026-07-30-evidence-verification-contract-design.md` cho 3b.
+
+Thứ tự thi công là **3a commit 0-4 → 3b → 3a commit 5**, không phải "3b sau khi 3a xanh" như bản đầu viết:
+commit 5 đóng băng payload nên nó phải chờ shape evidence của 3b. Xem §10.
+
+Ba điều khoản không được vi phạm:
 
 - 3a **không** được dùng để tuyên bố evidence đã đáng tin.
 - **Không merge và không enable job publish khi chỉ có 3a.**
@@ -154,8 +159,12 @@ Hai bẫy cơ chế:
 | `evidence.vulnerabilityScan.*.predicateType` | non-empty string | `const` Trivy vuln URI |
 | `evidence.layerSecretScan.*.predicateType` | non-empty string | `const` Trivy layer-secret URI |
 | `evidence.filesystemSecretScan.*.predicateType` | non-empty string | `const` Trivy fs-secret URI |
-| `evidence.*.passed` | `boolean` (§4) | `const: true` |
+| `evidence.{vulnerabilityScan,layerSecretScan,filesystemSecretScan}.*.passed` | `boolean` (§4) | `const: true` |
+| `evidence.sbom.*.documentValidated` | `boolean` (§4) | `const: true` |
 | `flywayInventory.migrations[].success` | `boolean` (§4) | `const: true` |
+
+`evidence.sbom` **không có** `passed`: SPDX phát biểu một inventory, không phát biểu verdict, nên hỏi nó
+"passed hay không" là phát minh câu trả lời. Xem 3b §4. Ba entry scan giữ `passed`.
 
 Không siết `environment`, `migration.type`, `migration.script`: producer đọc chúng từ history thật, và
 đoán hình dạng ở đây tạo ra chỗ mà một release đúng bị chặn.
@@ -179,10 +188,25 @@ trong các fixture hiện có đã được tính bằng dạng trên, và JCS m
 đổi sẽ làm mọi checksum fixture sai và phải tính lại. Rẻ hơn và ít rủi ro hơn: **trích dạng đang có ra một
 hàm dùng chung, ghi rõ luật, và ghi rõ nó không phải JCS** để không ai giả định lẫn.
 
-Phải đóng băng thành văn bản: UTF-8 không BOM, `sort_keys` theo code point, `separators` không khoảng
-trắng, không newline cuối, số giữ nguyên dạng Python `json` phát ra, và thứ tự `findings` của 3b do schema
-quy định chứ không do scanner quyết. Kèm **golden bytes + golden digest fixture**: một document mẫu, bytes
-mong đợi, digest mong đợi. Không có fixture đó thì canonicalizer là một lời hứa.
+Ghi `json.dumps(..., sort_keys=True, separators=(",", ":"))` là **chưa đủ**: Python mặc định
+`ensure_ascii=True` và mặc định **cho phép** `NaN`/`Infinity`, còn `json.loads` mặc định **im lặng nhận**
+key trùng và lấy giá trị cuối. Cả ba đều phải bị khoá tường minh:
+
+| Tham số | Giá trị | Vì sao |
+|---|---|---|
+| `ensure_ascii` | **`True`** | Chính là mặc định mà `flywayInventory.checksum` trong fixture đã được tính bằng. Đây là hệ quả trực tiếp của việc không dùng JCS — JCS thì ngược lại, không escape. |
+| `allow_nan` | **`False`** | `NaN`/`Infinity` không phải JSON. Cho phép chúng là phát hành một tài liệu mà parser khác từ chối. |
+| `sort_keys` | `True` | Theo code point. |
+| `separators` | `(",", ":")` | Không khoảng trắng. |
+| newline cuối | không có | |
+| encode | UTF-8, không BOM | |
+| duplicate key khi **đọc** | **từ chối** | `no_duplicates` ở `publish-decision.sh:79` đã làm đúng việc này cho observation; canonicalizer phải dùng cùng `object_pairs_hook`. |
+| miền kiểu | chỉ object, array, string, integer, boolean, null | Float bị cấm: không có cách viết float canonical mà hai runtime đồng ý. `migration.checksum` là integer, nên không cần float ở đâu cả. |
+
+Thứ tự `findings` của 3b do schema quy định, không do scanner quyết.
+
+Kèm **golden bytes + golden digest fixture**: một document mẫu chứa ký tự non-ASCII và số lớn, bytes mong
+đợi, digest mong đợi. Không có fixture đó thì canonicalizer là một lời hứa.
 
 ## 4. Kết luận xác minh: `boolean`, và hai trust boundary
 
@@ -194,7 +218,7 @@ Thiếu field và sai kiểu thì phụ thuộc **nguồn của dữ liệu**, v
 | Nguồn | `false` | Thiếu / sai kiểu |
 |---|---|---|
 | Collector tự tạo (`attestationVerified`, `policyPassed`, `digestVerified`, `sizeVerified`) | CONFLICT | **UNKNOWN** |
-| Đọc từ marker payload (`evidence.*.passed`, `migrations[].success`) | CONFLICT | **CONFLICT** |
+| Đọc từ marker payload (`evidence.<scan>.*.passed`, `evidence.sbom.*.documentValidated`, `migrations[].success`) | CONFLICT | **CONFLICT** |
 
 Thu thập lại sửa được một collector khai thiếu. Nó không sửa được một marker malformed đang nằm trong
 registry.
@@ -242,7 +266,7 @@ Sáu trường đổi `const: true` → `"type": "boolean"`:
 2. `verification.policyPassed`
 3. `ociEnvelope.digestVerified`
 4. `ociEnvelope.sizeVerified`
-5. `evidence.<kind>.<image>.passed`
+5. `evidence.<scan>.<image>.passed` (ba entry scan) và `evidence.sbom.<image>.documentValidated`
 6. `flywayInventory.migrations[].success`
 
 `required` và các `pattern` **không** đổi, nên **không fixture nào bị phân loại lại**: hai fixture ở trên
@@ -260,39 +284,43 @@ Postgres tạm **sau khi** candidate image chạy migration; `boundTo` là diges
 
 ## 5. `ociEnvelope` trong observation
 
-`presentMarker` thêm một object, thay cho `payloadDescriptor` phẳng của bản trước:
+`presentMarker` thêm một object. Bản trước để nó phẳng — `rawEnvelope` cộng các field derived trộn cùng một
+cấp — và đó là đúng cái bẫy `additionalProperties: false` mà §3 vừa cảnh báo rồi bước vào. Sửa bằng cách
+**lồng raw**, không trộn:
 
 ```
 ociEnvelope: {
-  schemaVersion, mediaType, artifactType, configDescriptor, subject,
-  layerCount, payloadDescriptor, annotationsAbsent, digestVerified, sizeVerified
+  raw: <đúng OCI manifest như bytes trên registry>,
+  digestVerified: boolean,
+  sizeVerified: boolean
 }
 ```
 
-- `artifactType`: `["string", "null"]`.
-- `subject`: `null` khi vắng; object khi có (và khi có là CONFLICT).
-- `layerCount`: integer ≥ 0.
-- `payloadDescriptor`: `object | null` — **null** khi `layerCount != 1`, vì lúc đó không có layer nào để
-  mô tả, hoặc không rõ đang mô tả layer nào.
-- `annotationsAbsent`: `boolean` — ba cấp, một kết luận. Raw annotations không cần lưu, nhưng policy phải
-  executable, và `false` là CONFLICT.
+**Chỉ hai boolean.** `layerCount`, `payloadDescriptor` và `annotationsAbsent` của bản trước đều **derive
+được từ `raw`** — số layer là `len(raw.layers)`, payload descriptor là layer duy nhất, annotations vắng hay
+không thì nhìn thấy ngay trong `raw`. Ba field đó bị bỏ: một field derived được khai riêng là một cơ hội
+để hai nửa của cùng một sự thật nói khác nhau, và hợp đồng này đã có một bug đúng loại đó.
 
-`artifactType` khai `["string","null"]` **có chủ đích**: `null` là *một lời khai* — "object trong registry
-không có `artifactType`", hoàn toàn hợp lệ trong OCI vì nó là field optional. Thiếu key là *không khai
-được*. Cùng hình dạng `skipped.queriedRef: null`.
+Hai boolean còn lại **không** derive được từ `raw`: chúng là kết quả của phép kiểm bytes ở ngoài manifest.
 
-Observation **không** đặt `const` lên `artifactType`: nó phải mô tả được một object sai kiểu. `const` chỉ
-sống trong `release-envelope.schema.json` và như một hằng trong decision.
+`raw.artifactType` khai `["string", "null"]` **có chủ đích**: `null` là *một lời khai* — "object trong
+registry không có `artifactType`", hoàn toàn hợp lệ trong OCI vì nó là field optional. Thiếu key là *không
+khai được*. Cùng hình dạng `skipped.queriedRef: null`. Tương tự, `raw` phải mô tả được cả một manifest
+**có** `annotations` và **có** `subject`, vì đó là những artifact xấu mà decision phải từ chối chứ không
+phải những artifact observation được phép im lặng.
+
+Observation **không** đặt `const` lên các trường của `raw`: nó phải mô tả được một object sai kiểu. `const`
+chỉ sống trong `release-envelope.schema.json` (`$defs/constants`) và như hằng trong decision.
 
 | Observation | Kết quả |
 |---|---|
-| thiếu key `artifactType` (hoặc bất kỳ key collector-derived nào) | UNKNOWN |
-| `artifactType: null` | CONFLICT |
-| `artifactType` là string khác hằng | CONFLICT |
-| `subject` không null | CONFLICT |
-| `layerCount != 1` | CONFLICT |
-| `annotationsAbsent: false` | CONFLICT |
-| `schemaVersion`, `mediaType`, `configDescriptor` lệch hằng | CONFLICT |
+| thiếu `ociEnvelope`, thiếu `raw`, thiếu `digestVerified`/`sizeVerified`, hoặc sai kiểu | UNKNOWN |
+| `raw.artifactType: null` | CONFLICT |
+| `raw.artifactType` là string khác hằng | CONFLICT |
+| `raw.subject` có mặt | CONFLICT |
+| `raw.annotations` có mặt ở bất kỳ cấp nào trong ba cấp | CONFLICT |
+| `len(raw.layers) != 1` | CONFLICT |
+| `raw.schemaVersion`, `raw.mediaType`, `raw.config` lệch hằng | CONFLICT |
 | `digestVerified` hoặc `sizeVerified` là `false` | CONFLICT |
 | tất cả khớp | tiếp tục |
 | `ociEnvelope` trên lookup không phải marker | UNKNOWN — tự rơi ra từ §6 |
@@ -305,9 +333,13 @@ vụ `skipped` phải mang `queriedRef: null` mà script cũ lại cấm khoá �
 
 Luật:
 
-- `digestVerified && sizeVerified && layerCount == 1` ⇒ `content` **bắt buộc**.
+- `digestVerified && sizeVerified && len(raw.layers) == 1` ⇒ `content` **bắt buộc**.
 - Ngược lại ⇒ `content` **bị cấm**, observation vẫn structurally valid, decision trả **CONFLICT**.
 - Không tải hoặc không băm được ⇒ lookup khai `status: "error"` ⇒ UNKNOWN.
+
+`evidenceVerification` của 3b theo **đúng cùng điều kiện**: bắt buộc khi `content` bắt buộc, bị cấm khi
+`content` bị cấm. Không đối xứng thì một envelope sai digest cộng với `evidenceVerification` vắng sẽ ra
+UNKNOWN, trong khi nó phải là CONFLICT — bytes đã được kiểm và đã trượt.
 
 Cơ chế: `if`/`then`/`else` trong `presentMarker`. Lưu ý `content` vẫn phải nằm trong `properties` để
 `additionalProperties: false` cho phép nó tồn tại ở nhánh `then`; nhánh `else` dùng
@@ -372,8 +404,8 @@ File đó chia làm ba `$defs`, vì nó đang mô tả hai thứ khác nhau và 
 
 | `$defs` | Mô tả |
 |---|---|
-| `rawEnvelope` | OCI manifest thật, đúng như bytes trên registry. Không có field derived nào. |
-| `observedEnvelope` | Cái collector khai: `rawEnvelope` cộng các boolean derived (`digestVerified`, `sizeVerified`, `annotationsAbsent`) và `layerCount`. Đây là thứ `presentMarker.ociEnvelope` `$ref` tới. |
+| `rawEnvelope` | OCI manifest thật, đúng như bytes trên registry. Rộng: phải mô tả được cả artifact xấu. Không field derived nào. |
+| `observedEnvelope` | `{ raw: rawEnvelope, digestVerified, sizeVerified }` — **lồng**, không trộn, để tránh bẫy `additionalProperties: false`. Đây là thứ `presentMarker.ociEnvelope` `$ref` tới. |
 | `constants` | `artifactType`, layer mediaType, config descriptor, năm predicate URI. Nguồn duy nhất. |
 
 Không trộn hai cái đầu: một schema vừa validate bytes registry vừa validate observation thì không schema
@@ -448,8 +480,12 @@ thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số 
 3. `contract(ci): make canonical a function instead of an adjective` — trích canonicalizer ra một hàm dùng
    chung, golden bytes + golden digest fixture, ghi rõ nó không phải JCS. Đứng trước mọi thứ nói "canonical".
 4. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với ba `$defs`
-   (§7), `ociEnvelope` vào `presentMarker`, `digestVerified`/`sizeVerified`/`annotationsAbsent`, nhánh
-   conditional của `content`, hằng vào decision, 9 marker instance trong 8 fixture mỗi cái thêm envelope.
+   (§7), `ociEnvelope` = `{raw, digestVerified, sizeVerified}` vào `presentMarker`, nhánh conditional của
+   `content`, hằng vào decision, 9 marker instance trong 8 fixture mỗi cái thêm envelope. Kèm **sửa vòng
+   quét retryable** ở `publish-decision.sh:383-391`: hiện nó `return` ở lỗi **đầu tiên** theo thứ tự
+   alphabet, nên với hai lỗi — một retryable, một không — kết quả phụ thuộc tên khoá. Luật đúng: nhiều lỗi
+   thì `retryable` chỉ khi **tất cả** đều retryable; 408/429/5xx/timeout là retryable, 401/403 và response
+   hỏng thì không.
    `manifest-agreement.test.sh` sinh ra ở đây với hai điều kiểm được ngay (drift hằng envelope, và không
    cổng schema trước decision), nối vào `ci.yml` kề dòng 303 trong **cùng** commit này.
 5. `contract(ci): freeze the release manifest payload as a schema` — **chỉ sau khi shape evidence của 3b
