@@ -131,15 +131,42 @@ MUTATIONS = {
 SUITE_TIMEOUT_SECONDS = 120
 
 
+# An excerpt rather than the whole capture, and kept from the end. A suite that could not start says
+# so in one line; a suite that died mid-run says so in its last few, which is where a traceback puts
+# the reason. Pasting four hundred lines into a job log is how a report stops being read, and keeping
+# a silent fraction of them is how someone concludes the suite printed nothing -- so what was left
+# out is counted out loud.
+EXCERPT_LINES = 15
+EXCERPT_LINE_CHARS = 200
+
+
+def excerpt(label, text):
+    lines = (text or "").splitlines()
+    if not lines:
+        return f"{label}: nothing"
+    dropped = len(lines) - EXCERPT_LINES
+    kept = lines[-EXCERPT_LINES:] if dropped > 0 else lines
+    if dropped > 0:
+        head = f"{label}, last {len(kept)} of {len(lines)} lines ({dropped} earlier omitted):"
+    else:
+        head = f"{label}:"
+    body = []
+    for line in kept:
+        if len(line) > EXCERPT_LINE_CHARS:
+            line = f"{line[:EXCERPT_LINE_CHARS]} [{len(line) - EXCERPT_LINE_CHARS} chars omitted]"
+        body.append(f"  | {line}")
+    return "\n".join([head] + body)
+
+
 def run_suite(directory):
-    """Returns (exit code, failing cases, timed_out)."""
+    """Returns (exit code, failing cases, timed_out, stdout, stderr)."""
     try:
         result = subprocess.run([BASH, SUITE], cwd=directory, capture_output=True, text=True,
                                 timeout=SUITE_TIMEOUT_SECONDS, env=CHILD_ENV)
     except subprocess.TimeoutExpired:
-        return None, 0, True
+        return None, 0, True, "", ""
     red = sum(1 for line in result.stdout.splitlines() if line.startswith("FAIL"))
-    return result.returncode, red, False
+    return result.returncode, red, False, result.stdout, result.stderr
 
 
 def main():
@@ -150,14 +177,19 @@ def main():
         pristine = (workspace / SUBJECT).read_text(encoding="utf-8")
 
         # A suite that is already red proves nothing about any mutation.
-        code, red, timed_out = run_suite(workspace)
+        code, red, timed_out, out, err = run_suite(workspace)
         if timed_out:
             # The baseline hanging is a defect in the suite or the runner, not a result about any
             # guard, so it must not be reported as one.
             print(f"the suite did not finish within {SUITE_TIMEOUT_SECONDS}s before any mutation")
             return 1
         if code != 0:
-            print(f"the suite is red before any mutation ({red} failing); fix that first")
+            # The count alone was the whole report for a while, and a baseline that dies before
+            # printing a single FAIL line has a count of zero -- so it read "(0 failing)" and said
+            # nothing about a bash that could not start or an interpreter that ran nothing.
+            print(f"the suite is red before any mutation ({red} failing, exit {code}); fix that first")
+            print(excerpt("its stdout", out))
+            print(excerpt("its stderr", err))
             return 1
         print("baseline: suite green")
 
@@ -170,7 +202,7 @@ def main():
                 survivors.append(name)
                 continue
             (workspace / SUBJECT).write_text(pristine.replace(old, new, 1), encoding="utf-8")
-            code, red, timed_out = run_suite(workspace)
+            code, red, timed_out, _, _ = run_suite(workspace)
             if timed_out:
                 # A mutant that hangs was still detected -- the suite noticed something -- but it is
                 # worth distinguishing from a clean red, because the cause is a loop rather than an
