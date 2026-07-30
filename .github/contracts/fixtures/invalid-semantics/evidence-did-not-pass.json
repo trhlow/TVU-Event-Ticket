@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "commit": "0123456789abcdef0123456789abcdef01234567",
+  "environment": "production",
+  "expected": {
+    "repository": "owner/name",
+    "frontendConfigFingerprint": "fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477",
+    "signerWorkflow": ".github/workflows/ci.yml",
+    "registry": "ghcr.io"
+  },
+  "lookups": {
+    "finalMarker": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name:release-0123456789abcdef0123456789abcdef01234567"
+    },
+    "preparedMarker": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name:prepared-0123456789abcdef0123456789abcdef01234567",
+      "markerDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "verification": {
+        "attestationVerified": true,
+        "subjectDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "signerRepository": "owner/name",
+        "signerWorkflow": ".github/workflows/ci.yml",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "predicateType": "https://slsa.dev/provenance/v1",
+        "policyPassed": true
+      },
+      "content": {
+        "commit": "0123456789abcdef0123456789abcdef01234567",
+        "environment": "production",
+        "frontendConfigFingerprint": "fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477",
+        "images": {
+          "monolith": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "frontend": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "provenance": {
+          "monolith": {
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          "frontend": {
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        },
+        "evidence": {
+          "sbom": {
+            "monolith": {
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://tvu.id.vn/attestations/sbom/v1",
+              "passed": true
+            },
+            "frontend": {
+              "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://tvu.id.vn/attestations/sbom/v1",
+              "passed": true
+            }
+          },
+          "vulnerabilityScan": {
+            "monolith": {
+              "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://tvu.id.vn/attestations/vulnerabilityScan/v1",
+              "passed": true
+            },
+            "frontend": {
+              "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://tvu.id.vn/attestations/vulnerabilityScan/v1",
+              "passed": true
+            }
+          },
+          "layerSecretScan": {
+            "monolith": {
+              "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://tvu.id.vn/attestations/layerSecretScan/v1",
+              "passed": false
+            },
+            "frontend": {
+              "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://tvu.id.vn/attestations/layerSecretScan/v1",
+              "passed": true
+            }
+          },
+          "filesystemSecretScan": {
+            "monolith": {
+              "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://tvu.id.vn/attestations/filesystemSecretScan/v1",
+              "passed": true
+            },
+            "frontend": {
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://tvu.id.vn/attestations/filesystemSecretScan/v1",
+              "passed": true
+            }
+          }
+        },
+        "flywayInventory": {
+          "boundTo": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "checksum": "a5ecbdba7dba564cedd65cf048b7fb051356001df76859d0da74aec7c8ed179e",
+          "migrations": [
+            {
+              "installedRank": 1,
+              "version": "1",
+              "type": "SQL",
+              "script": "V1__baseline.sql",
+              "checksum": 111111111,
+              "success": true
+            },
+            {
+              "installedRank": 2,
+              "version": "9",
+              "type": "SQL",
+              "script": "V9__email_normalise.sql",
+              "checksum": 222222222,
+              "success": true
+            },
+            {
+              "installedRank": 3,
+              "version": null,
+              "type": "SQL",
+              "script": "R__reporting_views.sql",
+              "checksum": null,
+              "success": true
+            }
+          ]
+        }
+      }
+    },
+    "monolithTag": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name:monolith-0123456789abcdef0123456789abcdef01234567"
+    },
+    "frontendTag": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name:frontend-0123456789abcdef0123456789abcdef01234567"
+    },
+    "monolithDigestObject": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "frontendDigestObject": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "monolithCandidate": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
+    },
+    "frontendCandidate": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
+    }
+  }
+}

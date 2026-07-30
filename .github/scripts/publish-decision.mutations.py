@@ -83,6 +83,12 @@ MUTATIONS = {
         "if type(record) is not dict:", "if False and type(record) is not dict:"),
     "inventory_checksum_not_recomputed": (
         'if inventory.get("checksum") != computed:', "if False:"),
+    # The schema now lets a negative verdict be stated, which makes the decision the only thing
+    # standing between "verification came back false" and a release. Before this fixture existed the
+    # schema refused the observation first, so this guard was never the one that fired.
+    "negative_verdict_accepted": (
+        'if verification.get("attestationVerified") is not True:',
+        "if False:"),
     "verification_policy_ignored": (
         'if verification.get("policyPassed") is not True:', "if False:"),
     "retry_range_narrowed": (

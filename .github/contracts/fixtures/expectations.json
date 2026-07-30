@@ -1,5 +1,20 @@
 {
+  "invalid-semantics/a-migration-failed.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/attestation-not-verified.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
   "invalid-semantics/duplicate-installed-rank.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/evidence-did-not-pass.json": {
     "actions": [],
     "schema": "accepts",
     "state": "CONFLICT"
@@ -20,6 +35,11 @@
     "state": "UNKNOWN"
   },
   "invalid-semantics/marker-signed-by-another-workflow.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/policy-did-not-pass.json": {
     "actions": [],
     "schema": "accepts",
     "state": "CONFLICT"

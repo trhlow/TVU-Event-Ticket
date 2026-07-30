@@ -136,7 +136,10 @@
       "required": ["attestationVerified", "subjectDigest", "signerRepository", "signerWorkflow",
                    "sourceRevision", "predicateType", "policyPassed"],
       "properties": {
-        "attestationVerified": { "const": true },
+        "attestationVerified": {
+          "type": "boolean",
+          "description": "The outcome of the check, not a claim that one happened. A completed verification that came back negative is a readable fact about the registry and reaches CONFLICT; const true made it a malformed observation instead, which reaches UNKNOWN and sends an operator to collect a broken marker again."
+        },
         "subjectDigest": {
           "$ref": "#/$defs/digest",
           "description": "The digest the attestation was verified against. Must equal markerDigest, or the verification describes a different object."
@@ -145,7 +148,10 @@
         "signerWorkflow": { "type": "string", "minLength": 1 },
         "sourceRevision": { "$ref": "#/$defs/sha1" },
         "predicateType": { "type": "string", "minLength": 1 },
-        "policyPassed": { "const": true }
+        "policyPassed": {
+          "type": "boolean",
+          "description": "Same reason as attestationVerified: false is a verdict, not a defect in the observation."
+        }
       }
     },
 
@@ -227,14 +233,17 @@
           "description": "The image this evidence is about. Must equal the image it is filed under; otherwise a scan of one image vouches for another."
         },
         "predicateType": { "type": "string", "minLength": 1 },
-        "passed": { "const": true }
+        "passed": {
+          "type": "boolean",
+          "description": "Read out of the marker, so false is what the registry holds and needs a person. Pinning this to true belongs in a producer-side schema, which describes what may be written; this one describes what was read back."
+        }
       }
     },
 
     "flywayInventory": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Read from flyway_schema_history inside the candidate monolith image, not from the source tree: the point is what the image will actually apply.",
+      "description": "Read from flyway_schema_history in a throwaway Postgres after the candidate monolith image has run its migrations -- not from the image, which contains the scripts and no history table, and not from the source tree. The point is what the image will actually apply.",
       "required": ["boundTo", "checksum", "migrations"],
       "properties": {
         "boundTo": {
@@ -272,8 +281,8 @@
           "description": "Flyway's CRC32, an integer. Null where Flyway records none. A string here means the history was reformatted on the way through and would never compare equal to the database."
         },
         "success": {
-          "const": true,
-          "description": "A failed migration must not be released."
+          "type": "boolean",
+          "description": "A failed migration must not be released -- but it must be describable, or the observation cannot state what it found. false is CONFLICT, not an unusable observation."
         }
       }
     },
