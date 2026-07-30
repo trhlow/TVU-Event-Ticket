@@ -29,8 +29,8 @@ Ba điều khoản không được vi phạm:
 - Năm hằng predicate URI, một nguồn duy nhất.
 - `manifest-agreement.test.sh`, nối vào `ci.yml` trong cùng commit tạo nó.
 
-3b (spec riêng, viết cùng hôm nay, triển khai sau khi 3a xanh): `evidenceVerification` ngoài `content`,
-schema của ba custom Trivy predicate, và cách xác minh evidence thật.
+3b (spec riêng, viết cùng hôm nay, thi công **giữa** commit 5 và commit 6 của 3a): evidence-set, xác minh
+evidence, và schema của ba custom Trivy predicate.
 
 > **Payload không được đóng băng trước 3b.** Phương án A′ của 3b (evidence-set có manifest và tag neo giữ)
 > đổi hình dạng `evidence` bên trong 7 key: mỗi entry mang descriptor `{mediaType,digest,size}` thay cho
@@ -42,8 +42,11 @@ Ngoài phạm vi cả 3a và 3b:
 
 - **Collector** (mục 5). Spec này chỉ nói collector *phải khai* những gì.
 - **Job `publish` trong `ci.yml`** (mục 6).
-- **Hình dạng 8 tên `queriedRef`.** Vẫn chỉ ràng "đúng registry/repository". Fixtures giả định
-  `:release-<sha>`, `:prepared-<sha>`, `:candidate-{monolith,frontend}-<sha>`. Chốt cùng commit collector.
+- **Hình dạng của từng tên `queriedRef`.** Sau commit 4 (§7a) mỗi lookup đã bị pin vào **đúng repository**
+  của nó, nên nửa "trỏ vào đâu" của nợ này đã trả. Nửa còn lại — hình dạng tag — vẫn hoãn: fixtures giả
+  định `:release-<sha>`, `:prepared-<sha>`, `:candidate-{monolith,frontend}-<sha>`,
+  `:evidence-{monolith,frontend}-sha-<sha>`. Chốt cùng commit collector. Số lookup là **mười** sau 3b, không
+  còn tám.
 - **H10.** Chỉ đóng sau một lượt deploy thật kèm rollback drill — rollback image **không** đảo Flyway
   migration, nên "rollback được" phải được chứng minh chứ không suy ra.
 
@@ -290,32 +293,62 @@ cấp — và đó là đúng cái bẫy `additionalProperties: false` mà §3 v
 
 ```
 ociEnvelope: {
-  raw: <đúng OCI manifest như bytes trên registry>,
-  digestVerified: boolean,
-  sizeVerified: boolean
+  digestVerified: boolean,     ─┐ luôn có
+  sizeVerified:   boolean,     ─┘
+  parsed:         boolean,     ─ bytes khớp nhưng có parse được JSON hay không
+  raw:            <đúng OCI manifest như bytes trên registry>   ─ conditional
 }
 ```
 
-**Chỉ hai boolean.** `layerCount`, `payloadDescriptor` và `annotationsAbsent` của bản trước đều **derive
+`raw` là **conditional**, cùng luật đã áp cho `content` và vì cùng một lý do: §2 cấm parse trước khi
+descriptor khớp, nên một `raw` tồn tại cạnh `digestVerified: false` là một tài liệu khai thứ nó không được
+phép đọc. Đây là bug tôi đã sửa cho `content` ở vòng trước rồi tái tạo lại một cấp thấp hơn.
+
+- `digestVerified && sizeVerified && parsed` ⇒ `raw` **bắt buộc**
+- một trong ba là `false` ⇒ `raw` **bị cấm**, observation vẫn valid, decision ⇒ **CONFLICT**
+- bytes khớp nhưng không parse được JSON ⇒ `parsed: false`, một kết luận âm riêng ⇒ **CONFLICT** (producer
+  phát hành bytes không phải JSON), không phải UNKNOWN
+- không tải hoặc không băm được ⇒ lookup khai `status: "error"` ⇒ UNKNOWN
+
+**Chỉ ba boolean.** `layerCount`, `payloadDescriptor` và `annotationsAbsent` của bản trước đều **derive
 được từ `raw`** — số layer là `len(raw.layers)`, payload descriptor là layer duy nhất, annotations vắng hay
 không thì nhìn thấy ngay trong `raw`. Ba field đó bị bỏ: một field derived được khai riêng là một cơ hội
 để hai nửa của cùng một sự thật nói khác nhau, và hợp đồng này đã có một bug đúng loại đó.
 
-Hai boolean còn lại **không** derive được từ `raw`: chúng là kết quả của phép kiểm bytes ở ngoài manifest.
+Ba boolean còn lại **không** derive được từ `raw`: chúng là kết quả của các phép kiểm ở ngoài manifest.
 
-`raw.artifactType` khai `["string", "null"]` **có chủ đích**: `null` là *một lời khai* — "object trong
-registry không có `artifactType`", hoàn toàn hợp lệ trong OCI vì nó là field optional. Thiếu key là *không
-khai được*. Cùng hình dạng `skipped.queriedRef: null`. Tương tự, `raw` phải mô tả được cả một manifest
-**có** `annotations` và **có** `subject`, vì đó là những artifact xấu mà decision phải từ chối chứ không
-phải những artifact observation được phép im lặng.
+### `raw` là bytes, nên `null` không có chỗ ở đây
+
+`raw.artifactType` **không** khai `["string","null"]`. `raw` là OCI manifest thật; một manifest không có
+`artifactType` thì đơn giản là **vắng key**, và khai `null` là biến bytes thật thành một bản đã diễn giải.
+Thủ pháp `null`-là-một-lời-khai đúng cho field *derived* (như `skipped.queriedRef`), sai cho field *raw*.
+
+`raw` phải mô tả được cả manifest **có** `annotations` và **có** `subject`: đó là artifact xấu mà decision
+phải từ chối, không phải artifact observation được phép im lặng.
+
+### `raw` phải chứng minh được nó là chính bytes đó
+
+Decision kiểm thêm:
+
+```
+sha256(canonical_bytes(raw)) == markerDigest
+```
+
+Không có phép kiểm này, `raw` chỉ là một bản đánh máy lại và một envelope **không canonical** vẫn đi qua —
+đúng thứ mà §2 tồn tại để chặn. Kéo theo hai điều: collector phải giữ `raw` **không mất mát** (nên
+`strict_loads` từ chối key trùng là bắt buộc, không phải tuỳ chọn), và **canonicalizer là điều kiện tiên
+quyết của carrier** — vì thế commit 3 đứng trước commit 5 trong §10.
 
 Observation **không** đặt `const` lên các trường của `raw`: nó phải mô tả được một object sai kiểu. `const`
 chỉ sống trong `release-envelope.schema.json` (`$defs/constants`) và như hằng trong decision.
 
 | Observation | Kết quả |
 |---|---|
-| thiếu `ociEnvelope`, thiếu `raw`, thiếu `digestVerified`/`sizeVerified`, hoặc sai kiểu | UNKNOWN |
-| `raw.artifactType: null` | CONFLICT |
+| thiếu `ociEnvelope`, thiếu `digestVerified`/`sizeVerified`/`parsed`, hoặc sai kiểu | UNKNOWN |
+| `raw` có mặt khi một trong ba boolean là `false`, hoặc vắng khi cả ba `true` | UNKNOWN — observation tự mâu thuẫn |
+| `parsed: false` | CONFLICT |
+| `sha256(canonical_bytes(raw)) != markerDigest` | CONFLICT |
+| `raw` vắng key `artifactType` | CONFLICT |
 | `raw.artifactType` là string khác hằng | CONFLICT |
 | `raw.subject` có mặt | CONFLICT |
 | `raw.annotations` có mặt ở bất kỳ cấp nào trong ba cấp | CONFLICT |
@@ -365,7 +398,7 @@ Sửa: field set tuyệt đối theo loại lookup, **theo shape hiện có**, c
 | Tag / Candidate / DigestObject | `status`, `queriedRef`, `digest` |
 | Marker | `status`, `queriedRef`, `markerDigest`, `verification`, `content` |
 
-`ociEnvelope` vào cột Marker ở commit 4, không sớm hơn — commit 1 không được tham chiếu tới field chưa
+`ociEnvelope` vào cột Marker ở commit 5, không sớm hơn — commit 1 không được tham chiếu tới field chưa
 tồn tại.
 
 Hai fixture mới đi kèm commit này, mỗi cái một đường lệch trên, cả hai `UNKNOWN`.
@@ -404,8 +437,9 @@ File đó chia làm ba `$defs`, vì nó đang mô tả hai thứ khác nhau và 
 
 | `$defs` | Mô tả |
 |---|---|
-| `rawEnvelope` | OCI manifest thật, đúng như bytes trên registry. Rộng: phải mô tả được cả artifact xấu. Không field derived nào. |
-| `observedEnvelope` | `{ raw: rawEnvelope, digestVerified, sizeVerified }` — **lồng**, không trộn, để tránh bẫy `additionalProperties: false`. Đây là thứ `presentMarker.ociEnvelope` `$ref` tới. |
+| `rawEnvelope` | OCI manifest thật, đúng như bytes trên registry. **Rộng**: phải mô tả được cả artifact xấu. Không field derived nào. |
+| `markerEnvelope` | **Strict, phía producer.** Exact field set, mọi `const` của §2, `subject` cấm, `annotations` cấm ở ba cấp, đúng một layer. Đây là thứ job publish phải thoả **trước khi** push, và là lý do bảng §2 không còn chỉ là văn bản. |
+| `observedEnvelope` | `{ digestVerified, sizeVerified, parsed, raw: rawEnvelope }` — **lồng**, không trộn, để tránh bẫy `additionalProperties: false`. Đây là thứ `presentMarker.ociEnvelope` `$ref` tới. |
 | `constants` | `artifactType`, layer mediaType, config descriptor, năm predicate URI. Nguồn duy nhất. |
 
 Không trộn hai cái đầu: một schema vừa validate bytes registry vừa validate observation thì không schema
@@ -418,6 +452,33 @@ Chống sai, không chỉ chống drift:
 3. Sai hằng thì **fail trước promote**. Tuyệt đối không "học" từ output rồi tự cập nhật hằng — một
    pipeline tự sửa kỳ vọng theo thứ nó quan sát được thì không còn kiểm gì nữa.
 4. Sau lượt đó, lưu output đã rút gọn thành fixture, chuyển trạng thái sang verified-on-runner.
+
+## 7a. `expected.repository` đang gộp hai thứ khác nhau
+
+`observation.schema.json:24-28` để `expected.repository` vừa là repository **phải ký** marker, vừa là
+repository mà **mọi `queriedRef`** phải trỏ vào; `publish-decision.sh:121-132` dựng `scope` từ nó và `:207`
+so `signerRepository` với nó. Hai vai trò khác nhau bị gộp vào một khoá.
+
+Hệ quả: bố trí ba package — `monolith`, `frontend`, `release` — **không thể đi qua** contract này, vì ba
+package là ba OCI repository khác nhau trong khi source repository chỉ có một.
+
+Tách:
+
+```
+expected.sourceRepository            # owner/name trên GitHub, dùng cho signer identity
+expected.repositories.release        # nhà của marker và của mọi tag release/prepared
+expected.repositories.monolith       # nhà của image monolith và candidate của nó
+expected.repositories.frontend       # nhà của image frontend và candidate của nó
+```
+
+Mỗi lookup pin vào **đúng** repository của nó, không pin vào một scope chung: `finalMarker` và
+`preparedMarker` vào `repositories.release`; `monolithTag`, `monolithDigestObject`, `monolithCandidate` vào
+`repositories.monolith`; tương tự cho frontend; và hai `*EvidenceSet` của 3b vào repository của image tương
+ứng. `signerRepository` so với `sourceRepository`, không so với repository nào trong ba cái trên.
+
+Đổi này chạm `expected` (đang `additionalProperties: false` với 4 khoá bắt buộc), `publish-decision.sh`, và
+cả 14 fixture. Nó **độc lập** với carrier, nên nó đứng riêng ở commit 4 — trước commit 5, để 9 marker
+instance không bị sửa hai lượt.
 
 ## 8. Bất biến
 
@@ -469,33 +530,45 @@ Mỗi commit chạy được và tự đứng vững. **Không commit trạng th
 sửa, không cần lưu nó lại; bằng chứng RED ghi trong commit body. **Không ghi số test cố định trong spec**:
 thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số thực tế đo được.
 
-0. `fix(ci): let the contract scripts name their interpreter` — `PYTHON_BIN` vào
-   `contract-agreement.test.sh:29` và `publish-decision.sh:34` (§11). Nhỏ, độc lập, và không có nó thì
-   không chạy được gì trên máy Windows để quan sát RED.
+0. `fix(ci): let the contract scripts name their interpreter` — `PYTHON_BIN` phủ **tất cả 8 call site trên
+   4 file**, không phải hai: `publish-decision.sh:34`, `contract-agreement.test.sh:29`,
+   `publish-decision.test.sh:29, :185, :190, :294, :336`, và mutation runner. Mutation runner spawn bash →
+   spawn `publish-decision.sh` → `python3`, nên `PYTHON_BIN` phải truyền **qua env**, không chỉ qua argv.
+   Kèm: probe fail-fast (interpreter không chạy được thì đỏ ngay với một câu đọc được, không đỏ ở fixture
+   thứ 40), và test cho đường interpreter **có khoảng trắng** cùng interpreter không executable. Không có
+   commit này thì không chạy được gì trên máy Windows để quan sát RED.
 1. `fix(ci): give each kind of lookup its own field set` — §6, **chỉ theo shape hiện có**, không chạm
    carrier. Kèm 2 fixture. Độc lập, sửa một lệch đang sống.
 2. `contract(ci): let the observation state a negative verdict` — §4, **bốn** boolean đang tồn tại
    (`attestationVerified`, `policyPassed`, `evidence.*.passed`, `migrations[].success`) + sửa mô tả Flyway
    ở `:237`. `digestVerified`/`sizeVerified` chưa tồn tại nên chưa nằm ở đây.
-3. `contract(ci): make canonical a function instead of an adjective` — trích canonicalizer ra một hàm dùng
-   chung, golden bytes + golden digest fixture, ghi rõ nó không phải JCS. Đứng trước mọi thứ nói "canonical".
-4. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với ba `$defs`
-   (§7), `ociEnvelope` = `{raw, digestVerified, sizeVerified}` vào `presentMarker`, nhánh conditional của
-   `content`, hằng vào decision, 9 marker instance trong 8 fixture mỗi cái thêm envelope. Kèm **sửa vòng
+3. `contract(ci): make canonical a function instead of an adjective` — `canonical_bytes()` và
+   `strict_loads()` thành hàm dùng chung với tham số đã khoá (§3), golden bytes + golden digest fixture, và
+   **negative test cho từng tham số**: non-ASCII, `NaN`, float, key trùng, BOM, newline cuối. Đứng trước mọi
+   thứ nói "canonical", và là tiên quyết của commit 5 vì `raw` được kiểm bằng chính hàm này.
+4. `contract(ci): stop one key from naming two different repositories` — §7a.
+   `expected.sourceRepository` + `expected.repositories.{release,monolith,frontend}`, mỗi lookup pin vào
+   repository của nó, `signerRepository` so với `sourceRepository`. Chạm `expected`, decision, và 14
+   fixture. Độc lập với carrier, đứng **trước** commit 5 để 9 marker instance không bị sửa hai lượt.
+5. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với **bốn**
+   `$defs` (§7, gồm `markerEnvelope` strict phía producer), `ociEnvelope` =
+   `{digestVerified, sizeVerified, parsed, raw}` vào `presentMarker`, nhánh conditional của `raw` **và** của
+   `content`, phép kiểm `sha256(canonical_bytes(raw)) == markerDigest`, hằng vào decision, 9 marker instance
+   trong 8 fixture mỗi cái thêm envelope. Kèm **sửa vòng
    quét retryable** ở `publish-decision.sh:383-391`: hiện nó `return` ở lỗi **đầu tiên** theo thứ tự
    alphabet, nên với hai lỗi — một retryable, một không — kết quả phụ thuộc tên khoá. Luật đúng: nhiều lỗi
    thì `retryable` chỉ khi **tất cả** đều retryable; 408/429/5xx/timeout là retryable, 401/403 và response
    hỏng thì không.
    `manifest-agreement.test.sh` sinh ra ở đây với hai điều kiểm được ngay (drift hằng envelope, và không
    cổng schema trước decision), nối vào `ci.yml` kề dòng 303 trong **cùng** commit này.
-5. `contract(ci): freeze the release manifest payload as a schema` — **chỉ sau khi shape evidence của 3b
-   final.** `release-manifest.schema.json` (payload đã gồm `evidenceSetDigest` và descriptor cho từng
-   entry), release-manifest fixtures, mở rộng `manifest-agreement.test.sh` cho hai witness subset. **Phải
-   đồng thời thêm enforcement predicate exact vào decision, test và mutations** — không có nó, fixture
+6. `contract(ci): freeze the release manifest payload as a schema` — **chỉ sau khi 3b xong.**
+   `release-manifest.schema.json` (payload đã gồm `evidenceSetDigest` dưới root key `evidence` và descriptor
+   cho từng entry), release-manifest fixtures, mở rộng `manifest-agreement.test.sh` cho hai witness subset.
+   **Phải đồng thời thêm enforcement predicate exact vào decision, test và mutations** — không có nó, fixture
    predicate sai không thể ra CONFLICT và điều 2 của §9 vô nghĩa.
 
-Commit 0-4 không phụ thuộc 3b và chạy được ngay. Commit 5 là ranh giới: nó đóng băng payload, nên nó chờ
-3b. Đây là thay đổi so với bản trước, khi commit đóng băng payload đứng thứ ba.
+Commit 0-5 không phụ thuộc 3b. Commit 6 là ranh giới: nó đóng băng payload, nên nó chờ 3b. Thứ tự tổng thể:
+**3a 0-5 → 3b → 3a 6.**
 
 ## 11. Chạy trên Windows
 
