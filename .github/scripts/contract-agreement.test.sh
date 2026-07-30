@@ -47,6 +47,7 @@ fixtures = contracts / "fixtures"
 
 try:
     import jsonschema
+    from jsonschema.exceptions import best_match
 except ImportError:
     # Never skipped. A contract test that quietly does nothing when a dependency is missing reports
     # the same green as one that ran, and the whole point here is that green means something.
@@ -71,9 +72,28 @@ def report(name, problems):
         passed += 1
 
 
-def schema_errors(document):
-    return [f"{'/'.join(str(p) for p in error.absolute_path) or '<root>'}: {error.message}"
-            for error in validator.iter_errors(document)]
+# A schema failure has to name the field and fit on a line. jsonschema's message for a failed anyOf
+# quotes the entire instance it could not validate, and markerLookup is an anyOf, so a one-field
+# defect in a marker printed the whole observation and named only the branch above the defect.
+# best_match walks into the branch that actually failed, which is both shorter and the answer to the
+# question the reader has.
+SCHEMA_MESSAGE_CHARS = 200
+
+
+def describe(errors):
+    best = best_match(errors)
+    where = "/".join(str(part) for part in best.absolute_path) or "<root>"
+    message = best.message
+    if len(message) > SCHEMA_MESSAGE_CHARS:
+        # Kept from both ends. The head says which value; the tail says what was wrong with it, and
+        # jsonschema puts that last -- so keeping only the head reports the input and withholds the
+        # verdict, which is printing everything over again in the other direction. The count is said
+        # out loud: a value cut without one reads like a value that was short.
+        keep = SCHEMA_MESSAGE_CHARS // 2
+        dropped = len(message) - 2 * keep
+        message = f"{message[:keep]} [{dropped} chars omitted] {message[-keep:]}"
+    rest = f" (and {len(errors) - 1} more)" if len(errors) > 1 else ""
+    return f"{where}: {message}{rest}"
 
 
 def decide(path):
@@ -104,10 +124,10 @@ for name in on_disk:
     problems = []
     document = json.loads((fixtures / name).read_text(encoding="utf-8"))
 
-    errors = schema_errors(document)
+    errors = list(validator.iter_errors(document))
     if want["schema"] == "accepts" and errors:
         problems.append(f"the schema rejected it but this fixture is filed as structurally valid, "
-                        f"so the rule it breaks belongs in the decision: {errors[0]}")
+                        f"so the rule it breaks belongs in the decision: {describe(errors)}")
     if want["schema"] == "rejects" and not errors:
         problems.append("the schema accepted it; this rule lives only in the decision function")
 
