@@ -480,6 +480,72 @@ Mỗi lookup pin vào **đúng** repository của nó, không pin vào một sco
 cả 14 fixture. Nó **độc lập** với carrier, nên nó đứng riêng ở commit 4 — trước commit 5, để 9 marker
 instance không bị sửa hai lượt.
 
+### 7a.1 `schemaVersion` giữ nguyên `1`
+
+Đây là một đổi hình dạng phá vỡ tương thích, và nó **không** bump version. Lý do: chưa có collector nào
+tồn tại, nên chưa có gì từng phát ra một observation — version 1 chỉ sống trong fixtures của chính repo
+này. Đánh số 2 cho một hình dạng chưa ai đọc biến dãy version thành nhật ký sửa bài của tác giả thay vì
+nhật ký các contract đã phát hành.
+
+Điều kiện đóng băng, và nó là bắt buộc chứ không phải khuyến nghị: **ngày commit collector đầu tiên
+land, số `1` bị khoá.** Từ thời điểm đó mọi thay đổi hình dạng của observation PHẢI bump, kể cả thêm một
+khoá tuỳ chọn. Ai đọc mục này khi đang sửa `expected` mà thấy collector đã tồn tại thì câu trả lời đã có
+sẵn: bump.
+
+### 7a.2 Ba OCI repository lồng dưới source repository
+
+`sourceRepository` giữ pattern hai đoạn `^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$` — một GitHub repository luôn
+là `owner/name` và không bao giờ khác.
+
+Ba `repositories.*` dùng `^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+$`, tức **hai đoạn trở lên**, và fixtures
+dùng `owner/name/{release,monolith,frontend}`. GHCR nhận đường dẫn lồng, nên contract không được cấm
+trước một layout mà registry cho phép; đồng thời quan hệ sở hữu đọc được ngay từ chuỗi.
+
+Prefix collision không phát sinh từ việc lồng: guard đòi ký tự ngay sau scope là `:` hoặc `@`, nên
+`ghcr.io/owner/name/monolith@sha…` **không** nằm trong scope `ghcr.io/owner/name`. Đó cũng chính là guard
+đã có test "a repository whose name merely starts with the expected one".
+
+### 7a.3 Ba repository phải khác nhau đôi một
+
+Nếu hai trong ba trùng giá trị thì việc pin từng lookup vào repository của nó không loại trừ được gì:
+một ref trỏ vào package sai vẫn qua guard, và thứ duy nhất còn phân biệt chúng là **hình dạng tag** —
+thứ mục "Ngoài phạm vi cả 3a và 3b" ở đầu spec này đã hoãn rõ ràng. Guard khi đó xanh mà rỗng, đúng định
+nghĩa fail-open.
+
+JSON Schema draft 2020-12 không diễn đạt được "ba property đặt tên phải khác nhau đôi một", nên luật này
+nằm trong decision: vi phạm → `Invalid` → **UNKNOWN, không retryable**. Hệ quả là có thêm một fixture mà
+schema chấp nhận còn decision từ chối — cùng loại với bốn fixture của commit 3, và bộ agreement đã biết
+cách diễn đạt loại đó.
+
+### 7a.4 Ánh xạ lookup → repository là một bảng tường minh
+
+`LOOKUP_REPOSITORY` liệt kê đủ tám lookup, cùng kiểu với `PRESENT_FIELDS`. Kèm một case trong suite
+khẳng định **tập khoá của bảng bằng đúng `REQUIRED_LOOKUPS`**.
+
+Suy ra từ tiền tố tên (`monolith*` → monolith, `frontend*` → frontend, còn lại → release) bị từ chối:
+nhánh `còn lại` là một default, và 3b thêm đúng hai lookup `*EvidenceSet` thuộc về repository của image
+— chúng sẽ bị pin vào release một cách êm ái. Bảng thiếu khoá mà không có witness thì hỏng theo kiểu tệ
+hơn nữa: `KeyError` giữa một quyết định, tức caller đọc stdout nhận số 0 thay vì UNKNOWN — đúng thất bại
+mà guard `type(status) is str` đã được viết để chặn.
+
+### 7a.5 Witness và khối lượng
+
+Sáu witness mới: bảng đủ khoá; `monolithTag` trỏ vào repository release; hai repository trùng giá trị;
+`sourceRepository` ba đoạn; `repositories.monolith` một đoạn; marker ký bởi `repositories.release` chứ
+không phải `sourceRepository`.
+
+Witness cuối là lý do commit 4 tồn tại: trước khi tách khoá nó **không diễn đạt được**, vì hai vai trò
+dùng chung một chuỗi nên không có cách nào để chúng khác nhau.
+
+Ba mutation mới — `lookup_repository_ignored`, `repositories_may_coincide`,
+`signer_compared_to_release_repository` — và hai mutation cũ (`registry_unchecked`,
+`queried_ref_scope_ignored`) phải neo lại vì dòng chúng bám vào đổi.
+
+Khối lượng thật không nằm ở `expected` mà ở **mọi `queriedRef` trong cả 14 fixture**, khoảng tám ref mỗi
+file. Bằng chứng đây vẫn là đổi hình dạng chứ không phải đổi hành vi: **không checksum Flyway nào được
+xê dịch**, vì chúng băm `migrations` chứ không băm `expected`. Nếu một cái xê dịch thì đó là tín hiệu
+việc này đã thôi là đổi hình dạng, và câu trả lời là đi tìm tại sao chứ không phải tính lại fixture.
+
 ## 8. Bất biến
 
 1. Tài liệu manifest đúng 7 key. Không `stage`, không timestamp, không tag name, không run number.
