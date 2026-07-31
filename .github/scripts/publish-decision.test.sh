@@ -368,7 +368,7 @@ assert_decision "a repository whose name merely starts with the expected one" \
 # Nothing was queried, so a reference here describes a lookup that never happened.
 assert_decision "skipped carrying a queried reference" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
-     '{"status":"skipped","reason":"no_claimed_digest","queriedRef":"ghcr.io/owner/name@'"$MONO"'"}' \
+     '{"status":"skipped","reason":"no_claimed_digest","queriedRef":"'"$MONOLITH_REPO"'@'"$MONO"'"}' \
      "$skipped")" \
   UNKNOWN '[]' false false
 assert_decision "skipped without the queriedRef key at all" \
