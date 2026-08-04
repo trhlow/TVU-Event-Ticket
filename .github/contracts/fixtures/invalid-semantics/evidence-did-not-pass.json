@@ -22,10 +22,10 @@
     "preparedMarker": {
       "status": "present",
       "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567",
-      "markerDigest": "sha256:7b3955f096429209ffe38c0219fe513e7340f9f2bfea28154a1fa3919ec0102a",
+      "markerDigest": "sha256:59347fd54f917f7db4176f9d3dec90056c64f413b2ba64e192ddbe49e14925d6",
       "verification": {
         "attestationVerified": true,
-        "subjectDigest": "sha256:7b3955f096429209ffe38c0219fe513e7340f9f2bfea28154a1fa3919ec0102a",
+        "subjectDigest": "sha256:59347fd54f917f7db4176f9d3dec90056c64f413b2ba64e192ddbe49e14925d6",
         "signerRepository": "owner/name",
         "signerWorkflow": ".github/workflows/ci.yml",
         "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
@@ -55,13 +55,13 @@
             "monolith": {
               "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-              "predicateType": "https://tvu.id.vn/attestations/sbom/v1",
+              "predicateType": "https://spdx.dev/Document/v2.3",
               "passed": true
             },
             "frontend": {
               "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
               "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-              "predicateType": "https://tvu.id.vn/attestations/sbom/v1",
+              "predicateType": "https://spdx.dev/Document/v2.3",
               "passed": true
             }
           },
@@ -69,13 +69,13 @@
             "monolith": {
               "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
               "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-              "predicateType": "https://tvu.id.vn/attestations/vulnerabilityScan/v1",
+              "predicateType": "https://evts.id.vn/attestations/vulnerabilityScan/v1",
               "passed": true
             },
             "frontend": {
               "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
               "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-              "predicateType": "https://tvu.id.vn/attestations/vulnerabilityScan/v1",
+              "predicateType": "https://evts.id.vn/attestations/vulnerabilityScan/v1",
               "passed": true
             }
           },
@@ -83,13 +83,13 @@
             "monolith": {
               "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
               "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-              "predicateType": "https://tvu.id.vn/attestations/layerSecretScan/v1",
+              "predicateType": "https://evts.id.vn/attestations/layerSecretScan/v1",
               "passed": false
             },
             "frontend": {
               "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
               "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-              "predicateType": "https://tvu.id.vn/attestations/layerSecretScan/v1",
+              "predicateType": "https://evts.id.vn/attestations/layerSecretScan/v1",
               "passed": true
             }
           },
@@ -97,13 +97,13 @@
             "monolith": {
               "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
               "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
-              "predicateType": "https://tvu.id.vn/attestations/filesystemSecretScan/v1",
+              "predicateType": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
               "passed": true
             },
             "frontend": {
               "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
               "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
-              "predicateType": "https://tvu.id.vn/attestations/filesystemSecretScan/v1",
+              "predicateType": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
               "passed": true
             }
           }
@@ -156,8 +156,8 @@
           "layers": [
             {
               "mediaType": "application/vnd.tvu.release-manifest.v1+json",
-              "digest": "sha256:27947a177e393d66b6a95c87d3e1a26fb9aa2695c76bc630d573ae70be57c28e",
-              "size": 3450
+              "digest": "sha256:c6a28aaca62c9ce82498676e3ce590e040a9351d25ef450bad2113d84fc92d47",
+              "size": 3440
             }
           ]
         }
