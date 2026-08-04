@@ -363,10 +363,17 @@ assert_decision "a lookup made in another registry" \
   "$(observation '{"status":"absent","observedCode":404,"queriedRef":"docker.io/owner/name:sha-x"}' \
      "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped")" \
   UNKNOWN '[]' false false
-# The prefix must end at a reference separator, or ghcr.io/owner/name-evil passes as ghcr.io/owner/name.
+# The prefix must end at a reference separator, or .../release-evil passes as .../release. The
+# extension has to be built on the scope actually in force: this case named ghcr.io/owner/name-evil
+# until the repositories were nested, at which point it stopped extending any scope at all and the
+# guard it exists for lost its only witness. Both separators, because only ':' was ever exercised.
 assert_decision "a repository whose name merely starts with the expected one" \
-  "$(observation '{"status":"absent","observedCode":404,"queriedRef":"ghcr.io/owner/name-evil:sha-x"}' \
+  "$(observation '{"status":"absent","observedCode":404,"queriedRef":"'"$RELEASE_REPO"'-evil:sha-x"}' \
      "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped")" \
+  UNKNOWN '[]' false false
+assert_decision "a look-alike repository addressed by digest" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
+     "$(present_in "$MONOLITH_REPO-evil" "$MONO")" "$skipped")" \
   UNKNOWN '[]' false false
 # Nothing was queried, so a reference here describes a lookup that never happened.
 assert_decision "skipped carrying a queried reference" \
@@ -455,8 +462,32 @@ assert_decision "all three naming one repository" \
 assert_decision "a source repository with three segments" \
   "$(mangle 'o["expected"]["sourceRepository"] = "owner/name/release"')" \
   UNKNOWN '[]' false false
+# The references move with the role here for the same reason they do in collide(): leaving them in
+# ghcr.io/owner/name/monolith puts them outside the new scope ghcr.io/monolith, the scope check
+# refuses them first, and the pattern this case exists for could be deleted with the suite green.
 assert_decision "an OCI repository with one segment" \
-  "$(mangle 'o["expected"]["repositories"]["monolith"] = "monolith"')" \
+  "$(mangle 'reg=o["expected"]["registry"]; reps=o["expected"]["repositories"]
+was=reg+"/"+reps["monolith"]; reps["monolith"]="monolith"
+for lookup in o["lookups"].values():
+    ref=lookup.get("queriedRef")
+    if isinstance(ref,str) and (ref.startswith(was+":") or ref.startswith(was+"@")):
+        lookup["queriedRef"]=reg+"/monolith"+ref[len(was):]')" \
+  UNKNOWN '[]' false false
+# A fourth role is inert -- nothing reads it -- which is exactly why it needs a witness: an inert
+# key is the kind a half-migrated collector emits, and the contract should say so rather than
+# shrug. Same reason the lookups key set is closed.
+assert_decision "a fourth repository role" \
+  "$(mangle 'o["expected"]["repositories"]["evidence"] = "owner/name/evidence"')" \
+  UNKNOWN '[]' false false
+# The schema forbids these, but nothing runs the schema in front of the decision, so until the
+# decision restates the rule an unknown key is a rule on paper. The first of these is the one that
+# matters: it is the key commit 4 removed, so an observation carrying it is a half-migrated
+# collector, and answering it as though it were current is how a stale producer goes unnoticed.
+assert_decision "the key commit 4 removed, still present" \
+  "$(mangle 'o["expected"]["repository"] = "attacker/thing"')" \
+  UNKNOWN '[]' false false
+assert_decision "an unknown key at the top level" \
+  "$(mangle 'o["surprise"] = 1')" \
   UNKNOWN '[]' false false
 assert_decision "no repositories at all" \
   "$(mangle 'del o["expected"]["repositories"]')" \

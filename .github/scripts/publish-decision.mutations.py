@@ -144,6 +144,29 @@ MUTATIONS = {
         '    "monolithTag": "monolith",\n', ""),
     "repositories_may_coincide": (
         "require(not reused,", "require(True,"),
+    # The mutation the eight per-lookup cases were actually written for. lookup_repository_ignored
+    # below is caught only as collateral: under it the other lookups in the same observation fall
+    # outside the release scope and one of those is refused first, so all eight still reach UNKNOWN
+    # for the wrong reason and would report `caught` with the eight deleted. This one widens the
+    # scope instead of moving it, leaving every other lookup valid, so only the eight can object.
+    "queried_ref_scope_any_repository": (
+        'require(ref.startswith(scope + ":") or ref.startswith(scope + "@"),',
+        'require(any(ref.startswith(f"{expected[\'registry\']}/{other}{sep}")\n'
+        '                   for other in repositories.values() for sep in (":", "@")),'),
+    # Nesting made this guard load-bearing and simultaneously cost it its witness: the look-alike
+    # was built on the old flat scope and stopped extending the new one.
+    "scope_separator_ignored": (
+        'require(ref.startswith(scope + ":") or ref.startswith(scope + "@"),',
+        "require(ref.startswith(scope),"),
+    "oci_repository_pattern_ignored": (
+        'exact_str(repositories[role], f"expected.repositories.{role}", OCI_REPOSITORY)',
+        'require(type(repositories[role]) is str and repositories[role], f"expected.repositories.{role}")'),
+    "repositories_extra_role_allowed": (
+        "require(not extra_roles,", "require(True,"),
+    "top_level_keys_open": (
+        "require(not unexpected_top,", "require(True,"),
+    "expected_keys_open": (
+        "require(not unexpected_expected,", "require(True,"),
     # Before the split these two were one string, so this comparison could not be got wrong.
     "signer_compared_to_release_repository": (
         'if verification.get("signerRepository") != expected["sourceRepository"]:',

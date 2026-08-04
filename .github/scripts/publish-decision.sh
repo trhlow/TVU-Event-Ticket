@@ -11,7 +11,11 @@
 #      explain them are unexplained, and unexplained is CONFLICT.
 #
 #   2. Absence must be observed, never inferred. Every fact rests on an explicit, well-formed
-#      observation. Missing, mistyped or duplicated keys are UNKNOWN.
+#      observation. Missing, mistyped or duplicated keys are UNKNOWN. Unknown keys are UNKNOWN at
+#      the four levels this script closes -- the root, `expected`, `expected.repositories` and
+#      `lookups`, plus each lookup's own field set -- and are tolerated inside marker content,
+#      where the schema forbids them but nothing enforces it at runtime. §8.6 keeps the schema out
+#      of the decision path, so what the schema alone says is documentation, not a gate.
 #
 #   3. A marker asserts nothing about itself. `attested: true` inside a document is that document
 #      claiming to be trustworthy. What counts is the collector's verification result: which
@@ -65,6 +69,10 @@ REQUIRED_LOOKUPS = (
 )
 
 MARKER_LOOKUPS = ("finalMarker", "preparedMarker")
+
+TOP_LEVEL_KEYS = ("schemaVersion", "commit", "environment", "expected", "lookups")
+EXPECTED_KEYS = ("sourceRepository", "repositories", "frontendConfigFingerprint",
+                 "signerWorkflow", "registry")
 
 REPOSITORY_ROLES = ("release", "monolith", "frontend")
 
@@ -158,7 +166,19 @@ def validate(obs):
     require(type(obs.get("environment")) is str and obs["environment"],
             "environment must be a non-empty string")
 
+    # The schema says additionalProperties:false at both levels, but §8.6 forbids a schema gate in
+    # front of the decision, so a rule the decision does not restate is a rule nothing enforces.
+    # The key that used to live here is the reason this is not cosmetic: an observation still
+    # carrying `expected.repository` comes from a collector that was migrated halfway, and it would
+    # otherwise be answered as though it were current.
+    unexpected_top = [key for key in obs if key not in TOP_LEVEL_KEYS]
+    require(not unexpected_top,
+            f"observation has unexpected keys: {', '.join(sorted(unexpected_top))}")
+
     expected = as_dict(obs.get("expected"), "expected")
+    unexpected_expected = [key for key in expected if key not in EXPECTED_KEYS]
+    require(not unexpected_expected,
+            f"expected has unexpected keys: {', '.join(sorted(unexpected_expected))}")
     exact_str(expected.get("sourceRepository"), "expected.sourceRepository", SOURCE_REPOSITORY)
     repositories = as_dict(expected.get("repositories"), "expected.repositories")
     missing_roles = [role for role in REPOSITORY_ROLES if role not in repositories]
