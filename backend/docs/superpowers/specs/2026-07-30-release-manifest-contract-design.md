@@ -9,7 +9,7 @@ Tiền đề: `observation.schema.json` và `publish-decision.sh` đã hoà gi�
 **3a và 3b là hai phần bắt buộc của cùng một release gate.** Xem
 `2026-07-30-evidence-verification-contract-design.md` cho 3b.
 
-Thứ tự thi công là **3a commit 0-4 → 5a → 5b → 3b → 3a commit 6**, không phải "3b sau khi 3a xanh" như
+Thứ tự thi công là **3a commit 0-4 → 5a → 5b-i → 5b-ii → 5b → 3b → 3a commit 6**, không phải "3b sau khi 3a xanh" như
 bản đầu viết: commit đóng băng payload phải chờ shape evidence của 3b. Xem §10.
 
 > Dòng trên từng ghi "3a commit 0-4 → 3b → 3a commit 5", đúng với lúc viết nhưng sai sau ngày
@@ -513,7 +513,8 @@ provenance: chúng không thuộc payload 7 key. Chúng sống trong **`release-
 schema của object thật, không phải một file metadata. Observation `$ref` sang nó để lấy shape; decision đọc
 hằng từ nó; `manifest-agreement.test.sh` đòi ba nguồn khớp nhau.
 
-File đó chia làm ba `$defs`, vì nó đang mô tả hai thứ khác nhau và một tập hằng:
+File đó chia làm **bốn** `$defs`, vì nó đang mô tả ba thứ khác nhau và một tập hằng. (Bản trước viết
+"ba" ngay trên một bảng bốn dòng; sửa 2026-08-04.)
 
 | `$defs` | Mô tả |
 |---|---|
@@ -524,6 +525,35 @@ File đó chia làm ba `$defs`, vì nó đang mô tả hai thứ khác nhau và 
 
 Không trộn hai cái đầu: một schema vừa validate bytes registry vừa validate observation thì không schema
 nào trong hai việc đó còn nói được điều gì chính xác.
+
+### 7b. `$ref` liên file cần máy móc, không chỉ cần cú pháp
+
+Chốt 2026-08-04, sau khi đo. `contract-agreement.test.sh:65` dựng `jsonschema.Draft202012Validator(schema)`
+trần. Từ jsonschema 4.18 `RefResolver` đã deprecated và **không** còn tự đọc file cạnh nó, nên một
+`$ref: "release-envelope.schema.json#/$defs/observedEnvelope"` ném `Unresolvable` chứ không âm thầm
+bỏ qua. Câu "observation `$ref` sang nó" ở trên vì thế không phải một dòng viết thêm — nó là một
+`referencing.Registry` phải được dựng. Máy đang có `jsonschema 4.26` và `referencing 0.37`, nên làm được.
+
+Phương án "hai schema độc lập cộng một test so khớp cây con" bị loại: nó để lại **hai bản thật** của cùng
+một shape, và chúng chỉ khớp vì một test nói thế. Test đó hỏng thì drift diễn ra im lặng — đúng hình dạng
+lỗi mà mục này tồn tại để chặn. Với `$ref` thật, shape chỉ có một bản và không có gì để drift.
+
+Registry đi **trước** và thành commit riêng, kèm hai witness: một `$ref` liên file giải đúng, và một
+`$ref` trỏ sai bị báo là lỗi chứ không bị nuốt. Trộn máy móc validator vào cùng commit với tám guard hình
+dạng thì RED của hai thứ không phân biệt được — bài học đã trả giá sáu lần.
+
+### 7c. URI trong fixture đang sai bốn trên năm
+
+Đo 2026-08-04: 13 fixture còn mang `tvu.id.vn`, tên miền §7 đã bỏ vì nhóm không sở hữu. Với SBOM thì lệch
+hơn cả tên miền — fixture ghi `https://tvu.id.vn/attestations/sbom/v1`, bảng trên ghi
+`https://spdx.dev/Document/v2.3`. Bốn trên năm URI không khớp.
+
+Decision chưa ép buộc URI nào (đó là việc của 3b), nên fixture sai không làm hỏng guard nào hôm nay. Nó
+vẫn phải sửa, và sửa **thành commit riêng đứng trước 5b**: đổi `predicateType` là đổi `content`, nên mọi
+`markerDigest` phải sinh lại, và một lượt quét dữ liệu trộn vào cùng commit với tám guard mới là đúng điều
+kiện đã sinh ra sáu lần xanh giả.
+
+**Thứ tự sau khi tách:** 5a (xong) → sweep URI → Registry → 5b.
 
 Chống sai, không chỉ chống drift:
 
@@ -701,6 +731,12 @@ thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số 
    của `content` (§5.3), phép kiểm `sha256(canonical_bytes(raw)) == markerDigest`, và sinh lại **15
    `markerDigest`** trong 14 fixture (§5.4) — placeholder `sha256:3333…` chết ở đây, cùng hằng
    `MARKER_DIGEST` trong suite. `raw` ở bước này là OCI manifest **bất kỳ**: chưa hằng nào của §2 được áp.
+5b-i. `contract(ci): name the attestations with a domain we own` — §7c. `tvu.id.vn` -> `evts.id.vn`
+   for the three scan predicates, and SBOM to `https://spdx.dev/Document/v2.3`, across 13 fixtures.
+   Changes `content`, so every `markerDigest` regenerates through `fixture-envelopes.py`. No guard.
+5b-ii. `contract(ci): let one schema reference another` — §7b. A `referencing.Registry` in
+   `contract-agreement.test.sh`, with a witness that a cross-file `$ref` resolves and a witness that a
+   broken one is reported rather than swallowed. No envelope constant moves yet.
 5b. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với **bốn**
    `$defs` (§7, gồm `markerEnvelope` strict phía producer), tám guard hình dạng của §2 vào decision, mỗi
    guard một witness tự tính digest theo §5.2.
@@ -718,9 +754,9 @@ thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số 
    predicate sai không thể ra CONFLICT và điều 2 của §9 vô nghĩa.
 
 Commit 0-5b không phụ thuộc 3b. Commit 6 là ranh giới: nó đóng băng payload, nên nó chờ 3b. Thứ tự tổng
-thể: **3a 0-4 → 5a → 5b → 3b 1-7 → 3a 6.**
+thể: **3a 0-4 → 5a → 5b-i → 5b-ii → 5b → 3b 1-7 → 3a 6.**
 
-Commit 0-4 đã xong (2026-08-04). Số **6** không đổi khi commit 5 tách đôi — đó là lý do dùng hậu tố chữ
+Commit 0-4 và 5a đã xong (2026-08-04). Số **6** không đổi khi commit 5 tách nhỏ — đó là lý do dùng hậu tố chữ
 cái thay vì đánh lại số; xem §5.1.
 
 ## 11. Chạy trên Windows
