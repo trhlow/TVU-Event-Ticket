@@ -122,8 +122,8 @@ LOOKUP_FIELDS = {
 # Required equals allowed on purpose: there is no optional field on a present lookup, and an
 # optional one would be a fact nobody stated dressed up as a fact omitted.
 PRESENT_FIELDS = {
-    "marker": ({"status", "queriedRef", "markerDigest", "verification", "content"},
-               {"status", "queriedRef", "markerDigest", "verification", "content"}),
+    "marker": ({"status", "queriedRef", "markerDigest", "verification", "ociEnvelope", "content"},
+               {"status", "queriedRef", "markerDigest", "verification", "ociEnvelope", "content"}),
     "object": ({"status", "queriedRef", "digest"},
                {"status", "queriedRef", "digest"}),
 }
@@ -310,6 +310,35 @@ def marker_problems(marker, obs, where):
     if verification.get("policyPassed") is not True:
         problems.append(f"{where}.verification.policyPassed is "
                         f"{verification.get('policyPassed')!r}, must be boolean true")
+
+    envelope = marker.get("ociEnvelope")
+    require(type(envelope) is dict, f"{where}.ociEnvelope must be an object")
+    for flag in ("digestVerified", "sizeVerified", "parsed"):
+        require(type(envelope.get(flag)) is bool,
+                f"{where}.ociEnvelope.{flag} must be boolean")
+    all_verified = all(envelope[flag] for flag in ("digestVerified", "sizeVerified", "parsed"))
+    # raw is a document of bytes the collector was allowed to read. Present when it was not
+    # allowed, or absent when it was, and the observation contradicts itself -- neither half can be
+    # trusted, so this is UNKNOWN rather than a verdict about the producer.
+    require(("raw" in envelope) == all_verified,
+            f"{where}.ociEnvelope.raw is "
+            f"{'present' if 'raw' in envelope else 'absent'} while the three checks say "
+            f"{all_verified}")
+
+    if not envelope["digestVerified"] or not envelope["sizeVerified"]:
+        problems.append(f"{where} envelope failed verification: digestVerified="
+                        f"{envelope['digestVerified']}, sizeVerified={envelope['sizeVerified']}")
+    elif not envelope["parsed"]:
+        problems.append(f"{where} envelope bytes matched the descriptor but are not JSON")
+    else:
+        # Without this, raw is only a retyping of the manifest and a non-canonical envelope passes
+        # unread -- which is the thing section 2 exists to stop. It also makes the "build once,
+        # re-tag, never rebuild" invariant self-enforcing: two markers with one content have one
+        # raw and therefore one digest.
+        recomputed = "sha256:" + hashlib.sha256(canonical_bytes(envelope["raw"])).hexdigest()
+        if recomputed != marker.get("markerDigest"):
+            problems.append(f"{where}.ociEnvelope.raw hashes to {recomputed}, but the marker is "
+                            f"named {marker.get('markerDigest')!r}")
 
     content = marker.get("content")
     if type(content) is not dict:

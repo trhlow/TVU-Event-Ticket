@@ -37,22 +37,29 @@ FRONTEND_REPO=ghcr.io/owner/name/frontend
 
 python_json() { "$PYTHON" -c "$1" "${@:2}"; }
 
-# marker [json-overrides] [images-monolith] [images-frontend] [marker-digest]
+# marker [json-overrides] [images-monolith] [images-frontend]
+#
+# There is no marker-digest parameter. There used to be, and it was read into a variable that lines
+# below overwrote unconditionally once the digest became a function of the content -- a parameter a
+# caller could pass and watch have no effect, which is worse than one that does not exist.
 marker() {
   python_json '
 import hashlib, json, sys
 overrides = json.loads(sys.argv[1] or "{}")
-mono, front, mdigest, sha, fp = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5], sys.argv[6]
+mono, front, sha, fp = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
 migrations = [{"installedRank": 1, "version": "16", "type": "SQL", "script": "V16__x.sql",
                "checksum": 123456789, "success": True}]
 canonical = json.dumps(sorted(migrations, key=lambda r: r["installedRank"]),
                        sort_keys=True, separators=(",", ":"))
+# markerDigest and verification.subjectDigest are written as None here and replaced below with the
+# digest of the raw this marker actually carries. They appear in the literal only so a fixture reads
+# in the same key order a real observation has.
 base = {
   "status": "present",
-  "queriedRef": sys.argv[7] + ":release-" + sha,
-  "markerDigest": mdigest,
+  "queriedRef": sys.argv[6] + ":release-" + sha,
+  "markerDigest": None,
   "verification": {
-    "attestationVerified": True, "subjectDigest": mdigest,
+    "attestationVerified": True, "subjectDigest": None,
     "signerRepository": "owner/name", "signerWorkflow": ".github/workflows/publish.yml",
     "sourceRevision": sha, "predicateType": "https://slsa.dev/provenance/v1",
     "policyPassed": True,
@@ -89,6 +96,55 @@ if "_migrations" in overrides:
     base["content"]["flywayInventory"]["checksum"] = hashlib.sha256(
         recomputed.encode()).hexdigest()
 
+# The envelope is derived from the content, never typed alongside it: two statements of one fact
+# drift, and this one is a hash. Overrides that change content therefore change the digest with it.
+sys.path.insert(0, sys.argv[7])
+import envelope as envelope_module
+
+raw = envelope_module.envelope_for(base["content"])
+base["ociEnvelope"] = {"digestVerified": True, "sizeVerified": True, "parsed": True, "raw": raw}
+base["markerDigest"] = envelope_module.marker_digest(raw)
+base["verification"]["subjectDigest"] = base["markerDigest"]
+
+# Test-only escapes, each one shaping an observation the contract must refuse. They run before the
+# generic merge so a case can both break the envelope and set an unrelated field.
+if overrides.pop("_envelope_absent", False):
+    del base["ociEnvelope"]
+if "_envelope_del" in overrides:
+    del base["ociEnvelope"][overrides.pop("_envelope_del")]
+if overrides.pop("_envelope_del_raw", False):
+    del base["ociEnvelope"]["raw"]
+if overrides.pop("_envelope_unparsed", False):
+    base["ociEnvelope"]["parsed"] = False
+    del base["ociEnvelope"]["raw"]
+if "_envelope_failed" in overrides:
+    base["ociEnvelope"][overrides.pop("_envelope_failed")] = False
+    del base["ociEnvelope"]["raw"]
+if "_envelope_flag" in overrides:
+    # An arbitrary value in one of the three flags, with raw removed to match. Removing raw is what
+    # makes the case attributable: with raw still there, a falsy non-boolean is caught by the
+    # raw-implies-all-verified require instead of by the type check the case is named for.
+    flag, value = overrides.pop("_envelope_flag")
+    base["ociEnvelope"][flag] = value
+    del base["ociEnvelope"]["raw"]
+if overrides.pop("_envelope_retag", False):
+    # The digest names a different object: the classic re-tag, where a marker points at bytes it
+    # was not built from. Digest deliberately NOT recomputed -- this is the one case whose whole
+    # subject is the mismatch.
+    base["markerDigest"] = "sha256:" + "5" * 64
+    base["verification"]["subjectDigest"] = base["markerDigest"]
+if overrides.pop("_envelope_reorder", False):
+    # Same fields, different bytes: a raw that was retyped rather than kept. The digest stays the
+    # digest of the original manifest, so the recomputation is what catches it.
+    base["ociEnvelope"]["raw"] = dict(base["ociEnvelope"]["raw"])
+    base["ociEnvelope"]["raw"]["extraKey"] = "typed by hand"
+if overrides.pop("_envelope_subject", False):
+    base["ociEnvelope"]["raw"]["subject"] = {
+        "mediaType": envelope_module.MANIFEST_MEDIA_TYPE,
+        "digest": "sha256:" + "7" * 64, "size": 3}
+    base["markerDigest"] = envelope_module.marker_digest(base["ociEnvelope"]["raw"])
+    base["verification"]["subjectDigest"] = base["markerDigest"]
+
 def merge(a, b):
     for k, v in b.items():
         if isinstance(v, dict) and isinstance(a.get(k), dict):
@@ -97,7 +153,7 @@ def merge(a, b):
             a[k] = v
 merge(base, overrides)
 print(json.dumps(base))
-' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "${4:-$MARKER_DIGEST}" "$SHA" "$FP" "$RELEASE_REPO"
+' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$SHA" "$FP" "$RELEASE_REPO" "$script_dir"
 }
 
 present_in() { printf '{"status":"present","queriedRef":"%s@%s","digest":"%s"}' "$1" "$2" "$2"; }
@@ -328,7 +384,25 @@ done
 
 echo
 echo "== markers must be the same artifact, and the bytes must still be there"
-assert_decision "markers agree on images but are different artifacts"   "$(observation "$(marker)" "$(marker '' '' '' 'sha256:4444444444444444444444444444444444444444444444444444444444444444')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
+# Two different artifacts carrying the same payload: same content, two manifests, two digests. The
+# difference has to live in the ENVELOPE and nowhere else, and getting there took two wrong turns.
+#
+# Typing a different markerDigest is wrong: once the digest is derived from the raw, a hand-set
+# digest is a marker that does not name its own bytes, and the raw-hashes-to-its-name guard refuses
+# it before the artefact-identity guard ever runs.
+#
+# Stating the difference in the content is wrong too, and less obviously. Even with the content
+# mutated before the envelope is derived -- so that each marker is self-consistent and the two
+# digests genuinely differ -- the same-digest-different-content guard below tests content inequality
+# unconditionally, so it fires on this case as well. Deleting the artefact-identity guard left the
+# suite green, which is exactly the defect being fixed.
+#
+# `_envelope_subject` is the shape that isolates it: it puts a subject into raw and recomputes the
+# digest from the mutated raw, so the two markers have identical content and different digests. 5a
+# judges no manifest shape, so both markers are individually trustworthy (the last case in this file
+# pins that), the content comparison cannot fire, and the artefact-identity guard is the only rule
+# left that can answer CONFLICT.
+assert_decision "markers agree on content but are different artifacts"   "$(observation "$(marker)" "$(marker '{"_envelope_subject": true}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to exist"   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$absent_mono" "$absent_fe")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to match"   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$(present_in "$MONOLITH_REPO" "$OTHER")")"   CONFLICT '[]' false false
 
@@ -626,6 +700,98 @@ o = json.loads(sys.stdin.read())
 o["lookups"]["preparedMarker"]["digest"] = sys.argv[1]
 print(json.dumps(o))' "$MONO")"
 assert_decision "a marker carrying a digest" "$marker_with_digest" UNKNOWN '[]' false false
+
+# A one-marker observation, so envelope cases read as one line each.
+marker_obs() { observation "$(marker "$1")" "$absent_release" "$absent_mono" "$absent_fe"; }
+
+echo
+echo "== a present marker carries the envelope it travelled in"
+for missing in digestVerified sizeVerified parsed; do
+  assert_decision "an envelope missing $missing" \
+    "$(observation "$(marker "{\"_envelope_del\": \"$missing\"}")" "$absent_release" \
+       "$absent_mono" "$absent_fe")" \
+    UNKNOWN '[]' false false
+done
+for wrong in '"yes"' '1'; do
+  assert_decision "digestVerified is $wrong rather than a boolean" \
+    "$(marker_obs "{\"ociEnvelope\": {\"digestVerified\": $wrong}}")" \
+    UNKNOWN '[]' false false
+done
+# null gets its own case, with raw removed and the marker in the prepared slot, because the obvious
+# spelling of it is not attributable. `{"ociEnvelope": {"digestVerified": null}}` beside a present
+# raw reaches UNKNOWN with the boolean type check deleted too: None is falsy, so all_verified goes
+# false while raw is still there and the raw-implies-all-verified require fires instead. Written
+# this way the type check is the only thing that can answer UNKNOWN -- delete it and None merely
+# reads as falsy, the envelope is judged failed, and a prepared marker that would otherwise reach
+# PARTIAL becomes CONFLICT.
+assert_decision "digestVerified is null rather than a boolean" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_flag": ["digestVerified", null]}')" \
+     "$absent_mono" "$absent_fe")" \
+  UNKNOWN '[]' false false
+# An envelope that is not an object at all. Not a missing flag and not a bad flag: the type check
+# above the flag loop, which nothing else reaches, and without which the loop below it raises
+# AttributeError and the caller gets a traceback instead of a decision.
+assert_decision "an ociEnvelope that is not an object" \
+  "$(marker_obs '{"ociEnvelope": 5}')" \
+  UNKNOWN '[]' false false
+assert_decision "no ociEnvelope at all" \
+  "$(observation "$(marker '{"_envelope_absent": true}')" "$absent_release" \
+     "$absent_mono" "$absent_fe")" \
+  UNKNOWN '[]' false false
+# raw exists only when all three checks passed. A raw sitting beside digestVerified:false is a
+# document reporting bytes it was forbidden to read -- section 2 orders the size check, then the
+# hash, then the parse, and nothing may be parsed before the descriptor matches.
+for flag in digestVerified sizeVerified parsed; do
+  assert_decision "raw present while $flag is false" \
+    "$(marker_obs "{\"ociEnvelope\": {\"$flag\": false}}")" \
+    UNKNOWN '[]' false false
+done
+assert_decision "raw absent while all three are true" \
+  "$(observation "$(marker '{"_envelope_del_raw": true}')" "$absent_release" \
+     "$absent_mono" "$absent_fe")" \
+  UNKNOWN '[]' false false
+# parsed:false is a completed check that came back negative: the producer published bytes that are
+# not JSON. A verdict, not a defect in the observation.
+#
+# In the PREPARED slot for the same reason the 5.2 cases below are: a marker in the final slot
+# beside absent tags is CONFLICT whether or not anything reads its envelope, so these three would
+# survive the deletion of the rule they exist for. In the prepared slot a trustworthy marker reaches
+# PARTIAL, and only the envelope verdict can turn it.
+assert_decision "bytes that matched the descriptor but are not JSON" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_unparsed": true}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+for flag in digestVerified sizeVerified; do
+  assert_decision "$flag is false" \
+    "$(observation "$absent_release" "$(marker "{\"_envelope_failed\": \"$flag\"}")" \
+       "$absent_mono" "$absent_fe")" \
+    CONFLICT '[]' false false
+done
+# Section 5.2. Each of these mutates raw AND carries the digest of the mutated raw, so the equality
+# below holds and the only thing that can refuse the observation is the rule under test. Written the
+# other way -- a mutated raw beside a stale digest -- every one of them would reach CONFLICT through
+# the digest guard, and deleting the rule under test would leave them green.
+#
+# All three sit in the PREPARED slot, not the final one. A marker in the final slot beside absent
+# tags is CONFLICT whatever its envelope says, so the equality guard could be deleted and these
+# would stay green on the missing-tag rule instead -- reaching the right verdict for the wrong
+# reason. In the prepared slot a trustworthy marker reaches PARTIAL, so CONFLICT here can only have
+# come from the rule under test.
+assert_decision "a raw the marker digest does not name" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_retag": true}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+assert_decision "a raw that is a retyped copy rather than the bytes themselves" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_reorder": true}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+# The counterweight: a raw carrying a subject is a bad artifact, but in 5a no rule judges the shape
+# of a manifest, so with its own digest recomputed it must pass. 5b is what turns this to CONFLICT,
+# and this case is how 5b proves its guard did the turning.
+assert_decision "a raw carrying a subject is not yet judged" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_subject": true}')" \
+     "$absent_mono" "$absent_fe")" \
+  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 
 echo
 echo "passed=$passed failed=$failed"

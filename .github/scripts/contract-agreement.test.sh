@@ -45,6 +45,12 @@ decision_script = sys.argv[2]
 contracts = repo_root / ".github" / "contracts"
 fixtures = contracts / "fixtures"
 
+# envelope.py lives beside the decision script, and sys.path did not carry that directory here. The
+# drift check below has to hash a raw manifest exactly the way the decision and the generator do,
+# and a third statement of one hash is the drift it exists to catch.
+sys.path.insert(0, str(pathlib.Path(decision_script).parent))
+from envelope import marker_digest
+
 try:
     import jsonschema
     from jsonschema.exceptions import best_match
@@ -123,6 +129,22 @@ for name in on_disk:
         continue
     problems = []
     document = json.loads((fixtures / name).read_text(encoding="utf-8"))
+
+    # A fixture whose markerDigest disagrees with its own raw is a fixture nobody regenerated. For
+    # a valid one the decision already refuses it, but an invalid-semantics fixture is CONFLICT
+    # either way, so without this it would drift here forever and never say a word.
+    drifted = [key for key, lookup in document.get("lookups", {}).items()
+               if isinstance(lookup, dict) and isinstance(lookup.get("ociEnvelope"), dict)
+               # isinstance on raw as well. A raw that is not an object is a case for the schema and
+               # the decision to answer, but this line reached it first: canonical_bytes refuses a
+               # float outright, so a fixture carrying `"raw": 1.5` raised out of the loop and the
+               # whole run died with a traceback -- one bad fixture and every other fixture, before
+               # it and after it, goes unreported.
+               and isinstance(lookup["ociEnvelope"].get("raw"), dict)
+               and marker_digest(lookup["ociEnvelope"]["raw"]) != lookup.get("markerDigest")]
+    if drifted:
+        problems.append(f"markerDigest does not match its own raw in: {', '.join(sorted(drifted))}"
+                        f" -- run fixture-envelopes.py")
 
     errors = list(validator.iter_errors(document))
     if want["schema"] == "accepts" and errors:

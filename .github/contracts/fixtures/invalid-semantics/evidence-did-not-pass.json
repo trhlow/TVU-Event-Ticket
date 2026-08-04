@@ -22,10 +22,10 @@
     "preparedMarker": {
       "status": "present",
       "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567",
-      "markerDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "markerDigest": "sha256:7b3955f096429209ffe38c0219fe513e7340f9f2bfea28154a1fa3919ec0102a",
       "verification": {
         "attestationVerified": true,
-        "subjectDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "subjectDigest": "sha256:7b3955f096429209ffe38c0219fe513e7340f9f2bfea28154a1fa3919ec0102a",
         "signerRepository": "owner/name",
         "signerWorkflow": ".github/workflows/ci.yml",
         "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
@@ -135,6 +135,29 @@
               "script": "R__reporting_views.sql",
               "checksum": null,
               "success": true
+            }
+          ]
+        }
+      },
+      "ociEnvelope": {
+        "digestVerified": true,
+        "sizeVerified": true,
+        "parsed": true,
+        "raw": {
+          "schemaVersion": 2,
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "artifactType": "application/vnd.tvu.release-manifest.v1+json",
+          "config": {
+            "mediaType": "application/vnd.oci.empty.v1+json",
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "size": 2,
+            "data": "e30="
+          },
+          "layers": [
+            {
+              "mediaType": "application/vnd.tvu.release-manifest.v1+json",
+              "digest": "sha256:27947a177e393d66b6a95c87d3e1a26fb9aa2695c76bc630d573ae70be57c28e",
+              "size": 3450
             }
           ]
         }

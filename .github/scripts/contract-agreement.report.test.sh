@@ -34,7 +34,10 @@ trap 'rm -rf "$work"' EXIT
 # The subject resolves the contracts directory from its own location, so a copy of it inside a fake
 # repository root reads the fake fixtures and never touches the real ones.
 mkdir -p "$work/.github/scripts" "$work/.github/contracts/fixtures/invalid-semantics"
-for name in contract-agreement.test.sh publish-decision.sh python-bin.sh canonical.py; do
+# envelope.py joined this list when the subject grew a drift check that hashes each fixture's raw
+# manifest. A dependency missing from the fake tree does not fail as a missing dependency -- the
+# subject dies before it reports anything, and every assertion below then reads a traceback.
+for name in contract-agreement.test.sh publish-decision.sh python-bin.sh canonical.py envelope.py; do
   cp "$script_dir/$name" "$work/.github/scripts/$name"
 done
 cp "$script_dir/../contracts/observation.schema.json" "$work/.github/contracts/observation.schema.json"
