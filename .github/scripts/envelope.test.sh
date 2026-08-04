@@ -2,7 +2,12 @@
 # The envelope builder, pinned against values computed by hand once. If canonical_bytes changes, the
 # digests below change with it and this suite is the first thing that says so.
 set -uo pipefail
-cd "$(dirname "$0")"
+# The cd is what puts this directory on Python's sys.path for `-c`, so `import envelope` depends on
+# it having worked. Unchecked, a failed cd runs every case from the wrong directory and they fail on
+# a missing module rather than on the thing they test -- and `set -e` is deliberately absent here,
+# so nothing else would stop it.
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")" || exit 1
+# shellcheck source=python-bin.sh
 source "./python-bin.sh"
 
 passed=0; failed=0
