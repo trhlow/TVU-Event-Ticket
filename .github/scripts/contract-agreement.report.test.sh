@@ -29,17 +29,25 @@ report() {
 }
 
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+refs="$(mktemp -d)"
+broken="$(mktemp -d)"
+trap 'rm -rf "$work" "$refs" "$broken"' EXIT
 
 # The subject resolves the contracts directory from its own location, so a copy of it inside a fake
-# repository root reads the fake fixtures and never touches the real ones.
-mkdir -p "$work/.github/scripts" "$work/.github/contracts/fixtures/invalid-semantics"
-# envelope.py joined this list when the subject grew a drift check that hashes each fixture's raw
-# manifest. A dependency missing from the fake tree does not fail as a missing dependency -- the
-# subject dies before it reports anything, and every assertion below then reads a traceback.
-for name in contract-agreement.test.sh publish-decision.sh python-bin.sh canonical.py envelope.py; do
-  cp "$script_dir/$name" "$work/.github/scripts/$name"
-done
+# repository root reads the fake fixtures and never touches the real ones. Three cases below need a
+# contracts tree of their own -- the schema differs between them -- and one list of what a working
+# tree contains is the only way a file added to the subject's dependencies gets added to all three.
+make_fake_tree() {
+  mkdir -p "$1/.github/scripts" "$1/.github/contracts/fixtures/invalid-semantics"
+  # envelope.py joined this list when the subject grew a drift check that hashes each fixture's raw
+  # manifest. A dependency missing from the fake tree does not fail as a missing dependency -- the
+  # subject dies before it reports anything, and every assertion below then reads a traceback.
+  for name in contract-agreement.test.sh publish-decision.sh python-bin.sh canonical.py envelope.py; do
+    cp "$script_dir/$name" "$1/.github/scripts/$name"
+  done
+}
+
+make_fake_tree "$work"
 cp "$script_dir/../contracts/observation.schema.json" "$work/.github/contracts/observation.schema.json"
 
 # Two fixtures the schema must refuse, both filed as structurally valid so the subject reports the
@@ -103,6 +111,80 @@ problems=""
 printf '%s' "$out" | grep -q 'does not match' \
   || problems="the reason was cut away and only the value survived"
 report "the reason survives the cut, not just the value" "$problems"
+
+# A schema is allowed to reference a sibling file rather than restate its shape, and the subject has
+# to be able to follow it. jsonschema stopped following a bare filename when RefResolver was
+# deprecated in 4.18, so a reference the schema is entitled to write raised Unresolvable and no
+# fixture was checked at all.
+#
+# The fake observation carries an $id the way the real one does and the sibling carries none, which
+# is the harder of the two spellings: the reference then resolves against the $id's directory, and a
+# loader that knows the sibling only by its bare filename never matches it.
+make_fake_tree "$refs"
+cat > "$refs/.github/contracts/observation.schema.json" <<'JSON'
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/trhlow/TVU-Event-Ticket/.github/contracts/observation.schema.json",
+  "$ref": "sibling.schema.json#/$defs/thing"
+}
+JSON
+cat > "$refs/.github/contracts/sibling.schema.json" <<'JSON'
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "thing": {
+      "type": "object",
+      "required": ["marker"],
+      "properties": { "marker": { "type": "string" } }
+    }
+  }
+}
+JSON
+# Objects rather than the bare string the referenced rule could just as well have been, because the
+# subject's drift check asks each fixture for its lookups and a fixture that is not an object has no
+# such method -- one traceback and no fixture at all gets reported, which is the failure this file
+# exists to keep out.
+printf '{ "marker": "x" }\n' > "$refs/.github/contracts/fixtures/follows-the-reference.json"
+printf '{ "marker": 1 }\n' > "$refs/.github/contracts/fixtures/breaks-the-referenced-rule.json"
+# Both filed as structurally valid. The second is not, deliberately: that is what makes the subject
+# print what the schema said about it instead of silently agreeing.
+cat > "$refs/.github/contracts/fixtures/expectations.json" <<'JSON'
+{
+  "follows-the-reference.json": { "actions": [], "schema": "accepts", "state": "UNKNOWN" },
+  "breaks-the-referenced-rule.json": { "actions": [], "schema": "accepts", "state": "UNKNOWN" }
+}
+JSON
+
+refs_out="$(PUBLISH_DECISION_BASH="$BASH" "$BASH" "$refs/.github/scripts/contract-agreement.test.sh" 2>&1)"
+
+problems=""
+printf '%s\n' "$refs_out" | grep -q '^ok    follows-the-reference\.json' \
+  || problems="the fixture satisfying the referenced rule was not accepted"
+printf '%s\n' "$refs_out" | grep -q "marker: 1 is not of type 'string'" \
+  || problems="${problems:+$problems; }the fixture breaking it was not reported as a type failure naming the field"
+[[ -z "$problems" ]] || problems="$problems -- ${refs_out:0:300}"
+report 'a $ref into a sibling schema file is followed' "$problems"
+
+# The same tree with the sibling deleted. What matters is not that this fails but how: an unfollowable
+# reference raised out of the loop kills the run before it prints a single line, and a run that prints
+# nothing reads exactly like a clean one. Twice on this branch a file missing from a fake tree failed
+# in precisely that shape.
+make_fake_tree "$broken"
+cp -r "$refs/.github/contracts/." "$broken/.github/contracts/"
+rm "$broken/.github/contracts/sibling.schema.json"
+
+broken_out="$(PUBLISH_DECISION_BASH="$BASH" "$BASH" "$broken/.github/scripts/contract-agreement.test.sh" 2>&1)"
+broken_status=$?
+
+problems=""
+(( broken_status != 0 )) || problems="the subject exited 0 on a reference it could not follow"
+if printf '%s\n' "$broken_out" | grep -q 'Traceback'; then
+  problems="${problems:+$problems; }it died with a traceback rather than reporting"
+fi
+printf '%s\n' "$broken_out" | grep -q 'FAIL.*sibling\.schema\.json' \
+  || problems="${problems:+$problems; }no FAIL line named the file that could not be found"
+[[ -z "$problems" ]] || problems="$problems -- ${broken_out:0:300}"
+report 'a $ref to a file that is not there is a FAIL line, not a traceback' "$problems"
 
 printf '\npassed=%d failed=%d\n' "$passed" "$failed"
 [[ "$failed" -eq 0 ]]

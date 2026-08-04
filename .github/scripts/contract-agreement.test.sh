@@ -34,6 +34,7 @@ import os
 import pathlib
 import subprocess
 import sys
+import urllib.parse
 
 # Same override the mutation runner uses, for the same reason: on a Windows workstation `bash` on
 # PATH is WSL's and cannot reach the interpreter this ran from, so every fixture failed for a reason
@@ -54,15 +55,56 @@ from envelope import marker_digest
 try:
     import jsonschema
     from jsonschema.exceptions import best_match
+    # In the same guard on purpose. referencing is what follows a $ref from one schema file into
+    # another, and a missing one has to fail here rather than turn into a run that checks nothing.
+    import referencing
+    import referencing.exceptions
+    import referencing.jsonschema
 except ImportError:
     # Never skipped. A contract test that quietly does nothing when a dependency is missing reports
     # the same green as one that ran, and the whole point here is that green means something.
-    print("FAIL  jsonschema is not installed; the contract cannot be checked")
+    print("FAIL  jsonschema and referencing are not both installed; the contract cannot be checked")
     sys.exit(1)
 
 schema = json.loads((contracts / "observation.schema.json").read_text(encoding="utf-8"))
 expectations = json.loads((fixtures / "expectations.json").read_text(encoding="utf-8"))
-validator = jsonschema.Draft202012Validator(schema)
+
+# A schema is allowed to reference a sibling file rather than restate its shape -- the observation
+# points at the release envelope's definition of a marker instead of carrying a second copy of it,
+# so there is nothing for the two copies to drift apart about. jsonschema stopped resolving a bare
+# filename when RefResolver was deprecated in 4.18, so without a registry that reference raises
+# Unresolvable: loudly, which is the good case, but it means the reference cannot be written at all
+# until the loader can follow it.
+#
+# Two keys per file, because one bare filename resolves to two different URIs depending on which
+# schema wrote it, and both are spellings a reader of the file would expect to be able to follow:
+#
+#   the filename itself, for a reference written by a schema with no $id. The base is empty there,
+#   so "release-envelope.schema.json" stays exactly those characters.
+#
+#   the filename joined onto observation.schema.json's $id, for a reference written by a schema that
+#   has one -- and observation.schema.json has one. The same characters then resolve to an absolute
+#   URL under that $id's directory, which a registry holding only bare filenames matches nowhere.
+#   Keying by filename alone was tried against exactly the file this exists to serve and did not
+#   work; the sibling would have to declare a matching $id of its own to be found, and requiring
+#   that of every future contract file is a rule nobody would remember.
+base = schema["$id"] if isinstance(schema.get("$id"), str) else ""
+resources = {}
+for path in sorted(contracts.glob("*.schema.json")):
+    resource = referencing.Resource.from_contents(
+        json.loads(path.read_text(encoding="utf-8")),
+        default_specification=referencing.jsonschema.DRAFT202012)
+    resources[path.name] = resource
+    if base:
+        resources[urllib.parse.urljoin(base, path.name)] = resource
+if not resources:
+    # The same discipline as ci.yml's empty-glob check. An empty set is how this stops checking
+    # anything at all while still printing green.
+    print("FAIL  no schema files found; the contract directory must have moved")
+    sys.exit(1)
+registry = referencing.Registry().with_resources(resources.items())
+
+validator = jsonschema.Draft202012Validator(schema, registry=registry)
 
 passed = 0
 failed = 0
@@ -146,12 +188,23 @@ for name in on_disk:
         problems.append(f"markerDigest does not match its own raw in: {', '.join(sorted(drifted))}"
                         f" -- run fixture-envelopes.py")
 
-    errors = list(validator.iter_errors(document))
-    if want["schema"] == "accepts" and errors:
-        problems.append(f"the schema rejected it but this fixture is filed as structurally valid, "
-                        f"so the rule it breaks belongs in the decision: {describe(errors)}")
-    if want["schema"] == "rejects" and not errors:
-        problems.append("the schema accepted it; this rule lives only in the decision function")
+    try:
+        errors = list(validator.iter_errors(document))
+    except referencing.exceptions.Unresolvable as unresolvable:
+        # A reference the loader cannot follow is not this fixture's fault, but it has to arrive as a
+        # line. Raised out of the loop it ends the run before anything is printed, and a run that
+        # prints nothing reads exactly like a clean one -- which is how two files missing from a
+        # tree got past this branch already. The reference is named because the answer is either a
+        # file that was never added or a filename spelt one character wrong, and the reader cannot
+        # tell which without seeing it.
+        problems.append(f"the schema makes a reference nothing in {contracts.name}/ can answer -- "
+                        f"{unresolvable}")
+    else:
+        if want["schema"] == "accepts" and errors:
+            problems.append(f"the schema rejected it but this fixture is filed as structurally valid, "
+                            f"so the rule it breaks belongs in the decision: {describe(errors)}")
+        if want["schema"] == "rejects" and not errors:
+            problems.append("the schema accepted it; this rule lives only in the decision function")
 
     decision, failure = decide(fixtures / name)
     if failure:
