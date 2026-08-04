@@ -183,6 +183,30 @@ MUTATIONS = {
     # arms are separate mutations because they answer differently: presence is an agreement between
     # the marker and its envelope, so breaking it is UNKNOWN, while the layer count itself is a fact
     # about the bytes the digest names, so breaking it is CONFLICT.
+    # The point of the envelope commit. Without the recomputation `raw` is only a retyping of the
+    # manifest, and an envelope that is not canonical rides through unread -- the exact thing the
+    # frozen envelope exists to refuse.
+    "digest_not_recomputed": (
+        'recomputed = "sha256:" + hashlib.sha256(canonical_bytes(envelope["raw"])).hexdigest()',
+        'recomputed = marker.get("markerDigest")'),
+    # Recomputing with a looser writer is the same failure wearing a hash: json.dumps admits key
+    # orders, spacing and float forms the canonical form refuses, so a manifest that is not the
+    # bytes the registry holds can still hash to the digest that names them.
+    "canonical_bytes_bypassed": (
+        'hashlib.sha256(canonical_bytes(envelope["raw"])).hexdigest()',
+        "hashlib.sha256(json.dumps(envelope[\"raw\"]).encode()).hexdigest()"),
+    # raw beside a failed check is a document reporting bytes the collector was forbidden to read.
+    "raw_allowed_when_unverified": (
+        'require(("raw" in envelope) == all_verified,', "require(True,"),
+    "envelope_flag_types_unchecked": (
+        "require(type(envelope.get(flag)) is bool,", "require(True,"),
+    "envelope_not_an_object": (
+        'require(type(envelope) is dict, f"{where}.ociEnvelope must be an object")', "pass"),
+    # A completed check that came back false is a verdict about the producer, not silence.
+    "envelope_failure_is_not_a_verdict": (
+        'if not envelope["digestVerified"] or not envelope["sizeVerified"]:', "if False:"),
+    "unparsed_bytes_ignored": (
+        'elif not envelope["parsed"]:', "elif False:"),
     "content_presence_unchecked": (
         'require(("content" in marker) == one_layer,', "require(True,"),
     "layer_count_ignored": (
