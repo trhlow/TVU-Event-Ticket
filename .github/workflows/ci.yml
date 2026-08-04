@@ -294,6 +294,7 @@ jobs:
           # invalidates every checksum already written down. Pinned against golden bytes and a
           # digest taken with sha256sum rather than with the function under test.
           bash .github/scripts/canonical.test.sh
+          bash .github/scripts/envelope.test.sh
           # A guard nobody can delete without a test going red is the only kind that is evidence.
           python3 .github/scripts/publish-decision.mutations.py
           # Both of these drive a copy of their subject over a fake tree, so they catch a subject
