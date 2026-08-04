@@ -28,13 +28,12 @@ OTHER=sha256:9999999999999999999999999999999999999999999999999999999999999999
 MARKER_DIGEST=sha256:3333333333333333333333333333333333333333333333333333333333333333
 FP=fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477
 
-# Three roles, three repositories -- but for now all three name the same one, because the contract
-# still has a single `expected.repository`. Commit 4 changes these three values and nothing else in
-# this block, which is the point of introducing them a commit early: the churn of moving ~40 call
-# sites off a shared $absent is separated from the change of meaning.
-RELEASE_REPO=ghcr.io/owner/name
-MONOLITH_REPO=ghcr.io/owner/name
-FRONTEND_REPO=ghcr.io/owner/name
+# Three roles, three repositories, and now three different ones. Three packages are three OCI
+# repositories; the source repository they were all conflated with is a fourth thing entirely and
+# lives in expected.sourceRepository.
+RELEASE_REPO=ghcr.io/owner/name/release
+MONOLITH_REPO=ghcr.io/owner/name/monolith
+FRONTEND_REPO=ghcr.io/owner/name/frontend
 
 python_json() { "$PYTHON" -c "$1" "${@:2}"; }
 
@@ -114,7 +113,9 @@ skipped='{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}'
 observation() {
   cat <<EOF
 {"schemaVersion":1,"commit":"$SHA","environment":"production",
- "expected":{"repository":"owner/name","frontendConfigFingerprint":"$FP","signerWorkflow":".github/workflows/publish.yml","registry":"ghcr.io"},
+ "expected":{"sourceRepository":"owner/name",
+             "repositories":{"release":"owner/name/release","monolith":"owner/name/monolith","frontend":"owner/name/frontend"},
+             "frontendConfigFingerprint":"$FP","signerWorkflow":".github/workflows/publish.yml","registry":"ghcr.io"},
  "lookups":{"finalMarker":$1,"preparedMarker":$2,"monolithTag":$3,"frontendTag":$4,
             "monolithDigestObject":${5:-$(present_in "$MONOLITH_REPO" "$MONO")},
             "frontendDigestObject":${6:-$(present_in "$FRONTEND_REPO" "$FRONT")},
@@ -210,12 +211,14 @@ o=json.load(sys.stdin); o["lookups"]["finlMarker"]={"status":"absent"}; print(js
 # reached UNKNOWN through the missing-key check either way and could not tell the two apart.
 assert_decision "duplicate keys cannot hide an error behind an absence" \
   "{\"schemaVersion\":1,\"commit\":\"$SHA\",\"environment\":\"production\",
-    \"expected\":{\"repository\":\"owner/name\",\"frontendConfigFingerprint\":\"$FP\",\"signerWorkflow\":\".github/workflows/publish.yml\",\"registry\":\"ghcr.io\"},
+    \"expected\":{\"sourceRepository\":\"owner/name\",
+                  \"repositories\":{\"release\":\"owner/name/release\",\"monolith\":\"owner/name/monolith\",\"frontend\":\"owner/name/frontend\"},
+                  \"frontendConfigFingerprint\":\"$FP\",\"signerWorkflow\":\".github/workflows/publish.yml\",\"registry\":\"ghcr.io\"},
     \"lookups\":{\"finalMarker\":{\"status\":\"error\",\"code\":503},
                  \"finalMarker\":$absent_release,
-                 \"preparedMarker\":$absent_release,\"monolithTag\":$absent_release,\"frontendTag\":$absent_release,
-                 \"monolithDigestObject\":$absent_release,\"frontendDigestObject\":$absent_release,
-                 \"monolithCandidate\":$absent_release,\"frontendCandidate\":$absent_release}}" \
+                 \"preparedMarker\":$absent_release,\"monolithTag\":$absent_mono,\"frontendTag\":$absent_fe,
+                 \"monolithDigestObject\":$absent_mono,\"frontendDigestObject\":$absent_fe,
+                 \"monolithCandidate\":$absent_mono,\"frontendCandidate\":$absent_fe}}" \
   UNKNOWN '[]' false false
 
 echo
@@ -302,7 +305,7 @@ done
 echo
 echo "== the schema rejects values that merely resemble the right ones"
 base_obs() { observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe"; }
-for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"ghcr.io/owner/name:r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"ghcr.io/owner/name:r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
+for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"'"$RELEASE_REPO"':r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"'"$RELEASE_REPO"':r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
   code="${tweak%%|*}"; label="${tweak##*|}"
   assert_decision "$label"     "$(base_obs | "$PYTHON" -c "
 import json,sys
@@ -375,6 +378,99 @@ assert_decision "skipped without the queriedRef key at all" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
      '{"status":"skipped","reason":"no_claimed_digest"}' "$skipped")" \
   UNKNOWN '[]' false false
+
+echo
+echo "== each lookup is pinned to its own repository, not to a shared scope"
+# Eight cases rather than one assertion about the table's key set, because the table is inside the
+# embedded Python and nothing outside the script can import it -- and because these pin what the
+# table says, not merely how many entries it has. A ninth lookup added without an entry is refused
+# by the require() below rather than crashing the decision with a KeyError.
+for entry in \
+  "finalMarker|1|$MONOLITH_REPO" \
+  "preparedMarker|2|$FRONTEND_REPO" \
+  "monolithTag|3|$RELEASE_REPO" \
+  "frontendTag|4|$MONOLITH_REPO" \
+  ; do
+  which="${entry%%|*}"; rest="${entry#*|}"; position="${rest%%|*}"; wrong="${rest##*|}"
+  args=("$absent_release" "$absent_release" "$absent_mono" "$absent_fe")
+  args[$((position - 1))]="$(absent_in "$wrong")"
+  assert_decision "$which queried in the wrong repository" \
+    "$(observation "${args[0]}" "${args[1]}" "${args[2]}" "${args[3]}" "$skipped" "$skipped")" \
+    UNKNOWN '[]' false false
+done
+assert_decision "monolithDigestObject queried in the release repository" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
+     "$(present_in "$RELEASE_REPO" "$MONO")" "$skipped")" \
+  UNKNOWN '[]' false false
+assert_decision "frontendDigestObject queried in the monolith repository" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
+     "$skipped" "$(present_in "$MONOLITH_REPO" "$FRONT")")" \
+  UNKNOWN '[]' false false
+assert_decision "monolithCandidate queried in the frontend repository" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
+     "$skipped" "$skipped" "$(absent_in "$FRONTEND_REPO")")" \
+  UNKNOWN '[]' false false
+assert_decision "frontendCandidate queried in the release repository" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" \
+     "$skipped" "$skipped" "$absent_mono" "$(absent_in "$RELEASE_REPO")")" \
+  UNKNOWN '[]' false false
+
+echo
+echo "== the three repositories are three, and the signer is not one of them"
+mangle() { base_obs | "$PYTHON" -c "
+import json,sys
+o=json.load(sys.stdin)
+exec(sys.argv[1])
+print(json.dumps(o))" "$1"; }
+
+# Two roles sharing a repository makes the pinning above vacuous: a reference into the wrong
+# package satisfies the scope of both, and the only thing left telling them apart is the tag,
+# whose shape this contract does not fix yet. JSON Schema cannot state this, so the decision does.
+#
+# Collapsing a role onto release has to move that role's references with it, or the case never
+# reaches the distinctness rule: the lookups would still name the repository the role used to
+# have, and the scope check above refuses them first. Deleting the rule then changes nothing and
+# the case passes for a reason it was not written to test. It survived exactly that way once.
+collide() { base_obs | "$PYTHON" -c "
+import json,sys
+o=json.load(sys.stdin)
+reg=o['expected']['registry']; reps=o['expected']['repositories']
+target=reps['release']
+for role in sys.argv[1:]:
+    old=reps[role]
+    reps[role]=target
+    was=reg+'/'+old
+    for lookup in o['lookups'].values():
+        ref=lookup.get('queriedRef')
+        if isinstance(ref,str) and (ref.startswith(was+':') or ref.startswith(was+'@')):
+            lookup['queriedRef']=reg+'/'+target+ref[len(was):]
+print(json.dumps(o))" "$@"; }
+
+assert_decision "two roles naming one repository" \
+  "$(collide monolith)" \
+  UNKNOWN '[]' false false
+assert_decision "all three naming one repository" \
+  "$(collide monolith frontend)" \
+  UNKNOWN '[]' false false
+assert_decision "a source repository with three segments" \
+  "$(mangle 'o["expected"]["sourceRepository"] = "owner/name/release"')" \
+  UNKNOWN '[]' false false
+assert_decision "an OCI repository with one segment" \
+  "$(mangle 'o["expected"]["repositories"]["monolith"] = "monolith"')" \
+  UNKNOWN '[]' false false
+assert_decision "no repositories at all" \
+  "$(mangle 'del o["expected"]["repositories"]')" \
+  UNKNOWN '[]' false false
+assert_decision "a repositories object missing a role" \
+  "$(mangle 'del o["expected"]["repositories"]["frontend"]')" \
+  UNKNOWN '[]' false false
+# The whole reason for splitting the key: before it, these two were one string and this case could
+# not be written at all.
+assert_decision "a marker signed by the release repository rather than the source one" \
+  "$(observation "$absent_release" \
+     "$(marker '{"verification":{"signerRepository":"owner/name/release"}}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
 
 echo
 echo "== evidence answers four questions, and each one has to have been answered"

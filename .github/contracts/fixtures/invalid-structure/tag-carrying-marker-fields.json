@@ -3,25 +3,30 @@
   "commit": "0123456789abcdef0123456789abcdef01234567",
   "environment": "production",
   "expected": {
-    "repository": "owner/name",
     "frontendConfigFingerprint": "fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477",
     "signerWorkflow": ".github/workflows/ci.yml",
-    "registry": "ghcr.io"
+    "registry": "ghcr.io",
+    "sourceRepository": "owner/name",
+    "repositories": {
+      "release": "owner/name/release",
+      "monolith": "owner/name/monolith",
+      "frontend": "owner/name/frontend"
+    }
   },
   "lookups": {
     "finalMarker": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:release-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/release:release-0123456789abcdef0123456789abcdef01234567"
     },
     "preparedMarker": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:prepared-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567"
     },
     "monolithTag": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name:sha-0123456789abcdef0123456789abcdef01234567",
+      "queriedRef": "ghcr.io/owner/name/monolith:sha-0123456789abcdef0123456789abcdef01234567",
       "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
       "markerDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
       "verification": {
@@ -37,7 +42,7 @@
     "frontendTag": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:frontend-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/frontend:frontend-0123456789abcdef0123456789abcdef01234567"
     },
     "monolithDigestObject": {
       "status": "skipped",
@@ -52,12 +57,12 @@
     "monolithCandidate": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/monolith:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
     },
     "frontendCandidate": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/frontend:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
     }
   }
 }

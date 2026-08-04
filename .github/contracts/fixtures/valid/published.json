@@ -3,15 +3,20 @@
   "commit": "0123456789abcdef0123456789abcdef01234567",
   "environment": "production",
   "expected": {
-    "repository": "owner/name",
     "frontendConfigFingerprint": "fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477",
     "signerWorkflow": ".github/workflows/ci.yml",
-    "registry": "ghcr.io"
+    "registry": "ghcr.io",
+    "sourceRepository": "owner/name",
+    "repositories": {
+      "release": "owner/name/release",
+      "monolith": "owner/name/monolith",
+      "frontend": "owner/name/frontend"
+    }
   },
   "lookups": {
     "finalMarker": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name:release-0123456789abcdef0123456789abcdef01234567",
+      "queriedRef": "ghcr.io/owner/name/release:release-0123456789abcdef0123456789abcdef01234567",
       "markerDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
       "verification": {
         "attestationVerified": true,
@@ -132,7 +137,7 @@
     },
     "preparedMarker": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name:prepared-0123456789abcdef0123456789abcdef01234567",
+      "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567",
       "markerDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
       "verification": {
         "attestationVerified": true,
@@ -253,33 +258,33 @@
     },
     "monolithTag": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "queriedRef": "ghcr.io/owner/name/monolith@sha256:1111111111111111111111111111111111111111111111111111111111111111",
       "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     },
     "frontendTag": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "queriedRef": "ghcr.io/owner/name/frontend@sha256:2222222222222222222222222222222222222222222222222222222222222222",
       "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
     },
     "monolithDigestObject": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "queriedRef": "ghcr.io/owner/name/monolith@sha256:1111111111111111111111111111111111111111111111111111111111111111",
       "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     },
     "frontendDigestObject": {
       "status": "present",
-      "queriedRef": "ghcr.io/owner/name@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "queriedRef": "ghcr.io/owner/name/frontend@sha256:2222222222222222222222222222222222222222222222222222222222222222",
       "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
     },
     "monolithCandidate": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/monolith:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
     },
     "frontendCandidate": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/frontend:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
     }
   }
 }

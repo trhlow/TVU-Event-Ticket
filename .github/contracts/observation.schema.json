@@ -19,12 +19,23 @@
     "expected": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["repository", "frontendConfigFingerprint", "signerWorkflow", "registry"],
+      "required": ["sourceRepository", "repositories", "frontendConfigFingerprint", "signerWorkflow", "registry"],
       "properties": {
-        "repository": {
+        "sourceRepository": {
           "type": "string",
           "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
-          "description": "owner/name. Both the repository a marker must be signed by and the one every queriedRef must point into."
+          "description": "owner/name on GitHub. The repository a marker's attestation must name as its signer, and nothing else. It is not where any image lives: comparing a queriedRef against it would be comparing a source repository with an OCI one, which is how one key came to mean two things."
+        },
+        "repositories": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release", "monolith", "frontend"],
+          "description": "Where each kind of lookup must have been made. Three packages are three OCI repositories, and the decision additionally requires these three to differ -- a rule JSON Schema cannot state about named properties, and one without which pinning each lookup to its own repository excludes nothing.",
+          "properties": {
+            "release": { "$ref": "#/$defs/ociRepository", "description": "Home of both markers and of the release and prepared tags." },
+            "monolith": { "$ref": "#/$defs/ociRepository", "description": "Home of the monolith tag, its digest object and its candidate." },
+            "frontend": { "$ref": "#/$defs/ociRepository", "description": "Home of the frontend tag, its digest object and its candidate." }
+          }
         },
         "frontendConfigFingerprint": {
           "$ref": "#/$defs/hex64",
@@ -65,6 +76,11 @@
     "sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
     "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "ociRepository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+$",
+      "description": "Two or more path segments. GHCR accepts nested paths, so the contract must not forbid a layout the registry allows; nesting introduces no ambiguity because a scope match demands ':' or '@' immediately after it."
+    },
 
     "absent": {
       "type": "object",

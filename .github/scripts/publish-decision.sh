@@ -52,6 +52,8 @@ SCHEMA_VERSION = 1
 # satisfied `match` and was accepted as well formed.
 SHA1 = re.compile(r"[0-9a-f]{40}")
 HEX64 = re.compile(r"[0-9a-f]{64}")
+SOURCE_REPOSITORY = re.compile(r"[A-Za-z0-9._-]+/[A-Za-z0-9._-]+")
+OCI_REPOSITORY = re.compile(r"[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)+")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
 IMAGES = ("monolith", "frontend")
 
@@ -63,6 +65,23 @@ REQUIRED_LOOKUPS = (
 )
 
 MARKER_LOOKUPS = ("finalMarker", "preparedMarker")
+
+REPOSITORY_ROLES = ("release", "monolith", "frontend")
+
+# Which repository each lookup must have been queried in. Written out rather than inferred from the
+# name, because inference needs an `else` branch and 3b adds exactly two *EvidenceSet lookups that
+# belong to an image's repository -- they would be pinned to release silently and correctly-looking.
+LOOKUP_REPOSITORY = {
+    "finalMarker": "release",
+    "preparedMarker": "release",
+    "monolithTag": "monolith",
+    "monolithDigestObject": "monolith",
+    "monolithCandidate": "monolith",
+    "frontendTag": "frontend",
+    "frontendDigestObject": "frontend",
+    "frontendCandidate": "frontend",
+}
+
 # A set, not a tuple, and the difference is load-bearing. Membership in a tuple compares with `==`
 # and accepts an unhashable status quietly; membership in a set hashes, so an unhashable one raises
 # out of this test unless the type check above it has already refused it. That check was written
@@ -140,17 +159,29 @@ def validate(obs):
             "environment must be a non-empty string")
 
     expected = as_dict(obs.get("expected"), "expected")
-    require(type(expected.get("repository")) is str and expected["repository"],
-            "expected.repository must be a non-empty string")
+    exact_str(expected.get("sourceRepository"), "expected.sourceRepository", SOURCE_REPOSITORY)
+    repositories = as_dict(expected.get("repositories"), "expected.repositories")
+    missing_roles = [role for role in REPOSITORY_ROLES if role not in repositories]
+    require(not missing_roles, f"expected.repositories missing: {', '.join(missing_roles)}")
+    extra_roles = [role for role in repositories if role not in REPOSITORY_ROLES]
+    require(not extra_roles,
+            f"expected.repositories has unexpected keys: {', '.join(sorted(extra_roles))}")
+    for role in REPOSITORY_ROLES:
+        exact_str(repositories[role], f"expected.repositories.{role}", OCI_REPOSITORY)
+    # Three packages, or the pinning below excludes nothing: with two roles sharing a repository a
+    # reference into the wrong package satisfies the scope of both, and the only thing left telling
+    # them apart is the tag, whose shape this contract deliberately does not fix yet. The guard
+    # would be green and empty.
+    reused = sorted({name for name in repositories.values()
+                     if list(repositories.values()).count(name) > 1})
+    require(not reused,
+            f"expected.repositories must name three different repositories; "
+            f"{', '.join(repr(name) for name in reused)} is used more than once")
     exact_str(expected.get("frontendConfigFingerprint"), "expected.frontendConfigFingerprint", HEX64)
     require(type(expected.get("signerWorkflow")) is str and expected["signerWorkflow"],
             "expected.signerWorkflow must be a non-empty string")
     require(type(expected.get("registry")) is str and expected["registry"],
             "expected.registry must be a non-empty string")
-    # Every lookup has to have been made inside the repository this run is publishing to. A
-    # well-formed observation of somebody else's repository answers a question nobody asked, and
-    # its absences would authorise a build here.
-    scope = f"{expected['registry']}/{expected['repository']}"
 
     lookups = as_dict(obs.get("lookups"), "lookups")
     missing = [name for name in REQUIRED_LOOKUPS if name not in lookups]
@@ -180,6 +211,15 @@ def validate(obs):
                 f"lookups.{name} is a {kind} lookup and carries fields that do not belong to it: "
                 f"{', '.join(sorted(present_fields - allowed_fields))}")
 
+        # Every lookup has to have been made in the repository that lookup belongs to. A well-formed
+        # observation of another package answers a question nobody asked, and its absences would
+        # authorise a build here.
+        role = LOOKUP_REPOSITORY.get(name)
+        require(role is not None,
+                f"lookups.{name} has no repository assigned; the decision cannot say where it "
+                f"should have been queried")
+        scope = f"{expected['registry']}/{repositories[role]}"
+
         ref = lookup.get("queriedRef")
         if status == "skipped":
             require(ref is None,
@@ -188,7 +228,7 @@ def validate(obs):
         else:
             require(type(ref) is str and ref, f"lookups.{name}.queriedRef must be a non-empty string")
             require(ref.startswith(scope + ":") or ref.startswith(scope + "@"),
-                    f"lookups.{name}.queriedRef {ref!r} is outside {scope}")
+                    f"lookups.{name}.queriedRef {ref!r} is outside the {role} repository {scope}")
 
         if status == "skipped":
             require(lookup.get("reason") in SKIP_REASONS,
@@ -229,9 +269,12 @@ def marker_problems(marker, obs, where):
     if verification.get("attestationVerified") is not True:
         problems.append(f"{where}.verification.attestationVerified is "
                         f"{verification.get('attestationVerified')!r}, must be boolean true")
-    if verification.get("signerRepository") != expected["repository"]:
+    # The source repository, not any of the three the images live in. These were one string until
+    # commit 4, which is why a marker signed by the release package could not be distinguished from
+    # one signed by the pipeline.
+    if verification.get("signerRepository") != expected["sourceRepository"]:
         problems.append(f"{where} signed by {verification.get('signerRepository')!r}, expected "
-                        f"{expected['repository']!r}")
+                        f"{expected['sourceRepository']!r}")
     if verification.get("signerWorkflow") != expected["signerWorkflow"]:
         problems.append(f"{where} signed by workflow {verification.get('signerWorkflow')!r}, "
                         f"expected {expected['signerWorkflow']!r}")

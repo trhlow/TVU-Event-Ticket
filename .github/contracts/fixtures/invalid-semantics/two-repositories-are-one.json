@@ -9,7 +9,7 @@
     "sourceRepository": "owner/name",
     "repositories": {
       "release": "owner/name/release",
-      "monolith": "owner/name/monolith",
+      "monolith": "owner/name/release",
       "frontend": "owner/name/frontend"
     }
   },
@@ -27,7 +27,7 @@
     "monolithTag": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name/monolith:monolith-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/release:monolith-0123456789abcdef0123456789abcdef01234567"
     },
     "frontendTag": {
       "status": "absent",
@@ -47,7 +47,7 @@
     "monolithCandidate": {
       "status": "absent",
       "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name/monolith:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
+      "queriedRef": "ghcr.io/owner/name/release:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
     },
     "frontendCandidate": {
       "status": "absent",

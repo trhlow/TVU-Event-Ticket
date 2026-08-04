@@ -133,6 +133,21 @@ MUTATIONS = {
     "canonical_order_ignored": (
         'ordered = sorted(migrations, key=lambda record: record["installedRank"])',
         "ordered = migrations"),
+    # The whole point of commit 4. Scoping every lookup to the release repository is what the
+    # contract did before the split, so this mutation is literally the old behaviour restored.
+    "lookup_repository_ignored": (
+        'scope = f"{expected[\'registry\']}/{repositories[role]}"',
+        'scope = f"{expected[\'registry\']}/{repositories[\'release\']}"'),
+    # An entry removed from the table rather than a guard deleted: it proves the table is consulted
+    # and that a lookup with no repository reaches UNKNOWN instead of a KeyError traceback.
+    "lookup_repository_table_incomplete": (
+        '    "monolithTag": "monolith",\n', ""),
+    "repositories_may_coincide": (
+        "require(not reused,", "require(True,"),
+    # Before the split these two were one string, so this comparison could not be got wrong.
+    "signer_compared_to_release_repository": (
+        'if verification.get("signerRepository") != expected["sourceRepository"]:',
+        'if verification.get("signerRepository") != expected["repositories"]["release"]:'),
 }
 
 

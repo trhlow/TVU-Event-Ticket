@@ -44,6 +44,11 @@
     "schema": "accepts",
     "state": "CONFLICT"
   },
+  "invalid-semantics/two-repositories-are-one.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "UNKNOWN"
+  },
   "invalid-structure/absent-without-a-404.json": {
     "actions": [],
     "schema": "rejects",
