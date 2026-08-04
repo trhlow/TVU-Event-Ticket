@@ -2,7 +2,12 @@
 
 Ngày: 2026-07-30. Nhánh: `ci/ghcr-publish`. Mục 3b của Contract v1 (PR A — GHCR publish).
 
-Thứ tự thi công: **3a commit 0-4 → 3b → 3a commit 5** (commit 5 đóng băng payload nên nó chờ spec này).
+Thứ tự thi công: **3a commit 0-5 → 3b → 3a commit 6** (commit 6 đóng băng payload nên nó chờ spec này).
+
+> Đánh số này từng lệch một. Spec viết ngày 2026-07-30, khi 3a có sáu commit 0-5 và commit 5 là
+> commit đóng băng payload. Ngày 2026-07-31, §7a được chèn vào 3a thành **commit 4** (tách
+> `expected.repository`), đẩy carrier 4→5 và manifest 5→6; 3b không được cập nhật theo. Ai đọc bản
+> cũ sẽ hoặc làm carrier hai lượt hoặc bỏ hẳn commit đóng băng payload. Sửa 2026-08-04.
 
 Ba điều khoản của cùng release gate:
 
@@ -441,5 +446,6 @@ Thêm: oversize descriptor, SBOM subject mismatch, crash giữa phân trang, và
    ngược.
 7. `contract(ci): select an attestation by its whole tuple` — §8, paginate, semantic duplicate.
 
-Sau đó 3a commit 5 (đóng băng payload) mới chạy được. Rồi bất biến 4 của 3a nâng về dạng đầy đủ, và **chỉ
-khi đó** mục 5 (collector) và mục 6 (job publish) được bắt đầu.
+Sau đó 3a commit 6 (đóng băng payload) mới chạy được — commit **6**, không phải 5; xem ghi chú đánh số ở
+đầu spec. Rồi bất biến 4 của 3a nâng về dạng đầy đủ, và **chỉ khi đó** mục 5 (collector) và mục 6 (job
+publish) được bắt đầu.
