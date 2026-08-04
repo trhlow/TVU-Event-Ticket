@@ -572,6 +572,22 @@ for code in 401 403 404; do
     "$(observation "$(error_lookup "$code")" "$absent_release" "$absent_mono" "$absent_fe")" \
     UNKNOWN '[]' false false
 done
+# Two errors at once, which no case above ever had. The scan returned at the first error in
+# alphabetical key order, so with one retryable and one not the answer depended on which lookup
+# happened to sort first -- `finalMarker` before `frontendTag` decides it, and nothing about either
+# code does. Retrying cannot help while a 403 stands, so retryable is true only when every error is.
+assert_decision "a retryable error sorting before a permanent one" \
+  "$(observation "$(error_lookup 503)" "$absent_release" "$absent_mono" \
+     "$(error_lookup 403 "$FRONTEND_REPO")")" \
+  UNKNOWN '[]' false false
+assert_decision "a permanent error sorting before a retryable one" \
+  "$(observation "$(error_lookup 403)" "$absent_release" "$absent_mono" \
+     "$(error_lookup 503 "$FRONTEND_REPO")")" \
+  UNKNOWN '[]' false false
+assert_decision "two errors that are both worth another attempt" \
+  "$(observation "$(error_lookup 503)" "$absent_release" "$absent_mono" \
+     "$(error_lookup 500 "$FRONTEND_REPO")")" \
+  UNKNOWN '[]' false true
 assert_decision "cleanup debt survives an unknown" \
   "$(observation "$(error_lookup 503)" "$absent_release" "$absent_mono" "$absent_fe" "" "" "$(present_in "$MONOLITH_REPO" "$MONO")")" \
   UNKNOWN '[]' true true

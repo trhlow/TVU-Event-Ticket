@@ -98,8 +98,13 @@ MUTATIONS = {
     "retry_range_narrowed": (
         "or (type(code) is int and 500 <= code <= 599)", ""),
     "cleanup_debt_lost_on_unknown": (
-        'return unknown(f"{name}: lookup failed with code={code}", retryable, cleanup_debt)',
-        'return unknown(f"{name}: lookup failed with code={code}", retryable)'),
+        "return unknown(reason, retryable, cleanup_debt)",
+        "return unknown(reason, retryable)"),
+    # The scan used to return inside the loop, so with a 503 and a 403 present together the verdict
+    # followed whichever lookup name sorted first. Restoring that is restoring the bug.
+    "first_error_decides_retryable": (
+        "retryable = all(retryable_failure(lookup) for _, lookup in failures)",
+        "retryable = retryable_failure(failures[0][1])"),
     "status_type_unchecked": (
         'require(type(status) is str, f"lookups.{name}.status must be a string, got {status!r}")',
         "pass"),

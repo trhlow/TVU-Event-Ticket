@@ -463,15 +463,18 @@ def decide(obs):
     lookups = obs["lookups"]
     cleanup_debt = any(lookups[f"{image}Candidate"]["status"] == "present" for image in IMAGES)
 
-    for name in sorted(lookups):
-        lookup = lookups[name]
-        if lookup["status"] == "error":
-            code = lookup.get("code")
-            # The spec is 408, 429 and any 5xx. Enumerating four of the 5xx codes left 501 and 507
-            # failing immediately when they are worth one more attempt.
-            retryable = code in (408, 429) or (type(code) is int and 500 <= code <= 599) \
-                or (code is None and lookup.get("timeout") is True)
-            return unknown(f"{name}: lookup failed with code={code}", retryable, cleanup_debt)
+    # Every error, not the first one alphabetically. This returned inside the loop, so an
+    # observation carrying both a 503 and a 403 answered according to whichever lookup name sorted
+    # first -- `finalMarker` before `frontendTag`, a fact about spelling, not about the registry.
+    # Retrying while a 403 stands meets the same 403, so `retryable` holds only when every error is
+    # worth another attempt. One error behaves exactly as before, which is why no case caught this.
+    failures = [(name, lookups[name]) for name in sorted(lookups)
+                if lookups[name]["status"] == "error"]
+    if failures:
+        retryable = all(retryable_failure(lookup) for _, lookup in failures)
+        reason = "; ".join(f"{name}: lookup failed with code={lookup.get('code')}"
+                           for name, lookup in failures)
+        return unknown(reason, retryable, cleanup_debt)
 
     final = lookups["finalMarker"]
     prepared = lookups["preparedMarker"]
@@ -558,6 +561,18 @@ def missing_or_mismatched(observed, claimed, what):
         if entry["digest"] != claimed[image]:
             return f"{image} {what} is {entry['digest']} but the marker records {claimed[image]}"
     return None
+
+
+def retryable_failure(lookup):
+    """Whether one failed lookup is worth another attempt.
+
+    The spec is 408, 429 and any 5xx. Enumerating four of the 5xx codes left 501 and 507 failing
+    immediately when they are exactly as worth one more attempt. 401/403/404 answer the same next
+    time, so they are not.
+    """
+    code = lookup.get("code")
+    return code in (408, 429) or (type(code) is int and 500 <= code <= 599) \
+        or (code is None and lookup.get("timeout") is True)
 
 
 def decision(state, actions, reason, cleanup_debt=False, retryable=False):
