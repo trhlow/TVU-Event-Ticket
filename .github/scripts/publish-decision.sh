@@ -121,8 +121,13 @@ LOOKUP_FIELDS = {
 # Present is the one status whose fields depend on what was looked up, so it gets its own table.
 # Required equals allowed on purpose: there is no optional field on a present lookup, and an
 # optional one would be a fact nobody stated dressed up as a fact omitted.
+#
+# content is the one exception, and it is not an optional field: whether it must be there is decided
+# by the envelope, in marker_problems, where the layer count can be read. Required here it would be
+# demanded of a marker whose envelope identifies no payload -- a well-formed observation refused as
+# malformed, and refused before anything looked at the envelope that explains it.
 PRESENT_FIELDS = {
-    "marker": ({"status", "queriedRef", "markerDigest", "verification", "ociEnvelope", "content"},
+    "marker": ({"status", "queriedRef", "markerDigest", "verification", "ociEnvelope"},
                {"status", "queriedRef", "markerDigest", "verification", "ociEnvelope", "content"}),
     "object": ({"status", "queriedRef", "digest"},
                {"status", "queriedRef", "digest"}),
@@ -325,6 +330,30 @@ def marker_problems(marker, obs, where):
             f"{'present' if 'raw' in envelope else 'absent'} while the three checks say "
             f"{all_verified}")
 
+    # A payload can be read only when the bytes were verified AND exactly one layer says which
+    # bytes are the payload. Two layers is no answer to "which one", so nothing may be parsed --
+    # section 2's rule, one level down. raw absent makes the count unanswerable, which is itself a
+    # reason content cannot be here.
+    #
+    # Outside the verdict branches, at the same level as the raw rule above. Inside the `else` it
+    # would only run once both verifications had passed, so a marker whose digest check failed and
+    # which carries content anyway -- a self-contradictory observation, and self-contradiction is
+    # UNKNOWN -- would reach CONFLICT through the failure branch instead, right verdict, wrong rule.
+    #
+    # The condition is read off raw's presence, not off digestVerified and sizeVerified again. The
+    # require above has just settled that raw is present exactly when all three checks passed, so
+    # restating those flags here would make this a second statement of that rule -- and it would
+    # then answer in its place: with the raw rule deleted, every witness of it that carries content
+    # would still reach UNKNOWN through this one, and the rule could be removed with the suite
+    # green. A type check rather than a bare index, because a raw that is not an object has no layer
+    # count either, and reading one off it is a traceback instead of a decision.
+    raw = envelope.get("raw")
+    layers = raw.get("layers") if type(raw) is dict else None
+    one_layer = type(layers) is list and len(layers) == 1
+    require(("content" in marker) == one_layer,
+            f"{where}.content is {'present' if 'content' in marker else 'absent'} while the "
+            f"envelope {'permits' if one_layer else 'forbids'} it")
+
     if not envelope["digestVerified"] or not envelope["sizeVerified"]:
         problems.append(f"{where} envelope failed verification: digestVerified="
                         f"{envelope['digestVerified']}, sizeVerified={envelope['sizeVerified']}")
@@ -339,6 +368,24 @@ def marker_problems(marker, obs, where):
         if recomputed != marker.get("markerDigest"):
             problems.append(f"{where}.ociEnvelope.raw hashes to {recomputed}, but the marker is "
                             f"named {marker.get('markerDigest')!r}")
+        # A verdict about the producer, not a defect in the observation: the bytes are exactly the
+        # ones the digest names, and they carry two payloads or none. Which of them the marker means
+        # is not a question this decision may answer by picking one.
+        if not one_layer:
+            problems.append(f"{where} envelope carries "
+                            f"{len(layers) if type(layers) is list else 'no'} layers, "
+                            f"expected exactly one")
+
+    # Everything below reads the payload, and there is only a payload when the envelope identified
+    # one. The require above has already refused a marker that disagrees with its envelope about
+    # that, so reaching here without content means the envelope forbade it and the layer-count
+    # verdict has already been recorded. Not a KeyError guard -- everything below reads through
+    # .get, so without this the decision would merely add "content must be an object" about a marker
+    # the contract has just declared correct to have none. The verdict is identical either way,
+    # which is why no case in the suite can witness this line and why deleting it leaves the suite
+    # green; what changes is the reason an operator is handed at three in the morning.
+    if "content" not in marker:
+        return problems
 
     content = marker.get("content")
     if type(content) is not dict:

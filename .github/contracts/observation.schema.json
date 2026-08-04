@@ -135,15 +135,34 @@
     "presentMarker": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["status", "queriedRef", "markerDigest", "verification", "ociEnvelope", "content"],
+      "required": ["status", "queriedRef", "markerDigest", "verification", "ociEnvelope"],
       "properties": {
         "status": { "const": "present" },
         "queriedRef": { "type": "string", "minLength": 1 },
         "markerDigest": { "$ref": "#/$defs/digest" },
         "verification": { "$ref": "#/$defs/verification" },
         "ociEnvelope": { "$ref": "#/$defs/ociEnvelope" },
-        "content": { "$ref": "#/$defs/markerContent" }
-      }
+        "content": {
+          "$ref": "#/$defs/markerContent",
+          "description": "The payload, present exactly when the envelope identifies one. Kept in properties on both branches so additionalProperties:false still admits it where it belongs; the conditional below is what makes it required there and forbidden everywhere else."
+        }
+      },
+      "if": {
+        "properties": {
+          "ociEnvelope": {
+            "properties": {
+              "digestVerified": { "const": true },
+              "sizeVerified": { "const": true },
+              "raw": { "properties": { "layers": { "minItems": 1, "maxItems": 1 } },
+                       "required": ["layers"] }
+            },
+            "required": ["digestVerified", "sizeVerified", "raw"]
+          }
+        },
+        "required": ["ociEnvelope"]
+      },
+      "then": { "required": ["content"] },
+      "else": { "not": { "required": ["content"] } }
     },
 
     "ociEnvelope": {

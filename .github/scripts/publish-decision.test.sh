@@ -112,14 +112,22 @@ if overrides.pop("_envelope_absent", False):
     del base["ociEnvelope"]
 if "_envelope_del" in overrides:
     del base["ociEnvelope"][overrides.pop("_envelope_del")]
+# Every escape that removes raw removes content with it, and for the same reason each removed raw in
+# the first place: a collector that could not read the bytes has no payload to report either, so a
+# marker keeping one is a SECOND contradiction, and the content rule would answer these cases in
+# place of the rule each was written for. Three of them went green that way the moment content
+# became conditional.
 if overrides.pop("_envelope_del_raw", False):
     del base["ociEnvelope"]["raw"]
+    del base["content"]
 if overrides.pop("_envelope_unparsed", False):
     base["ociEnvelope"]["parsed"] = False
     del base["ociEnvelope"]["raw"]
+    del base["content"]
 if "_envelope_failed" in overrides:
     base["ociEnvelope"][overrides.pop("_envelope_failed")] = False
     del base["ociEnvelope"]["raw"]
+    del base["content"]
 if "_envelope_flag" in overrides:
     # An arbitrary value in one of the three flags, with raw removed to match. Removing raw is what
     # makes the case attributable: with raw still there, a falsy non-boolean is caught by the
@@ -127,6 +135,7 @@ if "_envelope_flag" in overrides:
     flag, value = overrides.pop("_envelope_flag")
     base["ociEnvelope"][flag] = value
     del base["ociEnvelope"]["raw"]
+    del base["content"]
 if overrides.pop("_envelope_retag", False):
     # The digest names a different object: the classic re-tag, where a marker points at bytes it
     # was not built from. Digest deliberately NOT recomputed -- this is the one case whose whole
@@ -138,6 +147,18 @@ if overrides.pop("_envelope_reorder", False):
     # digest of the original manifest, so the recomputation is what catches it.
     base["ociEnvelope"]["raw"] = dict(base["ociEnvelope"]["raw"])
     base["ociEnvelope"]["raw"]["extraKey"] = "typed by hand"
+if overrides.pop("_envelope_two_layers", False):
+    base["ociEnvelope"]["raw"]["layers"].append(dict(base["ociEnvelope"]["raw"]["layers"][0]))
+    base["markerDigest"] = envelope_module.marker_digest(base["ociEnvelope"]["raw"])
+    base["verification"]["subjectDigest"] = base["markerDigest"]
+    del base["content"]
+if overrides.pop("_envelope_two_layers_with_content", False):
+    base["ociEnvelope"]["raw"]["layers"].append(dict(base["ociEnvelope"]["raw"]["layers"][0]))
+    base["markerDigest"] = envelope_module.marker_digest(base["ociEnvelope"]["raw"])
+    base["verification"]["subjectDigest"] = base["markerDigest"]
+if "_envelope_failed_with_content" in overrides:
+    base["ociEnvelope"][overrides.pop("_envelope_failed_with_content")] = False
+    del base["ociEnvelope"]["raw"]
 if overrides.pop("_envelope_subject", False):
     base["ociEnvelope"]["raw"]["subject"] = {
         "mediaType": envelope_module.MANIFEST_MEDIA_TYPE,
@@ -792,6 +813,30 @@ assert_decision "a raw carrying a subject is not yet judged" \
   "$(observation "$absent_release" "$(marker '{"_envelope_subject": true}')" \
      "$absent_mono" "$absent_fe")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
+
+echo
+echo "== content exists only when there is exactly one payload to read"
+# Two layers means no answer to "which one is the payload", so the collector must not parse either.
+# Same rule as section 2's, one level down: nothing is read before it is identified.
+#
+# All three in the PREPARED slot, for the reason the sections above give: a present marker in the
+# FINAL slot beside absent tags is CONFLICT whatever its envelope says, so the first case -- the one
+# that wants CONFLICT -- would have been green before the layer-count rule existed and green after
+# its deletion. In the prepared slot a trustworthy marker reaches PARTIAL, so only the rule under
+# test can turn it.
+assert_decision "two layers and no content" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_two_layers": true}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+assert_decision "two layers but content anyway" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_two_layers_with_content": true}')" \
+     "$absent_mono" "$absent_fe")" \
+  UNKNOWN '[]' false false
+assert_decision "content present while the digest check failed" \
+  "$(observation "$absent_release" \
+     "$(marker '{"_envelope_failed_with_content": "digestVerified"}')" \
+     "$absent_mono" "$absent_fe")" \
+  UNKNOWN '[]' false false
 
 echo
 echo "passed=$passed failed=$failed"

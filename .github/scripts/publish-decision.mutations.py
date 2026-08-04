@@ -34,6 +34,11 @@ PYTHON_BIN_LIB = "python-bin.sh"
 # The subject imports this rather than restating the canonical form, so it has to travel with the
 # scripts into the workspace. Without it the baseline is red and no mutation is exercised at all.
 CANONICAL_LIB = "canonical.py"
+# The suite derives every marker's envelope from its content rather than typing one beside it, so it
+# imports this the way the subject imports canonical.py. Without it here the baseline is red -- 72
+# cases failing on an unreadable observation -- and the runner refuses to exercise a single mutation,
+# which is how it sat between the envelope commit and this one: not wrong, simply never run.
+ENVELOPE_LIB = "envelope.py"
 
 # If this runner started at all, its own interpreter works, so hand that one down rather than
 # letting the children fall back to a `python3` that may be a stub. An explicit PYTHON_BIN still
@@ -61,7 +66,8 @@ MUTATIONS = {
     # shared "present" entry used to hide. It reddens the two field-set witnesses and nothing else.
     #
     # `kind = "marker"` was the obvious mutation and it is the wrong one. Judged as a marker, the tag
-    # is missing `content`, so it is still refused and both witnesses stay green, while every object
+    # is missing markerDigest and ociEnvelope -- it was `content` until content became conditional --
+    # so it is still refused and both witnesses stay green, while every object
     # lookup in every valid fixture becomes a marker and reddens a crowd of unrelated cases. It would
     # have been reported as caught while proving nothing about the rule it names.
     "present_allowed_fields_unioned": (
@@ -173,6 +179,14 @@ MUTATIONS = {
     "expected_keys_open": (
         "require(not unexpected_expected,", "require(True,"),
     # Before the split these two were one string, so this comparison could not be got wrong.
+    # A payload may be read only when exactly one layer says which bytes are the payload. The two
+    # arms are separate mutations because they answer differently: presence is an agreement between
+    # the marker and its envelope, so breaking it is UNKNOWN, while the layer count itself is a fact
+    # about the bytes the digest names, so breaking it is CONFLICT.
+    "content_presence_unchecked": (
+        'require(("content" in marker) == one_layer,', "require(True,"),
+    "layer_count_ignored": (
+        "if not one_layer:", "if False:"),
     "signer_compared_to_release_repository": (
         'if verification.get("signerRepository") != expected["sourceRepository"]:',
         'if verification.get("signerRepository") != expected["repositories"]["release"]:'),
@@ -225,7 +239,7 @@ def run_suite(directory):
 def main():
     with tempfile.TemporaryDirectory() as workspace:
         workspace = pathlib.Path(workspace)
-        for name in (SUBJECT, SUITE, PYTHON_BIN_LIB, CANONICAL_LIB):
+        for name in (SUBJECT, SUITE, PYTHON_BIN_LIB, CANONICAL_LIB, ENVELOPE_LIB):
             shutil.copy(HERE / name, workspace / name)
         pristine = (workspace / SUBJECT).read_text(encoding="utf-8")
 

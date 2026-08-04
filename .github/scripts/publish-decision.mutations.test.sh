@@ -34,7 +34,11 @@ trap 'rm -rf "$work"' EXIT
 # fake suite beside it and the real working tree is never involved.
 scripts="$work/scripts"
 mkdir -p "$scripts"
-for name in publish-decision.mutations.py publish-decision.sh python-bin.sh canonical.py; do
+# Every library the runner copies into its workspace must exist here too, or the runner dies on
+# FileNotFoundError before it can report anything and this suite reads a traceback where it expected
+# a diagnosis. That is what happened when envelope.py joined the list: four of the five cases below
+# started failing on a missing file rather than on the behaviour they test.
+for name in publish-decision.mutations.py publish-decision.sh python-bin.sh canonical.py envelope.py; do
   cp "$script_dir/$name" "$scripts/$name"
 done
 
