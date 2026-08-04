@@ -3,13 +3,19 @@
 Ngày: 2026-07-30. Nhánh: `ci/ghcr-publish`. Mục 3a của Contract v1 (PR A — GHCR publish).
 
 Tiền đề: `observation.schema.json` và `publish-decision.sh` đã hoà giải ở `6a2d312`, và
-`contract-agreement.test.sh` (`bed2dcb`) giữ chúng khớp nhau trên 14 fixture.
+`contract-agreement.test.sh` (`bed2dcb`) giữ chúng khớp nhau trên bộ fixture — 14 cái khi spec này viết,
+**21 cái tính đến 2026-08-04** (3 valid, 8 invalid-structure, 10 invalid-semantics).
 
 **3a và 3b là hai phần bắt buộc của cùng một release gate.** Xem
 `2026-07-30-evidence-verification-contract-design.md` cho 3b.
 
-Thứ tự thi công là **3a commit 0-4 → 3b → 3a commit 5**, không phải "3b sau khi 3a xanh" như bản đầu viết:
-commit 5 đóng băng payload nên nó phải chờ shape evidence của 3b. Xem §10.
+Thứ tự thi công là **3a commit 0-4 → 5a → 5b → 3b → 3a commit 6**, không phải "3b sau khi 3a xanh" như
+bản đầu viết: commit đóng băng payload phải chờ shape evidence của 3b. Xem §10.
+
+> Dòng trên từng ghi "3a commit 0-4 → 3b → 3a commit 5", đúng với lúc viết nhưng sai sau ngày
+> 2026-07-31, khi §7a được chèn thành commit 4 và đẩy số của hai commit sau nó. Sửa 2026-08-04, cùng lượt
+> với lỗi y hệt trong spec 3b. Đây là lý do commit 5 tách đôi bằng hậu tố chữ cái chứ không đánh lại số
+> — xem §5.1.
 
 Ba điều khoản không được vi phạm:
 
@@ -29,8 +35,8 @@ Ba điều khoản không được vi phạm:
 - Năm hằng predicate URI, một nguồn duy nhất.
 - `manifest-agreement.test.sh`, nối vào `ci.yml` trong cùng commit tạo nó.
 
-3b (spec riêng, viết cùng hôm nay, thi công **giữa** commit 5 và commit 6 của 3a): evidence-set, xác minh
-evidence, và schema của ba custom Trivy predicate.
+3b (spec riêng, viết cùng hôm nay, thi công **giữa** commit 5b và commit 6 của 3a): evidence-set, xác
+minh evidence, và schema của ba custom Trivy predicate.
 
 > **Payload không được đóng băng trước 3b.** Phương án A′ của 3b (evidence-set có manifest và tag neo giữ)
 > đổi hình dạng `evidence` bên trong 7 key: mỗi entry mang descriptor `{mediaType,digest,size}` thay cho
@@ -378,6 +384,80 @@ Cơ chế: `if`/`then`/`else` trong `presentMarker`. Lưu ý `content` vẫn ph�
 `additionalProperties: false` cho phép nó tồn tại ở nhánh `then`; nhánh `else` dùng
 `"not": { "required": ["content"] }`.
 
+### 5.1 Commit 5 tách đôi thành 5a và 5b
+
+Chốt 2026-08-04. **5a — cơ chế:** ba boolean, `raw` conditional, phép kiểm
+`sha256(canonical_bytes(raw)) == markerDigest`, `content` chuyển sang conditional, và sinh lại mọi
+`markerDigest` trong fixture. Ở 5a, `raw` được mô tả như một OCI manifest **bất kỳ**; decision chưa phán
+xét hình dạng của nó. **5b — hằng:** `release-envelope.schema.json` với bốn `$defs`, tám guard hình dạng
+của §2, và `manifest-agreement.test.sh` nối vào `ci.yml` trong cùng commit tạo ra nó.
+
+Ranh giới đặt đúng chỗ đó vì sau 5a hợp đồng đã chứng minh được **`raw` là chính bytes đó**. Tám guard
+của 5b chỉ có nghĩa khi tiền đề ấy đã đứng, và — quan trọng hơn — chúng cần cơ chế sinh digest của 5a để
+mỗi witness chỉ vi phạm đúng một luật (§5.2).
+
+Đánh **5a/5b**, không đánh lại thành 5/6/7. Commit đóng băng payload giữ nguyên số **6**. Ngày 2026-07-31
+việc chèn §7a thành commit 4 đã đẩy số của hai commit sau nó và spec 3b không được cập nhật theo, sinh ra
+đúng một lỗi đánh số phải đi sửa ngày 2026-08-04. Hậu tố chữ cái làm việc chèn không lan ra ngoài.
+
+### 5.2 Mỗi witness phải tự tính lại `markerDigest`
+
+Đây là ràng buộc nặng nhất của commit 5 và là lý do nó tách đôi.
+
+Tám dòng trong bảng §5 nói về **hình dạng** của `raw`: thiếu `artifactType`, `artifactType` sai hằng, có
+`subject`, có `annotations` ở bất kỳ cấp nào trong ba cấp, `len(layers) != 1`, lệch `schemaVersion`,
+lệch `mediaType`, lệch `config`. Một dòng khác là `sha256(canonical_bytes(raw)) != markerDigest`.
+
+Mọi thay đổi lên `raw` đều làm đổi `sha256(canonical_bytes(raw))`. Một witness thêm `subject` vào `raw`
+vì thế **đồng thời** phá vỡ đẳng thức digest, và cả hai guard đều trả CONFLICT. Xóa guard `subject` đi,
+witness vẫn xanh — nó đạt CONFLICT qua đường digest. Nhân lên tám lần là **tám guard rỗng trong một
+commit**, so với một guard rỗng đã tốn một vòng review ở commit 4.
+
+Đảo thứ tự kiểm **không** cứu được. Nếu kiểm hình dạng trước digest, xóa guard `subject` thì observation
+rơi xuống guard digest, vẫn CONFLICT, witness vẫn xanh. Thứ tự chỉ đổi *lý do*, không đổi *verdict*, mà
+suite so verdict. Điều duy nhất cứu được là làm witness chỉ vi phạm một luật.
+
+**Luật: mỗi witness mang `markerDigest` tính từ chính `raw` của nó.** Khi đó đẳng thức digest đúng, và
+thứ duy nhất còn có thể từ chối observation là guard đang được kiểm. Suite tính tại runtime qua helper
+Python; fixture trên đĩa cần literal nên có script sinh, và `contract-agreement.test.sh` kiểm mỗi fixture
+có `markerDigest` khớp `raw` của nó. Không có phép kiểm drift đó thì fixture `invalid-semantics` — vốn đã
+CONFLICT vì lý do khác — sẽ trôi digest âm thầm và không ai biết.
+
+### 5.3 Gate của `content` giữ nguyên `len(raw.layers) == 1`
+
+Hai điều kiện cố ý khác nhau: `raw` bắt buộc khi `digestVerified && sizeVerified && parsed`; `content`
+bắt buộc khi `digestVerified && sizeVerified && len(raw.layers) == 1`. Phương án đơn giản hơn — cho
+`content` dùng chung điều kiện với `raw` và để `len != 1` chỉ ra CONFLICT ở decision — bị loại: với hai
+layer thì **không xác định được layer nào là payload**, nên bảo collector parse là bảo nó đoán. Đó đúng
+là điều §2 cấm, chỉ ở một cấp thấp hơn.
+
+Điều kiện thứ hai tham chiếu `raw.layers`, thứ chỉ tồn tại khi điều kiện thứ nhất đúng, nên trong schema
+nó là một `if` lồng trong một `if`. `parsed: false` ⇒ `raw` vắng ⇒ `raw.layers` không lượng giá được ⇒
+nhánh `else` ⇒ `content` bị cấm. Đúng như mong muốn, nhưng phải viết ra vì nó không hiển nhiên.
+
+### 5.4 Mười lăm marker instance, không phải chín
+
+Đo ngày 2026-08-04: `"markerDigest"` xuất hiện **15 lần trong 14 file**. Con số "9 instance / 8 file" của
+các bản ghi cũ đã lạc hậu — bộ fixture lớn lên cùng commit 0-4.
+
+Cả 15 hiện dùng chung một placeholder `sha256:3333…3333`. Sau 5a **tất cả đều phải chết**: mỗi cái thành
+hash thật, và chúng khác nhau từng cái vì `raw.layers[0].digest` là digest của payload, mà payload mỗi
+fixture một khác. Hằng `MARKER_DIGEST` trong `publish-decision.test.sh` cũng mất nghĩa theo.
+
+### 5.5 Một bất biến chuyển từ được-khẳng-định sang tự-đúng
+
+`published.json` mang cả final lẫn prepared marker, và bất biến "tạo artifact một lần, re-tag, không
+rebuild final marker" hiện được khẳng định bằng một guard so hai `markerDigest`. Sau 5a nó **tự đúng**:
+hai marker cùng `content` ⇒ cùng `raw` ⇒ cùng digest. Guard vẫn giữ, nhưng từ chỗ so hai placeholder
+giống nhau nó chuyển sang kiểm một thứ có thật.
+
+**Rủi ro đã chấp nhận, không giấu:** harness test gọi cùng `canonical_bytes` mà decision gọi, nên nếu hàm
+đó sai thì cả hai sai giống nhau và test vẫn xanh. Neo độc lập duy nhất là golden bytes + golden digest
+dựng ở commit 3, khiến `canonical.test.sh` thành phần móng của cả commit 5 chứ không còn là suite phụ.
+Phương án thêm một golden digest cho **một envelope hoàn chỉnh**, tính tay một lần để neo cả đường từ
+`raw` tới `markerDigest`, đã được cân nhắc và **loại** ngày 2026-08-04: golden của commit 3 được coi là
+đủ. Nếu sau này một bug canonicalizer lọt qua cả hai suite, đây là chỗ để quay lại.
+
 ## 6. Tách field set theo loại lookup (bug đang sống)
 
 `publish-decision.sh:149-155` dùng **một** `allowed_fields` cho mọi lookup `present`:
@@ -615,26 +695,33 @@ thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số 
 4. `contract(ci): stop one key from naming two different repositories` — §7a.
    `expected.sourceRepository` + `expected.repositories.{release,monolith,frontend}`, mỗi lookup pin vào
    repository của nó, `signerRepository` so với `sourceRepository`. Chạm `expected`, decision, và 14
-   fixture. Độc lập với carrier, đứng **trước** commit 5 để 9 marker instance không bị sửa hai lượt.
-5. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với **bốn**
-   `$defs` (§7, gồm `markerEnvelope` strict phía producer), `ociEnvelope` =
-   `{digestVerified, sizeVerified, parsed, raw}` vào `presentMarker`, nhánh conditional của `raw` **và** của
-   `content`, phép kiểm `sha256(canonical_bytes(raw)) == markerDigest`, hằng vào decision, 9 marker instance
-   trong 8 fixture mỗi cái thêm envelope. Kèm **sửa vòng
-   quét retryable** ở `publish-decision.sh:383-391`: hiện nó `return` ở lỗi **đầu tiên** theo thứ tự
-   alphabet, nên với hai lỗi — một retryable, một không — kết quả phụ thuộc tên khoá. Luật đúng: nhiều lỗi
-   thì `retryable` chỉ khi **tất cả** đều retryable; 408/429/5xx/timeout là retryable, 401/403 và response
-   hỏng thì không.
+   fixture. Độc lập với carrier, đứng **trước** commit 5a để 15 marker instance không bị sửa hai lượt.
+5a. `contract(ci): make the marker prove it is the bytes it names` — §5.1. `ociEnvelope` =
+   `{digestVerified, sizeVerified, parsed, raw}` vào `presentMarker`, nhánh conditional của `raw` **và**
+   của `content` (§5.3), phép kiểm `sha256(canonical_bytes(raw)) == markerDigest`, và sinh lại **15
+   `markerDigest`** trong 14 fixture (§5.4) — placeholder `sha256:3333…` chết ở đây, cùng hằng
+   `MARKER_DIGEST` trong suite. `raw` ở bước này là OCI manifest **bất kỳ**: chưa hằng nào của §2 được áp.
+5b. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với **bốn**
+   `$defs` (§7, gồm `markerEnvelope` strict phía producer), tám guard hình dạng của §2 vào decision, mỗi
+   guard một witness tự tính digest theo §5.2.
    `manifest-agreement.test.sh` sinh ra ở đây với hai điều kiểm được ngay (drift hằng envelope, và không
    cổng schema trước decision), nối vào `ci.yml` kề dòng 303 trong **cùng** commit này.
+
+   > Vòng quét retryable ở `publish-decision.sh` từng nằm trong commit này. Đã tách ra và **làm xong**
+   > ngày 2026-08-04 (`5a7b4c7`): nó là bug đúng-sai độc lập với carrier, và RED của nó dài một dòng nên
+   > sẽ chìm trong RED của một commit đụng 15 marker instance. Luật đã cài: nhiều lỗi thì `retryable` chỉ
+   > khi **tất cả** đều retryable.
 6. `contract(ci): freeze the release manifest payload as a schema` — **chỉ sau khi 3b xong.**
    `release-manifest.schema.json` (payload đã gồm `evidenceSetDigest` dưới root key `evidence` và descriptor
    cho từng entry), release-manifest fixtures, mở rộng `manifest-agreement.test.sh` cho hai witness subset.
    **Phải đồng thời thêm enforcement predicate exact vào decision, test và mutations** — không có nó, fixture
    predicate sai không thể ra CONFLICT và điều 2 của §9 vô nghĩa.
 
-Commit 0-5 không phụ thuộc 3b. Commit 6 là ranh giới: nó đóng băng payload, nên nó chờ 3b. Thứ tự tổng thể:
-**3a 0-5 → 3b → 3a 6.**
+Commit 0-5b không phụ thuộc 3b. Commit 6 là ranh giới: nó đóng băng payload, nên nó chờ 3b. Thứ tự tổng
+thể: **3a 0-4 → 5a → 5b → 3b 1-7 → 3a 6.**
+
+Commit 0-4 đã xong (2026-08-04). Số **6** không đổi khi commit 5 tách đôi — đó là lý do dùng hậu tố chữ
+cái thay vì đánh lại số; xem §5.1.
 
 ## 11. Chạy trên Windows
 
