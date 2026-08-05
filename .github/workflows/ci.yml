@@ -319,6 +319,11 @@ jobs:
           # How it reports a disagreement, which is the half that decides whether anyone can act on
           # one. Runs here rather than beside the others because it needs the same jsonschema.
           bash .github/scripts/contract-agreement.report.test.sh
+          # The envelope constants are stated three times -- in the schema, in envelope.py, and in
+          # the decision -- because a .json and a .py cannot reference each other and the decision
+          # must run without the contracts directory beside it. This is what holds the three
+          # together, and section 9 item 4's witnesses that schema validation is not the gate.
+          bash .github/scripts/manifest-agreement.test.sh
 
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
