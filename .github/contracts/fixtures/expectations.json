@@ -54,6 +54,23 @@
     "schema": "rejects",
     "state": "UNKNOWN"
   },
+  "invalid-structure/envelope-restating-a-derived-field.json": {
+    "actions": [
+      "verify_only"
+    ],
+    "schema": "rejects",
+    "state": "COMPLETE"
+  },
+  "invalid-structure/envelope-unparsed-but-carrying-raw.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/envelope-verified-but-carrying-no-raw.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
   "invalid-structure/evidence-missing-layer-secret-scan.json": {
     "actions": [],
     "schema": "rejects",
@@ -65,6 +82,11 @@
     "state": "UNKNOWN"
   },
   "invalid-structure/migration-without-installed-rank.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/raw-schema-version-is-a-string.json": {
     "actions": [],
     "schema": "rejects",
     "state": "CONFLICT"
