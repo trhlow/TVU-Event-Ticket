@@ -429,12 +429,22 @@ echo "== markers must be the same artifact, and the bytes must still be there"
 # problem: the marker turned untrustworthy, the gate closed, and CONFLICT arrived from a different
 # rule while the suite stayed green.
 #
-# The difference is an extra key inside provenance, and it has to be a field no rule judges. Saying
-# it with `environment` was measured to fail the same way `_envelope_subject` did: a marker naming
+# The one after that added an `extra` key inside content.provenance.monolith. That kept both markers
+# trustworthy under this suite's own rules, but it also built an observation that
+# observation.schema.json rejects: `$defs/provenanceEntry` declares `additionalProperties: false`, so
+# a real collector could never produce it. It only "worked" because the decision runs no schema gate
+# of its own -- the witness was schema-invalid and nothing here caught that.
+#
+# `environment` was measured too, and fails the same way `_envelope_subject` did: a marker naming
 # another environment is untrustworthy, so the gate shuts and CONFLICT arrives from the
-# prepared-marker-not-trustworthy rule instead. The reason string is the only thing that tells the
-# two apart, which is why this witness was chosen by reading it rather than by reading the state.
-assert_decision "final and prepared are different artifacts"   "$(observation "$(marker)" "$(marker '{"_content":{"provenance":{"monolith":{"extra":"different artifact"}}}}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
+# prepared-marker-not-trustworthy rule instead.
+#
+# The fix uses `_migrations` to add a second, schema-valid row to the Flyway inventory. That changes
+# `content` (so the digest genuinely differs), recomputes the inventory checksum so the marker stays
+# internally consistent, and every field involved is one the schema already allows -- so the
+# resulting observation validates. The reason string is the only thing that tells this case apart
+# from the neighbouring ones, which is why it was chosen by reading it rather than by reading state.
+assert_decision "final and prepared are different artifacts"   "$(observation "$(marker)" "$(marker '{"_migrations":[{"installedRank":1,"version":"16","type":"SQL","script":"V16__x.sql","checksum":123456789,"success":true},{"installedRank":2,"version":"17","type":"SQL","script":"V17__y.sql","checksum":987654321,"success":true}]}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to exist"   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$absent_mono" "$absent_fe")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to match"   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$(present_in "$MONOLITH_REPO" "$OTHER")")"   CONFLICT '[]' false false
 
