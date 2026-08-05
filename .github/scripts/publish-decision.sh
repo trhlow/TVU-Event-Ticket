@@ -67,6 +67,10 @@ ENVELOPE_CONSTANTS = (
     (("config", "data"), EMPTY_CONFIG_DATA),
     (("layers", 0, "mediaType"), ARTIFACT_TYPE),
 )
+# Exactly what an observed envelope may carry. `raw` is conditional -- present when all three
+# checks passed, forbidden otherwise -- and that half is a separate rule below; this one only says
+# which names exist at all.
+ENVELOPE_FIELDS = frozenset({"digestVerified", "sizeVerified", "parsed", "raw"})
 CONFIG_FIELDS = frozenset({"mediaType", "digest", "size", "data"})
 LAYER_FIELDS = frozenset({"mediaType", "digest", "size"})
 # A sentinel rather than None: a manifest may legitimately hold a null somewhere, and "absent" and
@@ -364,6 +368,16 @@ def marker_problems(marker, obs, where):
 
     envelope = marker.get("ociEnvelope")
     require(type(envelope) is dict, f"{where}.ociEnvelope must be an object")
+    # The envelope's field set is closed here and not only in the schema. Section 8.6 keeps schema
+    # validation off this path deliberately, so a rule stated only there is a rule nothing enforces
+    # where it matters: a fixture carrying a derived `layerCount` was rejected by the schema and
+    # reached COMPLETE with a publish action anyway. observedEnvelope dropped the three derived
+    # fields because each restated something raw already says, and two statements of one fact are
+    # one fact plus a disagreement waiting to happen -- so an envelope that brings one back is a
+    # collector this decision does not know how to read. UNKNOWN, like every other unknown key.
+    unexpected_envelope = [key for key in envelope if key not in ENVELOPE_FIELDS]
+    require(not unexpected_envelope,
+            f"{where}.ociEnvelope has unexpected keys: {', '.join(sorted(unexpected_envelope))}")
     for flag in ("digestVerified", "sizeVerified", "parsed"):
         require(type(envelope.get(flag)) is bool,
                 f"{where}.ociEnvelope.{flag} must be boolean")

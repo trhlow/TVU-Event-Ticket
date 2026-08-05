@@ -55,11 +55,9 @@
     "state": "UNKNOWN"
   },
   "invalid-structure/envelope-restating-a-derived-field.json": {
-    "actions": [
-      "verify_only"
-    ],
+    "actions": [],
     "schema": "rejects",
-    "state": "COMPLETE"
+    "state": "UNKNOWN"
   },
   "invalid-structure/envelope-unparsed-but-carrying-raw.json": {
     "actions": [],

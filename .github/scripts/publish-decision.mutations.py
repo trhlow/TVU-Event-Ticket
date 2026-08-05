@@ -223,6 +223,11 @@ MUTATIONS = {
         "require(not unexpected_top,", "require(True,"),
     "expected_keys_open": (
         "require(not unexpected_expected,", "require(True,"),
+    # The envelope's field set is closed in the schema and, since the fixture that reached COMPLETE
+    # with a derived layerCount, here too. Section 8.6 keeps the schema off this path, so without
+    # this the rule exists in a file nothing consults at decision time.
+    "envelope_keys_open": (
+        "require(not unexpected_envelope,", "require(True,"),
     # Before the split these two were one string, so this comparison could not be got wrong.
     # A payload may be read only when exactly one layer says which bytes are the payload. The two
     # arms are separate mutations because they answer differently: presence is an agreement between

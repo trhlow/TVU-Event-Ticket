@@ -133,6 +133,12 @@ if overrides.pop("_envelope_absent", False):
     del base["ociEnvelope"]
 if "_envelope_del" in overrides:
     del base["ociEnvelope"][overrides.pop("_envelope_del")]
+# A key the envelope has no definition for. observedEnvelope closes its field set precisely because
+# the three derived fields it used to carry -- layerCount among them -- are restatements of what raw
+# already says, and two statements of one fact are one fact plus a disagreement waiting to happen.
+if "_envelope_extra_key" in overrides:
+    key, value = overrides.pop("_envelope_extra_key")
+    base["ociEnvelope"][key] = value
 # Every escape that removes raw removes content with it, and for the same reason each removed raw in
 # the first place: a collector that could not read the bytes has no payload to report either, so a
 # marker keeping one is a SECOND contradiction, and the content rule would answer these cases in
@@ -918,6 +924,14 @@ assert_decision "a raw that is a retyped copy rather than the bytes themselves" 
 assert_decision "a raw carrying a subject" \
   "$(observation "$absent_release" "$(marker '{"_envelope_subject": true}')" \
      "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+# UNKNOWN, not CONFLICT: an envelope carrying a key the contract never defined is a collector this
+# decision does not know how to read, not a producer that built the wrong artifact. Same verdict and
+# same reason as an unknown key at the top level or inside a lookup. The value is deliberately the
+# TRUE layer count, so nothing here is a disagreement about a fact -- what is refused is the second
+# statement of it.
+assert_decision "an envelope restating a field raw already carries" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_extra_key": ["layerCount", 1]}')" \
+     "$absent_mono" "$absent_fe")" UNKNOWN '[]' false false
 
 echo
 echo "== the envelope is the one shape section 2 allows"
