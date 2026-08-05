@@ -41,7 +41,11 @@ def _reject_floats(value, where="<root>"):
     if isinstance(value, dict):
         for key, item in value.items():
             _reject_floats(item, f"{where}.{key}")
-    elif isinstance(value, list):
+    # tuple as well as list: json.dumps writes both as arrays, so a tuple reaches the canonical
+    # bytes exactly like a list and has to be walked exactly like one. Walking only lists let a
+    # float through the guard whose whole purpose is that a Python-built document is not a parsed
+    # one -- and a Python-built document is where tuples come from.
+    elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
             _reject_floats(item, f"{where}[{index}]")
 

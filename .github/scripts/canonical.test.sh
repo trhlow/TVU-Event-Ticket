@@ -79,6 +79,10 @@ problems = [p for p in [
     refuses("a float", lambda: strict_loads('{"a":1.5}')),
     refuses("a BOM", lambda: strict_loads('﻿{"a":1}')),
     refuses("a float built in Python", lambda: canonical_bytes({"a": 1.5})),
+    # json.dumps writes a tuple as an array, so a tuple is a sequence the canonical form can carry
+    # and therefore a sequence the float guard has to walk. A caller who builds a document in
+    # Python -- the caller this guard exists for -- is exactly the caller who writes one.
+    refuses("a float inside a tuple", lambda: canonical_bytes({"a": (1, 1.5)})),
 ] if p]
 
 # ensure_ascii is pinned to True, which is what the existing Flyway checksums were computed with.
