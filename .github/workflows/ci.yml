@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege at the file level, so a job that needs more has to say so and the saying is
+# reviewable. Without this the token takes the repository default, which is commonly write on
+# contents -- and this workflow runs `npm ci`, `mvn verify` and `docker build`, all of which
+# execute third-party code with that token in the environment. The publish job that a later
+# commit adds needs `packages: write`; it gets it on that job, never here.
+permissions:
+  contents: read
+
 jobs:
   # The backend is a single Maven module.  Keep frontend checks independent so
   # a UI-only change does not need a Java build and vice versa.
@@ -151,7 +159,15 @@ jobs:
       - name: Fail if demo credentials reached production config
         working-directory: backend
         run: |
-          if grep -rniE "sadminevt|123456" monolith/src/main/resources/application-prod.yml; then
+          # grep exits 2 when the file is missing, which reads as "no match" to `if` -- so renaming
+          # or moving the config would have retired this gate silently. The absence of the input is
+          # a failure of the check, not a pass of it.
+          config=monolith/src/main/resources/application-prod.yml
+          if [[ ! -f "$config" ]]; then
+            echo "$config is missing; this gate cannot check what it claims to check."
+            exit 1
+          fi
+          if grep -rniE "sadminevt|123456" "$config"; then
             echo "Demo sign-in credentials must never appear in production configuration."
             exit 1
           fi
@@ -241,6 +257,12 @@ jobs:
         # Fixture data is covered by the evidence gate in build:production above; this
         # only guards the dev-only sign-in UI, which is not fixture data.
         run: |
+          # Same shape as the demo-credentials gate: an unexpanded glob makes grep exit 2, which
+          # reads as clean. A bundle that was never built is not a bundle without dev-only UI.
+          if [[ ! -d dist/assets ]]; then
+            echo "dist/assets is missing; the production bundle was not built."
+            exit 1
+          fi
           if grep -rl "DEV ONLY" dist/assets/*.js 2>/dev/null; then
             echo "Production bundle contains dev-only login UI."
             exit 1
@@ -260,6 +282,12 @@ jobs:
     # Unconditional: these scripts are the deploy path and these workflows are what decide whether
     # anything reaches production. A run that skipped them because the filter saw no change is a run
     # that says nothing about them, and both checks are seconds.
+    #
+    # Bounded, because this job carries the mutation runner: 63 mutations x a full suite each, about
+    # 25 minutes when healthy. The default job timeout is six hours, so a mutant that hangs would
+    # hold a runner for six hours and block every PR behind it. 60 turns that into a legible
+    # failure with room for a slow runner.
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -355,6 +383,9 @@ jobs:
           shellcheck --severity=warning -x --source-path=SCRIPTDIR "${scripts[@]}"
 
   ci-gate:
+    # Hand-maintained on purpose -- there is no wildcard for `needs` -- which means a job added
+    # above and not added here passes this gate by not being in it. Anyone adding a job adds it to
+    # both this list and the env block and the case statement below.
     needs: [changes, backend, frontend, dependency-review, lint]
     if: always()
     runs-on: ubuntu-latest

@@ -27,7 +27,9 @@ không được mở ra Internet.
 - Microsoft Entra App Registration dạng single-tenant:
   - Application (client) ID;
   - Directory (tenant) ID;
-  - redirect URI dạng SPA: `https://events.example.com`.
+  - redirect URI dạng SPA: `https://evts.id.vn` — phải khớp **từng byte** với
+    `VITE_MICROSOFT_REDIRECT_URI` trong `frontend/.env.production`. Entra so sánh chuỗi này
+    nguyên văn, và `scripts/generate-env.sh` ở §5 sẽ từ chối chạy nếu hai bên lệch nhau.
 - Một nhà cung cấp SMTP giao dịch và domain gửi mail đã cấu hình SPF, DKIM,
   DMARC.
 - Quyền quản trị DNS.

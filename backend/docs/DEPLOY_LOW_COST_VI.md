@@ -139,9 +139,13 @@ Frontend production build với `VITE_AUTH_PROVIDER=microsoft` và backend profi
    - Redirect URI: chọn loại **Single-page application (SPA)**, giá trị
      `https://evts.id.vn` (đúng domain đã mua, có `https://`, không dấu `/`
      cuối).
-3. Ghi lại 2 giá trị ở trang Overview:
-   - **Application (client) ID** → biến `MICROSOFT_CLIENT_ID`;
-   - **Directory (tenant) ID** → biến `MICROSOFT_TENANT_ID`.
+3. Ghi lại 2 giá trị ở trang Overview và điền vào `frontend/.env.production`:
+   - **Application (client) ID** → `VITE_MICROSOFT_CLIENT_ID`;
+   - **Directory (tenant) ID** → `VITE_MICROSOFT_TENANT_ID`.
+
+   Không đặt tay `MICROSOFT_CLIENT_ID`/`MICROSOFT_TENANT_ID` ở phía backend:
+   `scripts/generate-env.sh` đọc hai biến `VITE_*` trên rồi tự sinh ra chúng, để
+   frontend và backend không thể nói về hai app registration khác nhau.
 4. Không cần client secret — flow SPA dùng PKCE, frontend là public client.
 
 Sinh viên đăng nhập phải có tài khoản trong đúng tenant đã chọn (token tenant
