@@ -141,7 +141,7 @@
         "queriedRef": { "type": "string", "minLength": 1 },
         "markerDigest": { "$ref": "#/$defs/digest" },
         "verification": { "$ref": "#/$defs/verification" },
-        "ociEnvelope": { "$ref": "#/$defs/ociEnvelope" },
+        "ociEnvelope": { "$ref": "release-envelope.schema.json#/$defs/observedEnvelope" },
         "content": {
           "$ref": "#/$defs/markerContent",
           "description": "The payload, present exactly when the envelope identifies one. Kept in properties on both branches so additionalProperties:false still admits it where it belongs; the conditional below is what makes it required there and forbidden everywhere else."
@@ -163,56 +163,6 @@
       },
       "then": { "required": ["content"] },
       "else": { "not": { "required": ["content"] } }
-    },
-
-    "ociEnvelope": {
-      "type": "object",
-      "additionalProperties": false,
-      "description": "The carrier the marker travelled in, and the outcome of the checks made on it before anything inside was read. Three booleans plus the manifest itself. layerCount, payloadDescriptor and annotationsAbsent are deliberately absent: all three are derivable from raw, and a derived field stated separately is an opportunity for two halves of one fact to disagree.",
-      "required": ["digestVerified", "sizeVerified", "parsed"],
-      "properties": {
-        "digestVerified": {
-          "type": "boolean",
-          "description": "The downloaded bytes hashed to the digest the descriptor named."
-        },
-        "sizeVerified": {
-          "type": "boolean",
-          "description": "The declared size matched. Checked before the download, to bound it; a separate check at a separate moment, so it is declared separately and the decision demands both."
-        },
-        "parsed": {
-          "type": "boolean",
-          "description": "The verified bytes parsed as JSON. False is a verdict about the producer, not a defect in this observation."
-        },
-        "raw": {
-          "$ref": "#/$defs/ociManifest",
-          "description": "The manifest exactly as the registry holds it. Present only when all three booleans are true: parsing bytes whose descriptor has not matched is reading what the collector was forbidden to read."
-        }
-      },
-      "if": {
-        "properties": {
-          "digestVerified": { "const": true },
-          "sizeVerified": { "const": true },
-          "parsed": { "const": true }
-        },
-        "required": ["digestVerified", "sizeVerified", "parsed"]
-      },
-      "then": { "required": ["raw"] },
-      "else": { "not": { "required": ["raw"] } }
-    },
-
-    "ociManifest": {
-      "type": "object",
-      "description": "An OCI image manifest as bytes, not as an interpretation. No const anywhere: this must be able to describe the bad artifact the decision has to refuse, including one carrying annotations or a subject. artifactType is not declared [\"string\",\"null\"] either -- a manifest without one simply lacks the key, and writing null would turn real bytes into a reading of them.",
-      "required": ["schemaVersion", "config", "layers"],
-      "properties": {
-        "schemaVersion": { "type": "integer" },
-        "mediaType": { "type": "string" },
-        "artifactType": { "type": "string" },
-        "config": { "type": "object" },
-        "layers": { "type": "array", "items": { "type": "object" } },
-        "subject": { "type": "object" },
-        "annotations": { "type": "object" }
-      }
     },
 
     "verification": {

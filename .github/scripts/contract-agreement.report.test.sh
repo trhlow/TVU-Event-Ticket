@@ -49,6 +49,7 @@ make_fake_tree() {
 
 make_fake_tree "$work"
 cp "$script_dir/../contracts/observation.schema.json" "$work/.github/contracts/observation.schema.json"
+cp "$script_dir/../contracts/release-envelope.schema.json" "$work/.github/contracts/release-envelope.schema.json"
 
 # Two fixtures the schema must refuse, both filed as structurally valid so the subject reports the
 # disagreement. One defect is buried in the marker's anyOf branch; the other carries a value long
