@@ -76,7 +76,21 @@ jobs:
         # credentials if that feed is wanted.
         # formats=HTML,JSON: the plugin writes only HTML by default, and the step after this one
         # reads the JSON to prove two below-threshold CVEs are absent. HTML stays for humans.
-        run: mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY" -DossindexAnalyzerEnabled=false -Dformats=HTML,JSON
+        # suppressionFiles: one narrowly scoped entry, pinned to a single package version and a
+        # single CVE, with its reasoning and an expiry date in the file. Preferred order is always
+        # to pin a fixed version instead (see pom.xml's properties block); a suppression is only for
+        # a CVE with no fixed release yet. The threshold itself is never lowered to get a green run.
+        #
+        # Absolute path on purpose: the goal runs across a two-module reactor, and a relative
+        # suppressionFiles is resolved against each module's own basedir -- so `monolith` would look
+        # for a file that is not there.
+        run: |
+          test -f dependency-check-suppressions.xml || {
+            echo "dependency-check-suppressions.xml is missing; refusing to scan without the file"
+            echo "this step claims to be applying."
+            exit 1
+          }
+          mvn -B -pl monolith -am org.owasp:dependency-check-maven:12.1.1:check -DfailBuildOnCVSS=7 -DnvdApiKey="$NVD_API_KEY" -DossindexAnalyzerEnabled=false -Dformats=HTML,JSON -DsuppressionFiles="$PWD/dependency-check-suppressions.xml"
 
       - name: Prove the patched CVEs are absent, not merely below the threshold
         working-directory: backend
