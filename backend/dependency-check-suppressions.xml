@@ -30,6 +30,13 @@
     Fixed upstream in 11.0.25, which is NOT YET RELEASED - Maven Central's newest 11.0.x is 11.0.24
     as of 2026-08-06, which is why this is a suppression and not the usual version pin.
 
+    SCOPED TO THE GROUP, NOT ONE ARTIFACT, AND THAT WAS MEASURED. The first version of this entry
+    pinned tomcat-embed-core alone and CI stayed red: dependency-check maps this CVE onto the Tomcat
+    CPE, so every org.apache.tomcat.embed artifact at 11.0.24 reports it, tomcat-embed-websocket
+    among them, which is the one the advisory's own title points at. The reasoning is identical for
+    each of them, because none of them carries the examples web application. Suppressing one and
+    leaving the others is not narrower, only noisier.
+
     WHAT WOULD MAKE THIS WRONG: this repository starting to serve the Tomcat examples web
     application, or vendoring any part of it. Neither is plausible, and both would be visible in a
     diff.
@@ -44,7 +51,7 @@
       Tomcat examples web application is not present in an embedded container. Remove this entry
       once tomcat-embed-core 11.0.25 is on Maven Central and pin the version instead.
     ]]></notes>
-    <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat-embed-core@11\.0\.24$</packageUrl>
+    <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat-embed-[a-z]+@11\.0\.24$</packageUrl>
     <cve>CVE-2026-66299</cve>
   </suppress>
 
