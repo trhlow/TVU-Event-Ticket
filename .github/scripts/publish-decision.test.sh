@@ -82,6 +82,13 @@ base = {
                         "migrations": migrations},
   },
 }
+def merge(a, b):
+    for k, v in b.items():
+        if isinstance(v, dict) and isinstance(a.get(k), dict):
+            merge(a[k], v)
+        else:
+            a[k] = v
+
 # Replacing the migration list has to replace the checksum with it: a deep merge would leave the
 # old hash in place, and every such case would then be caught by the checksum guard rather than by
 # the one it was written for.
@@ -95,6 +102,13 @@ if "_migrations" in overrides:
     recomputed = json.dumps(ordered, sort_keys=True, separators=(",", ":"))
     base["content"]["flywayInventory"]["checksum"] = hashlib.sha256(
         recomputed.encode()).hexdigest()
+
+# A content change made BEFORE the envelope is derived, so the marker stays internally consistent
+# and its digest genuinely differs. `{"content": ...}` in the generic overrides is the opposite
+# instruction -- it merges after derivation and so leaves the old digest beside new content, which
+# is a contradiction rather than a fork. Both shapes are needed, and they are not interchangeable.
+if "_content" in overrides:
+    merge(base["content"], overrides.pop("_content"))
 
 # The envelope is derived from the content, never typed alongside it: two statements of one fact
 # drift, and this one is a hash. Overrides that change content therefore change the digest with it.
@@ -166,12 +180,6 @@ if overrides.pop("_envelope_subject", False):
     base["markerDigest"] = envelope_module.marker_digest(base["ociEnvelope"]["raw"])
     base["verification"]["subjectDigest"] = base["markerDigest"]
 
-def merge(a, b):
-    for k, v in b.items():
-        if isinstance(v, dict) and isinstance(a.get(k), dict):
-            merge(a[k], v)
-        else:
-            a[k] = v
 merge(base, overrides)
 print(json.dumps(base))
 ' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$SHA" "$FP" "$RELEASE_REPO" "$script_dir"
@@ -353,18 +361,24 @@ assert_decision "final trustworthy, prepared beside it is not" \
 
 echo
 echo "== a marker that cannot be trusted is not a marker"
+# These say `_content`, not `content`: the mutation happens before the envelope is derived, so each
+# marker still names its own bytes and differs from the marker beside it only in being wrong about
+# the release. Written the other way, the final-marker loop below pairs a mutated marker with a
+# pristine one carrying the SAME digest, which is a self-contradicting observation -- unusable, and
+# answered UNKNOWN by the rule above rather than CONFLICT by the trustworthiness rule each of these
+# eleven cases is named for. The rules see identical content either way; only the digest moves.
 untrustworthy=(
   '{"markerDigest":"nonsense"}|marker digest malformed'
-  '{"content":{"commit":"'"$OTHER_SHA"'"}}|records another commit'
-  '{"content":{"environment":"staging"}}|records another environment'
-  '{"content":{"frontendConfigFingerprint":"deadbeef"}}|fingerprint malformed'
-  '{"content":{"images":{"monolith":"sha256:zzzz"}}}|digest is not hex'
-  '{"content":{"provenance":{"monolith":{"revision":"'"$OTHER_SHA"'"}}}}|provenance points elsewhere'
-  '{"content":{"evidence":{"sbom":true}}}|sbom evidence is a boolean'
-  '{"content":{"evidence":{"vulnerabilityScan":{"monolith":"anything"}}}}|scan evidence is free text'
-  '{"content":{"flywayInventory":{"boundTo":"'"$OTHER"'"}}}|inventory bound to another image'
-  '{"content":{"flywayInventory":{"migrations":[]}}}|inventory has no migrations'
-  '{"content":{"flywayInventory":{"checksum":"short"}}}|inventory checksum malformed'
+  '{"_content":{"commit":"'"$OTHER_SHA"'"}}|records another commit'
+  '{"_content":{"environment":"staging"}}|records another environment'
+  '{"_content":{"frontendConfigFingerprint":"deadbeef"}}|fingerprint malformed'
+  '{"_content":{"images":{"monolith":"sha256:zzzz"}}}|digest is not hex'
+  '{"_content":{"provenance":{"monolith":{"revision":"'"$OTHER_SHA"'"}}}}|provenance points elsewhere'
+  '{"_content":{"evidence":{"sbom":true}}}|sbom evidence is a boolean'
+  '{"_content":{"evidence":{"vulnerabilityScan":{"monolith":"anything"}}}}|scan evidence is free text'
+  '{"_content":{"flywayInventory":{"boundTo":"'"$OTHER"'"}}}|inventory bound to another image'
+  '{"_content":{"flywayInventory":{"migrations":[]}}}|inventory has no migrations'
+  '{"_content":{"flywayInventory":{"checksum":"short"}}}|inventory checksum malformed'
 )
 for entry in "${untrustworthy[@]}"; do
   override="${entry%%|*}"; label="${entry##*|}"
@@ -405,25 +419,22 @@ done
 
 echo
 echo "== markers must be the same artifact, and the bytes must still be there"
-# Two different artifacts carrying the same payload: same content, two manifests, two digests. The
-# difference has to live in the ENVELOPE and nowhere else, and getting there took two wrong turns.
+# Two markers that are genuinely different artifacts. Each is internally consistent -- its own
+# content, its own envelope derived from that content, its own digest recomputed from that envelope
+# -- so neither carries a problem and the comparison gate above is open. The digests differ because
+# the contents do, which after the shape guards is the only way two valid envelopes can differ at
+# all, and the artefact-identity guard is the only rule left that can answer.
 #
-# Typing a different markerDigest is wrong: once the digest is derived from the raw, a hand-set
-# digest is a marker that does not name its own bytes, and the raw-hashes-to-its-name guard refuses
-# it before the artefact-identity guard ever runs.
+# The previous witness used `_envelope_subject` and stopped working the moment a subject became a
+# problem: the marker turned untrustworthy, the gate closed, and CONFLICT arrived from a different
+# rule while the suite stayed green.
 #
-# Stating the difference in the content is wrong too, and less obviously. Even with the content
-# mutated before the envelope is derived -- so that each marker is self-consistent and the two
-# digests genuinely differ -- the same-digest-different-content guard below tests content inequality
-# unconditionally, so it fires on this case as well. Deleting the artefact-identity guard left the
-# suite green, which is exactly the defect being fixed.
-#
-# `_envelope_subject` is the shape that isolates it: it puts a subject into raw and recomputes the
-# digest from the mutated raw, so the two markers have identical content and different digests. 5a
-# judges no manifest shape, so both markers are individually trustworthy (the last case in this file
-# pins that), the content comparison cannot fire, and the artefact-identity guard is the only rule
-# left that can answer CONFLICT.
-assert_decision "markers agree on content but are different artifacts"   "$(observation "$(marker)" "$(marker '{"_envelope_subject": true}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
+# The difference is an extra key inside provenance, and it has to be a field no rule judges. Saying
+# it with `environment` was measured to fail the same way `_envelope_subject` did: a marker naming
+# another environment is untrustworthy, so the gate shuts and CONFLICT arrives from the
+# prepared-marker-not-trustworthy rule instead. The reason string is the only thing that tells the
+# two apart, which is why this witness was chosen by reading it rather than by reading the state.
+assert_decision "final and prepared are different artifacts"   "$(observation "$(marker)" "$(marker '{"_content":{"provenance":{"monolith":{"extra":"different artifact"}}}}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to exist"   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$absent_mono" "$absent_fe")"   CONFLICT '[]' false false
 assert_decision "COMPLETE requires the digest objects to match"   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$(present_in "$MONOLITH_REPO" "$OTHER")")"   CONFLICT '[]' false false
 
@@ -431,7 +442,9 @@ echo
 echo "== guards that the mutation runner found untested"
 # Content-addressed storage cannot produce two different contents under one digest, so an
 # observation showing it contradicts itself and nothing here can choose which half to believe.
-assert_decision "same marker digest but different content"   "$(observation "$(marker)" "$(marker '{"content":{"environment":"production","provenance":{"monolith":{"revision":"'"$SHA"'","subjectDigest":"'"$MONO"'","extra":"different"}}}}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   CONFLICT '[]' false false
+# The verdict is UNKNOWN rather than CONFLICT because such an observation is unusable rather than
+# adjudicable: there is nothing for an operator to decide between, only a collection to re-run.
+assert_decision "same marker digest but different content"   "$(observation "$(marker)" "$(marker '{"content":{"environment":"production","provenance":{"monolith":{"revision":"'"$SHA"'","subjectDigest":"'"$MONO"'","extra":"different"}}}}')" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")"   UNKNOWN '[]' false false
 # A status that is not a string used to raise TypeError out of the membership test: traceback,
 # exit 1, and no decision for the caller to read at all.
 assert_decision "a status that is not a string"   "$(observation '{"status":[]}' "$absent_release" "$absent_mono" "$absent_fe")"   UNKNOWN '[]' false false

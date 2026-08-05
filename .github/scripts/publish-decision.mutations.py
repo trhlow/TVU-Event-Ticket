@@ -76,9 +76,14 @@ MUTATIONS = {
         '            allowed_fields = PRESENT_FIELDS["marker"][1] | PRESENT_FIELDS["object"][1]'),
     "marker_fork_ignored": (
         'if final["markerDigest"] != prepared["markerDigest"]:', "if False:"),
-    "same_digest_different_content": (
-        'if canonical_bytes(final["content"]) != canonical_bytes(prepared["content"]):',
-        "if False:"),
+    # `require(True,  # ` was the obvious replacement and it is a SyntaxError: the condition spans
+    # two lines, so commenting out the first leaves `require(True, or canonical_bytes(...)`. The
+    # suite would still go red -- on every case at once, from a subject that no longer parses -- and
+    # be reported as caught while testing nothing. Disjoining True keeps the call well formed and
+    # neutralises the condition alone, the same shape as status_fields_not_enforced above.
+    "self_contradicting_observation_ignored": (
+        'require(final["markerDigest"] != prepared["markerDigest"]',
+        'require(True or final["markerDigest"] != prepared["markerDigest"]'),
     "complete_skips_digest_objects": (
         '        problem = missing_or_mismatched(objects, claimed, "digest object")\n'
         "        if problem:\n"

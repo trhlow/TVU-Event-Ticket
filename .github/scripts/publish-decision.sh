@@ -562,6 +562,25 @@ def decide(obs):
     final_problems = marker_problems(final, obs, "finalMarker") if final_present else None
     prepared_problems = marker_problems(prepared, obs, "preparedMarker") if prepared_present else None
 
+    # Checked before the problem gate below, not inside it. An observation naming one digest for two
+    # different payloads is unusable whatever else is wrong with it, and once payload binding is in
+    # force no problem-free pair can reach a comparison placed behind that gate -- the rule would be
+    # unreachable rather than merely unwitnessed. UNKNOWN, not CONFLICT: nothing here can choose
+    # which half of a self-contradicting observation to believe, and that is the collector's problem
+    # to re-run, not an operator's to adjudicate.
+    #
+    # Raising drops cleanupDebt, where the CONFLICT this replaces carried it. That is deliberate and
+    # not the "cleanup debt survives an unknown" case: that invariant is about a question nobody
+    # answered, where the rest of the observation still stands. Here the document contradicts itself,
+    # so its candidate lookup is no more believable than its markers, and authorising a delete on the
+    # word of a document that is provably wrong about something else is not a safer answer than
+    # leaving the orphan for the next run to see.
+    if final_present and prepared_present and "content" in final and "content" in prepared:
+        require(final["markerDigest"] != prepared["markerDigest"]
+                or canonical_bytes(final["content"]) == canonical_bytes(prepared["content"]),
+                f"final and prepared markers share digest {final['markerDigest']} but their "
+                f"content differs; the observation contradicts itself")
+
     if final_present and prepared_present and not final_problems and not prepared_problems:
         # Promotion re-tags one artifact, so the final and prepared markers are the same object
         # under two names. Comparing only content.images accepted two genuinely different artifacts
@@ -570,13 +589,6 @@ def decide(obs):
         if final["markerDigest"] != prepared["markerDigest"]:
             return conflict(f"final marker {final['markerDigest']} and prepared marker "
                             f"{prepared['markerDigest']} are different artifacts", cleanup_debt)
-        # Content-addressed storage makes "same digest, different content" impossible, so an
-        # observation showing it is contradicting itself and nothing here can resolve which half to
-        # believe.
-        if canonical_bytes(final["content"]) != canonical_bytes(prepared["content"]):
-            return conflict(f"final and prepared markers share digest {final['markerDigest']} but "
-                            f"their content differs; the observation contradicts itself",
-                            cleanup_debt)
 
     if final_present:
         if final_problems:
