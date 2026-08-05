@@ -451,7 +451,11 @@ done
 
 echo
 echo "== the Flyway inventory has to be an inventory"
-for entry in   '{"content":{"flywayInventory":{"migrations":[true]}}}|migrations are booleans'   '{"content":{"flywayInventory":{"migrations":[null]}}}|migrations are nulls'   '{"content":{"flywayInventory":{"migrations":[{}]}}}|migration records are empty'   '{"content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":"1","success":true}]}}}|checksum is a string'   '{"content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":false}]}}}|a migration failed'   '{"content":{"flywayInventory":{"checksum":"'"$(printf 'f%.0s' {1..64})"'"}}}|checksum does not match the migrations'   ; do
+# `_content`, not `content`: these markers must be internally consistent so that the inventory rules
+# are the only thing that can answer. Written with a post-derivation `content` override they stayed
+# green through payload binding instead -- the envelope still described the content it was built
+# from -- and every rule below could then be deleted with the suite green.
+for entry in   '{"_content":{"flywayInventory":{"migrations":[true]}}}|migrations are booleans'   '{"_content":{"flywayInventory":{"migrations":[null]}}}|migrations are nulls'   '{"_content":{"flywayInventory":{"migrations":[{}]}}}|migration records are empty'   '{"_content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":"1","success":true}]}}}|checksum is a string'   '{"_content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":false}]}}}|a migration failed'   '{"_content":{"flywayInventory":{"checksum":"'"$(printf 'f%.0s' {1..64})"'"}}}|checksum does not match the migrations'   ; do
   override="${entry%%|*}"; label="${entry##*|}"
   assert_decision "prepared marker: $label"     "$(observation "$absent_release" "$(marker "$override")" "$absent_mono" "$absent_fe")"     CONFLICT '[]' false false
 done
@@ -662,15 +666,17 @@ assert_decision "a marker signed by the release repository rather than the sourc
 
 echo
 echo "== evidence answers four questions, and each one has to have been answered"
+# `_content` for the same reason as the inventory block above: a marker whose content is judged has
+# to carry an envelope built from that content, or payload binding answers in the rule's place.
 for entry in \
   '{"verification":{"predicateType":null}}|verification does not say what was attested' \
   '{"verification":{"predicateType":""}}|attested predicate type is empty' \
-  '{"content":{"evidence":{"layerSecretScan":null}}}|no layer secret scan' \
-  '{"content":{"evidence":{"filesystemSecretScan":null}}}|no filesystem secret scan' \
-  '{"content":{"evidence":{"sbom":{"monolith":{"predicateType":null}}}}}|sbom does not say what it states' \
-  '{"content":{"evidence":{"vulnerabilityScan":{"monolith":{"passed":false}}}}}|vulnerability scan did not pass' \
-  '{"content":{"evidence":{"layerSecretScan":{"frontend":{"passed":"true"}}}}}|layer scan result is a string' \
-  '{"content":{"evidence":{"filesystemSecretScan":{"monolith":{"passed":null}}}}}|filesystem scan has no result' \
+  '{"_content":{"evidence":{"layerSecretScan":null}}}|no layer secret scan' \
+  '{"_content":{"evidence":{"filesystemSecretScan":null}}}|no filesystem secret scan' \
+  '{"_content":{"evidence":{"sbom":{"monolith":{"predicateType":null}}}}}|sbom does not say what it states' \
+  '{"_content":{"evidence":{"vulnerabilityScan":{"monolith":{"passed":false}}}}}|vulnerability scan did not pass' \
+  '{"_content":{"evidence":{"layerSecretScan":{"frontend":{"passed":"true"}}}}}|layer scan result is a string' \
+  '{"_content":{"evidence":{"filesystemSecretScan":{"monolith":{"passed":null}}}}}|filesystem scan has no result' \
   ; do
   override="${entry%%|*}"; label="${entry##*|}"
   assert_decision "prepared marker: $label" \
