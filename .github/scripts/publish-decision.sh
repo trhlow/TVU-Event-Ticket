@@ -762,6 +762,16 @@ def decide(obs):
 def missing_or_mismatched(observed, claimed, what):
     for image in IMAGES:
         entry = observed[image]
+        # `skipped` says the question was never asked, and no_claimed_digest is the only reason it
+        # may say that. Beside a marker that DOES claim this digest the observation contradicts
+        # itself, and treating it like an absence answers a question nobody put: the message would
+        # be "its digest object is not in the registry", a claim about the registry this observation
+        # never makes. Self-contradiction is UNKNOWN here as everywhere else -- nothing can choose
+        # which half to believe, and CONFLICT would send an operator to adjudicate a registry state
+        # that was never observed.
+        require(entry["status"] != "skipped",
+                f"the marker records {image} {claimed[image]} but its {what} lookup was skipped as "
+                f"having no claimed digest; the observation contradicts itself")
         if entry["status"] != "present":
             return f"the marker records {image} {claimed[image]} but its {what} is not in the registry"
         if entry["digest"] != claimed[image]:

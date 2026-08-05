@@ -228,6 +228,10 @@ MUTATIONS = {
     # this the rule exists in a file nothing consults at decision time.
     "envelope_keys_open": (
         "require(not unexpected_envelope,", "require(True,"),
+    # Without this a skipped digest-object lookup is treated as an absence, and the operator is
+    # handed "its digest object is not in the registry" about a registry nobody queried.
+    "skipped_lookup_read_as_absence": (
+        'require(entry["status"] != "skipped",', "require(True,"),
     # Before the split these two were one string, so this comparison could not be got wrong.
     # A payload may be read only when exactly one layer says which bytes are the payload. The two
     # arms are separate mutations because they answer differently: presence is an agreement between

@@ -392,6 +392,15 @@ echo "== COMPLETE"
 assert_decision "final marker and both tags agree" \
   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")" \
   COMPLETE '["verify_only"]' false false
+# `skipped` means the question was never asked, and its only permitted reason is that no digest was
+# claimed. Beside a marker that DOES claim one, the observation contradicts itself: the collector
+# says it had no digest to look up while the marker beside it names the digest. Answering CONFLICT
+# would send an operator to adjudicate a registry state nobody observed -- the reason would read
+# "its digest object is not in the registry", which is a claim about the registry the observation
+# never makes. Self-contradiction is UNKNOWN, the same rule as everywhere else here.
+assert_decision "a digest object skipped while the marker claims that digest" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$skipped")" \
+  UNKNOWN '[]' false false
 assert_decision "leftover candidate does not invalidate it" \
   "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "$(present_in "$MONOLITH_REPO" "$MONO")")" \
   COMPLETE '["verify_only"]' true false
