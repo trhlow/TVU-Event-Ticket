@@ -503,7 +503,9 @@ mọi luật hình dạng của §2 vẫn không nối được manifest với t
 Hai guard, không một: `digest` và `size` là hai phát biểu khác nhau về cùng bytes, và §2 đã lấy chính lý
 do đó để tách `digestVerified` với `sizeVerified`.
 
-Tổng cộng 5b thêm **14 mutation**: 8 entry bảng + 4 guard cấu trúc + 2 guard binding.
+Tổng cộng 5b thêm **14 guard**: 8 entry bảng + 4 guard cấu trúc + 2 guard binding. Mutation nhiều hơn
+một — **15** — vì vòng lặp đọc bảng cũng phải xoá được: không có entry cho chính nó thì xoá cả vòng chỉ
+bị bắt tình cờ.
 
 ### 5.8 5b phá witness của hai guard đang có, và phải trả lại
 
