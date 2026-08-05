@@ -110,6 +110,13 @@ if "_migrations" in overrides:
 if "_content" in overrides:
     merge(base["content"], overrides.pop("_content"))
 
+# A payload that is not an object at all: replaced whole rather than merged into, because there is
+# nothing to merge into a string. Before the derivation for the same reason `_content` is -- the
+# envelope has to describe the bytes actually carried, or the layer digest names the object this
+# content replaced and payload binding answers in place of the rule under test.
+if "_content_replace" in overrides:
+    base["content"] = overrides.pop("_content_replace")
+
 # The envelope is derived from the content, never typed alongside it: two statements of one fact
 # drift, and this one is a hash. Overrides that change content therefore change the digest with it.
 sys.path.insert(0, sys.argv[7])
@@ -412,6 +419,15 @@ untrustworthy=(
   '{"_content":{"environment":"staging"}}|records another environment'
   '{"_content":{"frontendConfigFingerprint":"deadbeef"}}|fingerprint malformed'
   '{"_content":{"images":{"monolith":"sha256:zzzz"}}}|digest is not hex'
+  # The key set, not the digests: a third image nobody deploys is a marker describing a release
+  # this pipeline does not make, and the per-image loop below the guard only ever reads the two it
+  # knows about, so an extra key would otherwise ride through unread. Its digest is well formed on
+  # purpose -- with a malformed one the case would be caught by the rule above whether or not the
+  # key set is checked at all. Measured with the guard deleted: the prepared-slot copy of this entry
+  # is the witness -- it goes PARTIAL -- while the final-slot copy stays green on the
+  # artefact-identity rule, the two markers having different content and therefore different
+  # digests. Same standing as the entries above it, and said out loud rather than counted twice.
+  '{"_content":{"images":{"evidence":"'"$OTHER"'"}}}|images name a third image'
   '{"_content":{"provenance":{"monolith":{"revision":"'"$OTHER_SHA"'"}}}}|provenance points elsewhere'
   '{"_content":{"evidence":{"sbom":true}}}|sbom evidence is a boolean'
   '{"_content":{"evidence":{"vulnerabilityScan":{"monolith":"anything"}}}}|scan evidence is free text'
@@ -435,7 +451,15 @@ done
 echo
 echo "== the schema rejects values that merely resemble the right ones"
 base_obs() { observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe"; }
-for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"'"$RELEASE_REPO"':r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"'"$RELEASE_REPO"':r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
+# schemaVersion 2 is the version pin, and it is not the same rule as the two type cases beside it.
+# The only other observation in this suite carrying version 2 also carries `expected.repository`,
+# which the unknown-key rule refuses first -- so the comparison against SCHEMA_VERSION could be
+# deleted with the suite green, while neutralising the whole require came back caught on the type
+# check. One rule per case, or a witness certifies its neighbours and proves nothing about itself.
+#
+# environment gets both halves of its require: a missing one for the type, an empty one for the
+# emptiness. Neither existed, and the rule sat unwitnessed behind a fixture that always set it.
+for tweak in   'o["schemaVersion"]=True|schemaVersion is boolean true'   'o["schemaVersion"]=1.0|schemaVersion is a float'   'o["schemaVersion"]=2|schemaVersion is the next version, not this one'   'del o["environment"]|no environment at all'   'o["environment"]=""|environment is the empty string'   'o["commit"]=o["commit"]+chr(10)|commit has a trailing newline'   'o["expected"]["frontendConfigFingerprint"]+=chr(10)|fingerprint has a trailing newline'   'del o["expected"]["signerWorkflow"]|no expected signer workflow'   'o["lookups"]["finalMarker"]={"status":"absent"}|absence without an observed code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":503,"queriedRef":"'"$RELEASE_REPO"':r"}|absence claimed from a 503'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404,"code":503,"queriedRef":"'"$RELEASE_REPO"':r"}|absent carrying an error code'   'o["lookups"]["finalMarker"]={"status":"absent","observedCode":404}|absence without a queried reference'   ; do
   code="${tweak%%|*}"; label="${tweak##*|}"
   assert_decision "$label"     "$(base_obs | "$PYTHON" -c "
 import json,sys
@@ -455,7 +479,15 @@ echo "== the Flyway inventory has to be an inventory"
 # are the only thing that can answer. Written with a post-derivation `content` override they stayed
 # green through payload binding instead -- the envelope still described the content it was built
 # from -- and every rule below could then be deleted with the suite green.
-for entry in   '{"_content":{"flywayInventory":{"migrations":[true]}}}|migrations are booleans'   '{"_content":{"flywayInventory":{"migrations":[null]}}}|migrations are nulls'   '{"_content":{"flywayInventory":{"migrations":[{}]}}}|migration records are empty'   '{"_content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":"1","success":true}]}}}|checksum is a string'   '{"_content":{"flywayInventory":{"migrations":[{"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":false}]}}}|a migration failed'   '{"_content":{"flywayInventory":{"checksum":"'"$(printf 'f%.0s' {1..64})"'"}}}|checksum does not match the migrations'   ; do
+#
+# The last two say `_migrations`, and it took two corrections to get there. As `_content` overrides
+# they omitted installedRank, so the rank rule refused the record first and neither the checksum
+# type nor the success flag was ever consulted -- both guards survived their own witnesses. Adding a
+# rank is not enough either: `_content` replaces the migration list without recomputing the
+# inventory checksum, so with the guard deleted the record becomes clean and the stale checksum
+# answers in its place, and the mutation survives a second time. `_migrations` replaces the list and
+# rehashes it, which leaves the record's own fields as the only thing left to object to.
+for entry in   '{"_content":{"flywayInventory":{"migrations":[true]}}}|migrations are booleans'   '{"_content":{"flywayInventory":{"migrations":[null]}}}|migrations are nulls'   '{"_content":{"flywayInventory":{"migrations":[{}]}}}|migration records are empty'   '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":"1","success":true}]}|checksum is a string'   '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":false}]}|a migration failed'   '{"_content":{"flywayInventory":{"checksum":"'"$(printf 'f%.0s' {1..64})"'"}}}|checksum does not match the migrations'   ; do
   override="${entry%%|*}"; label="${entry##*|}"
   assert_decision "prepared marker: $label"     "$(observation "$absent_release" "$(marker "$override")" "$absent_mono" "$absent_fe")"     CONFLICT '[]' false false
 done
@@ -551,8 +583,14 @@ echo
 echo "== each lookup is pinned to its own repository, not to a shared scope"
 # Eight cases rather than one assertion about the table's key set, because the table is inside the
 # embedded Python and nothing outside the script can import it -- and because these pin what the
-# table says, not merely how many entries it has. A ninth lookup added without an entry is refused
-# by the require() below rather than crashing the decision with a KeyError.
+# table says, not merely how many entries it has.
+#
+# What they do not show -- and what nothing here can show -- is what becomes of a lookup with no
+# entry in the table. The key set of `lookups` is pinned to exactly REQUIRED_LOOKUPS and the table
+# holds exactly those eight keys, so no observation reaches the `role is not None` require with role
+# unset. That require is a developer-error guard against a ninth lookup somebody adds to one list
+# and not the other, not a rule about any input; the subject now says so where it stands, and this
+# suite claims no evidence for it.
 for entry in \
   "finalMarker|1|$MONOLITH_REPO" \
   "preparedMarker|2|$FRONTEND_REPO" \
@@ -966,6 +1004,15 @@ assert_decision "content present while the digest check failed" \
      "$(marker '{"_envelope_failed_with_content": "digestVerified"}')" \
      "$absent_mono" "$absent_fe")" \
   UNKNOWN '[]' false false
+# One payload, identified and bound, and it is a string. Everything above it holds: the envelope is
+# canonical, the digest is the digest of these bytes, and the layer names and sizes exactly them --
+# so the only rule left that can object is the one saying a payload has to be an object. Deleting it
+# does not merely lose a message: every read below goes through `.get`, which a string does not
+# have, so the decision becomes an AttributeError and the caller gets no decision at all.
+assert_decision "a payload that is not an object" \
+  "$(observation "$absent_release" "$(marker '{"_content_replace": "not an object"}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
 
 echo
 echo "passed=$passed failed=$failed"

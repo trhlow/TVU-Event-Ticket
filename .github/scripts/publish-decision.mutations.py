@@ -146,6 +146,37 @@ MUTATIONS = {
         "if type(rank) is not int or rank < 1:", "if False:"),
     "repeatable_duplicates_allowed": (
         "if script in seen_repeatables:", "if False:"),
+    # Both of these survived until their witnesses were repaired. The two records that carry them
+    # omitted installedRank, so the rank rule refused each record before either of these was
+    # consulted -- a witness that reddens on deletion of a guard three lines above the one it names.
+    # They now arrive through `_migrations`, which supplies a rank and rehashes the inventory, so
+    # the record's own field is the only thing left for the decision to object to.
+    "migration_success_ignored": (
+        'if record.get("success") is not True:', "if False:"),
+    "migration_checksum_type_ignored": (
+        "if checksum is not None and type(checksum) is not int:", "if False:"),
+    # Neutralising the whole require came back caught, on the integer type check inside it, while
+    # the comparison that says which version this is could be deleted with the suite green: the only
+    # other version-2 observation in the suite also carries `expected.repository` and is refused by
+    # the unknown-key rule first. This mutation keeps the type check and drops the pin alone.
+    "schema_version_value_unpinned": (
+        'require(exact_int(obs.get("schemaVersion"), "schemaVersion") == SCHEMA_VERSION,',
+        'require(exact_int(obs.get("schemaVersion"), "schemaVersion") is not None,'),
+    # No fixture ever removed or blanked the environment, so the rule that reads it had no witness
+    # at all -- while every marker's content was compared against it.
+    "environment_unchecked": (
+        'require(type(obs.get("environment")) is str and obs["environment"],',
+        'require(True or type(obs.get("environment")) is str and obs["environment"],'),
+    # The type check alone, leaving the key set open: a marker may then name a third image, and the
+    # loop below it reads only the two it knows about, so the extra one is never looked at again.
+    "content_images_key_set_open": (
+        "if type(images) is not dict or set(images) != set(IMAGES):",
+        "if type(images) is not dict:"),
+    # Not only a message: everything below this reads the payload through `.get`, which a string
+    # does not have, so without it a non-object payload is an AttributeError and the caller gets no
+    # decision at all. No case existed until this commit.
+    "content_not_an_object_accepted": (
+        "    if type(content) is not dict:", "    if False:"),
     "canonical_order_ignored": (
         'ordered = sorted(migrations, key=lambda record: record["installedRank"])',
         "ordered = migrations"),
@@ -154,8 +185,17 @@ MUTATIONS = {
     "lookup_repository_ignored": (
         'scope = f"{expected[\'registry\']}/{repositories[role]}"',
         'scope = f"{expected[\'registry\']}/{repositories[\'release\']}"'),
-    # An entry removed from the table rather than a guard deleted: it proves the table is consulted
-    # and that a lookup with no repository reaches UNKNOWN instead of a KeyError traceback.
+    # An entry removed from the table rather than a guard deleted: it proves the table is consulted,
+    # and that every lookup the contract requires has an entry in it.
+    #
+    # It does NOT prove what the entry it removes used to claim -- that a lookup with no repository
+    # reaches UNKNOWN instead of a KeyError traceback. assert_decision fails on any non-zero exit,
+    # so a subject that dies with a traceback and a subject that answers UNKNOWN are the same red to
+    # it, and no arrangement of this runner can tell them apart. The `role is not None` require that
+    # would decide between them has no witness at all and cannot be given one: the key set of
+    # `lookups` is pinned to exactly REQUIRED_LOOKUPS and the table holds exactly those eight keys,
+    # so no input reaches it with role unset. It is a developer-error guard, declared as one where
+    # it stands, and deliberately absent from this table.
     "lookup_repository_table_incomplete": (
         '    "monolithTag": "monolith",\n', ""),
     "repositories_may_coincide": (

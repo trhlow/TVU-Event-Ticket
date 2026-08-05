@@ -274,6 +274,17 @@ def validate(obs):
         # Every lookup has to have been made in the repository that lookup belongs to. A well-formed
         # observation of another package answers a question nobody asked, and its absences would
         # authorise a build here.
+        #
+        # The require below has no witness and cannot be given one. The key set of `lookups` was
+        # pinned to exactly REQUIRED_LOOKUPS a few lines up, and LOOKUP_REPOSITORY has exactly those
+        # eight keys, so there is no observation -- collected or written by hand -- for which
+        # `.get(name)` returns None. Deleting it leaves the suite green, and any case that seemed to
+        # witness it would be passing for another reason. It stays as a developer-error guard: the
+        # day a ninth lookup joins REQUIRED_LOOKUPS and not this table, the decision says UNKNOWN
+        # instead of dying with a KeyError, which is also why this is `.get` plus a require rather
+        # than a bare index. Same standing as the `"content" not in marker` early return further
+        # down -- unwitnessable, kept deliberately, and declared rather than papered over with a
+        # case that would go green either way.
         role = LOOKUP_REPOSITORY.get(name)
         require(role is not None,
                 f"lookups.{name} has no repository assigned; the decision cannot say where it "
