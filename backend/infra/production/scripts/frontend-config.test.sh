@@ -179,12 +179,53 @@ write_config "$VALID_CONFIG"
 mkdir -p "$workspace/fakebin"
 printf '#!/bin/sh\nexit 9\n' >"$workspace/fakebin/python3"
 chmod +x "$workspace/fakebin/python3"
-output="$(PATH="$workspace/fakebin:$PATH" bash "$subject" "$workspace" 2>&1)"; status=$?
+# PYTHON_BIN is cleared: it outranks PATH by design, so leaving a working one in the environment
+# would mean this case never reaches the broken python3 it puts there and passes without testing it.
+output="$(PATH="$workspace/fakebin:$PATH" PYTHON_BIN='' bash "$subject" "$workspace" 2>&1)"; status=$?
 if [[ $status -ne 0 && "$output" != *e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855* ]]; then
   echo "ok    unusable python3 fails instead of hashing nothing"
   ((passed++))
 else
   echo "FAIL  unusable python3: status=$status output=$output"
+  ((failed++))
+fi
+
+echo
+echo "== the interpreter is chosen the way the rest of the repository chooses it"
+# Two cases the exit-status probe cannot express, and both occur in practice.
+#
+# A stub that swallows its input and exits 0 is the Windows Store alias's actual behaviour, and it
+# is what .github/scripts/python-bin.sh was written for. An exit-status probe accepts it; the only
+# thing standing between it and a hash of nothing is a downstream length check, which is a guard
+# about output rather than about the interpreter.
+write_config "$VALID_CONFIG"
+printf '#!/bin/sh\ncat >/dev/null\nexit 0\n' >"$workspace/fakebin/python3"
+chmod +x "$workspace/fakebin/python3"
+output="$(PATH="$workspace/fakebin:$PATH" PYTHON_BIN='' bash "$subject" "$workspace" 2>&1)"; status=$?
+if [[ $status -ne 0 ]]; then
+  echo "ok    a python3 that swallows its input is refused"
+  ((passed++))
+else
+  echo "FAIL  swallowing python3 was accepted: status=$status output=$output"
+  ((failed++))
+fi
+
+# And PYTHON_BIN must win, for the same reason it exists everywhere else in this repository: on a
+# developer machine `python3` on PATH is the Store alias, so a script that hard-codes the name can
+# only ever be exercised on the CI runner. A suite that is permanently red for a reason that has
+# nothing to do with its subject teaches everyone to stop reading it.
+real_python="${PYTHON_BIN:-$(command -v python3 || true)}"
+if [[ -n "$real_python" ]]; then
+  output="$(PATH="$workspace/fakebin:$PATH" PYTHON_BIN="$real_python" bash "$subject" "$workspace" 2>&1)"; status=$?
+  if [[ $status -eq 0 && "$output" =~ fingerprint:\ [0-9a-f]{64} ]]; then
+    echo "ok    PYTHON_BIN outranks a broken python3 on PATH"
+    ((passed++))
+  else
+    echo "FAIL  PYTHON_BIN was not honoured: status=$status output=$output"
+    ((failed++))
+  fi
+else
+  echo "FAIL  no usable interpreter to point PYTHON_BIN at; this case cannot be skipped silently"
   ((failed++))
 fi
 

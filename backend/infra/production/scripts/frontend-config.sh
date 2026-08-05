@@ -49,11 +49,29 @@ readonly FRONTEND_CONFIG_FORBIDDEN=(
 )
 
 _frontend_config_require_python() {
-  # `command -v python3` is not enough on Windows developer machines: the Microsoft Store alias sits
-  # on PATH, resolves, and then refuses to run. Ask it to do something and check that it did.
-  if ! python3 -c 'import sys; sys.exit(0)' >/dev/null 2>&1; then
-    echo "python3 is required to canonicalise the frontend config, and is not usable here." >&2
-    echo "Refusing to continue: without it this script cannot tell a real config from an empty one." >&2
+  # Probe by what comes back, not by exit status, and in the shape this script actually uses -- a
+  # program arriving on stdin. `command -v python3` is not enough on Windows developer machines: the
+  # Microsoft Store alias sits on PATH, resolves, and then refuses to run. Neither is `exit 0`: the
+  # same alias in its other mood swallows its input and succeeds, and an exit-status probe accepts
+  # it. What is left then is a hash of nothing, which is the fail-open shape this whole file exists
+  # to prevent -- and the only thing catching it would be a downstream length check, a guard about
+  # output rather than about the interpreter.
+  #
+  # PYTHON_BIN wins, as everywhere else in this repository. Without it `python3` is the only name
+  # this script can try, so on a developer machine it can never run at all and its own suite is
+  # permanently red for a reason that has nothing to do with its subject.
+  # One candidate, then a loud failure -- the same shape as .github/scripts/python-bin.sh, and
+  # deliberately not a search. Falling back through a list of names means the interpreter that ran
+  # is not the one anybody named, and a probe cannot then be trusted to have tested it: measured
+  # here, a `python` fallback silently stepped around this suite's own broken-`python3` fixture and
+  # reported success. PYTHON_BIN is the one escape hatch.
+  FRONTEND_CONFIG_PYTHON="${PYTHON_BIN:-python3}"
+  if [[ "$(printf '%s\n' 'import sys; sys.stdout.write("PYBIN-OK")' \
+             | "$FRONTEND_CONFIG_PYTHON" - 2>/dev/null)" != "PYBIN-OK" ]]; then
+    echo "$FRONTEND_CONFIG_PYTHON is required to canonicalise the frontend config, and did not" >&2
+    echo "run a program arriving on stdin. Set PYTHON_BIN to a working Python 3." >&2
+    echo "Refusing to continue: without it this script cannot tell a real config from an empty" >&2
+    echo "one." >&2
     return 1
   fi
 }
@@ -69,22 +87,45 @@ _frontend_config_run() {
     return 1
   fi
 
-  python3 - "$mode" "$env_file" \
-    "${#FRONTEND_CONFIG_REQUIRED[@]}" "${FRONTEND_CONFIG_REQUIRED[@]}" \
-    "${#FRONTEND_CONFIG_EXACT[@]}" "${FRONTEND_CONFIG_EXACT[@]}" \
-    "${FRONTEND_CONFIG_FORBIDDEN[@]}" <<'PYTHON'
+  # The three expectation lists travel in the environment, not in argv, and only the mode and the
+  # path stay as arguments. Two reasons, and the second was measured rather than anticipated:
+  #
+  #   - counts-then-items in argv means the reader and the writer have to agree on arithmetic to
+  #     agree on data, and nothing checks that they still do;
+  #   - on a Windows developer machine Git Bash rewrites any argument that looks like a POSIX path
+  #     before handing it to a native Windows program, so the expected value `/api` arrived as
+  #     `C:/Program Files/Git/api` and the script rejected the very config it had just read.
+  #     Excluding everything from that rewriting is not the fix either: `$env_file` is a POSIX path
+  #     that has to be rewritten, or the interpreter cannot open it. The environment is not
+  #     rewritten at all, so putting the values there sidesteps the question.
+  local spec
+  spec="$(
+    printf 'required\t%s\n' "${FRONTEND_CONFIG_REQUIRED[@]}"
+    printf 'exact\t%s\n' "${FRONTEND_CONFIG_EXACT[@]}"
+    printf 'forbidden\t%s\n' "${FRONTEND_CONFIG_FORBIDDEN[@]}"
+  )"
+
+  FRONTEND_CONFIG_SPEC="$spec" "$FRONTEND_CONFIG_PYTHON" - "$mode" "$env_file" <<'PYTHON'
 import hashlib
 import json
+import os
 import re
 import sys
 
-mode, env_path, required_count, *rest = sys.argv[1:]
-required_count = int(required_count)
-required = rest[:required_count]
-rest = rest[required_count:]
-exact_count = int(rest[0])
-exact = dict(pair.split("=", 1) for pair in rest[1:1 + exact_count])
-forbidden = rest[1 + exact_count:]
+mode, env_path = sys.argv[1:3]
+
+required, exact, forbidden = [], {}, []
+for line in os.environ["FRONTEND_CONFIG_SPEC"].splitlines():
+    kind, _, item = line.partition("\t")
+    if kind == "required":
+        required.append(item)
+    elif kind == "exact":
+        key, _, value = item.partition("=")
+        exact[key] = value
+    elif kind == "forbidden":
+        forbidden.append(item)
+    else:
+        sys.exit(f"FRONTEND_CONFIG_SPEC carries an unknown kind {kind!r}")
 
 GUID = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE)
 
