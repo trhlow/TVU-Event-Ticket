@@ -249,6 +249,12 @@ MUTATIONS = {
         '        if at_path(raw_manifest, ("subject",)) is not MISSING:', "        if False:"),
     "envelope_annotations_allowed": (
         '        if at_path(raw_manifest, ("annotations",)) is not MISSING:', "        if False:"),
+    # Two entries, because the layer's digest and its size are two separate statements about the
+    # payload and each needs its own evidence that something depends on it.
+    "payload_binding_digest_unchecked": (
+        '            if layers[0].get("digest") != payload_digest:', "            if False:"),
+    "payload_binding_size_unchecked": (
+        '            if layers[0].get("size") != len(payload):', "            if False:"),
 }
 
 

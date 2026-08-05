@@ -211,6 +211,13 @@ if "_envelope_annotations" in overrides:
             "layer": raw_manifest["layers"][0]}[level]
     node["annotations"] = {"org.opencontainers.image.created": "2026-08-05T00:00:00Z"}
     _reseal(base)
+if "_envelope_layer_field" in overrides:
+    # The layer descriptor stops describing the payload. Everything else stays canonical -- the field
+    # set is untouched, the constants are untouched, and the digest is resealed over the mutated raw
+    # -- so the only rule that can answer is the one binding the envelope to its content.
+    field, value = overrides.pop("_envelope_layer_field")
+    base["ociEnvelope"]["raw"]["layers"][0][field] = value
+    _reseal(base)
 
 merge(base, overrides)
 print(json.dumps(base))
@@ -913,6 +920,21 @@ assert_decision "an envelope annotated at the config level" \
      "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
 assert_decision "an envelope annotated at the layer level" \
   "$(observation "$absent_release" "$(marker '{"_envelope_annotations": "layer"}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+
+echo
+echo "== the envelope and the payload are about each other"
+# The envelope and the payload stop being about each other. Without these two rules the manifest is
+# canonical, the digest is honest, and the content underneath it is whatever the collector felt
+# like reporting -- which is what invariant 4 claimed was verified and never was.
+#
+# Two cases, not one, for the same reason digestVerified and sizeVerified are two booleans: a size
+# bounds a download and a digest identifies what arrived.
+assert_decision "a layer digest naming bytes other than the payload" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_layer_field": ["digest", "sha256:9999999999999999999999999999999999999999999999999999999999999999"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "a layer size that is not the payload's size" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_layer_field": ["size", 999999]}')" \
      "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
 
 echo

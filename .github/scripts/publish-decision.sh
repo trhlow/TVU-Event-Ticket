@@ -446,6 +446,28 @@ def marker_problems(marker, obs, where):
         # answer at those levels, and which guard supplies it is an implementation detail.
         if at_path(raw_manifest, ("annotations",)) is not MISSING:
             problems.append(f"{where} envelope carries annotations at the manifest level")
+        # Payload binding, which invariant 4 has claimed since the first draft and nothing ever
+        # implemented. Section 2 closes the layer's field set, so digest and size are the only two
+        # fields left free -- and they are exactly the ones tying this envelope to the document the
+        # decision goes on to read. Without them a manifest can be perfectly canonical, hash to the
+        # digest that names it, and describe bytes that have nothing to do with `content`.
+        #
+        # Two rules, not one, for the same reason digestVerified and sizeVerified are two booleans:
+        # a size is checked to bound a download and a digest is checked to identify what arrived.
+        #
+        # `one_layer` is the whole condition on the marker side: the require above settled that
+        # content is present exactly when the envelope permits it, so re-testing `"content" in
+        # marker` here would be a second statement of that rule that no witness could ever kill.
+        # The type check is not a rule but a crash guard -- a layer of `[5]` has no `.get`.
+        if one_layer and type(layers[0]) is dict:
+            payload = canonical_bytes(marker["content"])
+            payload_digest = "sha256:" + hashlib.sha256(payload).hexdigest()
+            if layers[0].get("digest") != payload_digest:
+                problems.append(f"{where} envelope layer names {layers[0].get('digest')!r} but the "
+                                f"content hashes to {payload_digest}")
+            if layers[0].get("size") != len(payload):
+                problems.append(f"{where} envelope layer declares size {layers[0].get('size')!r} "
+                                f"but the content is {len(payload)} bytes")
 
     # Everything below reads the payload, and there is only a payload when the envelope identified
     # one. The require above has already refused a marker that disagrees with its envelope about
