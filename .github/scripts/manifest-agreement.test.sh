@@ -55,7 +55,6 @@ fixtures = contracts / "fixtures"
 # here.
 sys.path.insert(0, str(scripts))
 import envelope
-import predicate_uris
 
 try:
     import jsonschema
@@ -165,9 +164,12 @@ for name, from_schema, from_module in [
 # to disagree with: the day the decision names a sixth predicate or misspells one of these, this is
 # what has to already be watching the schema's copy.
 #
-# The second loop IS two-source. predicate_uris.py states the same five strings, and its own
-# docstring says it should cite the schema once 5b moved them there -- it has not been changed to,
-# so the two copies are live and can drift. That was not in the plan for this task; see the report.
+# There is no second source left to compare against. predicate_uris.py held these five strings while
+# 5b-i rewrote the fixtures, and its own docstring said it would cite the schema once 5b moved them
+# there. 5b moved them; nothing ever imported the module again. A module kept alive only so a test
+# can compare it to the file it was supposed to defer to is a second copy of five constants with no
+# consumer -- the drift shape section 7b exists to argue against -- so it is gone, and this loop is
+# what pins them.
 EXPECTED_PREDICATES = {
     "markerProvenance": "https://slsa.dev/provenance/v1",
     "sbom": "https://spdx.dev/Document/v2.3",
@@ -175,37 +177,11 @@ EXPECTED_PREDICATES = {
     "layerSecretScan": "https://evts.id.vn/attestations/layerSecretScan/v1",
     "filesystemSecretScan": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
 }
-# predicate_uris.py calls the first one `provenance`; the schema says `markerProvenance`, because
-# 3b's evidence set carries provenance of its own and the two must not read as one key. The mapping
-# is written out rather than guessed at, so a key added on one side and not the other is a failure
-# and not a silently skipped comparison.
-PREDICATE_MODULE_KEYS = {
-    "markerProvenance": "provenance",
-    "sbom": "sbom",
-    "vulnerabilityScan": "vulnerabilityScan",
-    "layerSecretScan": "layerSecretScan",
-    "filesystemSecretScan": "filesystemSecretScan",
-}
-
 for key, expected_uri in EXPECTED_PREDICATES.items():
     report(f"the schema states predicateTypes.{key} exactly (one source: schema vs this file)",
            disagreement("release-envelope.schema.json", declared(constants, "predicateTypes", key),
                         "this suite", expected_uri))
 
-module_uris = getattr(predicate_uris, "PREDICATE_URIS", None)
-if not isinstance(module_uris, dict):
-    report("the schema and predicate_uris.py agree on the five predicate URIs",
-           ["predicate_uris.py states no PREDICATE_URIS mapping"])
-else:
-    problems = []
-    for key, module_key in PREDICATE_MODULE_KEYS.items():
-        problems += [f"{key}: {problem}" for problem in disagreement(
-            "release-envelope.schema.json", declared(constants, "predicateTypes", key),
-            f"predicate_uris.py[{module_key}]", module_uris.get(module_key, MISSING))]
-    extra = sorted(set(module_uris) - set(PREDICATE_MODULE_KEYS.values()))
-    if extra:
-        problems.append(f"predicate_uris.py states {extra} which the schema does not")
-    report("the schema and predicate_uris.py agree on the five predicate URIs", problems)
 
 
 def const_paths(node, path=()):
@@ -325,8 +301,34 @@ for path in sorted(contracts.glob("*.schema.json")):
 if not resources:
     print("FAIL  no schema files found; the contract directory must have moved")
     sys.exit(1)
-validator = jsonschema.Draft202012Validator(
-    observation_schema, registry=referencing.Registry().with_resources(resources.items()))
+registry = referencing.Registry().with_resources(resources.items())
+validator = jsonschema.Draft202012Validator(observation_schema, registry=registry)
+
+# markerEnvelope ships without a validator: nothing in the pipeline builds a marker manifest yet, so
+# there is nothing to hold to it and it was left as a debt for the publish job to pay. But the
+# producer half already exists -- envelope.py IS what will build that manifest -- so the two can be
+# held together today, and until they are, markerEnvelope is a shape no test has ever read. Relaxing
+# its required list, its field sets and its layer bounds all together currently reddens nothing.
+#
+# Sample content, not a fixture: what is under test is the envelope envelope.py wraps a payload in,
+# and any payload does. The three refusals matter as much as the acceptance -- a schema that accepts
+# the good case and everything else is not a shape, it is a formality.
+marker_envelope_validator = jsonschema.Draft202012Validator(
+    {"$ref": "release-envelope.schema.json#/$defs/markerEnvelope"}, registry=registry)
+_sample = envelope.envelope_for({"commit": "a" * 40, "environment": "production"})
+_problems = [f"envelope.py builds a manifest markerEnvelope refuses: {error.message}"
+             for error in marker_envelope_validator.iter_errors(_sample)]
+for _label, _mutate in (
+        ("annotations at the manifest level",
+         lambda m: m.update(annotations={"org.opencontainers.image.created": "2026-08-05T00:00:00Z"})),
+        ("a subject", lambda m: m.update(subject={"mediaType": "x", "digest": "sha256:" + "0" * 64,
+                                                  "size": 1})),
+        ("a second layer", lambda m: m["layers"].append(dict(m["layers"][0])))):
+    _broken = json.loads(json.dumps(_sample))
+    _mutate(_broken)
+    if not list(marker_envelope_validator.iter_errors(_broken)):
+        _problems.append(f"markerEnvelope accepts a manifest carrying {_label}")
+report("markerEnvelope describes exactly what envelope.py builds", _problems)
 
 
 def decide(path):
@@ -358,7 +360,18 @@ def gate_check(title, names, schema_must, group):
         # the same discipline as the empty-registry guard above.
         problems.append(f"no fixture in {group} is filed as reaching CONFLICT")
     for name in names:
-        errors = list(validator.iter_errors(json.loads((fixtures / name).read_text(encoding="utf-8"))))
+        try:
+            errors = list(validator.iter_errors(
+                json.loads((fixtures / name).read_text(encoding="utf-8"))))
+        except referencing.exceptions.Unresolvable as unresolvable:
+            # Raised out of this loop it ends the run before the report line is printed, and a run
+            # that prints nothing reads exactly like a clean one. The exit status is still 1, so CI
+            # does redden -- but the operator is handed a traceback with the whole envelope schema
+            # inlined and neither of this check's two results. Its sibling suite grew this handler
+            # after two files missing from a tree got past exactly here.
+            problems.append(f"{name}: the schema makes a reference nothing in {contracts.name}/ "
+                            f"can answer -- {unresolvable}")
+            continue
         if schema_must == "rejects" and not errors:
             problems.append(f"{name}: the schema accepted it, so it no longer witnesses that a "
                             f"schema failure is not what decides")
