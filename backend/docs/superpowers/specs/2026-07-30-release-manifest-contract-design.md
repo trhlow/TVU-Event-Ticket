@@ -389,11 +389,12 @@ Cơ chế: `if`/`then`/`else` trong `presentMarker`. Lưu ý `content` vẫn ph�
 Chốt 2026-08-04. **5a — cơ chế:** ba boolean, `raw` conditional, phép kiểm
 `sha256(canonical_bytes(raw)) == markerDigest`, `content` chuyển sang conditional, và sinh lại mọi
 `markerDigest` trong fixture. Ở 5a, `raw` được mô tả như một OCI manifest **bất kỳ**; decision chưa phán
-xét hình dạng của nó. **5b — hằng:** `release-envelope.schema.json` với bốn `$defs`, tám guard hình dạng
-của §2, và `manifest-agreement.test.sh` nối vào `ci.yml` trong cùng commit tạo ra nó.
+xét hình dạng của nó. **5b — hằng:** `release-envelope.schema.json` với bốn `$defs`, các guard hình dạng
+của §2 (đếm lại thành 14 ở §5.6–§5.7), và `manifest-agreement.test.sh` nối vào `ci.yml` trong cùng commit
+tạo ra nó.
 
-Ranh giới đặt đúng chỗ đó vì sau 5a hợp đồng đã chứng minh được **`raw` là chính bytes đó**. Tám guard
-của 5b chỉ có nghĩa khi tiền đề ấy đã đứng, và — quan trọng hơn — chúng cần cơ chế sinh digest của 5a để
+Ranh giới đặt đúng chỗ đó vì sau 5a hợp đồng đã chứng minh được **`raw` là chính bytes đó**. Guard hình
+dạng của 5b chỉ có nghĩa khi tiền đề ấy đã đứng, và — quan trọng hơn — chúng cần cơ chế sinh digest của 5a để
 mỗi witness chỉ vi phạm đúng một luật (§5.2).
 
 Đánh **5a/5b**, không đánh lại thành 5/6/7. Commit đóng băng payload giữ nguyên số **6**. Ngày 2026-07-31
@@ -457,6 +458,75 @@ dựng ở commit 3, khiến `canonical.test.sh` thành phần móng của cả 
 Phương án thêm một golden digest cho **một envelope hoàn chỉnh**, tính tay một lần để neo cả đường từ
 `raw` tới `markerDigest`, đã được cân nhắc và **loại** ngày 2026-08-04: golden của commit 3 được coi là
 đủ. Nếu sau này một bug canonicalizer lọt qua cả hai suite, đây là chỗ để quay lại.
+
+### 5.6 "Tám guard" là cách nhóm, không phải số luật
+
+Chốt 2026-08-05, sau khi đếm. Bảng §2 có **13 dòng luật**. Một dòng — `layers` đúng một descriptor — đã
+cài ở 5a làm cổng cho `content`. Còn 12, và cách gộp chúng quyết định mutation chứng minh được gì.
+
+Tám dòng là **so một đường dẫn với một hằng**. Chúng thành một bảng tường minh, mỗi entry đúng một dòng:
+
+```python
+ENVELOPE_CONSTANTS = (
+    (("schemaVersion",), 2),
+    (("mediaType",), MANIFEST_MEDIA_TYPE),
+    (("artifactType",), ARTIFACT_TYPE),
+    (("config", "mediaType"), EMPTY_CONFIG_MEDIA_TYPE),
+    (("config", "digest"), EMPTY_CONFIG_DIGEST),
+    (("config", "size"), EMPTY_CONFIG_SIZE),
+    (("config", "data"), EMPTY_CONFIG_DATA),
+    (("layers", 0, "mediaType"), ARTIFACT_TYPE),
+)
+```
+
+Xoá một entry là **một mutation** và cần **một witness** của riêng nó. Gộp bốn hằng `config` vào một
+guard `if config != EXPECTED_CONFIG` thì xoá guard đó vẫn đỏ nhờ một witness duy nhất, và ba hằng còn
+lại không có bằng chứng nào nói chúng load-bearing — đúng hình dạng lỗi vacuous-witness ở mức mịn hơn.
+Cùng lối `LOOKUP_REPOSITORY` đã dùng ở §7a.4, và vì cùng một lý do.
+
+Bốn dòng còn lại không phải so-hằng nên thành guard riêng: `config` đúng bốn key, layer đúng ba key,
+`subject` vắng, `annotations` vắng ở ba cấp. Cộng hai guard của §5.7 — không nằm trong bảng §2 — thành
+8 + 4 + 2.
+
+### 5.7 Payload binding được khai mà chưa hề được cài
+
+Đo 2026-08-05. Bất biến 4 viết "collector xác minh OCI carrier, **payload binding** và marker
+provenance". Không chỗ nào trong `publish-decision.sh` kiểm `layers[0].digest` so với
+`sha256(canonical_bytes(content))`, cũng không kiểm `layers[0].size`. Nghĩa là một marker mang `content`
+tuỳ ý vẫn qua sạch: envelope canonical, `sha256(canonical_bytes(raw)) == markerDigest` đúng, mà layer
+descriptor trỏ tới một payload không liên quan gì tới thứ decision đọc.
+
+5b là chỗ đúng để vá, không phải một commit sau. §2 pin xong field set của layer thì `digest` và `size`
+là hai trường duy nhất còn tự do, và đúng hai trường đó là thứ buộc envelope vào payload. Để hở nghĩa là
+mọi luật hình dạng của §2 vẫn không nối được manifest với tài liệu nó chở.
+
+Hai guard, không một: `digest` và `size` là hai phát biểu khác nhau về cùng bytes, và §2 đã lấy chính lý
+do đó để tách `digestVerified` với `sizeVerified`.
+
+Tổng cộng 5b thêm **14 mutation**: 8 entry bảng + 4 guard cấu trúc + 2 guard binding.
+
+### 5.8 5b phá witness của hai guard đang có, và phải trả lại
+
+`publish-decision.sh:565` chỉ chạy khối so final/prepared khi **cả hai** marker không có problem nào.
+Case `markers agree on content but are different artifacts` cô lập guard identity bằng `_envelope_subject`
+— dùng được chính vì 5a không phán xử hình dạng. 5b biến `subject` thành problem, nên khối đó bị bỏ qua:
+test vẫn ra CONFLICT qua "prepared marker present but not trustworthy", vẫn xanh, và guard identity mất
+sạch bằng chứng. Mutation của nó sẽ SURVIVED.
+
+Witness mới: hai marker **khác `content`**, mỗi cái tự nhất quán và cả hai hợp lệ theo §2. Digest khác
+nhau, không marker nào có problem, nên guard identity là luật duy nhất trả lời được.
+
+Điều đó lại lộ ra rằng sau 5b một envelope hợp lệ là **hàm thuần của `content`**, nên
+`digest khác ⟺ raw khác ⟺ content khác`. Hai guard ở `:570` (khác digest) và `:576` (cùng digest, khác
+content) vì thế phủ cùng miền input và cùng trả CONFLICT — xoá cái nào cái kia cũng đỡ.
+
+Tách bằng verdict, không bằng thứ tự: `:576` chuyển từ `conflict()` sang `require()` → **UNKNOWN**. Đây
+là sửa một lệch đang sống chứ không phải mẹo gỡ kẹt — comment của chính nó viết "the observation
+contradicts itself", và §8 điều 5 xếp quan sát tự mâu thuẫn vào UNKNOWN, không vào CONFLICT. Hai verdict
+khác nhau thì hai guard cô lập được trở lại.
+
+Tripwire đã cài sẵn: case `a raw carrying a subject is not yet judged` đang assert PARTIAL. 5b **phải**
+lật nó sang CONFLICT và đổi tên. Nó còn PARTIAL nghĩa là guard `subject` chưa được nối.
 
 ## 6. Tách field set theo loại lookup (bug đang sống)
 
@@ -525,6 +595,18 @@ File đó chia làm **bốn** `$defs`, vì nó đang mô tả ba thứ khác nha
 
 Không trộn hai cái đầu: một schema vừa validate bytes registry vừa validate observation thì không schema
 nào trong hai việc đó còn nói được điều gì chính xác.
+
+`rawEnvelope` và `observedEnvelope` **chuyển** khỏi `observation.schema.json#/$defs/{ociManifest,
+ociEnvelope}` chứ không được chép sang; observation `$ref` tới file mới. Lý do y hệt §7b: hai bản thật
+của một shape chỉ khớp vì có người nói thế. Đây cũng là `$ref` liên file **đầu tiên** trong repo thật sự
+đi qua registry mà 5b-ii dựng — cho tới 5b, `contract-agreement.test.sh` cố ý vẫn 24/0 vì chưa có gì
+dùng đến nó.
+
+`markerEnvelope` ra đời ở 5b nhưng **chưa có ai validate theo nó**: producer chưa tồn tại, và bịa ra một
+consumer chỉ để schema có việc làm thì đo được sự tồn tại của consumer đó chứ không đo được gì khác.
+Chốt 2026-08-05. Ghi rõ hệ quả để không ai nhầm: nửa **hằng** của nó vẫn được test drift §9 điều 3 phủ
+(nó `$ref` sang `constants`), còn nửa **cấu trúc** — exact field set, `subject` cấm, `annotations` cấm —
+không có gì chạm tới cho tới commit của job publish. Đó là commit phải trả món nợ này.
 
 ### 7b. `$ref` liên file cần máy móc, không chỉ cần cú pháp
 
@@ -664,7 +746,8 @@ việc này đã thôi là đổi hình dạng, và câu trả lời là đi tì
    re-tag, không rebuild.
 3. Observation schema rộng hơn manifest schema. Observer mô tả được cả artifact xấu; producer không được
    phát hành nó.
-4. **Collector xác minh OCI carrier, payload binding và marker provenance. Các evidence reference chưa
+4. **Collector xác minh OCI carrier, payload binding và marker provenance.** Payload binding là lời khai
+   duy nhất trong danh sách này chưa từng được cài; nó xuống code ở 5b, xem §5.7. **Các evidence reference chưa
    được xác minh độc lập cho đến mục 3b.** Không tài liệu nào tự khẳng định mình đáng tin — và cho đến
    3b, `evidence.*.passed` vẫn là marker tự khai, nên 3a không được dùng để tuyên bố evidence đáng tin.
 5. `false` (kết luận âm) ⇒ CONFLICT. Không hoàn tất được phép kiểm ⇒ UNKNOWN. Không bao giờ trộn.
@@ -699,6 +782,25 @@ Fixture predicate sai phải đạt **cả ba** đồng thời: hợp lệ theo 
 manifest schema, decision trả CONFLICT không action.
 
 Mạng bị cấm trong test: registry retrieve function raise.
+
+**Điều nào kiểm được ở 5b, điều nào chờ commit 6.** Điều 1 và 2 nói về `release-manifest.schema.json`,
+file chỉ ra đời ở commit 6, nên 5b không kiểm được chúng. Điều 3 và 4 kiểm được ngay:
+
+- Điều 3 ở 5b so **ba** nguồn `envelope.py` ↔ `release-envelope.schema.json#/$defs/constants` ↔
+  `publish-decision.sh`. Commit 6 thêm nguồn thứ tư. Ba nguồn tồn tại vì `.py` và `.json` không `$ref`
+  được nhau và decision không được đọc file contract lúc chạy — xem ghi chú dưới.
+- Điều 4 **đã có sẵn witness**, không cần fixture mới: `invalid-structure/migration-without-installed-rank.json`
+  và `invalid-structure/evidence-missing-layer-secret-scan.json` bị observation schema từ chối mà decision
+  vẫn ra CONFLICT. Đo 2026-08-05. Kèm chiều ngược cho §8 điều 7: tám fixture `invalid-semantics/` hợp lệ
+  theo schema mà decision vẫn CONFLICT.
+
+**Vì sao ba nguồn chứ không một.** `$defs/constants` là "nguồn duy nhất" theo nghĩa tài liệu, không theo
+nghĩa runtime. Hai phương án một-nguồn-thật đều bị loại ngày 2026-08-05: cho `envelope.py` đọc JSON lúc
+import thì decision không chạy nổi nếu thiếu thư mục `contracts`, và mutation runner phải chép thêm file
+vào workspace tạm — đúng cái bẫy đã giết im lặng hai commit mutation ở 5a; cho một generator sinh JSON từ
+Python thì JSON hết là thứ đọc được như hợp đồng. Chấp nhận ba bản với một test drift, và chấp nhận rằng
+test đó hỏng thì drift diễn ra im lặng. Khác với §7b ở chỗ: ở đó `$ref` thật khả thi nên hai bản là thừa,
+ở đây nó không khả thi.
 
 ## 10. Thứ tự commit
 
@@ -738,10 +840,12 @@ thêm fixture và guard thì số phải tăng, nên mỗi commit body ghi số 
    `contract-agreement.test.sh`, with a witness that a cross-file `$ref` resolves and a witness that a
    broken one is reported rather than swallowed. No envelope constant moves yet.
 5b. `contract(ci): name the carrier the marker travels in` — `release-envelope.schema.json` với **bốn**
-   `$defs` (§7, gồm `markerEnvelope` strict phía producer), tám guard hình dạng của §2 vào decision, mỗi
-   guard một witness tự tính digest theo §5.2.
+   `$defs` (§7, gồm `markerEnvelope` strict phía producer, viết mà chưa validate gì), **14 guard** hình
+   dạng của §2 vào decision — 8 entry bảng hằng, 4 guard cấu trúc, 2 guard payload binding (§5.6, §5.7) —
+   mỗi guard một witness tự tính digest theo §5.2. `rawEnvelope`/`observedEnvelope` chuyển khỏi
+   observation schema, không chép. `:576` chuyển sang UNKNOWN và guard identity nhận witness mới (§5.8).
    `manifest-agreement.test.sh` sinh ra ở đây với hai điều kiểm được ngay (drift hằng envelope, và không
-   cổng schema trước decision), nối vào `ci.yml` kề dòng 303 trong **cùng** commit này.
+   cổng schema trước decision — §9 điều 3 và 4), nối vào `ci.yml` kề dòng 303 trong **cùng** commit này.
 
    > Vòng quét retryable ở `publish-decision.sh` từng nằm trong commit này. Đã tách ra và **làm xong**
    > ngày 2026-08-04 (`5a7b4c7`): nó là bug đúng-sai độc lập với carrier, và RED của nó dài một dòng nên
