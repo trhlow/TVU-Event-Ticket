@@ -219,6 +219,36 @@ MUTATIONS = {
     "signer_compared_to_release_repository": (
         'if verification.get("signerRepository") != expected["sourceRepository"]:',
         'if verification.get("signerRepository") != expected["repositories"]["release"]:'),
+    # Section 2's twelve shape rules. One entry per constant plus one for the loop itself: without
+    # the loop entry, deleting the whole table is caught only incidentally by the eight below it.
+    "envelope_constants_unchecked": (
+        "        for path, expected_value in ENVELOPE_CONSTANTS:",
+        "        for path, expected_value in ():"),
+    "envelope_schema_version_unpinned": (
+        '    (("schemaVersion",), 2),', ""),
+    "envelope_manifest_media_type_unpinned": (
+        '    (("mediaType",), MANIFEST_MEDIA_TYPE),', ""),
+    "envelope_artifact_type_unpinned": (
+        '    (("artifactType",), ARTIFACT_TYPE),', ""),
+    "envelope_config_media_type_unpinned": (
+        '    (("config", "mediaType"), EMPTY_CONFIG_MEDIA_TYPE),', ""),
+    "envelope_config_digest_unpinned": (
+        '    (("config", "digest"), EMPTY_CONFIG_DIGEST),', ""),
+    "envelope_config_size_unpinned": (
+        '    (("config", "size"), EMPTY_CONFIG_SIZE),', ""),
+    "envelope_config_data_unpinned": (
+        '    (("config", "data"), EMPTY_CONFIG_DATA),', ""),
+    "envelope_layer_media_type_unpinned": (
+        '    (("layers", 0, "mediaType"), ARTIFACT_TYPE),', ""),
+    "envelope_config_field_set_open": (
+        "        if type(config) is dict and set(config) != CONFIG_FIELDS:", "        if False:"),
+    "envelope_layer_field_set_open": (
+        "        if one_layer and type(layers[0]) is dict and set(layers[0]) != LAYER_FIELDS:",
+        "        if False:"),
+    "envelope_subject_allowed": (
+        '        if at_path(raw_manifest, ("subject",)) is not MISSING:', "        if False:"),
+    "envelope_annotations_allowed": (
+        '        if at_path(raw_manifest, ("annotations",)) is not MISSING:', "        if False:"),
 }
 
 

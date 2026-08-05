@@ -11,7 +11,9 @@ import hashlib
 from canonical import canonical_bytes
 
 __all__ = ["envelope_for", "marker_digest",
-           "MANIFEST_MEDIA_TYPE", "ARTIFACT_TYPE", "EMPTY_CONFIG_DIGEST"]
+           "MANIFEST_MEDIA_TYPE", "ARTIFACT_TYPE",
+           "EMPTY_CONFIG_MEDIA_TYPE", "EMPTY_CONFIG_DIGEST",
+           "EMPTY_CONFIG_SIZE", "EMPTY_CONFIG_DATA"]
 
 MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
 ARTIFACT_TYPE = "application/vnd.tvu.release-manifest.v1+json"

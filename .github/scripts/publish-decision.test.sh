@@ -180,6 +180,38 @@ if overrides.pop("_envelope_subject", False):
     base["markerDigest"] = envelope_module.marker_digest(base["ociEnvelope"]["raw"])
     base["verification"]["subjectDigest"] = base["markerDigest"]
 
+# Section 2 pins every choice OCI leaves optional, so each of these produces a manifest that is
+# structurally fine and forbidden. Each recomputes the digest from its own mutated raw: without
+# that, the digest-equality guard from 5a refuses the observation first and the rule the case was
+# written for is never consulted.
+def _reseal(base):
+    base["markerDigest"] = envelope_module.marker_digest(base["ociEnvelope"]["raw"])
+    base["verification"]["subjectDigest"] = base["markerDigest"]
+
+if "_envelope_const" in overrides:
+    path, value = overrides.pop("_envelope_const")
+    node = base["ociEnvelope"]["raw"]
+    for step in path[:-1]:
+        node = node[step]
+    node[path[-1]] = value
+    _reseal(base)
+if "_envelope_extra_field" in overrides:
+    # An extra key in a descriptor whose field set section 2 closes.
+    where, key = overrides.pop("_envelope_extra_field")
+    node = base["ociEnvelope"]["raw"]["config"] if where == "config" \
+        else base["ociEnvelope"]["raw"]["layers"][0]
+    node[key] = "extra"
+    _reseal(base)
+if "_envelope_annotations" in overrides:
+    # Forbidden by absence of the key, not by an empty object: the two spellings are different bytes
+    # and therefore different digests, so "empty or absent" would not be one rule.
+    level = overrides.pop("_envelope_annotations")
+    raw_manifest = base["ociEnvelope"]["raw"]
+    node = {"manifest": raw_manifest, "config": raw_manifest["config"],
+            "layer": raw_manifest["layers"][0]}[level]
+    node["annotations"] = {"org.opencontainers.image.created": "2026-08-05T00:00:00Z"}
+    _reseal(base)
+
 merge(base, overrides)
 print(json.dumps(base))
 ' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$SHA" "$FP" "$RELEASE_REPO" "$script_dir"
@@ -829,13 +861,59 @@ assert_decision "a raw that is a retyped copy rather than the bytes themselves" 
   "$(observation "$absent_release" "$(marker '{"_envelope_reorder": true}')" \
      "$absent_mono" "$absent_fe")" \
   CONFLICT '[]' false false
-# The counterweight: a raw carrying a subject is a bad artifact, but in 5a no rule judges the shape
-# of a manifest, so with its own digest recomputed it must pass. 5b is what turns this to CONFLICT,
-# and this case is how 5b proves its guard did the turning.
-assert_decision "a raw carrying a subject is not yet judged" \
+# A marker is the root of a release, so it hangs under nothing. (3b's evidence set is the opposite
+# and deliberately so: it hangs under the image it describes.) This case asserted PARTIAL until this
+# commit, as a tripwire -- it flipping to CONFLICT is how the subject guard proves it is wired.
+assert_decision "a raw carrying a subject" \
   "$(observation "$absent_release" "$(marker '{"_envelope_subject": true}')" \
-     "$absent_mono" "$absent_fe")" \
-  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+
+echo
+echo "== the envelope is the one shape section 2 allows"
+# Each constant is its own case because each is its own line in ENVELOPE_CONSTANTS. A single case
+# for "the config is wrong" would leave three of the four config constants with no evidence that
+# anything depends on them.
+assert_decision "an envelope declaring the wrong schemaVersion" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["schemaVersion"], 3]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope declaring the wrong manifest mediaType" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["mediaType"], "application/vnd.docker.distribution.manifest.v2+json"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope declaring the wrong artifactType" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["artifactType"], "application/vnd.example.other.v1+json"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose config is not the empty config" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["config", "mediaType"], "application/vnd.oci.image.config.v1+json"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose config digest names other bytes" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["config", "digest"], "sha256:8888888888888888888888888888888888888888888888888888888888888888"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose config size is not two" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["config", "size"], 3]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose config carries other embedded data" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["config", "data"], "eyJhIjoxfQ=="]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose layer declares the wrong mediaType" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_const": [["layers", 0, "mediaType"], "application/octet-stream"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose config carries a field section 2 closes out" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_extra_field": ["config", "urls"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope whose layer carries a field section 2 closes out" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_extra_field": ["layer", "urls"]}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+# One case per level. oras push writes a layer title and the ORAS docs show a manifest created
+# timestamp, so two of these three are what the tool does by default rather than hypotheticals.
+assert_decision "an envelope annotated at the manifest level" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_annotations": "manifest"}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope annotated at the config level" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_annotations": "config"}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
+assert_decision "an envelope annotated at the layer level" \
+  "$(observation "$absent_release" "$(marker '{"_envelope_annotations": "layer"}')" \
+     "$absent_mono" "$absent_fe")" CONFLICT '[]' false false
 
 echo
 echo "== content exists only when there is exactly one payload to read"

@@ -50,6 +50,41 @@ import sys
 
 sys.path.insert(0, sys.argv[1])
 from canonical import canonical_bytes, strict_loads
+from envelope import (ARTIFACT_TYPE, EMPTY_CONFIG_DATA, EMPTY_CONFIG_DIGEST,
+                      EMPTY_CONFIG_MEDIA_TYPE, EMPTY_CONFIG_SIZE, MANIFEST_MEDIA_TYPE)
+
+# One rule per line, so deleting one is one mutation with one witness. Folding the four config
+# constants behind a single comparison would let one witness redden the deletion of all four, and
+# three of them would then have no evidence that anything depends on them -- the same defect this
+# suite has already been repaired for seven times, one level finer.
+ENVELOPE_CONSTANTS = (
+    (("schemaVersion",), 2),
+    (("mediaType",), MANIFEST_MEDIA_TYPE),
+    (("artifactType",), ARTIFACT_TYPE),
+    (("config", "mediaType"), EMPTY_CONFIG_MEDIA_TYPE),
+    (("config", "digest"), EMPTY_CONFIG_DIGEST),
+    (("config", "size"), EMPTY_CONFIG_SIZE),
+    (("config", "data"), EMPTY_CONFIG_DATA),
+    (("layers", 0, "mediaType"), ARTIFACT_TYPE),
+)
+CONFIG_FIELDS = frozenset({"mediaType", "digest", "size", "data"})
+LAYER_FIELDS = frozenset({"mediaType", "digest", "size"})
+# A sentinel rather than None: a manifest may legitimately hold a null somewhere, and "absent" and
+# "present and null" are different findings.
+MISSING = object()
+
+
+def at_path(node, path):
+    """The value at a path in a raw manifest, or MISSING if any step of it is not there."""
+    for step in path:
+        if type(step) is int:
+            if type(node) is not list or len(node) <= step:
+                return MISSING
+        elif type(node) is not dict or step not in node:
+            return MISSING
+        node = node[step]
+    return node
+
 
 SCHEMA_VERSION = 1
 # fullmatch everywhere: `$` also matches before a trailing newline, so a digest with \n appended
@@ -375,6 +410,42 @@ def marker_problems(marker, obs, where):
             problems.append(f"{where} envelope carries "
                             f"{len(layers) if type(layers) is list else 'no'} layers, "
                             f"expected exactly one")
+        # Shape is judged whether or not the digest matched, and the two findings accumulate. A raw
+        # that hashes to something else is already untrustworthy, so nothing here changes a verdict
+        # -- but the operator reading the problem list gets both the retyping and what was wrong
+        # with it, rather than being sent to look at bytes the list never describes.
+        raw_manifest = envelope["raw"]
+        for path, expected_value in ENVELOPE_CONSTANTS:
+            found = at_path(raw_manifest, path)
+            if found is MISSING or type(found) is not type(expected_value) or found != expected_value:
+                shown = "absent" if found is MISSING else repr(found)
+                problems.append(f"{where} envelope {'.'.join(str(s) for s in path)} is {shown}, "
+                                f"not {expected_value!r}")
+        # Read through at_path, not raw_manifest.get: a raw that is not an object at all reaches
+        # here (its digest mismatch and its missing layer count are both already recorded), and
+        # `.get` on an int is a traceback instead of a decision. Measured, not anticipated.
+        config = at_path(raw_manifest, ("config",))
+        if type(config) is dict and set(config) != CONFIG_FIELDS:
+            problems.append(f"{where} envelope config declares {sorted(config)}, not "
+                            f"{sorted(CONFIG_FIELDS)}")
+        if one_layer and type(layers[0]) is dict and set(layers[0]) != LAYER_FIELDS:
+            problems.append(f"{where} envelope layer declares {sorted(layers[0])}, not "
+                            f"{sorted(LAYER_FIELDS)}")
+        # A marker is the root of a release, so it hangs under nothing. 3b's evidence set carries a
+        # subject on purpose; do not generalise this rule to it.
+        if at_path(raw_manifest, ("subject",)) is not MISSING:
+            problems.append(f"{where} envelope carries a subject; a marker hangs under nothing")
+        # Forbidden by the key being absent, not by it being empty: {} and no key at all are
+        # different bytes and therefore different digests, so "empty or absent" is two artifacts.
+        #
+        # The manifest level only. Section 2 forbids annotations at all three, but config and layer
+        # already have closed field sets, so `annotations` there is a field-set violation and the
+        # two guards above refuse it first. A branch for those levels could be deleted with the
+        # suite green no matter how its witness were written -- an unwitnessable guard, which is
+        # what this commit exists to stop shipping. The two witnesses stay: they pin the contract's
+        # answer at those levels, and which guard supplies it is an implementation detail.
+        if at_path(raw_manifest, ("annotations",)) is not MISSING:
+            problems.append(f"{where} envelope carries annotations at the manifest level")
 
     # Everything below reads the payload, and there is only a payload when the envelope identified
     # one. The require above has already refused a marker that disagrees with its envelope about
