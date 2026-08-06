@@ -74,14 +74,13 @@ sha256sum "$backup_file" | awk '{print $1}' > "${backup_file}.sha256"
 meta_file="${backup_file}.meta"
 printf 'BACKUP_STARTED_AT=%s\n' "$timestamp" > "$meta_file"
 
-# Retention is intentionally constrained to the deployment backup directory.
-resolved_backup_dir="$(cd -- "$backup_dir" && pwd)"
-resolved_default_dir="$(cd -- "$deployment_dir" && pwd)/backups"
-if [[ "$resolved_backup_dir" == "$resolved_default_dir" ]]; then
-  find "$resolved_backup_dir" -maxdepth 1 -type f -name 'tvu_app_*.dump*' \
-    -mtime "+$retention_days" -delete
-fi
-
+# OFF-SITE FIRST, THEN RETENTION. These two used to run the other way round, which meant a run that
+# failed to reach the remote had already deleted the oldest local copies -- fewer backups on a disk
+# that just proved it could not be relied on. The order matters most in exactly the situation the
+# off-site copy exists for.
+#
+# The copy is checked rather than assumed: `rclone copy` succeeding tells you the command exited 0,
+# and this whole script is a lesson in the difference between that and the file being there.
 if [[ -n "${BACKUP_REMOTE:-}" ]]; then
   command -v rclone > /dev/null || {
     echo "BACKUP_REMOTE is set but rclone is unavailable" >&2
@@ -89,6 +88,29 @@ if [[ -n "${BACKUP_REMOTE:-}" ]]; then
   }
   rclone copy "$backup_file" "$BACKUP_REMOTE"
   rclone copy "$meta_file" "$BACKUP_REMOTE"
+  rclone copy "${backup_file}.sha256" "$BACKUP_REMOTE"
+  remote_size="$(rclone size --json "$BACKUP_REMOTE/$(basename "$backup_file")" 2>/dev/null \
+    | "${PYTHON_BIN:-python3}" -c 'import json,sys; print(json.load(sys.stdin)["bytes"])' 2>/dev/null || echo 0)"
+  local_size="$(stat -c '%s' "$backup_file")"
+  [[ "$remote_size" == "$local_size" ]] || {
+    echo "The off-site copy is $remote_size bytes; the local dump is $local_size." >&2
+    echo "Not deleting anything locally: the remote copy cannot be relied on." >&2
+    exit 1
+  }
+  echo "Off-site copy verified: $local_size bytes at $BACKUP_REMOTE"
+fi
+
+# Retention is intentionally constrained to the deployment backup directory.
+#
+# These dumps live on the same disk as postgres_data, so they survive a bad migration but not a lost
+# volume or a lost host. BACKUP_REMOTE is what makes them a backup rather than a snapshot; without
+# it, everything here is one disk failure from gone. That is a deliberate default for a capstone
+# deployment, stated so it is a choice rather than an oversight.
+resolved_backup_dir="$(cd -- "$backup_dir" && pwd)"
+resolved_default_dir="$(cd -- "$deployment_dir" && pwd)/backups"
+if [[ "$resolved_backup_dir" == "$resolved_default_dir" ]]; then
+  find "$resolved_backup_dir" -maxdepth 1 -type f -name 'tvu_app_*.dump*' \
+    -mtime "+$retention_days" -delete
 fi
 
 echo "Verified PostgreSQL backup: $backup_file"
