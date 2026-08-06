@@ -30,7 +30,15 @@
 
 	# Keep the public health probe intentionally narrow; management endpoints
 	# such as /actuator/info are not routed to the application.
-	handle /actuator/health {
+	#
+	# Both the bare path and the /* suffix: management.endpoint.health.probes.enabled exposes
+	# /actuator/health/readiness and /actuator/health/liveness as sub-paths, and the deploy
+	# healthcheck and smoke-test.sh both read readiness specifically (see compose.yaml). A
+	# `handle` block with no trailing `*` matches only the exact path, so the readiness probe
+	# fell through to the SPA fallback below and got served index.html instead of JSON --
+	# the same exact-match trap SecurityConfig.java had for the same two sub-paths.
+	@health path /actuator/health /actuator/health/*
+	handle @health {
 		reverse_proxy monolith:8080
 	}
 
