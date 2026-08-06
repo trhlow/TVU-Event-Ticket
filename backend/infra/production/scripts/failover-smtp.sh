@@ -18,6 +18,10 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# env_value lives here -- same omission as migrate.sh had. This script runs during a mail outage,
+# which is the worst possible time to discover a missing function.
+# shellcheck source=common.sh
+source "$script_dir/common.sh"
 deployment_dir="$(cd -- "$script_dir/.." && pwd)"
 env_file="$deployment_dir/.env"
 compose_file="$deployment_dir/compose.yaml"
