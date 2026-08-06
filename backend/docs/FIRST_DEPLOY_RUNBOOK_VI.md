@@ -10,6 +10,72 @@ Chỉ dùng cho lần deploy đầu tiên trên một máy trắng. Các lần s
 
 ---
 
+## 0-bis. Nếu VPS ĐÃ có một lượt deploy thử trước đó
+
+Bỏ qua mục này nếu máy còn trắng.
+
+Một lượt deploy thử để lại ba thứ mà lượt deploy thật phải xử lý, không phải một:
+
+1. **Volume database** với schema và dữ liệu cũ — Flyway sẽ đối chiếu lịch sử migration với nó.
+2. **Tài khoản SUPER_ADMIN "ma"**: mỗi địa chỉ từng nằm trong `BOOTSTRAP_ADMIN_EMAIL` đã thành một
+   tài khoản admin **thật** và vẫn đăng nhập được. Nếu khi ấy điền địa chỉ ví dụ, đó là cửa mở.
+3. **`.env` sinh bằng bản script cũ**, có thể mang khoá JWT hỏng (xem lỗi PEM ở mục 5).
+
+### Kiểm trước, chỉ đọc
+
+```bash
+cd /srv/tvu-event-ticket/backend/infra/production
+docker compose --env-file .env -f compose.yaml ps
+docker compose --env-file .env -f compose.yaml exec -T postgres \
+  psql -U tvu_owner -d tvu_app -qtAX -c "select email, role from users where role like '%ADMIN%';"
+awk '/^JWT_PRIVATE_KEY_PEM=/{n++} END{print "PEM lines (phải là 1):", n+0}' .env
+```
+
+Có dữ liệu thật cần giữ thì **dừng ở đây** — đường nâng cấp tại chỗ khác hẳn, cần backup và đối
+chiếu Flyway trước. Phần dưới là đường **xoá sạch làm lại**.
+
+### GIỮ LẠI CHỨNG CHỈ — đừng dùng `down -v`
+
+`caddy_data` chứa chứng chỉ Let's Encrypt và khoá tài khoản ACME. `docker compose down -v` xoá
+**mọi** volume, kể cả nó, nên Caddy sẽ phải xin chứng chỉ mới. Let's Encrypt giới hạn **5 chứng chỉ
+trùng nhau mỗi 7 ngày** cho một tên miền: chạm giới hạn là **không có HTTPS tới một tuần**, và
+không có cách nào rút ngắn.
+
+Đếm số lần đã cấp trong 7 ngày qua tại `https://crt.sh/?q=evts.id.vn` trước khi làm gì.
+
+```bash
+cd /srv/tvu-event-ticket/backend/infra/production
+
+# Dừng stack nhưng KHÔNG xoá volume
+docker compose --env-file .env -f compose.yaml down
+
+# Xoá đúng ba volume dữ liệu. caddy_data và caddy_config ở lại.
+docker volume rm tvu-event-ticket_postgres_data \
+                 tvu-event-ticket_redis_data \
+                 tvu-event-ticket_rabbitmq_data
+
+# Xác nhận: hai volume caddy còn, ba volume kia mất
+docker volume ls | grep tvu-event-ticket
+```
+
+### Lấy code mới rồi sinh lại `.env`
+
+```bash
+cd /srv/tvu-event-ticket
+git fetch origin && git checkout --detach <SHA-tip-của-main>
+
+cd backend/infra/production
+rm .env                      # generate-env.sh từ chối ghi đè, nên phải xoá
+bash scripts/generate-env.sh evts.id.vn <mail-thật-1>,<mail-thật-2>
+```
+
+`.env` mới mang **khoá JWT mới** và **mật khẩu database mới** — đúng như mong muốn, vì volume cũ đã
+xoá nên không có gì để không khớp. Điền lại ba dòng SMTP bằng khoá Brevo mới (mục 6).
+
+Sau đó đi tiếp từ **mục 2** (swap) — Docker và user deploy đã có sẵn từ lượt trước.
+
+---
+
 ## 0. Trước khi chạm vào VPS
 
 | việc | kiểm tra xong |
