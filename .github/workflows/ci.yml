@@ -377,24 +377,6 @@ jobs:
 
           bash .github/scripts/common-sh-usage.test.sh
 
-          # A helper used without being sourced is a runtime failure no linter reports and no test
-          # exercises: shellcheck treats it as an unknown command and says nothing, `bash -n` parses
-          # it fine, and the script dies at the moment it runs for real. That happened -- migrate.sh
-          # moved from `source .env` to common.sh's env_value and the source line did not come with
-          # it, so a production migration died on "env_value: command not found" AFTER the
-          # datastores were already up.
-          missing=0
-          for script in backend/infra/production/scripts/*.sh; do
-            case "$script" in */common.sh) continue ;; esac
-            if grep -qE '(env_value|require_env_value|current_release_ref) ' "$script" \
-               && ! grep -q 'source "$script_dir/common.sh"' "$script"; then
-              echo "::error::$script uses a common.sh helper without sourcing common.sh"
-              missing=1
-            fi
-          done
-          [ "$missing" -eq 0 ] || exit 1
-          echo "ok: every script using a common.sh helper sources it"
-
       - name: Lint deployment and operations scripts
         # These scripts run on the production host with set -euo pipefail and no one watching. The
         # failure mode they are exposed to is not a syntax error -- `bash -n` already catches those
