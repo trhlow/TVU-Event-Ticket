@@ -9,6 +9,12 @@
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# env_value lives here. This file used to read the .env with `source` and needed nothing from
+# common.sh; when that changed, the source line did not come with it and the migration died on
+# "env_value: command not found" -- after the datastores were already up. The assignments below
+# override common.sh's with the same values and are kept so this script still reads standalone.
+# shellcheck source=common.sh
+source "$script_dir/common.sh"
 deployment_dir="$(cd -- "$script_dir/.." && pwd)"
 compose_file="$deployment_dir/compose.yaml"
 env_file="$deployment_dir/.env"
