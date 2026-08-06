@@ -72,9 +72,11 @@ management:
       # invisible until someone tries to log in and cannot -- by which point there is no
       # admin available to fix it. Deliberately NOT added to the readiness group above:
       # students browsing events need no email, so mail must not take the site out of
-      # rotation. Consequences accepted on purpose: overall /actuator/health goes DOWN,
-      # so smoke-test.sh fails the deploy and `docker ps` shows monolith unhealthy until
-      # SMTP recovers. Traffic keeps flowing -- compose has no rotation to drop out of.
+      # rotation. Consequences accepted on purpose: overall /actuator/health goes DOWN
+      # while /actuator/health/readiness stays UP -- the docker healthcheck and
+      # smoke-test.sh both read readiness, so a broken SMTP no longer fails the deploy
+      # or marks the container unhealthy. smoke-test.sh still prints a loud warning,
+      # because mail is the only way an admin signs in and that must not go unnoticed.
       enabled: true
 
 tvu:
