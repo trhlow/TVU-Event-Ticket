@@ -3,17 +3,34 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 deployment_dir="$(cd -- "$script_dir/.." && pwd)"
+repository_root="$(cd -- "$deployment_dir/../../.." && pwd)"
 env_file="$deployment_dir/.env"
+
+# shellcheck source=frontend-config.sh
+source "$script_dir/frontend-config.sh"
 
 usage() {
   cat <<'EOF'
 Usage:
-  bash scripts/generate-env.sh DOMAIN ADMIN_EMAIL MICROSOFT_CLIENT_ID MICROSOFT_TENANT_ID
+  bash scripts/generate-env.sh DOMAIN ADMIN_EMAILS
 
 Example:
-  bash scripts/generate-env.sh events.example.com admin@example.com \
-    11111111-1111-1111-1111-111111111111 \
-    22222222-2222-2222-2222-222222222222
+  bash scripts/generate-env.sh events.example.com REPLACE_WITH_REAL_ADMIN_MAILBOX_1,REPLACE_WITH_REAL_ADMIN_MAILBOX_2
+
+ADMIN_EMAILS is a comma-separated list of at least two real mailboxes. Sign-in is
+passwordless, so one unreachable mailbox with one address configured locks every
+super admin out of the system.
+
+The example above is deliberately not a valid address. Every mailbox listed gets a
+live SUPER_ADMIN account created for it, so an example that runs is an example that
+creates administrators nobody owns -- which is the situation the clean-slate cutover
+exists to end. Substitute addresses you can open and read.
+
+The Microsoft application and directory ids are no longer arguments. They come
+from frontend/.env.production, which is tracked in Git and is what the frontend
+bundle is built from. Typing them here as well meant two sources for one fact,
+and a typo produced a backend that rejected every token the frontend obtained,
+with nothing to compare against. DOMAIN must match the redirect URI in that file.
 
 The script generates service passwords, signing secrets, and a stable RSA key
 pair. It never overwrites an existing .env. You must add the SMTP credential
@@ -21,7 +38,7 @@ afterward, then run scripts/preflight.sh.
 EOF
 }
 
-[[ $# -eq 4 ]] || {
+[[ $# -eq 2 ]] || {
   usage >&2
   exit 2
 }
@@ -51,17 +68,34 @@ for candidate in "${bootstrap_emails[@]}"; do
       ;;
   esac
 done
-microsoft_client_id="$3"
-microsoft_tenant_id="$4"
 
 [[ "$domain" =~ ^[A-Za-z0-9.-]+$ && "$domain" == *.* ]] \
   || { echo "DOMAIN must be a hostname without https:// or a path" >&2; exit 2; }
 [[ "$admin_email" == *@*.* && "$admin_email" != *[[:space:]]* ]] \
   || { echo "ADMIN_EMAIL is not a plausible email address" >&2; exit 2; }
-[[ "$microsoft_client_id" != *[[:space:]]* && -n "$microsoft_client_id" ]] \
-  || { echo "MICROSOFT_CLIENT_ID must not be blank or contain spaces" >&2; exit 2; }
-[[ "$microsoft_tenant_id" != *[[:space:]]* && -n "$microsoft_tenant_id" ]] \
-  || { echo "MICROSOFT_TENANT_ID must not be blank or contain spaces" >&2; exit 2; }
+# One source of truth, read rather than retyped. frontend-config.sh validates the file first --
+# GUID shape, no placeholders, https redirect -- so a bad value fails here rather than at the first
+# sign-in attempt.
+frontend_config="$(frontend_config_json "$repository_root")" || {
+  echo "Could not read the frontend production config. Refusing to generate a .env that would" >&2
+  echo "disagree with the bundle; fix frontend/.env.production first." >&2
+  exit 2
+}
+read_frontend_value() {
+  printf '%s' "$frontend_config" | "${PYTHON_BIN:-python3}" -c "import json,sys; print(json.load(sys.stdin)['$1'])"
+}
+microsoft_client_id="$(read_frontend_value VITE_MICROSOFT_CLIENT_ID)"
+microsoft_tenant_id="$(read_frontend_value VITE_MICROSOFT_TENANT_ID)"
+frontend_redirect="$(read_frontend_value VITE_MICROSOFT_REDIRECT_URI)"
+
+# The domain argument and the redirect the bundle was built with must describe the same site. Entra
+# compares the redirect byte for byte, so a mismatch becomes AADSTS50011 at sign-in -- after
+# deployment, in front of users, with nothing in the logs pointing back here.
+[[ "$frontend_redirect" == "https://$domain" ]] || {
+  echo "DOMAIN is $domain, but frontend/.env.production was built for $frontend_redirect." >&2
+  echo "These must match exactly; Entra compares the redirect URI byte for byte." >&2
+  exit 2
+}
 [[ ! -e "$env_file" ]] || {
   echo "Refusing to overwrite existing $env_file" >&2
   exit 1
@@ -83,9 +117,35 @@ public_key="$temporary_dir/jwt-public.pem"
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$private_key" >/dev/null 2>&1
 openssl pkey -in "$private_key" -pubout -out "$public_key" >/dev/null 2>&1
 
+# A PEM is many lines; a .env value is one. Every line ends with the two characters backslash and n,
+# which is what .env.example documents and what the application decodes.
+#
+# The backslash arrives through -v as data rather than being written in the awk program, because awk
+# processes escape sequences in string literals and `printf "%s\\n"` therefore emits a REAL newline,
+# not the two characters. That was the bug here: the generator reported success, and the .env it
+# wrote could not be read by `docker compose --env-file`, by `source`, or by common.sh's env_value,
+# which returned only the first line and made preflight say the KEY was invalid rather than the
+# generator. Measured on gawk and on the VPS's mawk; `$0 "\\n"` behaves the same way, so the
+# concatenation spelling is not a fix either.
 flatten_pem() {
-  awk 'NF { printf "%s\\n", $0 }' "$1"
+  awk -v bs='\' 'NF { printf "%s%sn", $0, bs }' "$1"
 }
+
+# Nothing downstream can tell a mangled key from a bad one, so the check belongs here, next to the
+# thing that could have mangled it.
+assert_one_line() {
+  local name="$1" value="$2"
+  [[ "$value" != *$'\n'* ]] || {
+    echo "$name spans more than one line; a .env value cannot. Refusing to write a file no" >&2
+    echo "reader in this deployment can parse." >&2
+    exit 1
+  }
+}
+
+private_key_flat="$(flatten_pem "$private_key")"
+public_key_flat="$(flatten_pem "$public_key")"
+assert_one_line JWT_PRIVATE_KEY_PEM "$private_key_flat"
+assert_one_line JWT_PUBLIC_KEY_PEM "$public_key_flat"
 
 umask 077
 cat >"$env_file" <<EOF
@@ -129,17 +189,23 @@ OTP_PEPPER=$(openssl rand -base64 32)
 #SMTP_STANDBY_USERNAME=
 #SMTP_STANDBY_PASSWORD=
 #MAIL_FROM_ADDRESS_STANDBY=
-JWT_PRIVATE_KEY_PEM=$(flatten_pem "$private_key")
-JWT_PUBLIC_KEY_PEM=$(flatten_pem "$public_key")
+JWT_PRIVATE_KEY_PEM=$private_key_flat
+JWT_PUBLIC_KEY_PEM=$public_key_flat
 
 MICROSOFT_CLIENT_ID=$microsoft_client_id
 MICROSOFT_TENANT_ID=$microsoft_tenant_id
 MICROSOFT_ISSUER_HOST=https://login.microsoftonline.com
 MICROSOFT_JWKS_URI=https://login.microsoftonline.com/common/discovery/v2.0/keys
 
-SPRING_MAIL_HOST=smtp.resend.com
+# All three carry the placeholder, not just the password. Seeding a host and a username for one
+# provider while the runbook documents another meant an operator who edited only the password left a
+# host from provider A holding a credential from provider B -- and preflight passed, because only
+# the password line was checked. The failure then surfaced as mail that never arrived, which for
+# this system means nobody can sign in as an administrator at all.
+# The documented provider is Brevo: smtp-relay.brevo.com, port 587, username is the account's login.
+SPRING_MAIL_HOST=REPLACE_WITH_SMTP_HOST
 SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=resend
+SPRING_MAIL_USERNAME=REPLACE_WITH_SMTP_USERNAME
 SPRING_MAIL_PASSWORD=REPLACE_WITH_SMTP_CREDENTIAL
 MAIL_FROM_ADDRESS=no-reply@$domain
 MAIL_FROM_NAME=TVU Events

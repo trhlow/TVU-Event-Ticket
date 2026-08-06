@@ -1,8 +1,15 @@
 node_modules
 dist
 .git
+# Local and per-developer environment files never enter an image: .env holds whatever a developer
+# happened to be pointing at, and a build that can read it is a build whose output depends on the
+# machine it ran on.
 .env
 .env.*
+# One exception, and it is the point of the exception: .env.production is tracked in Git and is the
+# production build configuration. Excluding it would leave the production image with no
+# configuration at all now that the build arguments are gone.
+!.env.production
 vite-dev.err.log
 vite-dev.out.log
 npm-debug.log*

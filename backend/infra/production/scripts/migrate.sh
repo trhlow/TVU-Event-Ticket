@@ -18,14 +18,16 @@ env_file="$deployment_dir/.env"
   exit 1
 }
 
-# The path is only known at deploy time, so shellcheck cannot follow it -- source=/dev/null says
-# "do not try" rather than suppressing a finding. Directive must sit immediately above the `source`:
-# on the previous one-line form (`set -a; source ...; set +a`) it attached to `set -a` instead and
-# did nothing, which is why this warning survived a suppression that looked correct.
-set -a
-# shellcheck source=/dev/null
-source "$env_file"
-set +a
+# Read, not sourced. A .env is a data file that docker compose parses; it is not a shell script, and
+# treating it as one only works while every value happens to look like a shell word. It does not:
+# MAIL_FROM_NAME=TVU Events makes bash run `Events`, exit 127, and with `set -e` the migration dies
+# before it starts -- and the flattened JWT PEMs contain spaces too. Measured against a freshly
+# generated .env, not imagined. common.sh's env_value reads the file the way compose does.
+POSTGRES_DB="$(env_value POSTGRES_DB)"
+POSTGRES_USER="$(env_value POSTGRES_USER)"
+POSTGRES_PASSWORD="$(env_value POSTGRES_PASSWORD)"
+POSTGRES_APP_USER="$(env_value POSTGRES_APP_USER)"
+POSTGRES_APP_PASSWORD="$(env_value POSTGRES_APP_PASSWORD)"
 
 : "${POSTGRES_DB:?}" "${POSTGRES_USER:?}" "${POSTGRES_PASSWORD:?}"
 : "${POSTGRES_APP_USER:?}" "${POSTGRES_APP_PASSWORD:?}"
@@ -46,10 +48,16 @@ SQL
 echo "== Running migrations as the schema owner =="
 # The application image carries Flyway and the migration files; running it with a one-off command
 # keeps a single source of migrations rather than a second copy in a migration image.
+# The owner password is passed by NAME, not by value: `-e KEY=value` puts the schema owner's
+# credential in docker compose's argv, where any local user can read it out of /proc/*/cmdline or
+# `ps aux` for as long as the migration runs. `-e KEY` with no `=` tells compose to forward the
+# value from its own environment instead, so it never appears on a command line.
+export SPRING_DATASOURCE_USERNAME="$POSTGRES_USER"
+export SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
 compose run --rm --no-deps \
   -e SPRING_FLYWAY_ENABLED=true \
-  -e SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
-  -e SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
+  -e SPRING_DATASOURCE_USERNAME \
+  -e SPRING_DATASOURCE_PASSWORD \
   -e SPRING_MAIN_WEB_APPLICATION_TYPE=none \
   -e SPRING_PROFILES_ACTIVE=prod,monolith \
   monolith \

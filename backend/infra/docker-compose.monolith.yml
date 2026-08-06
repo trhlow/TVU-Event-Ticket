@@ -68,7 +68,10 @@ services:
   frontend:
     build:
       context: ../../frontend
-      dockerfile: Dockerfile
+      # Its own Dockerfile, and its own app registration. The production Dockerfile has no VITE_*
+      # arguments at all now, and builds in production mode, which would make a dev image read
+      # frontend/.env.production and point developers at the production registration and redirect.
+      dockerfile: Dockerfile.dev
       args:
         # Same-origin: the browser calls /api and the dev nginx below proxies it to the monolith.
         VITE_API_BASE_URL: /api

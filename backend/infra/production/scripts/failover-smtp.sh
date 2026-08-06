@@ -27,14 +27,19 @@ compose_file="$deployment_dir/compose.yaml"
 restore=0
 [[ "${1:-}" == "--restore" ]] && restore=1
 
-# The path is only known at deploy time, so shellcheck cannot follow it -- source=/dev/null says
-# "do not try" rather than suppressing a finding. Directive must sit immediately above the `source`:
-# on the previous one-line form (`set -a; source ...; set +a`) it attached to `set -a` instead and
-# did nothing, which is why this warning survived a suppression that looked correct.
-set -a
-# shellcheck source=/dev/null
-source "$env_file"
-set +a
+# Read, not sourced -- see the note in migrate.sh. A value with a space in it makes bash try to run
+# a word from the .env, and this script is the one that runs during a mail outage, when a failure to
+# start is worst. env_value reads the file the way docker compose does.
+SMTP_STANDBY_HOST="$(env_value SMTP_STANDBY_HOST)"
+SMTP_STANDBY_PORT="$(env_value SMTP_STANDBY_PORT)"
+SMTP_STANDBY_USERNAME="$(env_value SMTP_STANDBY_USERNAME)"
+SMTP_STANDBY_PASSWORD="$(env_value SMTP_STANDBY_PASSWORD)"
+MAIL_FROM_ADDRESS_STANDBY="$(env_value MAIL_FROM_ADDRESS_STANDBY)"
+SMTP_PRIMARY_HOST="$(env_value SMTP_PRIMARY_HOST)"
+SMTP_PRIMARY_PORT="$(env_value SMTP_PRIMARY_PORT)"
+SMTP_PRIMARY_USERNAME="$(env_value SMTP_PRIMARY_USERNAME)"
+SMTP_PRIMARY_PASSWORD="$(env_value SMTP_PRIMARY_PASSWORD)"
+MAIL_FROM_ADDRESS_PRIMARY="$(env_value MAIL_FROM_ADDRESS_PRIMARY)"
 
 if [[ $restore -eq 0 ]]; then
   : "${SMTP_STANDBY_HOST:?SMTP_STANDBY_HOST is not set — there is no standby to fail over to}"
@@ -67,9 +72,15 @@ set_env() {
   if grep -q "^${key}=" "$env_file"; then
     # Value written via a temporary file rather than sed -i with the value inline, so a password
     # containing / or & cannot corrupt the file.
-    python3 - "$env_file" "$key" "$value" <<'PY'
-import sys
-path, key, value = sys.argv[1], sys.argv[2], sys.argv[3]
+    #
+    # The value travels in the environment, not in argv. This script runs during a mail outage --
+    # the moment an operator is most likely to be sharing a terminal or pasting a screenshot -- and
+    # `ps aux` would otherwise show the standby SMTP password to every user on the host.
+    SET_ENV_KEY="$key" SET_ENV_VALUE="$value" \
+      "${PYTHON_BIN:-python3}" - "$env_file" <<'PY'
+import os, sys
+path = sys.argv[1]
+key, value = os.environ['SET_ENV_KEY'], os.environ['SET_ENV_VALUE']
 lines = open(path, encoding='utf-8').read().split('\n')
 lines = [f'{key}={value}' if line.startswith(key + '=') else line for line in lines]
 open(path, 'w', encoding='utf-8').write('\n'.join(lines))

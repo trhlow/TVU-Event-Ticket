@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege at the file level, so a job that needs more has to say so and the saying is
+# reviewable. Without this the token takes the repository default, which is commonly write on
+# contents -- and this workflow runs `npm ci`, `mvn verify` and `docker build`, all of which
+# execute third-party code with that token in the environment.
+permissions:
+  contents: read
+
 jobs:
   # The backend is a single Maven module.  Keep frontend checks independent so
   # a UI-only change does not need a Java build and vice versa.
@@ -138,7 +145,15 @@ jobs:
       - name: Fail if demo credentials reached production config
         working-directory: backend
         run: |
-          if grep -rniE "sadminevt|123456" monolith/src/main/resources/application-prod.yml; then
+          # grep exits 2 when the file is missing, which reads as "no match" to `if` -- so renaming
+          # or moving the config would have retired this gate silently. The absence of the input is
+          # a failure of the check, not a pass of it.
+          config=monolith/src/main/resources/application-prod.yml
+          if [[ ! -f "$config" ]]; then
+            echo "$config is missing; this gate cannot check what it claims to check."
+            exit 1
+          fi
+          if grep -rniE "sadminevt|123456" "$config"; then
             echo "Demo sign-in credentials must never appear in production configuration."
             exit 1
           fi
@@ -159,9 +174,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
-    env:
-      # VITE_APP_ENV comes from frontend/.env.production. Only per-environment values stay here.
-      VITE_API_BASE_URL: http://localhost:8080/api
+    # No job-level VITE_* here, deliberately. Vite gives an actual environment variable precedence
+    # over .env.production, so a value set at this level reached `npm run build:production` and the
+    # bundle the evidence gate inspected was built with it -- while the image built two steps later
+    # never saw it and baked the value from the tracked file instead. CI was verifying one bundle
+    # and shipping another, which is the specific thing a release gate exists to prevent.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -226,6 +243,12 @@ jobs:
         # Fixture data is covered by the evidence gate in build:production above; this
         # only guards the dev-only sign-in UI, which is not fixture data.
         run: |
+          # Same shape as the demo-credentials gate: an unexpanded glob makes grep exit 2, which
+          # reads as clean. A bundle that was never built is not a bundle without dev-only UI.
+          if [[ ! -d dist/assets ]]; then
+            echo "dist/assets is missing; the production bundle was not built."
+            exit 1
+          fi
           if grep -rl "DEV ONLY" dist/assets/*.js 2>/dev/null; then
             echo "Production bundle contains dev-only login UI."
             exit 1
@@ -248,6 +271,16 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
+      - name: Test the deploy-path helpers
+        # Linting a test file is not running it. The frontend config fingerprint is what a deploy
+        # uses to refuse an image built for a different environment, and its first version returned
+        # the hash of the empty string with exit 0 when python3 was unusable -- a check that could
+        # not fail. require-green-run.sh is what stops a deploy of a commit CI never verified.
+        # Both run here so a regression in either cannot merge.
+        run: |
+          bash backend/infra/production/scripts/frontend-config.test.sh
+          bash .github/scripts/require-green-run.test.sh
+
       - name: Lint deployment and operations scripts
         # These scripts run on the production host with set -euo pipefail and no one watching. The
         # failure mode they are exposed to is not a syntax error -- `bash -n` already catches those
@@ -255,7 +288,7 @@ jobs:
         # path with a space in it. shellcheck is the only thing in this pipeline that looks for that.
         run: |
           shopt -s nullglob
-          scripts=(backend/infra/production/scripts/*.sh)
+          scripts=(backend/infra/production/scripts/*.sh .github/scripts/*.sh)
           if [ ${#scripts[@]} -eq 0 ]; then
             echo "No scripts matched — the path must have moved. Failing rather than passing on an"
             echo "empty set, which is how this check would quietly stop checking anything."

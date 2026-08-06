@@ -24,6 +24,7 @@ application-local.yaml
 *.jks
 infra/production/.state/
 infra/production/backups/
+infra/production/inventory/
 
 # ---- Claude Code ----
 # Agent tooling is local to each developer's machine and stays out of every branch.

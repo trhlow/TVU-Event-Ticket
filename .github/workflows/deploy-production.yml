@@ -67,50 +67,39 @@ jobs:
           fi
           echo "SHA matches the tip of main."
 
-      - name: Require CI and CodeQL to have passed for this exact SHA
+      # This job never needed the repository before: every step was an API call or SSH. The gate
+      # below is now a file in this repository, so it has to be here to be run at all -- without
+      # this step the job stops at "No such file or directory" and no deploy can happen.
+      #
+      # Checked out at DEPLOY_SHA rather than the default ref, so the gate that decides whether
+      # this commit is releasable is the version of the gate that this commit contains. Checking
+      # out main would let a later change to the gate govern the deploy of an earlier commit.
+      - name: Check out the commit being deployed
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref }}
+          # Nothing here pushes, and this job holds production SSH credentials. A checkout that
+          # leaves a usable token in .git/config widens what a compromised step can reach.
+          persist-credentials: false
+
+      - name: Confirm the checkout is the commit being deployed
+        # The ref above is an input. Asserting afterwards costs nothing and turns a silent
+        # substitution -- a moved tag, a race, a typo that happens to resolve -- into a stop.
         run: |
           set -euo pipefail
-          failed=0
+          head="$(git rev-parse HEAD)"
+          if [ "$head" != "$DEPLOY_SHA" ]; then
+            echo "::error::checkout is at $head but the deploy target is $DEPLOY_SHA" >&2
+            exit 1
+          fi
+          echo "Checkout is at $DEPLOY_SHA."
 
-          # Workflow Runs API keyed by workflow FILE name, which survives renaming the
-          # workflow. Check-run names are not used anywhere in this gate: "CI" and
-          # "CodeQL" are workflow names, and the check-runs on a SHA are the individual
-          # job ids (changes/backend/frontend/analyze-java/...), several of which are
-          # conditional. The always-running ci-gate / codeql-gate jobs are what branch
-          # protection requires; here we assert on the run as a whole.
-          for workflow in ci.yml codeql.yml; do
-            # 1. Every run for this SHA on main from a push event, across all pages.
-            pairs="$(gh api --paginate \
-              "repos/$REPO/actions/workflows/$workflow/runs?head_sha=$DEPLOY_SHA&branch=main&event=push&per_page=100" \
-              --jq '.workflow_runs[] | "\(.run_number) \(.id)"')"
-
-            # Fail closed: no run found means unverified, not "probably fine".
-            if [ -z "$pairs" ]; then
-              echo "::error::$workflow: no push run found for $DEPLOY_SHA on main"
-              failed=1
-              continue
-            fi
-
-            # 2. The LATEST run wins. Filtering by conclusion first would be fail-open:
-            #    an older successful run would hide a newer failing one for the same SHA.
-            run_id="$(printf '%s\n' "$pairs" | sort -nr -k1,1 | head -1 | cut -d' ' -f2)"
-
-            # 3. Re-read that specific run so we get its current attempt. run_attempt is
-            #    only meaningful within one run id -- it is never compared across runs.
-            read -r status conclusion <<<"$(gh api "repos/$REPO/actions/runs/$run_id" \
-              --jq '"\(.status) \(.conclusion)"')"
-
-            # 4. Only now does the verdict matter. cancelled / neutral / timed_out are
-            #    not a pass.
-            if [ "$status" != completed ] || [ "$conclusion" != success ]; then
-              echo "::error::$workflow: run $run_id is status='$status' conclusion='$conclusion'"
-              failed=1
-              continue
-            fi
-            echo "$workflow: run $run_id passed."
-          done
-
-          [ "$failed" -eq 0 ] || exit 1
+      - name: Require CI and CodeQL to have passed for this exact SHA
+        # The gate itself lives in .github/scripts so the publish workflow asks the same question
+        # with the same code. Two implementations would eventually disagree about whether a commit
+        # is releasable, and the disagreement would appear as an artifact published from a red
+        # commit. The script has its own tests, run by the lint job.
+        run: bash .github/scripts/require-green-run.sh "$REPO" "$DEPLOY_SHA" ci.yml codeql.yml
 
       - name: Require no open High/Critical code scanning alerts
         run: |
@@ -137,6 +126,11 @@ jobs:
           DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
           DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          # An unset secret writes an empty file here and surfaces two steps later as an opaque ssh
+          # error against a host that is not the problem. Say which secret is missing, here.
+          [[ -n "$DEPLOY_SSH_PRIVATE_KEY" ]] || { echo "DEPLOY_SSH_PRIVATE_KEY is not set."; exit 1; }
+          [[ -n "$DEPLOY_KNOWN_HOSTS" ]] || { echo "DEPLOY_KNOWN_HOSTS is not set."; exit 1; }
           install -m 700 -d ~/.ssh
           printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519

@@ -25,17 +25,36 @@ echo "Building release $release_ref"
 # with the digests pinned the same commit now produces the same layers.
 compose build
 
+# The datastores come up before anything touches them. migrate.sh's first act is
+# `compose exec -T postgres`, which on a machine that has never deployed is "service postgres is not
+# running", exit 1, and the whole deploy dies -- after paying for a full Maven and Vite build. That
+# was the first-run behaviour until this line existed, and no document mentioned starting them by
+# hand. --wait means healthy, not merely created, so migrate.sh cannot race the socket.
+echo "Starting datastores"
+compose up -d --wait postgres redis rabbitmq
+
+# BEFORE the migration, not after. This step used to sit below migrate.sh while printing
+# "pre-deploy", so the newest backup was always post-migration -- and for the one scenario it exists
+# for, "deployed, migration applied, application broken", restoring it did not undo the migration.
+# There was no point in the lifetime of this deployment at which a pre-migration backup existed.
+#
+# Skipped when the database has no schema yet: a first deploy has nothing to lose, and dumping an
+# empty database would write a file that looks like a backup of the release before it.
+if [[ "${SKIP_DEPLOY_BACKUP:-0}" != "1" ]] \
+  && compose exec -T postgres psql -U "$(env_value POSTGRES_USER)" -d "$(env_value POSTGRES_DB)" \
+       -qtAX -c "select to_regclass('public.flyway_schema_history') is not null" 2>/dev/null \
+     | grep -qx t; then
+  echo "Creating a pre-migration PostgreSQL backup"
+  bash "$deployment_dir/scripts/backup-postgres.sh"
+else
+  echo "No existing schema; skipping the pre-migration backup"
+fi
+
 echo "Applying database migrations as the schema owner"
 # A separate one-shot step: the application container carries only the runtime credentials and
 # runs with spring.flyway.enabled=false, so it cannot alter the schema itself. This also
 # re-applies the runtime grants, which matters after a migration adds a table.
 bash "$deployment_dir/scripts/migrate.sh"
-
-if [[ "${SKIP_DEPLOY_BACKUP:-0}" != "1" ]] \
-  && compose ps --status running --services 2>/dev/null | grep -qx postgres; then
-  echo "Creating a verified pre-deploy PostgreSQL backup"
-  bash "$deployment_dir/scripts/backup-postgres.sh"
-fi
 
 if ! compose up -d --wait --remove-orphans; then
   compose ps >&2 || true
@@ -46,7 +65,20 @@ fi
 if ! bash "$script_dir/smoke-test.sh"; then
   compose ps >&2 || true
   compose logs --tail 200 monolith caddy frontend >&2 || true
-  die "Deployment started but the public smoke test failed. Inspect logs before rollback."
+  die "Deployment started but the public smoke test failed.
+
+The stack is up; what failed was a check made over public HTTPS. On a FIRST deploy this is almost
+always Let's Encrypt: the certificate is not issued until DNS resolves to this host and ports 80 and
+443 are reachable, and the smoke test waits about a minute. Check with:
+
+  docker compose --env-file .env -f compose.yaml logs caddy | tail -50
+  dig +short $(env_value APP_DOMAIN)
+
+If Caddy has not got its certificate yet, wait for issuance and RE-RUN scripts/deploy.sh. That is
+safe: nothing was recorded, .state/current-ref was not written, and the script is idempotent.
+
+If Caddy has a certificate and the check still fails, read the application logs above before
+considering rollback."
 fi
 
 printf '%s\n' "$release_ref" >"$state_dir/current-ref"
