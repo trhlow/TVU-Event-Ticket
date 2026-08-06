@@ -131,14 +131,32 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    # READINESS, not overall health, and the difference decides whether the site stays up.
+    # application-prod.yml puts db, redis and rabbit in the readiness group and deliberately leaves
+    # mail out of it, in as many words: "students browsing events need no email, so mail must not
+    # take the site out of rotation. Consequences accepted on purpose: overall /actuator/health goes
+    # DOWN." This healthcheck read the overall status, so a broken SMTP made the container
+    # unhealthy, caddy never started behind depends_on: service_healthy, and the whole site went
+    # down -- exactly the outcome that comment says was ruled out. Two files, one intent, and the
+    # one that ran won.
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && printf \"GET /actuator/health HTTP/1.1\\r\\nHost: x\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q status.:.UP <&3'"]
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && printf \"GET /actuator/health/readiness HTTP/1.1\\r\\nHost: x\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q status.:.UP <&3'"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 90s
     networks:
       - application
+      # Outbound. `application` is internal: true, so a container on it alone has no route off the
+      # host and cannot even resolve a name -- which is why SMTP failed with UnknownHostException
+      # rather than with a refused connection. Mail is the visible symptom; the one that matters is
+      # that MICROSOFT_JWKS_URI points at login.microsoftonline.com, and a backend that cannot fetch
+      # those keys cannot validate a single student's token. Sign-in could never have worked.
+      #
+      # Joining a second network grants egress; it publishes nothing. Only a `ports:` entry does
+      # that, and this service has none, so the datastores stay unreachable from outside exactly as
+      # before.
+      - egress
     logging: *json_logging
 
   postgres:
@@ -205,8 +223,14 @@ services:
 
 networks:
   public:
+  # No route off the host. This is what keeps postgres, redis and rabbitmq unreachable from the
+  # internet even if a `ports:` line were ever added to one of them by accident.
   application:
     internal: true
+  # Outbound only, for the one service that has to reach the internet: the monolith talks to
+  # Microsoft for JWKS and to the SMTP provider for one-time codes. Deliberately a separate network
+  # rather than making `application` non-internal, so the datastores keep the property above.
+  egress:
 
 volumes:
   caddy_data:

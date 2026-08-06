@@ -92,8 +92,27 @@ assert_endpoint_not_served /swagger-ui/index.html
 # Spring Boot's own /webjars/** mapping, which disabling springdoc does not touch.
 assert_endpoint_not_served /webjars/swagger-ui/index.html
 
-health="$(curl "${curl_options[@]}" "$base_url/actuator/health")"
-grep -q '"status":"UP"' <<<"$health" || die "Public health endpoint did not report UP"
+# Readiness decides whether the deploy passes; overall health is reported and does not.
+#
+# The same split application-prod.yml makes and compose.yaml's healthcheck now honours: db, redis
+# and rabbit are what "can this serve students" means, and mail is deliberately outside that group
+# because nobody browsing events needs it. Gating the deploy on overall health put mail back on the
+# critical path through the back door -- a provider outage would have failed a deploy of a site
+# that works.
+#
+# Mail is not ignored, though: it is the only way an administrator can sign in, so a DOWN is
+# printed loudly enough to act on. Silence about it would be the other failure.
+readiness="$(curl "${curl_options[@]}" "$base_url/actuator/health/readiness")"
+grep -q '"status":"UP"' <<<"$readiness" || die "Readiness is not UP: $readiness
+db, redis or rabbit is unreachable. The site cannot serve students in this state."
+
+health="$(curl "${curl_options[@]}" "$base_url/actuator/health" || true)"
+if ! grep -q '"status":"UP"' <<<"$health"; then
+  echo "WARNING: overall health is not UP while readiness is." >&2
+  echo "The site serves students, but something outside the readiness group is broken -- mail is" >&2
+  echo "the usual one, and mail is the ONLY way an admin signs in. Check egress to the SMTP host" >&2
+  echo "and the SPRING_MAIL_* values before anyone needs to administer anything." >&2
+fi
 
 jwks="$(curl "${curl_options[@]}" "$base_url/.well-known/jwks.json")"
 grep -q '"keys"' <<<"$jwks" || die "JWKS endpoint did not return a key set"
