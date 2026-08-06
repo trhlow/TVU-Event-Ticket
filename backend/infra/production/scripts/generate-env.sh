@@ -197,9 +197,15 @@ MICROSOFT_TENANT_ID=$microsoft_tenant_id
 MICROSOFT_ISSUER_HOST=https://login.microsoftonline.com
 MICROSOFT_JWKS_URI=https://login.microsoftonline.com/common/discovery/v2.0/keys
 
-SPRING_MAIL_HOST=smtp.resend.com
+# All three carry the placeholder, not just the password. Seeding a host and a username for one
+# provider while the runbook documents another meant an operator who edited only the password left a
+# host from provider A holding a credential from provider B -- and preflight passed, because only
+# the password line was checked. The failure then surfaced as mail that never arrived, which for
+# this system means nobody can sign in as an administrator at all.
+# The documented provider is Brevo: smtp-relay.brevo.com, port 587, username is the account's login.
+SPRING_MAIL_HOST=REPLACE_WITH_SMTP_HOST
 SPRING_MAIL_PORT=587
-SPRING_MAIL_USERNAME=resend
+SPRING_MAIL_USERNAME=REPLACE_WITH_SMTP_USERNAME
 SPRING_MAIL_PASSWORD=REPLACE_WITH_SMTP_CREDENTIAL
 MAIL_FROM_ADDRESS=no-reply@$domain
 MAIL_FROM_NAME=TVU Events

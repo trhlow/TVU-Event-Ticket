@@ -159,11 +159,24 @@ bash scripts/deploy.sh
 Một lệnh này thực hiện theo thứ tự:
 
 1. chạy preflight;
-2. build lại image frontend và backend, đồng thời cập nhật base image;
-3. nếu database đang chạy, tạo và kiểm tra backup trước deploy;
-4. khởi động toàn bộ Compose stack và chờ healthcheck;
-5. kiểm tra frontend, health, OIDC discovery và JWKS từ public HTTPS;
-6. ghi nhận commit hiện tại để có thể rollback code.
+2. build lại image frontend và backend. **Không** cập nhật base image: base image đã ghim
+   theo digest trong Dockerfile và compose, nên `--pull` chỉ tạo thêm một cách để hai lần
+   build cùng một commit khác nhau;
+3. khởi động `postgres`, `redis`, `rabbitmq` và chờ chúng healthy — bước migration bên
+   dưới nói chuyện với Postgres, nên nó phải có trước;
+4. nếu database **đã có schema**, tạo backup **trước khi** migration chạy, và xác minh
+   backup bằng cách restore thử vào một container tạm rồi đếm bảng. Lần deploy đầu tiên
+   không có gì để mất nên bước này bỏ qua;
+5. chạy `scripts/migrate.sh` — áp migration bằng tài khoản chủ schema, rồi cấp lại quyền
+   cho tài khoản runtime;
+6. khởi động toàn bộ Compose stack và chờ healthcheck;
+7. kiểm tra frontend, health, OIDC discovery và JWKS từ public HTTPS, và kiểm tra rằng
+   container ứng dụng **không** giữ mật khẩu chủ schema;
+8. ghi nhận commit hiện tại để có thể rollback code.
+
+Thứ tự 4 trước 5 là có chủ đích. Trước đây backup chạy **sau** migration, nên bản backup
+mới nhất luôn là bản đã có migration — và đúng tình huống nó sinh ra để cứu ("đã deploy,
+migration đã chạy, ứng dụng hỏng") thì restore lại không hoàn tác được migration.
 
 Kiểm tra trạng thái và log:
 

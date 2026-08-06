@@ -72,9 +72,15 @@ set_env() {
   if grep -q "^${key}=" "$env_file"; then
     # Value written via a temporary file rather than sed -i with the value inline, so a password
     # containing / or & cannot corrupt the file.
-    "${PYTHON_BIN:-python3}" - "$env_file" "$key" "$value" <<'PY'
-import sys
-path, key, value = sys.argv[1], sys.argv[2], sys.argv[3]
+    #
+    # The value travels in the environment, not in argv. This script runs during a mail outage --
+    # the moment an operator is most likely to be sharing a terminal or pasting a screenshot -- and
+    # `ps aux` would otherwise show the standby SMTP password to every user on the host.
+    SET_ENV_KEY="$key" SET_ENV_VALUE="$value" \
+      "${PYTHON_BIN:-python3}" - "$env_file" <<'PY'
+import os, sys
+path = sys.argv[1]
+key, value = os.environ['SET_ENV_KEY'], os.environ['SET_ENV_VALUE']
 lines = open(path, encoding='utf-8').read().split('\n')
 lines = [f'{key}={value}' if line.startswith(key + '=') else line for line in lines]
 open(path, 'w', encoding='utf-8').write('\n'.join(lines))

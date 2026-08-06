@@ -121,6 +121,22 @@ frontend/.env.production. The backend would reject the tid claim of every token 
 [[ "$expected_redirect" == "https://$domain" ]]   || die "APP_DOMAIN is $domain, but the frontend bundle was built for $expected_redirect.
 Entra compares the redirect URI byte for byte; sign-in would fail with AADSTS50011"
 
+# Swap is a requirement, not a suggestion. The host is 4 GB; a deploy builds the Maven image and the
+# Vite image while Postgres, Redis, RabbitMQ and the previous monolith are still serving. With no
+# swap the kernel's OOM killer picks by RSS, which means Postgres or the running JVM -- and a
+# Postgres killed mid-write is exactly the case the backup checks were hardened for. The services
+# now carry mem_limits, which bounds the steady state; the build is what needs the headroom.
+#
+# A warning here was the wrong shape: this is knowable before anything is built, and the operator
+# who reads past it pays for it twenty minutes later with a killed build and no explanation.
+swap_kib="$(awk '/SwapTotal:/ { print $2 }' /proc/meminfo 2>/dev/null || echo 0)"
+if [[ "${SKIP_SWAP_CHECK:-0}" != "1" && "$swap_kib" -lt 1048576 ]]; then
+  die "This host has $((swap_kib / 1024)) MiB of swap; at least 1 GiB is required (2 GiB recommended).
+On 4 GB with no swap the image build is killed by the kernel, and it picks the largest process --
+usually PostgreSQL or the running application. See docs/DEPLOY_EXTRAS_VI.md for the swapfile steps.
+Set SKIP_SWAP_CHECK=1 only on a host with materially more RAM than this one."
+fi
+
 available_kib="$(awk '/MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null || true)"
 if [[ -n "$available_kib" && "$available_kib" -lt 1572864 ]]; then
   echo "WARNING: less than 1.5 GiB RAM is currently available; the first image build may fail." >&2

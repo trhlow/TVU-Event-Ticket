@@ -48,10 +48,16 @@ SQL
 echo "== Running migrations as the schema owner =="
 # The application image carries Flyway and the migration files; running it with a one-off command
 # keeps a single source of migrations rather than a second copy in a migration image.
+# The owner password is passed by NAME, not by value: `-e KEY=value` puts the schema owner's
+# credential in docker compose's argv, where any local user can read it out of /proc/*/cmdline or
+# `ps aux` for as long as the migration runs. `-e KEY` with no `=` tells compose to forward the
+# value from its own environment instead, so it never appears on a command line.
+export SPRING_DATASOURCE_USERNAME="$POSTGRES_USER"
+export SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
 compose run --rm --no-deps \
   -e SPRING_FLYWAY_ENABLED=true \
-  -e SPRING_DATASOURCE_USERNAME="$POSTGRES_USER" \
-  -e SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD" \
+  -e SPRING_DATASOURCE_USERNAME \
+  -e SPRING_DATASOURCE_PASSWORD \
   -e SPRING_MAIN_WEB_APPLICATION_TYPE=none \
   -e SPRING_PROFILES_ACTIVE=prod,monolith \
   monolith \

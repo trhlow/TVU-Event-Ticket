@@ -109,4 +109,4 @@ curl "${curl_options[@]}" --output "$homepage_file" "$base_url/"
 [[ -s "$homepage_file" ]] || die "Frontend returned an empty response"
 
 echo "Smoke test passed: frontend, health, OIDC discovery, and JWKS are reachable at $base_url;" \
-     "the API documentation endpoints answer 404 on the application's own loopback"
+     "the API documentation endpoints answer 401 or 404 on the application's own loopback"

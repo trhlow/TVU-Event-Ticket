@@ -4,6 +4,8 @@ services:
   caddy:
     image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
+    # Caddy terminates TLS and proxies; it holds no state.
+    mem_limit: 128m
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
     ports:
@@ -36,6 +38,8 @@ services:
       # wherever the build runs. Arguments here were how the deployment host could change the
       # bundle without changing the commit.
     restart: unless-stopped
+    # Static assets over nginx.
+    mem_limit: 128m
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 30s
@@ -58,6 +62,8 @@ services:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
+    # JVM: -Xmx768m of heap, plus metaspace, thread stacks and the JIT. Below about 1g the container is killed while the heap still looks healthy.
+    mem_limit: 1200m
     # NO env_file here, and that is the whole point of the split below. `env_file` injects EVERY key
     # in .env into the container, and an `environment:` block only overrides the names it lists --
     # so POSTGRES_USER and POSTGRES_PASSWORD, the schema owner's credentials, landed in the
@@ -138,6 +144,8 @@ services:
   postgres:
     image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: unless-stopped
+    # Postgres: shared_buffers plus work_mem for a handful of concurrent students.
+    mem_limit: 512m
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -156,9 +164,15 @@ services:
   redis:
     image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
+    # Redis is OTP codes and short-lived session state, not a cache of the database.
+    mem_limit: 192m
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    # maxmemory below the container limit, so Redis evicts inside its own budget instead of being
+    # killed by the kernel at the edge of it. volatile-ttl because everything here has a TTL -- OTP
+    # codes and session state -- so the key nearest expiry is the cheapest thing to lose. Without a
+    # maxmemory Redis grows until the cgroup kills it, and a kill loses far more than an eviction.
+    command: ["sh", "-c", "redis-server --appendonly yes --maxmemory 150mb --maxmemory-policy volatile-ttl --requirepass \"$$REDIS_PASSWORD\""]
     volumes:
       - redis_data:/data
     healthcheck:
@@ -173,6 +187,8 @@ services:
   rabbitmq:
     image: rabbitmq:4.2-management-alpine@sha256:a51ed990cb4392ce136380fb01fdb8aab1203565953f5ea9711bf839b1b709db
     restart: unless-stopped
+    # RabbitMQ holds queues in memory before they page out; 512m with the default 0.4 high-watermark starts flow control at ~205m, well before the host is in trouble.
+    mem_limit: 512m
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}

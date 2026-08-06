@@ -65,7 +65,20 @@ fi
 if ! bash "$script_dir/smoke-test.sh"; then
   compose ps >&2 || true
   compose logs --tail 200 monolith caddy frontend >&2 || true
-  die "Deployment started but the public smoke test failed. Inspect logs before rollback."
+  die "Deployment started but the public smoke test failed.
+
+The stack is up; what failed was a check made over public HTTPS. On a FIRST deploy this is almost
+always Let's Encrypt: the certificate is not issued until DNS resolves to this host and ports 80 and
+443 are reachable, and the smoke test waits about a minute. Check with:
+
+  docker compose --env-file .env -f compose.yaml logs caddy | tail -50
+  dig +short $(env_value APP_DOMAIN)
+
+If Caddy has not got its certificate yet, wait for issuance and RE-RUN scripts/deploy.sh. That is
+safe: nothing was recorded, .state/current-ref was not written, and the script is idempotent.
+
+If Caddy has a certificate and the check still fails, read the application logs above before
+considering rollback."
 fi
 
 printf '%s\n' "$release_ref" >"$state_dir/current-ref"
