@@ -372,7 +372,8 @@ jobs:
         # refuse an image built for a different environment, and its first version returned the hash
         # of the empty string with exit 0 when python3 was unusable -- a check that could not fail.
         # Executed here so a regression cannot merge.
-        run: bash backend/infra/production/scripts/frontend-config.test.sh
+        run: |
+          bash backend/infra/production/scripts/frontend-config.test.sh
 
           # A helper used without being sourced is a runtime failure no linter reports and no test
           # exercises: shellcheck treats it as an unknown command and says nothing, `bash -n` parses
