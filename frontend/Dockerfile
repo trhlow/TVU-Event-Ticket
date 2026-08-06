@@ -2,17 +2,11 @@ FROM node:24-alpine@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432
 
 WORKDIR /app
 
-# Only per-environment values are build arguments. VITE_APP_ENV lives in
-# frontend/.env.production so this image, CI and a manual build agree about production mode.
-ARG VITE_API_BASE_URL
-ARG VITE_MICROSOFT_CLIENT_ID
-ARG VITE_MICROSOFT_TENANT_ID
-ARG VITE_MICROSOFT_REDIRECT_URI
-
-ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
-ENV VITE_MICROSOFT_CLIENT_ID=${VITE_MICROSOFT_CLIENT_ID}
-ENV VITE_MICROSOFT_TENANT_ID=${VITE_MICROSOFT_TENANT_ID}
-ENV VITE_MICROSOFT_REDIRECT_URI=${VITE_MICROSOFT_REDIRECT_URI}
+# No VITE_* build argument, deliberately. Every value comes from frontend/.env.production, which is
+# tracked in Git and copied in with the source below, so this commit and this bundle correspond one
+# to one. A build argument here would be a way for the same commit to produce a different bundle
+# depending on who ran the build -- the thing H10 exists to prevent. Development builds use
+# Dockerfile.dev, which has its own arguments and never reads .env.production.
 
 COPY package*.json ./
 RUN npm ci

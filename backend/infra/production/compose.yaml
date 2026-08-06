@@ -4,6 +4,8 @@ services:
   caddy:
     image: caddy:2.10-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     restart: unless-stopped
+    # Caddy terminates TLS and proxies; it holds no state.
+    mem_limit: 128m
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
     ports:
@@ -31,13 +33,13 @@ services:
     build:
       context: ../../../frontend
       dockerfile: Dockerfile
-      args:
-        # VITE_APP_ENV comes from frontend/.env.production, shared with CI and manual builds.
-        VITE_API_BASE_URL: /api
-        VITE_MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
-        VITE_MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
-        VITE_MICROSOFT_REDIRECT_URI: https://${APP_DOMAIN}
+      # No build arguments. The frontend configuration lives in frontend/.env.production and is
+      # fingerprinted by scripts/frontend-config.sh, so a given commit builds a given bundle
+      # wherever the build runs. Arguments here were how the deployment host could change the
+      # bundle without changing the commit.
     restart: unless-stopped
+    # Static assets over nginx.
+    mem_limit: 128m
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
       interval: 30s
@@ -60,16 +62,51 @@ services:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - ${ENV_FILE:-.env}
+    # JVM: -Xmx768m of heap, plus metaspace, thread stacks and the JIT. Below about 1g the container is killed while the heap still looks healthy.
+    mem_limit: 1200m
+    # NO env_file here, and that is the whole point of the split below. `env_file` injects EVERY key
+    # in .env into the container, and an `environment:` block only overrides the names it lists --
+    # so POSTGRES_USER and POSTGRES_PASSWORD, the schema owner's credentials, landed in the
+    # application's own environment. Anything that could read /proc/self/environ could connect as
+    # the owner and DROP the schema, which is exactly what three comments in this repository claimed
+    # was impossible. Every key the application actually reads is named explicitly below; the list
+    # comes from the ${...} placeholders in application*.yml, so a new one fails loudly at startup
+    # rather than silently arriving with the owner's password beside it.
     environment:
       SPRING_PROFILES_ACTIVE: prod,monolith
+      SERVER_PORT: ${SERVER_PORT:-8080}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       # Runtime credentials only. POSTGRES_USER owns the schema and can DROP it; the application
       # must not hold that power, so an SQL injection or RCE here is confined to reading and
       # writing rows instead of rewriting the database.
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_APP_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_APP_PASSWORD}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE}
+      DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI}
+      JWT_KEY_ID: ${JWT_KEY_ID}
+      JWT_TTL: ${JWT_TTL}
+      JWT_PRIVATE_KEY_PEM: ${JWT_PRIVATE_KEY_PEM}
+      JWT_PUBLIC_KEY_PEM: ${JWT_PUBLIC_KEY_PEM}
+      CSRF_SIGNING_SECRET: ${CSRF_SIGNING_SECRET}
+      QR_SIGNING_SECRET: ${QR_SIGNING_SECRET}
+      OTP_PEPPER: ${OTP_PEPPER}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
+      # Defaults spelled the same as application-prod.yml's. Not left to Spring's own default: an
+      # unset compose variable interpolates to the EMPTY STRING, and a property that is set to empty
+      # is set -- Spring would take the empty value over its default and the app would start with no
+      # JWKS endpoint at all.
+      MICROSOFT_ISSUER_HOST: ${MICROSOFT_ISSUER_HOST:-https://login.microsoftonline.com}
+      MICROSOFT_JWKS_URI: ${MICROSOFT_JWKS_URI:-https://login.microsoftonline.com/common/discovery/v2.0/keys}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME}
       # Migrations run as a separate one-shot step (scripts/migrate.sh) using the owner account,
       # which is deliberately absent from this container's environment.
       SPRING_FLYWAY_ENABLED: "false"
@@ -107,6 +144,8 @@ services:
   postgres:
     image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
     restart: unless-stopped
+    # Postgres: shared_buffers plus work_mem for a handful of concurrent students.
+    mem_limit: 512m
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -125,9 +164,15 @@ services:
   redis:
     image: redis:7.4-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
     restart: unless-stopped
+    # Redis is OTP codes and short-lived session state, not a cache of the database.
+    mem_limit: 192m
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-    command: ["sh", "-c", "redis-server --appendonly yes --requirepass \"$$REDIS_PASSWORD\""]
+    # maxmemory below the container limit, so Redis evicts inside its own budget instead of being
+    # killed by the kernel at the edge of it. volatile-ttl because everything here has a TTL -- OTP
+    # codes and session state -- so the key nearest expiry is the cheapest thing to lose. Without a
+    # maxmemory Redis grows until the cgroup kills it, and a kill loses far more than an eviction.
+    command: ["sh", "-c", "redis-server --appendonly yes --maxmemory 150mb --maxmemory-policy volatile-ttl --requirepass \"$$REDIS_PASSWORD\""]
     volumes:
       - redis_data:/data
     healthcheck:
@@ -142,6 +187,8 @@ services:
   rabbitmq:
     image: rabbitmq:4.2-management-alpine@sha256:a51ed990cb4392ce136380fb01fdb8aab1203565953f5ea9711bf839b1b709db
     restart: unless-stopped
+    # RabbitMQ holds queues in memory before they page out; 512m with the default 0.4 high-watermark starts flow control at ~205m, well before the host is in trouble.
+    mem_limit: 512m
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}

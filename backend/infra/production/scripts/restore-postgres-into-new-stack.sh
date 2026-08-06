@@ -12,11 +12,32 @@ set -euo pipefail
 #
 # The guard below refuses the default production project name. Override only if you genuinely know
 # the stack is disposable.
-project_name="$(docker compose --env-file "${ENV_FILE:-.env}" -f "$(dirname -- "${BASH_SOURCE[0]}")/../compose.yaml" config --format json 2>/dev/null | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4 || true)"
+# Parsed, not grepped, and it FAILS CLOSED. `docker compose config --format json` pretty-prints, so
+# its output is `  "name": "tvu-event-ticket",` -- with a space after the colon. The pattern this
+# used to match on, '"name":"[^"]*"', matched nothing, project_name came back empty, and the
+# comparison below was false every single time. A guard whose whole purpose is to stand between an
+# operator and `dropdb` on the live database read as working and did nothing. Measured.
+#
+# python3 rather than a sharper pattern: preflight already requires an interpreter, and a parser
+# cannot be defeated by whitespace. If the project name cannot be determined at all, that is a
+# reason to stop, not to continue -- an unknown stack is not a safe stack.
+project_name="$(docker compose --env-file "${ENV_FILE:-.env}" -f "$(dirname -- "${BASH_SOURCE[0]}")/../compose.yaml" config --format json 2>/dev/null \
+  | "${PYTHON_BIN:-python3}" -c 'import json,sys; print(json.load(sys.stdin)["name"])' 2>/dev/null || true)"
+if [[ -z "$project_name" ]]; then
+  echo "Could not determine which compose project this would restore into." >&2
+  echo "Refusing to run: a restore aimed at an unknown stack is aimed at the live one until" >&2
+  echo "proven otherwise. Check that docker is running and that ENV_FILE points at a real .env." >&2
+  exit 1
+fi
 if [[ "${ALLOW_IN_PLACE_RESTORE:-0}" != "1" && "$project_name" == "tvu-event-ticket" ]]; then
   echo "Refusing to restore into the live production stack (project: $project_name)." >&2
-  echo "Build a parallel stack (docker compose -p tvu-event-ticket-v2 ...), restore into that, smoke" >&2
-  echo "test it, then switch the Caddy upstream. See docs/CLEAN_SLATE_CUTOVER_VI.md." >&2
+  echo "Build a parallel stack and restore into that, smoke test it, then switch the Caddy" >&2
+  echo "upstream. See docs/CLEAN_SLATE_CUTOVER_VI.md." >&2
+  echo "" >&2
+  echo "The parallel stack is selected with COMPOSE_PROJECT_NAME, not with -p: this script builds" >&2
+  echo "its own compose invocations and passes no -p of its own. So:" >&2
+  echo "  COMPOSE_PROJECT_NAME=tvu-event-ticket-v2 bash \$0 --confirm /path/to.dump" >&2
+  echo "" >&2
   echo "If this really is a disposable stack, re-run with ALLOW_IN_PLACE_RESTORE=1." >&2
   exit 1
 fi
@@ -66,6 +87,27 @@ fi
 backup_watermark="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}-${BASH_REMATCH[3]} ${BASH_REMATCH[4]}:${BASH_REMATCH[5]}:${BASH_REMATCH[6]}+00"
 
 docker run --rm -i postgres:18.4-alpine pg_restore --list < "$backup_file" > /dev/null
+
+# The checksum backup-postgres.sh writes had no reader anywhere in this repository until now: a
+# claim of integrity that nothing ever checked. It is read HERE, before the dropdb below, because
+# this is the one moment where knowing the file is intact still changes what happens next.
+# --list above cannot tell a truncated dump from a whole one; it reads the header and stops.
+if [[ -f "${backup_file}.sha256" ]]; then
+  expected_sha="$(<"${backup_file}.sha256")"
+  actual_sha="$(sha256sum "$backup_file" | awk '{print $1}')"
+  [[ "$expected_sha" == "$actual_sha" ]] || {
+    echo "The dump does not match the checksum written beside it." >&2
+    echo "  expected $expected_sha" >&2
+    echo "  actual   $actual_sha" >&2
+    echo "Refusing to drop a live database and restore from a file that changed in transit." >&2
+    exit 1
+  }
+  echo "Checksum verified against ${backup_file}.sha256"
+else
+  echo "WARNING: no ${backup_file}.sha256 beside this dump; its integrity cannot be checked." >&2
+  echo "Backups taken before this check existed have none. Proceeding, but confirm the file size" >&2
+  echo "looks right against the backup it should resemble." >&2
+fi
 
 # Validate RESTORE_REQUEUE_WINDOW while the database is still intact. Casting it inside the requeue step
 # (after the drop/restore and the Redis/RabbitMQ purge) would abort mid-restore on a typo, leaving the

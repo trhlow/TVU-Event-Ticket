@@ -4,3 +4,17 @@
 **/target
 **/.mvn
 *.log
+
+# The build context is this whole directory (compose.yaml sets `context: ../..`) and the Dockerfile
+# does `COPY . .`, so anything here lands in the build stage's layer. The final image is multi-stage
+# and takes only the jar, so the published image stays clean -- but the build stage persists in the
+# local layer cache on the VPS, and one `--target build` or one cache export would push it.
+#
+# .env is every secret in the system. backups/ is every student's name, address and ticket history,
+# and including it also grows the build context by the whole backup directory on every deploy, on a
+# 60 GB disk. Neither has any business in an image.
+infra/production/.env
+infra/production/.env.*
+infra/production/backups/
+infra/production/.state/
+infra/production/inventory/

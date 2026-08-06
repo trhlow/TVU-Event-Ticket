@@ -4,11 +4,21 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$script_dir/common.sh"
+# shellcheck source=frontend-config.sh
+source "$script_dir/frontend-config.sh"
 
 require_command docker
 require_command git
 require_command curl
 require_command openssl
+# Not `require_command python3`: on some hosts python3 resolves to a shim that exits non-zero when
+# actually invoked, and frontend-config.sh depends on it to tell a real config from an empty one.
+# Ask it to run something, and check WHAT CAME BACK -- the same shim in its other mood swallows its
+# input and exits 0, which an exit-status probe accepts. PYTHON_BIN wins, as everywhere else here.
+PYTHON="${PYTHON_BIN:-python3}"
+[[ "$("$PYTHON" -c 'import json, hashlib, sys; print("PYBIN-OK")' 2>/dev/null)" == "PYBIN-OK" ]]   || die "$PYTHON must be installed and runnable: the release verifier and the frontend config
+fingerprint both depend on it, and a deploy that cannot compute the fingerprint cannot tell
+whether the frontend image was built for this environment"
 [[ -f "$env_file" ]] || die "Missing production environment file: $env_file"
 docker info >/dev/null 2>&1 || die "Docker daemon is unavailable to the deploy user"
 docker compose version >/dev/null 2>&1 || die "Docker Compose plugin is unavailable"
@@ -90,6 +100,42 @@ cmp -s "$private_key_file.public" "$derived_public_key_file" \
   || die "JWT_PRIVATE_KEY_PEM and JWT_PUBLIC_KEY_PEM do not form one key pair"
 
 ENV_FILE="$env_file" docker compose --env-file "$env_file" -f "$compose_file" config --quiet
+
+# Two representations of one fact, checked against each other. The frontend bakes these values in
+# at build time and the backend reads them at runtime, so they cannot be collapsed into a single
+# variable -- but they can be required to agree. When they disagree the symptom is a user who signs
+# in with Microsoft successfully and is then rejected by the API, which points at neither file.
+repository_root="$(cd -- "$deployment_dir/../../.." && pwd)"
+frontend_config="$(frontend_config_json "$repository_root")"   || die "Could not read frontend/.env.production; the frontend build configuration is unverifiable"
+read_frontend_value() {
+  printf '%s' "$frontend_config" | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin)['$1'])"
+}
+expected_client_id="$(read_frontend_value VITE_MICROSOFT_CLIENT_ID)"
+expected_tenant_id="$(read_frontend_value VITE_MICROSOFT_TENANT_ID)"
+expected_redirect="$(read_frontend_value VITE_MICROSOFT_REDIRECT_URI)"
+
+[[ "$(env_value MICROSOFT_CLIENT_ID)" == "$expected_client_id" ]]   || die "MICROSOFT_CLIENT_ID in $env_file does not match VITE_MICROSOFT_CLIENT_ID in
+frontend/.env.production. The backend would reject the audience of every token the frontend obtains"
+[[ "$(env_value MICROSOFT_TENANT_ID)" == "$expected_tenant_id" ]]   || die "MICROSOFT_TENANT_ID in $env_file does not match VITE_MICROSOFT_TENANT_ID in
+frontend/.env.production. The backend would reject the tid claim of every token the frontend obtains"
+[[ "$expected_redirect" == "https://$domain" ]]   || die "APP_DOMAIN is $domain, but the frontend bundle was built for $expected_redirect.
+Entra compares the redirect URI byte for byte; sign-in would fail with AADSTS50011"
+
+# Swap is a requirement, not a suggestion. The host is 4 GB; a deploy builds the Maven image and the
+# Vite image while Postgres, Redis, RabbitMQ and the previous monolith are still serving. With no
+# swap the kernel's OOM killer picks by RSS, which means Postgres or the running JVM -- and a
+# Postgres killed mid-write is exactly the case the backup checks were hardened for. The services
+# now carry mem_limits, which bounds the steady state; the build is what needs the headroom.
+#
+# A warning here was the wrong shape: this is knowable before anything is built, and the operator
+# who reads past it pays for it twenty minutes later with a killed build and no explanation.
+swap_kib="$(awk '/SwapTotal:/ { print $2 }' /proc/meminfo 2>/dev/null || echo 0)"
+if [[ "${SKIP_SWAP_CHECK:-0}" != "1" && "$swap_kib" -lt 1048576 ]]; then
+  die "This host has $((swap_kib / 1024)) MiB of swap; at least 1 GiB is required (2 GiB recommended).
+On 4 GB with no swap the image build is killed by the kernel, and it picks the largest process --
+usually PostgreSQL or the running application. See docs/DEPLOY_EXTRAS_VI.md for the swapfile steps.
+Set SKIP_SWAP_CHECK=1 only on a host with materially more RAM than this one."
+fi
 
 available_kib="$(awk '/MemAvailable:/ { print $2 }' /proc/meminfo 2>/dev/null || true)"
 if [[ -n "$available_kib" && "$available_kib" -lt 1572864 ]]; then

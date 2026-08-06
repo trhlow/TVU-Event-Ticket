@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Suppressions for the OWASP dependency-check scan.
+
+  A suppression is a claim that a reported vulnerability cannot affect THIS application, and it is
+  the one kind of entry in this repository that makes a scan quieter rather than stricter. So each
+  one states what it suppresses, why the code path is absent here, what would make it wrong, and
+  when it must be looked at again. An entry with no expiry is an entry nobody ever revisits.
+
+  The house rule everywhere else is to pin ahead of the Spring Boot BOM (see the properties block in
+  pom.xml). That is always preferred, because a version bump needs no argument. Suppression is only
+  for the case where no fixed release exists yet.
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+  <!--
+    CVE-2026-66299 - Uncontrolled Resource Consumption in Apache Tomcat, CVSS 7.5.
+
+    Affects Tomcat 11.0.0-M20 through 11.0.24. The vulnerable code is the WebSocket **chat example**
+    inside the `examples` web application, and the advisory says so in its own words:
+
+        "Users who have followed the security guidance to remove the examples web application are
+         not affected by this issue."
+
+    This application embeds Tomcat through spring-boot-starter-web. `tomcat-embed-core` is the
+    servlet container only; the `examples` web application ships in the standalone Tomcat
+    distribution and has no equivalent here - there is no webapps/ directory to remove it from. So
+    the affected code is not merely disabled, it is not on the classpath.
+
+    Fixed upstream in 11.0.25, which is NOT YET RELEASED - Maven Central's newest 11.0.x is 11.0.24
+    as of 2026-08-06, which is why this is a suppression and not the usual version pin.
+
+    SCOPED TO THE GROUP, NOT ONE ARTIFACT, AND THAT WAS MEASURED. The first version of this entry
+    pinned tomcat-embed-core alone and CI stayed red: dependency-check maps this CVE onto the Tomcat
+    CPE, so every org.apache.tomcat.embed artifact at 11.0.24 reports it, tomcat-embed-websocket
+    among them, which is the one the advisory's own title points at. The reasoning is identical for
+    each of them, because none of them carries the examples web application. Suppressing one and
+    leaving the others is not narrower, only noisier.
+
+    WHAT WOULD MAKE THIS WRONG: this repository starting to serve the Tomcat examples web
+    application, or vendoring any part of it. Neither is plausible, and both would be visible in a
+    diff.
+
+    REVIEW BY 2026-09-06. The action then is not to extend the date: check whether 11.0.25 exists,
+    and if it does, delete this whole block and set <tomcat.version>11.0.25</tomcat.version> in
+    backend/pom.xml the way netty and log4j are pinned there. The scan is what proves the removal
+    worked - if the pin is wrong, this CVE comes straight back and CI says so.
+  -->
+  <suppress until="2026-09-06Z">
+    <notes><![CDATA[
+      Tomcat examples web application is not present in an embedded container. Remove this entry
+      once tomcat-embed-core 11.0.25 is on Maven Central and pin the version instead.
+    ]]></notes>
+    <packageUrl regex="true">^pkg:maven/org\.apache\.tomcat\.embed/tomcat-embed-[a-z]+@11\.0\.24$</packageUrl>
+    <cve>CVE-2026-66299</cve>
+  </suppress>
+
+</suppressions>

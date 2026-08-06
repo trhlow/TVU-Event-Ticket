@@ -11,8 +11,10 @@ Run these commands from `backend/infra/production` on an Ubuntu production host.
 
 ```bash
 # One time: generate passwords, secrets, and a stable RSA key pair.
-bash scripts/generate-env.sh events.example.com admin@example.com \
-  MICROSOFT_CLIENT_ID MICROSOFT_TENANT_ID
+# Two arguments. The Microsoft ids come from frontend/.env.production, which is tracked in
+# Git and is what the frontend bundle was built from; the domain must match the redirect
+# URI in that file.
+bash scripts/generate-env.sh evts.id.vn REPLACE_WITH_REAL_ADMIN_MAILBOX_1,REPLACE_WITH_REAL_ADMIN_MAILBOX_2
 
 # After filling SMTP values in .env:
 bash scripts/preflight.sh
