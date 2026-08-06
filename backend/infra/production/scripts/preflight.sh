@@ -13,8 +13,10 @@ require_command curl
 require_command openssl
 # Not `require_command python3`: on some hosts python3 resolves to a shim that exits non-zero when
 # actually invoked, and frontend-config.sh depends on it to tell a real config from an empty one.
-# Ask it to run something.
-python3 -c 'import json, hashlib, sys; sys.exit(0)' >/dev/null 2>&1   || die "python3 must be installed and runnable: the release verifier and the frontend config
+# Ask it to run something, and check WHAT CAME BACK -- the same shim in its other mood swallows its
+# input and exits 0, which an exit-status probe accepts. PYTHON_BIN wins, as everywhere else here.
+PYTHON="${PYTHON_BIN:-python3}"
+[[ "$("$PYTHON" -c 'import json, hashlib, sys; print("PYBIN-OK")' 2>/dev/null)" == "PYBIN-OK" ]]   || die "$PYTHON must be installed and runnable: the release verifier and the frontend config
 fingerprint both depend on it, and a deploy that cannot compute the fingerprint cannot tell
 whether the frontend image was built for this environment"
 [[ -f "$env_file" ]] || die "Missing production environment file: $env_file"
@@ -106,7 +108,7 @@ ENV_FILE="$env_file" docker compose --env-file "$env_file" -f "$compose_file" co
 repository_root="$(cd -- "$deployment_dir/../../.." && pwd)"
 frontend_config="$(frontend_config_json "$repository_root")"   || die "Could not read frontend/.env.production; the frontend build configuration is unverifiable"
 read_frontend_value() {
-  printf '%s' "$frontend_config" | python3 -c "import json,sys; print(json.load(sys.stdin)['$1'])"
+  printf '%s' "$frontend_config" | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin)['$1'])"
 }
 expected_client_id="$(read_frontend_value VITE_MICROSOFT_CLIENT_ID)"
 expected_tenant_id="$(read_frontend_value VITE_MICROSOFT_TENANT_ID)"

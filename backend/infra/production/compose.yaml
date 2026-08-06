@@ -58,16 +58,49 @@ services:
       context: ../..
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file:
-      - ${ENV_FILE:-.env}
+    # NO env_file here, and that is the whole point of the split below. `env_file` injects EVERY key
+    # in .env into the container, and an `environment:` block only overrides the names it lists --
+    # so POSTGRES_USER and POSTGRES_PASSWORD, the schema owner's credentials, landed in the
+    # application's own environment. Anything that could read /proc/self/environ could connect as
+    # the owner and DROP the schema, which is exactly what three comments in this repository claimed
+    # was impossible. Every key the application actually reads is named explicitly below; the list
+    # comes from the ${...} placeholders in application*.yml, so a new one fails loudly at startup
+    # rather than silently arriving with the owner's password beside it.
     environment:
       SPRING_PROFILES_ACTIVE: prod,monolith
+      SERVER_PORT: ${SERVER_PORT:-8080}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
       # Runtime credentials only. POSTGRES_USER owns the schema and can DROP it; the application
       # must not hold that power, so an SQL injection or RCE here is confined to reading and
       # writing rows instead of rewriting the database.
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_APP_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_APP_PASSWORD}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE}
+      DB_POOL_MIN_IDLE: ${DB_POOL_MIN_IDLE}
+      DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS}
+      JWT_ISSUER_URI: ${JWT_ISSUER_URI}
+      JWT_KEY_ID: ${JWT_KEY_ID}
+      JWT_TTL: ${JWT_TTL}
+      JWT_PRIVATE_KEY_PEM: ${JWT_PRIVATE_KEY_PEM}
+      JWT_PUBLIC_KEY_PEM: ${JWT_PUBLIC_KEY_PEM}
+      CSRF_SIGNING_SECRET: ${CSRF_SIGNING_SECRET}
+      QR_SIGNING_SECRET: ${QR_SIGNING_SECRET}
+      OTP_PEPPER: ${OTP_PEPPER}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+      MICROSOFT_TENANT_ID: ${MICROSOFT_TENANT_ID}
+      # Defaults spelled the same as application-prod.yml's. Not left to Spring's own default: an
+      # unset compose variable interpolates to the EMPTY STRING, and a property that is set to empty
+      # is set -- Spring would take the empty value over its default and the app would start with no
+      # JWKS endpoint at all.
+      MICROSOFT_ISSUER_HOST: ${MICROSOFT_ISSUER_HOST:-https://login.microsoftonline.com}
+      MICROSOFT_JWKS_URI: ${MICROSOFT_JWKS_URI:-https://login.microsoftonline.com/common/discovery/v2.0/keys}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME}
       # Migrations run as a separate one-shot step (scripts/migrate.sh) using the owner account,
       # which is deliberately absent from this container's environment.
       SPRING_FLYWAY_ENABLED: "false"

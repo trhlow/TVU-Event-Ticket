@@ -34,6 +34,17 @@ for service in "${expected_services[@]}"; do
   grep -qx "$service" <<<"$running_services" || die "Service is not running: $service"
 done
 
+# The owner credentials must not be inside the application container. compose.yaml says so in a
+# comment, migrate.sh proves the runtime role cannot CREATE TABLE, and both were true while an
+# `env_file:` line quietly injected POSTGRES_PASSWORD into this container anyway -- so the property
+# everything else is built on was absent and nothing said a word. A claim about a container is
+# checked by asking the container.
+owner_leaks="$(compose exec -T monolith env 2>/dev/null | grep -cE '^(POSTGRES_PASSWORD|POSTGRES_USER)=' || true)"
+[[ "$owner_leaks" == "0" ]] || die "The monolith container holds the schema owner's credentials
+($owner_leaks of them). An RCE or SSRF in the application could then DROP the schema, which is the
+one thing the two-account split exists to prevent. Check for an env_file: line under the monolith
+service in compose.yaml."
+
 # The API documentation must not exist in production. Asking through Caddy would only prove Caddy
 # does not route it, which is the containment this check is here to stop depending on: a stray
 # `ports:` line or a new `handle` block undoes routing without touching the application. So ask the

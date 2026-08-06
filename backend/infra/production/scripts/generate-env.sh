@@ -82,7 +82,7 @@ frontend_config="$(frontend_config_json "$repository_root")" || {
   exit 2
 }
 read_frontend_value() {
-  printf '%s' "$frontend_config" | python3 -c "import json,sys; print(json.load(sys.stdin)['$1'])"
+  printf '%s' "$frontend_config" | "${PYTHON_BIN:-python3}" -c "import json,sys; print(json.load(sys.stdin)['$1'])"
 }
 microsoft_client_id="$(read_frontend_value VITE_MICROSOFT_CLIENT_ID)"
 microsoft_tenant_id="$(read_frontend_value VITE_MICROSOFT_TENANT_ID)"
@@ -117,9 +117,35 @@ public_key="$temporary_dir/jwt-public.pem"
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$private_key" >/dev/null 2>&1
 openssl pkey -in "$private_key" -pubout -out "$public_key" >/dev/null 2>&1
 
+# A PEM is many lines; a .env value is one. Every line ends with the two characters backslash and n,
+# which is what .env.example documents and what the application decodes.
+#
+# The backslash arrives through -v as data rather than being written in the awk program, because awk
+# processes escape sequences in string literals and `printf "%s\\n"` therefore emits a REAL newline,
+# not the two characters. That was the bug here: the generator reported success, and the .env it
+# wrote could not be read by `docker compose --env-file`, by `source`, or by common.sh's env_value,
+# which returned only the first line and made preflight say the KEY was invalid rather than the
+# generator. Measured on gawk and on the VPS's mawk; `$0 "\\n"` behaves the same way, so the
+# concatenation spelling is not a fix either.
 flatten_pem() {
-  awk 'NF { printf "%s\\n", $0 }' "$1"
+  awk -v bs='\' 'NF { printf "%s%sn", $0, bs }' "$1"
 }
+
+# Nothing downstream can tell a mangled key from a bad one, so the check belongs here, next to the
+# thing that could have mangled it.
+assert_one_line() {
+  local name="$1" value="$2"
+  [[ "$value" != *$'\n'* ]] || {
+    echo "$name spans more than one line; a .env value cannot. Refusing to write a file no" >&2
+    echo "reader in this deployment can parse." >&2
+    exit 1
+  }
+}
+
+private_key_flat="$(flatten_pem "$private_key")"
+public_key_flat="$(flatten_pem "$public_key")"
+assert_one_line JWT_PRIVATE_KEY_PEM "$private_key_flat"
+assert_one_line JWT_PUBLIC_KEY_PEM "$public_key_flat"
 
 umask 077
 cat >"$env_file" <<EOF
@@ -163,8 +189,8 @@ OTP_PEPPER=$(openssl rand -base64 32)
 #SMTP_STANDBY_USERNAME=
 #SMTP_STANDBY_PASSWORD=
 #MAIL_FROM_ADDRESS_STANDBY=
-JWT_PRIVATE_KEY_PEM=$(flatten_pem "$private_key")
-JWT_PUBLIC_KEY_PEM=$(flatten_pem "$public_key")
+JWT_PRIVATE_KEY_PEM=$private_key_flat
+JWT_PUBLIC_KEY_PEM=$public_key_flat
 
 MICROSOFT_CLIENT_ID=$microsoft_client_id
 MICROSOFT_TENANT_ID=$microsoft_tenant_id
