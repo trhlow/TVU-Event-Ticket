@@ -60,6 +60,13 @@ echo "== Running migrations as the schema owner =="
 # value from its own environment instead, so it never appears on a command line.
 export SPRING_DATASOURCE_USERNAME="$POSTGRES_USER"
 export SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
+# web-application-type=none stops the HTTP server; it does nothing about the RabbitMQ listeners
+# (NotificationDeadLetterListener, ReservationApprovedListener, ...), which run on non-daemon
+# threads and keep the JVM alive with no web server to ever ask it to stop. `compose run --rm`
+# then never returns -- measured twice against the real VPS, both times the migration itself had
+# already finished ("Started MonolithApplication") and the deploy just hung there. Disabling
+# listener auto-startup is the fix: this process exists to run Flyway and exit, not to process
+# queues, and rabbitmq's own container is already up if anything genuinely needed a listener.
 compose run --rm --no-deps \
   -e SPRING_FLYWAY_ENABLED=true \
   -e SPRING_DATASOURCE_USERNAME \
@@ -68,7 +75,8 @@ compose run --rm --no-deps \
   -e SPRING_PROFILES_ACTIVE=prod,monolith \
   monolith \
   java -cp app.jar -Dspring.flyway.enabled=true \
-    org.springframework.boot.loader.launch.JarLauncher --spring.main.web-application-type=none
+    org.springframework.boot.loader.launch.JarLauncher --spring.main.web-application-type=none \
+    --spring.rabbitmq.listener.simple.auto-startup=false --spring.rabbitmq.listener.direct.auto-startup=false
 
 echo "== Re-applying runtime grants =="
 # After every migration, not once at install time: a migration that adds a table would otherwise
