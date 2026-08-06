@@ -39,7 +39,14 @@ public class SecurityConfig {
                                 // Logging out must work with an expired or invalid JWT: otherwise a
                                 // user whose token just expired cannot clear their own cookies.
                                 "/api/auth/logout", "/.well-known/**",
-                                "/actuator/health", "/v3/api-docs/**", "/swagger-ui/**",
+                                // /** and not the exact path: management.endpoint.health.probes.enabled
+                                // exposes /actuator/health/readiness and /actuator/health/liveness as
+                                // sub-paths, and the docker healthcheck now reads readiness specifically
+                                // so a working deploy can tell "no student traffic can be served" apart
+                                // from "mail is down but students are fine". The exact-path matcher let
+                                // /actuator/health through and 401'd everything under it -- unnoticed
+                                // until something actually called the sub-path.
+                                "/actuator/health/**", "/v3/api-docs/**", "/swagger-ui/**",
                                 "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events/mine").hasRole("ORGANIZER")
                         .requestMatchers(HttpMethod.GET, "/api/events/stats").hasRole("SUPER_ADMIN")

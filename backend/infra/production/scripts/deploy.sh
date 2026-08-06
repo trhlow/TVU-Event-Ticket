@@ -62,6 +62,15 @@ if ! compose up -d --wait --remove-orphans; then
   die "Deployment failed. The database was not rolled back automatically."
 fi
 
+# Caddyfile is bind-mounted, not baked into an image, so `compose up` never notices it changed --
+# compose only recreates a container when the COMPOSE CONFIG changes (image, environment, ...), and
+# a file's content changing on the host is invisible to it. Caddy itself only reads the file once,
+# at startup. Measured on the real VPS: three routing fixes to Caddyfile in a row landed on disk,
+# `compose up --wait` reported success every time, and caddy kept serving the config from before any
+# of them until it was restarted by hand. Idempotent and cheap, so it runs on every deploy rather
+# than trying to detect whether this particular one touched the file.
+compose restart caddy
+
 if ! bash "$script_dir/smoke-test.sh"; then
   compose ps >&2 || true
   compose logs --tail 200 monolith caddy frontend >&2 || true
