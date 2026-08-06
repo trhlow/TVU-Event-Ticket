@@ -375,29 +375,7 @@ jobs:
         run: |
           bash backend/infra/production/scripts/frontend-config.test.sh
 
-          # A helper used without being sourced is a runtime failure no linter reports and no test
-          # exercises: shellcheck treats it as an unknown command and says nothing, `bash -n` parses
-          # it fine, and the script dies at the moment it runs for real. That happened -- migrate.sh
-          # moved from `source .env` to common.sh's env_value and the source line did not come with
-          # it, so a production migration died on "env_value: command not found" AFTER the
-          # datastores were already up.
-          missing=0
-          for script in backend/infra/production/scripts/*.sh; do
-            case "$script" in */common.sh) continue ;; esac
-            # The second pattern deliberately does not name $script_dir. Writing the literal
-            # `source "$script_dir/common.sh"` inside single quotes is what a reader would reach
-            # for, and shellcheck flags it as SC2016 -- correctly by its own rule, since it cannot
-            # know the dollar sign is data here. Matching "sources something called common.sh"
-            # asks the real question anyway, and it keeps working if a script ever spells the path
-            # a different way.
-            if grep -qE '(env_value|require_env_value|current_release_ref) ' "$script" \
-               && ! grep -qE 'source .*common\.sh' "$script"; then
-              echo "::error::$script uses a common.sh helper without sourcing common.sh"
-              missing=1
-            fi
-          done
-          [ "$missing" -eq 0 ] || exit 1
-          echo "ok: every script using a common.sh helper sources it"
+          bash .github/scripts/common-sh-usage.test.sh
 
       - name: Lint deployment and operations scripts
         # These scripts run on the production host with set -euo pipefail and no one watching. The
