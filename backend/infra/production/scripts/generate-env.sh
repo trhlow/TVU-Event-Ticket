@@ -118,17 +118,21 @@ openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$private_key"
 openssl pkey -in "$private_key" -pubout -out "$public_key" >/dev/null 2>&1
 
 # A PEM is many lines; a .env value is one. Every line ends with the two characters backslash and n,
-# which is what .env.example documents and what the application decodes.
+# which is what .env.example documents and what preflight decodes.
 #
-# The backslash arrives through -v as data rather than being written in the awk program, because awk
-# processes escape sequences in string literals and `printf "%s\\n"` therefore emits a REAL newline,
-# not the two characters. That was the bug here: the generator reported success, and the .env it
-# wrote could not be read by `docker compose --env-file`, by `source`, or by common.sh's env_value,
-# which returned only the first line and made preflight say the KEY was invalid rather than the
-# generator. Measured on gawk and on the VPS's mawk; `$0 "\\n"` behaves the same way, so the
-# concatenation spelling is not a fix either.
+# NO awk AND NO sed. Both process escape sequences, and they do not agree with each other or across
+# implementations about what `\\n` means in a program text: on gawk it became a REAL newline, and
+# the -v workaround that fixed it there did not survive the VPS's mawk. Every version of this
+# function written with an external tool has been wrong on some machine, and the failure is silent
+# -- the generator reports success and preflight blames the key. Bash string concatenation has no
+# such ambiguity: "$line\\n" appends exactly one backslash and one n, everywhere bash runs.
 flatten_pem() {
-  awk -v bs='\' 'NF { printf "%s%sn", $0, bs }' "$1"
+  local line out=""
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ -n "$line" ]] || continue
+    out+="$line\\n"
+  done < "$1"
+  printf '%s' "$out"
 }
 
 # Nothing downstream can tell a mangled key from a bad one, so the check belongs here, next to the
@@ -142,10 +146,35 @@ assert_one_line() {
   }
 }
 
+# One line is necessary and not sufficient: a value can be a single line and still decode to
+# something openssl will not read -- which is exactly what happened when the flattener dropped the
+# backslash and wrote `-----END PRIVATE KEY-----n`. So the generator decodes its own output THE WAY
+# PREFLIGHT WILL, and checks the result is a key. A generator that cannot prove its output is
+# readable has no business writing it.
+assert_decodes_to_key() {
+  local name="$1" value="$2" kind="$3" decoded="$temporary_dir/decoded.pem"
+  printf '%s' "$value" \
+    | sed 's/\\n/\
+/g' >"$decoded"
+  if [[ "$kind" == private ]]; then
+    openssl pkey -in "$decoded" -check -noout >/dev/null 2>&1
+  else
+    openssl pkey -pubin -in "$decoded" -noout >/dev/null 2>&1
+  fi || {
+    echo "$name does not decode back to a usable key." >&2
+    echo "The value is one line, but reversing the escaping the way preflight does yields" >&2
+    echo "something openssl refuses. Refusing to write a .env that would fail two steps later" >&2
+    echo "with an error blaming the key rather than this script." >&2
+    exit 1
+  }
+}
+
 private_key_flat="$(flatten_pem "$private_key")"
 public_key_flat="$(flatten_pem "$public_key")"
 assert_one_line JWT_PRIVATE_KEY_PEM "$private_key_flat"
 assert_one_line JWT_PUBLIC_KEY_PEM "$public_key_flat"
+assert_decodes_to_key JWT_PRIVATE_KEY_PEM "$private_key_flat" private
+assert_decodes_to_key JWT_PUBLIC_KEY_PEM "$public_key_flat" public
 
 umask 077
 cat >"$env_file" <<EOF

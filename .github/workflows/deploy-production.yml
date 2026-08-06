@@ -145,8 +145,21 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          # Optional, defaults to 22. A secret nothing reads is worse than no secret: an operator who
+          # sets DEPLOY_PORT because sshd listens elsewhere has every reason to believe the deploy
+          # will use it, and would instead get a connection refused against port 22 with nothing
+          # pointing at why.
+          #
+          # Note the known_hosts format follows the port: for anything other than 22 the entry must
+          # be `[host]:port key-type key`, which is what `ssh-keyscan -p PORT host` emits. A
+          # host-only entry will not match and StrictHostKeyChecking=yes will refuse the connection.
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
         run: |
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$DEPLOY_USER@$DEPLOY_HOST" \
+          set -euo pipefail
+          port="${DEPLOY_PORT:-22}"
+          [[ "$port" =~ ^[0-9]{1,5}$ ]] || { echo "DEPLOY_PORT is not a port number: $port"; exit 1; }
+          echo "Connecting to $DEPLOY_USER@$DEPLOY_HOST on port $port"
+          ssh -o BatchMode=yes -o StrictHostKeyChecking=yes -p "$port" "$DEPLOY_USER@$DEPLOY_HOST" \
             "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_REF='$DEPLOY_SHA' bash -s" <<'REMOTE'
           set -euo pipefail
           cd "$DEPLOY_PATH"
