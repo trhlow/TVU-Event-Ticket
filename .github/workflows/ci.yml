@@ -384,6 +384,8 @@ jobs:
           missing=0
           for script in backend/infra/production/scripts/*.sh; do
             case "$script" in */common.sh) continue ;; esac
+            # shellcheck disable=SC2016  # the single quotes are the point: this greps for the
+            # literal text `source "$script_dir/common.sh"`, not for what $script_dir expands to.
             if grep -qE '(env_value|require_env_value|current_release_ref) ' "$script" \
                && ! grep -q 'source "$script_dir/common.sh"' "$script"; then
               echo "::error::$script uses a common.sh helper without sourcing common.sh"
