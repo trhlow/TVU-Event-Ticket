@@ -24,29 +24,34 @@ export default function SuperAdminLogsPage() {
 
   useEffect(() => {
     let mounted = true;
-    auditLogService
-      .listRemote({
-        action: actionFilter.trim() || undefined,
-        from: fromFilter ? new Date(fromFilter).toISOString() : undefined,
-        to: toFilter ? new Date(toFilter).toISOString() : undefined,
-        page,
-        size: PAGE_SIZE,
-      })
-      .then((result) => {
-        if (!mounted) return;
-        setLogs(result.items);
-        setTotalPages(result.totalPages);
-        setTotalElements(result.totalElements);
-        setAvailable(true);
-      })
-      .catch(() => {
-        if (mounted) {
-          setAvailable(false);
-          setLoadError(true);
-        }
-      });
+    // actionFilter is a free-text input — without debouncing, every keystroke fired its own
+    // request. Date filters and page changes are discrete, so only the text field needs the delay.
+    const timeoutId = window.setTimeout(() => {
+      auditLogService
+        .listRemote({
+          action: actionFilter.trim() || undefined,
+          from: fromFilter ? new Date(fromFilter).toISOString() : undefined,
+          to: toFilter ? new Date(toFilter).toISOString() : undefined,
+          page,
+          size: PAGE_SIZE,
+        })
+        .then((result) => {
+          if (!mounted) return;
+          setLogs(result.items);
+          setTotalPages(result.totalPages);
+          setTotalElements(result.totalElements);
+          setAvailable(true);
+        })
+        .catch(() => {
+          if (mounted) {
+            setAvailable(false);
+            setLoadError(true);
+          }
+        });
+    }, 400);
     return () => {
       mounted = false;
+      window.clearTimeout(timeoutId);
     };
   }, [actionFilter, fromFilter, page, toFilter]);
 
