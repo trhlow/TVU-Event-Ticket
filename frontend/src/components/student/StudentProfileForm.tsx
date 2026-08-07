@@ -18,6 +18,8 @@ interface StudentProfileFormProps {
   beforeActions?: React.ReactNode;
   /** Optional caption rendered under the read-only full-name field. */
   fullNameHint?: string;
+  /** When present, renders a verification-status badge next to the MSSV label. */
+  mssvStatus?: "UNVERIFIED" | "VERIFIED";
 }
 
 /**
@@ -35,6 +37,7 @@ export default function StudentProfileForm({
   secondaryAction,
   beforeActions,
   fullNameHint,
+  mssvStatus,
 }: StudentProfileFormProps) {
   const [mssv, setMssv] = useState(initialValues.mssv);
   const [className, setClassName] = useState(initialValues.className);
@@ -79,7 +82,18 @@ export default function StudentProfileForm({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor="profile-mssv" className="block text-xs font-bold uppercase tracking-wider text-slate-700">Mã số sinh viên (MSSV) *</label>
+          <label htmlFor="profile-mssv" className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
+            Mã số sinh viên (MSSV) *
+            {mssvStatus && (
+              <span
+                className={`rounded-full px-2 py-0.5 text-[9px] font-black normal-case tracking-normal ${
+                  mssvStatus === "VERIFIED" ? "bg-success-50 text-success-700" : "bg-warning-50 text-amber-700"
+                }`}
+              >
+                {mssvStatus === "VERIFIED" ? "Đã xác minh" : "Chờ xác minh"}
+              </span>
+            )}
+          </label>
           <div className="relative">
             <CreditCard className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
             {/* The example MSSV is masked on purpose: a fully-formed one would be some
