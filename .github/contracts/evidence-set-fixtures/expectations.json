@@ -26,5 +26,6 @@
   "invalid/missing-vulnerability-scan.json": "rejects",
   "invalid/duplicate-vulnerability-scan.json": "rejects",
   "invalid/missing-subject.json": "rejects",
-  "invalid/layer-missing-digest.json": "rejects"
+  "invalid/layer-missing-digest.json": "rejects",
+  "invalid/missing-layer-secret-scan.json": "rejects"
 }
