@@ -138,9 +138,11 @@ export default function OrganizerEventsPage() {
           <Link to={`/organizer/events/${event.id}/statistics`} className="rounded-lg border border-slate-100 p-1.5 text-secondary-700 transition-colors hover:border-secondary-200 hover:bg-secondary-50" title="Thống kê">
             <BarChart3 className="h-3.5 w-3.5" />
           </Link>
-          <button onClick={() => setDeletingEventId(event.id)} className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-danger-600 transition-colors hover:border-danger-200 hover:bg-danger-50" title="Xóa sự kiện">
-            <Trash2 className="h-3.5 w-3.5" />
-          </button>
+          {event.status === "DRAFT" && (
+            <button onClick={() => setDeletingEventId(event.id)} className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-danger-600 transition-colors hover:border-danger-200 hover:bg-danger-50" title="Xóa sự kiện">
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
       ),
     },

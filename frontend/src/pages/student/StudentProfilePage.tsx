@@ -47,6 +47,7 @@ export default function StudentProfilePage() {
           submitLabel="Lưu thông tin"
           isSubmitting={isSaving}
           fullNameHint="Đồng bộ từ tài khoản Microsoft của trường."
+          mssvStatus={currentUser.mssv ? currentUser.mssvStatus : undefined}
           beforeActions={
             <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
               <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />

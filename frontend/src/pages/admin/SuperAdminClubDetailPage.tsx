@@ -70,9 +70,9 @@ export default function SuperAdminClubDetailPage() {
     let mounted = true;
     setEventsLoading(true);
     eventService
-      .getPublicEvents()
+      .listAllForAdmin(clubId)
       .then((allEvents) => {
-        if (mounted) setClubEvents(allEvents.filter((event) => event.clubId === clubId));
+        if (mounted) setClubEvents(allEvents);
       })
       .catch((error) => {
         if (mounted) setEventsError(error instanceof Error ? error.message : 'Không thể tải sự kiện của CLB.');
@@ -225,12 +225,9 @@ export default function SuperAdminClubDetailPage() {
         ) : eventsError ? (
           <BackendPendingNotice title="Không thể tải sự kiện của CLB" description={eventsError} />
         ) : clubEvents.length === 0 ? (
-          <EmptyState title="Chưa có sự kiện" description="CLB này chưa có sự kiện nào đang mở đăng ký công khai." icon={Calendar} />
+          <EmptyState title="Chưa có sự kiện" description="CLB này chưa có sự kiện nào." icon={Calendar} />
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-xs font-semibold leading-5 text-brand-800">
-              Danh sách này chỉ hiển thị sự kiện đang mở đăng ký công khai. Sự kiện ở trạng thái nháp hoặc đã đóng của CLB sẽ hiển thị đầy đủ khi hệ thống hỗ trợ tra cứu theo từng CLB.
-            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {clubEvents.map((event) => (
                 <div key={event.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

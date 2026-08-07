@@ -17,7 +17,6 @@ export default function EventRegistrationConfirmPage() {
   const { showToast } = useToast();
 
   const [committed, setCommitted] = useState(false);
-  const [note, setNote] = useState('');
   const [event, setEvent] = useState<Event | undefined>();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,6 +42,18 @@ export default function EventRegistrationConfirmPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventId]);
+
+  useEffect(() => {
+    if (!currentUser.profileComplete) {
+      navigate('/student/profile/complete', { replace: true });
+      return;
+    }
+    if (currentUser.mssvStatus !== 'VERIFIED') {
+      showToast('MSSV của bạn đang chờ xác minh. Vui lòng quay lại sau.', 'error');
+      navigate(eventId ? `/student/events/${eventId}` : '/student/events', { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (isLoading) {
     return (
@@ -70,7 +81,12 @@ export default function EventRegistrationConfirmPage() {
       return;
     }
 
-    if (event.remainingTickets <= 0 || event.status === 'FULL') {
+    if (currentUser.mssvStatus !== 'VERIFIED') {
+      showToast('MSSV của bạn chưa được xác minh, không thể gửi đăng ký.', 'error');
+      return;
+    }
+
+    if (event.remainingTickets <= 0) {
       showToast('Sự kiện đã hết vé, không thể gửi đăng ký mới.', 'error');
       return;
     }
@@ -111,9 +127,6 @@ export default function EventRegistrationConfirmPage() {
         className: currentUser.className || '',
         email: currentUser.email,
         status: 'PENDING' as const,
-        // `note` is the student's own message to the organizer — it must not be stored under
-        // `rejectReason`, which is reserved for the organizer's reason when rejecting a request.
-        note: note.trim() || undefined,
         createdAt: new Date().toISOString(),
       };
 
@@ -190,17 +203,6 @@ export default function EventRegistrationConfirmPage() {
 
         {/* Commitment check */}
         <form onSubmit={handleFormSubmit} className="space-y-6 pt-4 border-t border-slate-100">
-          <label className="block space-y-1.5">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Ghi chú cho Ban tổ chức</span>
-            <textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-              placeholder="Ví dụ: Nhu cầu hỗ trợ chỗ ngồi, thông tin đi cùng đoàn, hoặc câu hỏi trước sự kiện..."
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-semibold text-slate-900 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-100"
-            />
-          </label>
-
           <button
             type="button"
             onClick={() => setCommitted(!committed)}

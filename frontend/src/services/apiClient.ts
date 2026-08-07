@@ -141,9 +141,11 @@ export function createRequestId(): string {
 }
 
 async function createApiError(response: Response): Promise<ApiError> {
+  const retryAfterSeconds = parseRetryAfter(response.headers.get("Retry-After"));
+
   try {
     const data = await response.clone().json();
-    const message = localizeError(response.status, data?.message || data?.error);
+    const message = localizeError(response.status, data?.message || data?.error, retryAfterSeconds);
     return new ApiError(message, response.status, {
       code: typeof data?.code === "string" ? data.code : undefined,
       path: typeof data?.path === "string" ? data.path : undefined,
@@ -155,12 +157,18 @@ async function createApiError(response: Response): Promise<ApiError> {
 
   try {
     const text = await response.text();
-    if (text.trim()) return new ApiError(localizeError(response.status, text), response.status);
+    if (text.trim()) return new ApiError(localizeError(response.status, text, retryAfterSeconds), response.status);
   } catch {
     // Fall through to default handling.
   }
 
-  return new ApiError(localizeError(response.status), response.status);
+  return new ApiError(localizeError(response.status, undefined, retryAfterSeconds), response.status);
+}
+
+function parseRetryAfter(headerValue: string | null): number | undefined {
+  if (!headerValue) return undefined;
+  const seconds = Number(headerValue);
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
 }
 
 function buildApiUrl(path: string): string {
@@ -191,7 +199,7 @@ function readCookie(name: string): string | null {
 // maps known messages to Vietnamese and otherwise falls back to a generic Vietnamese message per
 // status code, so an unmapped backend string (e.g. a raw DataIntegrityViolationException reason)
 // never leaks to the screen verbatim.
-function localizeError(status: number, rawMessage?: string): string {
+function localizeError(status: number, rawMessage?: string, retryAfterSeconds?: number): string {
   const message = typeof rawMessage === "string" ? rawMessage : "";
   const lower = message.toLowerCase();
 
@@ -220,6 +228,11 @@ function localizeError(status: number, rawMessage?: string): string {
     // Field-level validation messages are surfaced separately via fieldErrors; this is the
     // catch-all summary, so prefer a stable Vietnamese message over an unmapped English one.
     return "Dữ liệu gửi lên chưa hợp lệ. Vui lòng kiểm tra lại các trường thông tin.";
+  }
+  if (status === 429) {
+    return retryAfterSeconds
+      ? `Bạn thao tác quá nhanh. Vui lòng thử lại sau ${retryAfterSeconds} giây.`
+      : "Bạn thao tác quá nhanh. Vui lòng chờ một lát rồi thử lại.";
   }
   if (status >= 500) return "Máy chủ đang gặp lỗi. Vui lòng thử lại sau.";
   return "Không thể kết nối máy chủ. Vui lòng thử lại sau.";

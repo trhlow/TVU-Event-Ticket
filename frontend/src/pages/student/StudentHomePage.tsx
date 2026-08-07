@@ -99,6 +99,18 @@ export default function StudentHomePage() {
         </div>
       )}
 
+      {currentUser.profileComplete && currentUser.mssvStatus !== "VERIFIED" && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
+          <div>
+            <h2 className="text-sm font-semibold text-amber-950">MSSV đang chờ xác minh</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-amber-800">
+              Bạn chưa thể gửi đăng ký sự kiện cho đến khi Ban quản trị xác minh MSSV.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-3">
         <StatisticCard label="Sự kiện đã đăng ký" value={reservations.length} icon={Calendar} subtext="Tính tất cả trạng thái" />
         <StatisticCard label="Vé QR đã cấp" value={tickets.length} icon={Ticket} subtext="Vé điện tử cá nhân" color="success" />

@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router";
 import { Eye, ShieldCheck, Users, XCircle } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
@@ -13,6 +14,7 @@ import { formatDateTime } from "../../utils/formatDate";
 import { registrationService } from "../../services/registrationService";
 
 export default function OrganizerReservationsPage() {
+  const { eventId } = useParams<{ eventId?: string }>();
   const { showToast } = useToast();
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [pendingAction, setPendingAction] = useState<{ id: string; type: "APPROVE" | "REJECT" } | null>(null);
@@ -36,6 +38,14 @@ export default function OrganizerReservationsPage() {
   useEffect(() => {
     void loadReservations();
   }, [loadReservations]);
+
+  // /reservations/pending returns every pending reservation for the organizer's whole club — the
+  // backend has no eventId filter — so when this page is reached via the per-event route, filter
+  // client-side to avoid approving/rejecting a registration that belongs to a different event.
+  const scopedReservations = useMemo(
+    () => (eventId ? reservations.filter((reservation) => reservation.eventId === eventId) : reservations),
+    [reservations, eventId],
+  );
 
   const handleConfirmAction = async () => {
     if (!pendingAction) return;
@@ -105,18 +115,22 @@ export default function OrganizerReservationsPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Duyệt đăng ký sự kiện"
-        description="Hàng đợi chờ duyệt — GET /reservations/pending không trả về đăng ký đã xử lý. Đăng ký đã duyệt biến thành vé tại trang Vé đã cấp; đăng ký đã từ chối chỉ còn trong audit log."
+        description={
+          eventId
+            ? "Chỉ hiển thị đăng ký của sự kiện đang chọn — GET /reservations/pending trả về toàn bộ CLB, danh sách này đã được lọc lại theo sự kiện tại trình duyệt."
+            : "Hàng đợi chờ duyệt của toàn CLB — GET /reservations/pending không trả về đăng ký đã xử lý. Đăng ký đã duyệt biến thành vé tại trang Vé đã cấp; đăng ký đã từ chối chỉ còn trong audit log."
+        }
       />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <StatisticCard label="Chờ duyệt" value={reservations.length} icon={Users} color="warning" />
+        <StatisticCard label="Chờ duyệt" value={scopedReservations.length} icon={Users} color="warning" />
         <StatisticCard label="Đã xử lý trong phiên này" value={processedCount} icon={ShieldCheck} color="success" />
       </div>
 
       {isLoading ? (
         <LoadingSkeleton type="table" count={5} />
       ) : (
-        <DataTable data={reservations} columns={columns} searchPlaceholder="Tìm sinh viên, MSSV, email..." searchField={(row) => `${row.studentName} ${row.mssv} ${row.email}`} />
+        <DataTable data={scopedReservations} columns={columns} searchPlaceholder="Tìm sinh viên, MSSV, email..." searchField={(row) => `${row.studentName} ${row.mssv} ${row.email}`} />
       )}
 
       <Dialog

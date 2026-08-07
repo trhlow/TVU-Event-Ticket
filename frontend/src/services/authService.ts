@@ -16,6 +16,7 @@ interface AuthProfileResponse {
   clubName?: string | null;
   mssv?: string | null;
   classCode?: string | null;
+  mssvStatus?: "UNVERIFIED" | "VERIFIED" | null;
   profileComplete: boolean;
 }
 
@@ -38,6 +39,7 @@ function mapProfileToUser(profile: AuthProfileResponse): User {
     clubName: profile.clubName || undefined,
     mssv: profile.mssv || undefined,
     className: profile.classCode || undefined,
+    mssvStatus: profile.mssvStatus || undefined,
     profileComplete: profile.profileComplete,
     status: "ACTIVE",
   };
@@ -140,6 +142,13 @@ export const authService = {
     const response = await apiRequest<LoginResponse>("/auth/me/profile", {
       method: "PATCH",
       body: JSON.stringify(data),
+    });
+    return persistProfile(response.profile);
+  },
+  async updateDisplayName(displayName: string): Promise<User> {
+    const response = await apiRequest<LoginResponse>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify({ displayName }),
     });
     return persistProfile(response.profile);
   },

@@ -23,7 +23,6 @@ interface EventResponse {
 interface EventRequest {
   title: string;
   description?: string;
-  bannerUrl?: string;
   capacity: number;
   registrationOpenAt: string;
   registrationCloseAt: string;
@@ -67,7 +66,6 @@ function toEventRequest(data: EventPayload): EventRequest {
   return {
     title: data.title?.trim() || "",
     description: data.description?.trim() || "",
-    bannerUrl: data.bannerUrl?.trim() || "",
     capacity: Number(data.capacity || 0),
     registrationOpenAt: toInstant(data.registrationOpenAt),
     registrationCloseAt: toInstant(data.registrationCloseAt),
@@ -110,6 +108,15 @@ export const eventService = {
   async listByClubRemote(clubId: string): Promise<Event[]> {
     void clubId;
     const events = await apiRequest<EventResponse[]>("/events/mine");
+    const availability = await loadAvailability(events.map((event) => event.id));
+    return events.map((event) => mapRemoteEvent(event, availability.data.get(event.id), availability.failed));
+  },
+  // SUPER_ADMIN-only visibility over every club's events, including DRAFT/CLOSED — the public
+  // /events endpoint only returns OPEN events, which under-reports what admins need to see.
+  async listAllForAdmin(clubId?: string): Promise<Event[]> {
+    const events = clubId
+      ? await apiRequest<EventResponse[]>(`/admin/events?clubId=${encodeURIComponent(clubId)}`)
+      : await apiRequest<EventResponse[]>("/admin/events");
     const availability = await loadAvailability(events.map((event) => event.id));
     return events.map((event) => mapRemoteEvent(event, availability.data.get(event.id), availability.failed));
   },

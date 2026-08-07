@@ -12,6 +12,7 @@ export default function QRScannerPanel({
   cameraPermission,
 }: QRScannerPanelProps) {
   const [ticketCode, setTicketCode] = useState("");
+  const [isManualSubmitting, setIsManualSubmitting] = useState(false);
   const [scanResult, setScanResult] = useState<{
     success: boolean;
     message: string;
@@ -27,11 +28,20 @@ export default function QRScannerPanel({
 
   const handleScanSubmit = async (codeToScan: string) => {
     const code = codeToScan || ticketCode;
-    if (!code.trim()) return;
+    // Shares the same in-flight guard as the camera loop below, so a manual submit while a camera
+    // scan is still resolving (or a double-click on the button) can't fire a second request.
+    if (!code.trim() || isProcessingRef.current) return;
 
-    const result = await onCheckIn(code.trim());
-    setScanResult(result);
-    setTicketCode("");
+    isProcessingRef.current = true;
+    setIsManualSubmitting(true);
+    try {
+      const result = await onCheckIn(code.trim());
+      setScanResult(result);
+      setTicketCode("");
+    } finally {
+      isProcessingRef.current = false;
+      setIsManualSubmitting(false);
+    }
   };
 
   useEffect(() => {
@@ -156,25 +166,27 @@ export default function QRScannerPanel({
           <div className="bg-brand-50/60 border border-brand-100 rounded-2xl p-5 shadow-sm space-y-4">
             <div className="space-y-1">
               <label className="text-[11px] font-black text-brand-800 uppercase tracking-wider block">
-                Nhập mã vé thủ công
+                Dán nội dung QR
               </label>
               <p className="text-[11px] text-gray-500 font-semibold">
-                Dùng khi camera chưa sẵn sàng hoặc khu vực check-in quá đông.
+                Dùng khi camera chưa sẵn sàng: dán toàn bộ nội dung mã QR đã quét được (không phải mã vé rút gọn).
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
-                placeholder="Ví dụ: TVU-IT1-93A8B"
+                placeholder="Dán nội dung QR đã quét tại đây..."
                 value={ticketCode}
                 onChange={(e) => setTicketCode(e.target.value)}
-                className="min-h-12 flex-1 bg-white border border-brand-200 rounded-xl px-4 py-3 text-sm font-mono font-black text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                disabled={isManualSubmitting}
+                className="min-h-12 flex-1 bg-white border border-brand-200 rounded-xl px-4 py-3 text-sm font-mono font-black text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 onClick={() => handleScanSubmit("")}
-                className="min-h-12 px-5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-extrabold shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+                disabled={isManualSubmitting}
+                className="min-h-12 px-5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-extrabold shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Search className="w-4 h-4" /> Check-in
+                <Search className="w-4 h-4" /> {isManualSubmitting ? "Đang xử lý..." : "Check-in"}
               </button>
             </div>
           </div>

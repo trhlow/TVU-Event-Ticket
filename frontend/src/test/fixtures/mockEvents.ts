@@ -47,7 +47,7 @@ const INITIAL_EVENTS: Event[] = [
     registrationCloseAt: '2026-07-08T23:59:00Z',
     capacity: 80,
     remainingTickets: 0,
-    status: 'FULL',
+    status: 'OPEN',
   },
   {
     id: 'event_green_1',
@@ -63,7 +63,7 @@ const INITIAL_EVENTS: Event[] = [
     registrationCloseAt: '2026-07-15T23:59:00Z',
     capacity: 50,
     remainingTickets: 50,
-    status: 'UPCOMING',
+    status: 'DRAFT',
   },
   {
     id: 'event_english_2',
@@ -79,7 +79,7 @@ const INITIAL_EVENTS: Event[] = [
     registrationCloseAt: '2026-06-15T23:59:00Z',
     capacity: 120,
     remainingTickets: 118,
-    status: 'ENDED',
+    status: 'CLOSED',
   }
 ];
 

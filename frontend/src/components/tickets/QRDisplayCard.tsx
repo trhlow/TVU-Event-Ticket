@@ -60,19 +60,21 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
             Không chia sẻ mã QR cho người khác. Mỗi mã QR chỉ được điểm danh một lần.
           </p>
         </div>
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <button
-            onClick={onDownload}
-            className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Download className="h-4 w-4" />
-            Tải vé
-          </button>
-          <button onClick={onPrint} className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-medium text-white hover:bg-brand-700">
-            <Printer className="h-4 w-4" />
-            In vé
-          </button>
-        </div>
+        {hasQrPayload && (
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <button
+              onClick={onDownload}
+              className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <Download className="h-4 w-4" />
+              Tải vé
+            </button>
+            <button onClick={onPrint} className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-brand-600 text-sm font-medium text-white hover:bg-brand-700">
+              <Printer className="h-4 w-4" />
+              In vé
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

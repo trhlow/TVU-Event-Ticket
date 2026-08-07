@@ -20,7 +20,7 @@ export default function EventCard({
   onRegister,
   actionText = "Xem chi tiết",
 }: EventCardProps) {
-  const isSoldOut = event.remainingTickets === 0 || event.status === "FULL";
+  const isSoldOut = event.remainingTickets === 0;
   const fillRate = Math.max(0, Math.min(100, Math.round(((event.capacity - event.remainingTickets) / event.capacity) * 100)));
   const tiltRef = useCardTilt<HTMLElement>({ maxTilt: 3 });
 

@@ -61,12 +61,15 @@ export default function StudentEventDetailPage() {
     [event?.id, reservations],
   );
 
+  const isMssvVerified = currentUser.mssvStatus === "VERIFIED";
+
   const handleRegisterClick = () => {
     if (!event) return;
     if (!currentUser.profileComplete) {
       navigate("/student/profile/complete");
       return;
     }
+    if (!isMssvVerified) return;
     navigate(`/student/events/${event.id}/register`);
   };
 
@@ -87,11 +90,11 @@ export default function StudentEventDetailPage() {
     );
   }
 
-  const isSoldOut = event.remainingTickets <= 0 || event.status === "FULL";
+  const isSoldOut = event.remainingTickets <= 0;
   const now = new Date();
   const isWithinRegistrationWindow =
     now >= new Date(event.registrationOpenAt) && now <= new Date(event.registrationCloseAt);
-  const canRegister = event.status === "OPEN" && !isSoldOut && isWithinRegistrationWindow;
+  const canRegister = event.status === "OPEN" && !isSoldOut && isWithinRegistrationWindow && isMssvVerified;
 
   return (
     <div className="space-y-6 text-left">
@@ -225,7 +228,9 @@ export default function StudentEventDetailPage() {
                         ? "Hết vé tham dự"
                         : event.status !== "OPEN"
                           ? "Sự kiện hiện không mở đăng ký"
-                          : "Ngoài thời gian cho phép đăng ký"}
+                          : !isWithinRegistrationWindow
+                            ? "Ngoài thời gian cho phép đăng ký"
+                            : "MSSV chờ xác minh"}
                     </button>
                   )}
 
@@ -233,6 +238,13 @@ export default function StudentEventDetailPage() {
                     <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                       <span>Bạn chưa hoàn tất MSSV và lớp. Hệ thống yêu cầu cập nhật hồ sơ trước khi đăng ký vé.</span>
+                    </div>
+                  )}
+
+                  {currentUser.profileComplete && !isMssvVerified && (
+                    <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                      <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
+                      <span>MSSV của bạn đang chờ xác minh. Bạn chỉ có thể đăng ký vé sau khi được xác minh.</span>
                     </div>
                   )}
                 </div>
