@@ -74,6 +74,26 @@
     "schema": "rejects",
     "state": "CONFLICT"
   },
+  "invalid-structure/evidence-set-extra-field.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/evidence-set-missing-subject-matches.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/evidence-set-pair-missing-attestation-lookup.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/evidence-set-reports-missing-a-kind.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
   "invalid-structure/marker-carrying-a-digest.json": {
     "actions": [],
     "schema": "rejects",
