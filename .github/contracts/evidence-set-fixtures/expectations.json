@@ -11,5 +11,10 @@
   "invalid/wrong-layer-media-type.json": "rejects",
   "invalid/layer-extra-field.json": "rejects",
   "invalid/layer-bad-digest.json": "rejects",
-  "invalid/layer-bad-size.json": "rejects"
+  "invalid/layer-bad-size.json": "rejects",
+  "invalid/subject-missing-field.json": "rejects",
+  "invalid/subject-extra-field.json": "rejects",
+  "invalid/subject-is-an-index.json": "rejects",
+  "invalid/subject-bad-digest.json": "rejects",
+  "invalid/subject-bad-size.json": "rejects"
 }

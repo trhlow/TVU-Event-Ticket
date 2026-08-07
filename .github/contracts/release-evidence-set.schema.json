@@ -73,7 +73,16 @@
             }
           ]
         },
-        "subject": { "type": "object" }
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "$ref": "release-envelope.schema.json#/$defs/constants/properties/manifestMediaType" },
+            "digest": { "$ref": "observation.schema.json#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        }
       }
     }
   },
