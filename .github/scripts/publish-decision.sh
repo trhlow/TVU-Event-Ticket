@@ -105,9 +105,11 @@ REQUIRED_LOOKUPS = (
     "monolithTag", "frontendTag",
     "monolithDigestObject", "frontendDigestObject",
     "monolithCandidate", "frontendCandidate",
+    "monolithEvidenceSet", "frontendEvidenceSet",
 )
 
 MARKER_LOOKUPS = ("finalMarker", "preparedMarker")
+EVIDENCE_SET_LOOKUPS = ("monolithEvidenceSet", "frontendEvidenceSet")
 
 TOP_LEVEL_KEYS = ("schemaVersion", "commit", "environment", "expected", "lookups")
 EXPECTED_KEYS = ("sourceRepository", "repositories", "frontendConfigFingerprint",
@@ -124,9 +126,11 @@ LOOKUP_REPOSITORY = {
     "monolithTag": "monolith",
     "monolithDigestObject": "monolith",
     "monolithCandidate": "monolith",
+    "monolithEvidenceSet": "monolith",
     "frontendTag": "frontend",
     "frontendDigestObject": "frontend",
     "frontendCandidate": "frontend",
+    "frontendEvidenceSet": "frontend",
 }
 
 # A set, not a tuple, and the difference is load-bearing. Membership in a tuple compares with `==`
@@ -170,6 +174,10 @@ PRESENT_FIELDS = {
                {"status", "queriedRef", "markerDigest", "verification", "ociEnvelope", "content"}),
     "object": ({"status", "queriedRef", "digest"},
                {"status", "queriedRef", "digest"}),
+    "evidenceSet": ({"status", "queriedRef", "carrierDigest", "verification", "subjectMatches",
+                     "layersValid", "reports"},
+                    {"status", "queriedRef", "carrierDigest", "verification", "subjectMatches",
+                     "layersValid", "reports"}),
 }
 
 SKIP_REASONS = {"no_claimed_digest"}
@@ -263,7 +271,9 @@ def validate(obs):
         require(status in VALID_STATUSES,
                 f"lookups.{name}.status must be one of {sorted(VALID_STATUSES)}, got {status!r}")
         if status == "present":
-            kind = "marker" if name in MARKER_LOOKUPS else "object"
+            kind = ("marker" if name in MARKER_LOOKUPS
+                    else "evidenceSet" if name in EVIDENCE_SET_LOOKUPS
+                    else "object")
             required_fields, allowed_fields = PRESENT_FIELDS[kind]
         else:
             kind = status
@@ -572,8 +582,103 @@ def marker_problems(marker, obs, where):
                     problems.append(f"{where}.content.evidence.{kind}.{image}.passed is "
                                     f"{entry.get('passed')!r}, must be boolean true")
 
+        # 3b commit 2 (spec section 3): the marker no longer verifies evidence itself, it only
+        # claims a digest and the decision resolves that claim against the lookup that already did
+        # the verifying. A marker asserting evidenceSetDigest with nothing to back it, or a digest
+        # that disagrees with what monolithEvidenceSet/frontendEvidenceSet actually observed, is
+        # exactly the self-assertion section 1 exists to close -- CONFLICT, not trusted on its word.
+        evidence_set_digest = evidence.get("evidenceSetDigest")
+        if type(evidence_set_digest) is not dict:
+            problems.append(f"{where}.content.evidence.evidenceSetDigest must be an object")
+        else:
+            for image in IMAGES:
+                claimed_digest = evidence_set_digest.get(image)
+                if type(claimed_digest) is not str or not DIGEST.fullmatch(claimed_digest):
+                    problems.append(f"{where}.content.evidence.evidenceSetDigest.{image} is not a "
+                                    f"digest")
+                    continue
+                lookup = obs["lookups"][f"{image}EvidenceSet"]
+                if lookup["status"] != "present":
+                    problems.append(f"{where}.content.evidence.evidenceSetDigest.{image} claims "
+                                    f"{claimed_digest}, but the {image} evidence-set lookup is "
+                                    f"{lookup['status']}, not present -- the claim does not resolve")
+                    continue
+                set_problems = evidence_set_problems(lookup, obs, f"lookups.{image}EvidenceSet")
+                if set_problems:
+                    problems.append(f"{where}.content.evidence.evidenceSetDigest.{image} claims "
+                                    f"{claimed_digest}, but the {image} evidence-set is not "
+                                    f"trustworthy: {'; '.join(set_problems)}")
+                elif lookup["carrierDigest"] != claimed_digest:
+                    problems.append(f"{where}.content.evidence.evidenceSetDigest.{image} is "
+                                    f"{claimed_digest}, but the {image} evidence-set lookup resolved "
+                                    f"{lookup['carrierDigest']}")
+
     problems.extend(inventory_problems(content.get("flywayInventory"), images.get("monolith"),
                                        f"{where}.content.flywayInventory"))
+    return problems
+
+
+def evidence_set_problems(lookup, obs, where):
+    """Everything wrong with a present evidence-set lookup. Empty means it may be adopted, or a
+    marker's evidenceSetDigest claim against it may be trusted."""
+    problems = []
+    expected = obs["expected"]
+
+    verification = lookup.get("verification")
+    if type(verification) is not dict:
+        problems.append(f"{where}.verification is missing; the collector must record what it "
+                        f"actually verified, not repeat the carrier's own claim")
+        return problems
+
+    carrier_digest = lookup.get("carrierDigest")
+    if type(carrier_digest) is not str or not DIGEST.fullmatch(carrier_digest):
+        problems.append(f"{where}.carrierDigest is not a sha256 reference")
+    if verification.get("subjectDigest") != carrier_digest:
+        problems.append(f"{where}.verification.subjectDigest is "
+                        f"{verification.get('subjectDigest')!r}, not the carrier it describes")
+    if verification.get("attestationVerified") is not True:
+        problems.append(f"{where}.verification.attestationVerified is "
+                        f"{verification.get('attestationVerified')!r}, must be boolean true")
+    if verification.get("signerRepository") != expected["sourceRepository"]:
+        problems.append(f"{where} signed by {verification.get('signerRepository')!r}, expected "
+                        f"{expected['sourceRepository']!r}")
+    if verification.get("signerWorkflow") != expected["signerWorkflow"]:
+        problems.append(f"{where} signed by workflow {verification.get('signerWorkflow')!r}, "
+                        f"expected {expected['signerWorkflow']!r}")
+    if verification.get("sourceRevision") != obs["commit"]:
+        problems.append(f"{where}.verification.sourceRevision is "
+                        f"{verification.get('sourceRevision')!r}, expected {obs['commit']!r}")
+    if verification.get("policyPassed") is not True:
+        problems.append(f"{where}.verification.policyPassed is "
+                        f"{verification.get('policyPassed')!r}, must be boolean true")
+
+    if lookup.get("subjectMatches") is not True:
+        problems.append(f"{where}.subjectMatches is {lookup.get('subjectMatches')!r}, the "
+                        f"carrier's subject does not name this image")
+    if lookup.get("layersValid") is not True:
+        problems.append(f"{where}.layersValid is {lookup.get('layersValid')!r}, the carrier does "
+                        f"not have the required four report layers")
+
+    reports = lookup.get("reports")
+    if type(reports) is not dict:
+        problems.append(f"{where}.reports is missing")
+        return problems
+    for kind in ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"):
+        pair = reports.get(kind)
+        if type(pair) is not dict:
+            problems.append(f"{where}.reports.{kind} is missing")
+            continue
+        report_lookup = pair.get("reportLookup")
+        if type(report_lookup) is not dict or report_lookup.get("status") != "present":
+            problems.append(f"{where}.reports.{kind}.reportLookup is not present; adopt requires "
+                            f"every report to already exist, not a partial set")
+        attestation_lookup = pair.get("attestationLookup")
+        if type(attestation_lookup) is not dict or attestation_lookup.get("status") != "present":
+            # Section 3: a tag that exists but is missing a kind's attestation is CONFLICT, and the
+            # pipeline does not sign supplementally afterward to launder an artifact already there.
+            problems.append(f"{where}.reports.{kind}.attestationLookup is not present; adopting "
+                            f"without every kind's attestation would sign on trust rather than "
+                            f"verify it")
     return problems
 
 
@@ -736,7 +841,40 @@ def decide(obs):
             # clean slate has no digest to have queried, which is what "skipped" records.
             return conflict("object(s) present with no prepared marker to anchor them: "
                             + ", ".join(stray), cleanup_debt)
-        return decision("ABSENT", ["build_new"], "nothing published for this commit", cleanup_debt)
+
+        # 3b commit 2 (spec section 3): evidence-set creation precedes the prepared marker that
+        # references it, so a workflow that dies in between must be resumable -- the decision has to
+        # see an already-verified evidence-set and say adopt, not silently re-derive ABSENT and send
+        # the next run to re-derive evidence that already exists and was already attested.
+        evidence_sets = {image: lookups[f"{image}EvidenceSet"] for image in IMAGES}
+        actions = []
+        adoptable = []
+        for image in IMAGES:
+            lookup = evidence_sets[image]
+            if lookup["status"] == "absent":
+                actions.append(f"build_new_{image}_evidence_set")
+                adoptable.append(False)
+                continue
+            # status is "present": "error" already returned via the failures[] gate at the top of
+            # decide(), before any lookup here is inspected, so present is the only status left.
+            set_problems = evidence_set_problems(lookup, obs, f"lookups.{image}EvidenceSet")
+            if set_problems:
+                # Section 3's table: provenance/subject/structure mismatch, or a tag missing any
+                # kind's attestation, is CONFLICT -- never a partial adopt, never a supplemental
+                # sign to launder an artifact that is already there.
+                return conflict(f"{image} evidence-set is not adoptable: "
+                                + "; ".join(set_problems), cleanup_debt)
+            actions.append(f"adopt_{image}_evidence_set")
+            adoptable.append(True)
+
+        if not any(adoptable):
+            # Byte-for-byte the pre-3b behavior when neither image has anything to adopt: every
+            # existing ABSENT fixture keeps passing unmodified, and a caller that only recognises
+            # "build_new" is not silently handed a verb it was never told to expect.
+            return decision("ABSENT", ["build_new"], "nothing published for this commit", cleanup_debt)
+        return decision("ABSENT", actions,
+                        "nothing published for this commit; existing evidence-set(s) may be reused",
+                        cleanup_debt)
 
     if prepared_problems:
         return conflict("prepared marker is not trustworthy: " + "; ".join(prepared_problems),

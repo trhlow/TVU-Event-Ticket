@@ -27,6 +27,8 @@ FRONT=sha256:2222222222222222222222222222222222222222222222222222222222222222
 OTHER=sha256:9999999999999999999999999999999999999999999999999999999999999999
 MARKER_DIGEST=sha256:3333333333333333333333333333333333333333333333333333333333333333
 FP=fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477
+MONO_ES=sha256:5555555555555555555555555555555555555555555555555555555555555555
+FRONT_ES=sha256:6666666666666666666666666666666666666666666666666666666666666666
 
 # Three roles, three repositories, and now three different ones. Three packages are three OCI
 # repositories; the source repository they were all conflated with is a fourth thing entirely and
@@ -47,6 +49,7 @@ marker() {
 import hashlib, json, sys
 overrides = json.loads(sys.argv[1] or "{}")
 mono, front, sha, fp = sys.argv[2], sys.argv[3], sys.argv[4], sys.argv[5]
+mono_es, front_es = sys.argv[8], sys.argv[9]
 migrations = [{"installedRank": 1, "version": "16", "type": "SQL", "script": "V16__x.sql",
                "checksum": 123456789, "success": True}]
 canonical = json.dumps(sorted(migrations, key=lambda r: r["installedRank"]),
@@ -70,12 +73,18 @@ base = {
     "provenance": {"monolith": {"revision": sha, "subjectDigest": mono},
                    "frontend": {"revision": sha, "subjectDigest": front}},
     "evidence": {
-      kind: {"monolith": {"digest": "sha256:" + letter*64, "subjectDigest": mono,
-                          "predicateType": "https://tvu.example/" + kind, "passed": True},
-             "frontend": {"digest": "sha256:" + letter*63 + "e", "subjectDigest": front,
-                          "predicateType": "https://tvu.example/" + kind, "passed": True}}
-      for kind, letter in (("sbom", "a"), ("vulnerabilityScan", "b"),
-                           ("layerSecretScan", "c"), ("filesystemSecretScan", "d"))
+      **{
+        kind: {"monolith": {"digest": "sha256:" + letter*64, "subjectDigest": mono,
+                            "predicateType": "https://tvu.example/" + kind, "passed": True},
+               "frontend": {"digest": "sha256:" + letter*63 + "e", "subjectDigest": front,
+                            "predicateType": "https://tvu.example/" + kind, "passed": True}}
+        for kind, letter in (("sbom", "a"), ("vulnerabilityScan", "b"),
+                             ("layerSecretScan", "c"), ("filesystemSecretScan", "d"))
+      },
+      # 3b commit 2: matches MONO_ES/FRONT_ES, the carrierDigest present_evidence_set below
+      # produces by default -- a bare marker call and a bare present_evidence_set call agree by
+      # construction, the same way a bare marker call already agrees with MONO/FRONT by default.
+      "evidenceSetDigest": {"monolith": mono_es, "frontend": front_es},
     },
     "flywayInventory": {"boundTo": mono,
                         "checksum": hashlib.sha256(canonical.encode()).hexdigest(),
@@ -234,7 +243,7 @@ if "_envelope_layer_field" in overrides:
 
 merge(base, overrides)
 print(json.dumps(base))
-' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$SHA" "$FP" "$RELEASE_REPO" "$script_dir"
+' "${1:-}" "${2:-$MONO}" "${3:-$FRONT}" "$SHA" "$FP" "$RELEASE_REPO" "$script_dir" "$MONO_ES" "$FRONT_ES"
 }
 
 present_in() { printf '{"status":"present","queriedRef":"%s@%s","digest":"%s"}' "$1" "$2" "$2"; }
@@ -246,7 +255,33 @@ absent_fe="$(absent_in "$FRONTEND_REPO")"
 # absence there would assert an observation nobody made.
 skipped='{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}'
 
+# present_evidence_set <repo> <carrierDigest> -- a clean, fully-attested, adoptable evidence-set
+# lookup. Matches marker()'s default evidenceSetDigest when called with MONO_ES/FRONT_ES, so a
+# bare marker() and a bare present_evidence_set() agree by construction, the same pairing
+# present_in() already gives MONO/FRONT.
+present_evidence_set() {
+  local repo="$1" digest="$2"
+  local pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'","digest":"'"$digest"'"},
+               "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'","digest":"'"$digest"'"}}'
+  cat <<EOF
+{"status":"present","queriedRef":"$repo@$digest","carrierDigest":"$digest",
+ "verification":{"attestationVerified":true,"subjectDigest":"$digest",
+                  "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
+                  "sourceRevision":"$SHA","predicateType":"https://tvu.example/evidence-set","policyPassed":true},
+ "subjectMatches":true,"layersValid":true,
+ "reports":{"sbom":$pair,"vulnerabilityScan":$pair,"layerSecretScan":$pair,"filesystemSecretScan":$pair}}
+EOF
+}
+present_mono_es="$(present_evidence_set "$MONOLITH_REPO" "$MONO_ES")"
+present_front_es="$(present_evidence_set "$FRONTEND_REPO" "$FRONT_ES")"
+
 # observation <final> <prepared> <monoTag> <frontTag> [monoObj] [frontObj] [monoCand] [frontCand]
+#             [monoEvidenceSet] [frontEvidenceSet]
+#
+# The two evidence-set lookups default to absent: every existing caller of observation() is
+# testing something about markers, tags or digest objects, and defaulting to "nothing to adopt"
+# keeps every one of those cases asking the same question it always did instead of accidentally
+# also exercising 3b's adopt path. Cases that DO want to exercise adopt/CONFLICT pass $9/$10.
 observation() {
   cat <<EOF
 {"schemaVersion":1,"commit":"$SHA","environment":"production",
@@ -256,7 +291,8 @@ observation() {
  "lookups":{"finalMarker":$1,"preparedMarker":$2,"monolithTag":$3,"frontendTag":$4,
             "monolithDigestObject":${5:-$(present_in "$MONOLITH_REPO" "$MONO")},
             "frontendDigestObject":${6:-$(present_in "$FRONTEND_REPO" "$FRONT")},
-            "monolithCandidate":${7:-$absent_mono},"frontendCandidate":${8:-$absent_fe}}}
+            "monolithCandidate":${7:-$absent_mono},"frontendCandidate":${8:-$absent_fe},
+            "monolithEvidenceSet":${9:-$absent_mono},"frontendEvidenceSet":${10:-$absent_fe}}}
 EOF
 }
 
@@ -306,7 +342,20 @@ if d.get("retryable") != (want_retry == "true"):
 if state in ("UNKNOWN", "CONFLICT") and actions != []:
     problems.append("%s must carry no actions, has %r" % (state, actions))
 if state == "ABSENT" and actions != ["build_new"]:
-    problems.append("ABSENT must be exactly [build_new], has %r" % (actions,))
+    # 3b commit 2: ABSENT stays ABSENT even when an evidence-set already exists to adopt -- nothing
+    # has been published yet -- but the actions say which image(s) can skip a fresh scan. Anything
+    # other than plain build_new must name exactly one action per image, each either build_new_* or
+    # adopt_* for that image and no other.
+    per_image = {
+        "monolith": {"build_new_monolith_evidence_set", "adopt_monolith_evidence_set"},
+        "frontend": {"build_new_frontend_evidence_set", "adopt_frontend_evidence_set"},
+    }
+    actions_set = set(actions)
+    if (len(actions) != 2
+            or len(actions_set & per_image["monolith"]) != 1
+            or len(actions_set & per_image["frontend"]) != 1):
+        problems.append("ABSENT must be [build_new] or exactly one build_new_*_evidence_set/"
+                        "adopt_*_evidence_set action per image, has %r" % (actions,))
 if state == "COMPLETE" and any(a != "verify_only" for a in actions or []):
     problems.append("COMPLETE must propose no mutation, has %r" % (actions,))
 if state == "PARTIAL" and any(not (a.startswith("promote_") or a == "publish_final_marker")
@@ -375,13 +424,13 @@ assert_decision "a digest object present with no marker is unexplained, not abse
 echo
 echo "== PARTIAL, only with a trustworthy prepared marker and digests that still exist"
 assert_decision "both tags missing" \
-  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe")" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 assert_decision "one tag missing" \
-  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$absent_fe")" \
+  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["promote_frontend_tag","publish_final_marker"]' false false
 assert_decision "both tags right, final marker missing" \
-  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")" \
+  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["publish_final_marker"]' false false
 assert_decision "a marker whose digest is no longer in the registry cannot be resumed" \
   "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "$absent_mono")" \
@@ -390,7 +439,7 @@ assert_decision "a marker whose digest is no longer in the registry cannot be re
 echo
 echo "== COMPLETE"
 assert_decision "final marker and both tags agree" \
-  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   COMPLETE '["verify_only"]' false false
 # `skipped` means the question was never asked, and its only permitted reason is that no digest was
 # claimed. Beside a marker that DOES claim one, the observation contradicts itself: the collector
@@ -399,10 +448,10 @@ assert_decision "final marker and both tags agree" \
 # "its digest object is not in the registry", which is a claim about the registry the observation
 # never makes. Self-contradiction is UNKNOWN, the same rule as everywhere else here.
 assert_decision "a digest object skipped while the marker claims that digest" \
-  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$skipped")" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$skipped" "" "" "" "$present_mono_es" "$present_front_es")" \
   UNKNOWN '[]' false false
 assert_decision "leftover candidate does not invalidate it" \
-  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "$(present_in "$MONOLITH_REPO" "$MONO")")" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "$(present_in "$MONOLITH_REPO" "$MONO")" "" "$present_mono_es" "$present_front_es")" \
   COMPLETE '["verify_only"]' true false
 
 echo
@@ -754,18 +803,18 @@ done
 # version string would have rejected the first release that added one, and the schema, not the
 # release, would have been wrong.
 assert_decision "several repeatables share the absence of a version" \
-  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":null,"type":"SQL","script":"R__one.sql","checksum":1,"success":true},{"installedRank":2,"version":null,"type":"SQL","script":"R__two.sql","checksum":2,"success":true}]}')" "$absent_mono" "$absent_fe")" \
+  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":null,"type":"SQL","script":"R__one.sql","checksum":1,"success":true},{"installedRank":2,"version":null,"type":"SQL","script":"R__two.sql","checksum":2,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 # Flyway records no checksum for some entries, and a release must not be blocked by an absence
 # Flyway itself produced.
 assert_decision "a migration Flyway recorded no checksum for" \
-  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":null,"success":true}]}')" "$absent_mono" "$absent_fe")" \
+  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":null,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 # The canonical form is ordered by installedRank, so the order the collector happened to read the
 # table in cannot change the checksum. Both of these hash to the same value by construction: the
 # fixture sorts before hashing, and the subject has to do the same or one of them is rejected.
 assert_decision "migrations listed out of order still hash the same" \
-  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":2,"version":"2","type":"SQL","script":"V2__b.sql","checksum":2,"success":true},{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]}')" "$absent_mono" "$absent_fe")" \
+  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":2,"version":"2","type":"SQL","script":"V2__b.sql","checksum":2,"success":true},{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 
 echo
@@ -1035,6 +1084,55 @@ assert_decision "content present while the digest check failed" \
 assert_decision "a payload that is not an object" \
   "$(observation "$absent_release" "$(marker '{"_content_replace": "not an object"}')" \
      "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+
+echo
+echo "== 3b commit 2: evidence-set adopt, build_new, and CONFLICT"
+# damaged_evidence_set <python-statement> <base-json> -- takes present_evidence_set's own JSON and
+# applies one edit via exec(), so each case changes exactly one fact and the rest of a clean,
+# adoptable evidence-set stays intact.
+damaged_evidence_set() {
+  "$PYTHON" -c '
+import json, sys
+doc = json.loads(sys.argv[2])
+exec(sys.argv[1])
+print(json.dumps(doc))
+' "$1" "$2"
+}
+assert_decision "nothing to adopt, nothing built: unchanged pre-3b behavior" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped")" \
+  ABSENT '["build_new"]' false false
+assert_decision "one image adoptable, the other has nothing yet" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es")" \
+  ABSENT '["adopt_monolith_evidence_set","build_new_frontend_evidence_set"]' false false
+assert_decision "both images adoptable" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es" "$present_front_es")" \
+  ABSENT '["adopt_monolith_evidence_set","adopt_frontend_evidence_set"]' false false
+assert_decision "adopt refused: one kind is missing its attestation" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x"}' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: provenance names a different workflow" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["signerWorkflow"] = "other.yml"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: subject does not match this image" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["subjectMatches"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "evidence-set lookup error surfaces through the same UNKNOWN gate as any other" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     '{"status":"error","code":503,"queriedRef":"ghcr.io/owner/name/monolith:sha-x"}')" \
+  UNKNOWN '[]' false true
+assert_decision "a marker's evidenceSetDigest claim resolves against a clean, matching evidence-set" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
+assert_decision "a marker's evidenceSetDigest claim does not resolve: lookup absent" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+assert_decision "a marker's evidenceSetDigest claim does not resolve: digest disagrees" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" \
+     "$(damaged_evidence_set 'doc["carrierDigest"] = "sha256:" + "7"*64; doc["verification"]["subjectDigest"] = doc["carrierDigest"]' "$present_mono_es")" "$present_front_es")" \
   CONFLICT '[]' false false
 
 echo
