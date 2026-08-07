@@ -1351,10 +1351,12 @@ Expected: every suite reports `passed=N failed=0` with no suite's `N` lower than
 - [ ] **Step 3: Run the mutation sweep — only now, once**
 
 ```bash
-"$PUBLISH_DECISION_BASH" .github/scripts/publish-decision.mutations.py
+"$PYTHON_BIN" .github/scripts/publish-decision.mutations.py
 ```
 
-This takes over 20 minutes; do not run it earlier in this task or in any earlier task. Expected: `all N mutations caught` (N = the pre-existing mutation count plus the 3 added in Step 1). If any mutation survives, read which one — a surviving mutation on a guard this plan added means a fixture claimed to witness that guard does not actually kill it; go back to the relevant task (2 or 4) and fix the fixture, do not weaken or delete the mutation to make it pass.
+(Not `$PUBLISH_DECISION_BASH` — this is a Python script, not a shell script. `$PUBLISH_DECISION_BASH` is what the runner shells out to *internally* to execute each mutated copy of `publish-decision.test.sh`; invoking the runner itself with it fails immediately with a bash syntax error on the first `import` line.)
+
+This takes over 20 minutes; do not run it earlier in this task or in any earlier task, and do not treat a suspiciously fast return (well under 20 minutes) as a genuine completion — re-run it rather than trust a result that arrived too quickly. Expected: `all N mutations caught` (N = the pre-existing mutation count plus the 3 added in Step 1). If any mutation survives, read which one — a surviving mutation on a guard this plan added means a fixture claimed to witness that guard does not actually kill it; go back to the relevant task (2 or 4) and fix the fixture, do not weaken or delete the mutation to make it pass.
 
 - [ ] **Step 4: shellcheck over both script directories**
 
