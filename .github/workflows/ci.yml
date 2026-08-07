@@ -366,6 +366,11 @@ jobs:
           # must run without the contracts directory beside it. This is what holds the three
           # together, and section 9 item 4's witnesses that schema validation is not the gate.
           bash .github/scripts/manifest-agreement.test.sh
+          # The evidence-set carrier has no decision-side consumer yet -- 3b commit 2 gives the
+          # decision evidenceSetLookup -- so unlike its siblings this suite asserts schema accept/
+          # reject only. It exists at all because release-envelope.schema.json shipped once with
+          # zero witnesses on its entire validated content and a whole-branch review had to find that.
+          bash .github/scripts/evidence-set-schema.test.sh
 
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
