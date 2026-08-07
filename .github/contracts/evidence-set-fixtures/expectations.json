@@ -1,0 +1,8 @@
+{
+  "valid/monolith.json": "accepts",
+  "valid/frontend.json": "accepts",
+  "invalid/schema-version-is-one.json": "rejects",
+  "invalid/wrong-manifest-media-type.json": "rejects",
+  "invalid/wrong-artifact-type.json": "rejects",
+  "invalid/config-not-empty.json": "rejects"
+}

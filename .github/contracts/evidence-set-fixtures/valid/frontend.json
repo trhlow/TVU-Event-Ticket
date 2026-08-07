@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.evts.evidence-set.v1+json",
+  "config": {
+    "mediaType": "application/vnd.oci.empty.v1+json",
+    "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+    "size": 2,
+    "data": "e30="
+  },
+  "layers": [
+    {
+      "mediaType": "application/vnd.evts.evidence.filesystemSecretScan.v1+json",
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "size": 512
+    },
+    {
+      "mediaType": "application/vnd.evts.evidence.layerSecretScan.v1+json",
+      "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "size": 640
+    },
+    {
+      "mediaType": "application/vnd.evts.evidence.sbom.v1+json",
+      "digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+      "size": 2560
+    },
+    {
+      "mediaType": "application/vnd.evts.evidence.vulnerabilityScan.v1+json",
+      "digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+      "size": 5120
+    }
+  ],
+  "subject": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "size": 987
+  }
+}
