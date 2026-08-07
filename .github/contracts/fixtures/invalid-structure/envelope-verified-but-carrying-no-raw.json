@@ -120,6 +120,10 @@
               "predicateType": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
               "passed": true
             }
+          },
+          "evidenceSetDigest": {
+            "monolith": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "frontend": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
           }
         },
         "flywayInventory": {
@@ -206,6 +210,16 @@
       "status": "absent",
       "observedCode": 404,
       "queriedRef": "ghcr.io/owner/name/frontend:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
+    },
+    "monolithEvidenceSet": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/monolith:sha-x"
+    },
+    "frontendEvidenceSet": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/frontend:sha-x"
     }
   }
 }

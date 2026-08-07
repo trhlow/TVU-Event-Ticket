@@ -58,6 +58,16 @@
       "status": "absent",
       "observedCode": 404,
       "queriedRef": "ghcr.io/owner/name:whatever"
+    },
+    "monolithEvidenceSet": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/monolith:sha-x"
+    },
+    "frontendEvidenceSet": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/frontend:sha-x"
     }
   }
 }
