@@ -1,12 +1,31 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { useParams } from "react-router";
+import { AlertCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import QRScannerPanel from "../../components/tickets/QRScannerPanel";
 import { ticketService } from "../../services/ticketService";
+import { eventService } from "../../services/eventService";
+import { Event } from "../../types/event";
 
 export default function OrganizerScanPage() {
+  const { eventId } = useParams<{ eventId?: string }>();
+  const [scopedEvent, setScopedEvent] = useState<Event | undefined>();
   const [cameraPermission, setCameraPermission] = useState<"idle" | "granted" | "denied">("idle");
   const [scanHistory, setScanHistory] = useState<Array<{ code: string; message: string; success: boolean; time: string }>>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!eventId) {
+      setScopedEvent(undefined);
+      return;
+    }
+    void eventService.getByIdRemote(eventId).then((event) => {
+      if (mounted) setScopedEvent(event);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, [eventId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,19 +61,38 @@ export default function OrganizerScanPage() {
 
   const handleCheckIn = useCallback(async (qrPayload: string) => {
     try {
-      await ticketService.checkIn(qrPayload);
+      const ticket = await ticketService.checkIn(qrPayload);
+      // Backend check-in has no expectedEventId param — it accepts any valid signed QR regardless
+      // of which event this screen is scoped to. Detect the mismatch after the fact so the
+      // check-in getting recorded under the wrong event is at least visible, not silent.
+      if (eventId && ticket.eventId !== eventId) {
+        return pushScanHistory(
+          qrPayload,
+          false,
+          "Cảnh báo: vé hợp lệ nhưng thuộc một sự kiện khác của CLB. Điểm danh vẫn đã được ghi nhận trên hệ thống — vui lòng đối chiếu lại thủ công.",
+        );
+      }
       return pushScanHistory(qrPayload, true, "Điểm danh thành công.");
     } catch (error) {
       return pushScanHistory(qrPayload, false, error instanceof Error ? error.message : "QR không hợp lệ hoặc vé đã check-in.");
     }
-  }, [pushScanHistory]);
+  }, [pushScanHistory, eventId]);
 
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        title="Quét QR điểm danh"
+        title={eventId ? `Quét QR điểm danh — ${scopedEvent?.title || "Đang tải sự kiện..."}` : "Quét QR điểm danh"}
         description="Quét hoặc nhập mã QR đã gửi cho sinh viên qua email. Hệ thống luôn là nơi xác minh mã hợp lệ hay không."
       />
+      {eventId && (
+        <div className="flex gap-3 rounded-2xl border border-warning-200 bg-warning-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
+          <span>
+            Máy chủ chưa hỗ trợ giới hạn check-in theo từng sự kiện — một vé hợp lệ của sự kiện khác cùng CLB vẫn có
+            thể được quét thành công tại đây. Hệ thống sẽ cảnh báo nếu phát hiện vé không thuộc sự kiện này.
+          </span>
+        </div>
+      )}
       <QRScannerPanel onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
       <section className="enterprise-card p-5">
         <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
