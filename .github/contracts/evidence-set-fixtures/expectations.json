@@ -16,5 +16,9 @@
   "invalid/subject-extra-field.json": "rejects",
   "invalid/subject-is-an-index.json": "rejects",
   "invalid/subject-bad-digest.json": "rejects",
-  "invalid/subject-bad-size.json": "rejects"
+  "invalid/subject-bad-size.json": "rejects",
+  "invalid/annotations-at-manifest.json": "rejects",
+  "invalid/annotations-at-config.json": "rejects",
+  "invalid/annotations-at-layer.json": "rejects",
+  "invalid/annotations-at-subject.json": "rejects"
 }
