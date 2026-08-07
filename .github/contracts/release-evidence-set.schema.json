@@ -24,6 +24,23 @@
         }
       }
     },
+    "evidenceLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mediaType", "digest", "size"],
+      "properties": {
+        "mediaType": {
+          "anyOf": [
+            { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/sbom" },
+            { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/vulnerabilityScan" },
+            { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/layerSecretScan" },
+            { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/filesystemSecretScan" }
+          ]
+        },
+        "digest": { "$ref": "observation.schema.json#/$defs/digest" },
+        "size": { "type": "integer", "minimum": 0 }
+      }
+    },
     "evidenceSetManifest": {
       "description": "The whole carrier. layers and subject are loosely typed here and tightened in the same file across this commit's later tasks; every fixture in the corpus already satisfies the tightened shape, because required already demands both keys be present in full from the first task onward.",
       "type": "object",
@@ -34,7 +51,28 @@
         "mediaType": { "$ref": "release-envelope.schema.json#/$defs/constants/properties/manifestMediaType" },
         "artifactType": { "$ref": "#/$defs/constants/properties/artifactType" },
         "config": { "$ref": "release-envelope.schema.json#/$defs/constants/properties/emptyConfig" },
-        "layers": { "type": "array" },
+        "layers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evidenceLayer" },
+          "allOf": [
+            {
+              "contains": { "properties": { "mediaType": { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/sbom" } } },
+              "minContains": 1, "maxContains": 1
+            },
+            {
+              "contains": { "properties": { "mediaType": { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/vulnerabilityScan" } } },
+              "minContains": 1, "maxContains": 1
+            },
+            {
+              "contains": { "properties": { "mediaType": { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/layerSecretScan" } } },
+              "minContains": 1, "maxContains": 1
+            },
+            {
+              "contains": { "properties": { "mediaType": { "$ref": "#/$defs/constants/properties/layerMediaTypes/properties/filesystemSecretScan" } } },
+              "minContains": 1, "maxContains": 1
+            }
+          ]
+        },
         "subject": { "type": "object" }
       }
     }

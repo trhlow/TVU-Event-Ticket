@@ -4,5 +4,12 @@
   "invalid/schema-version-is-one.json": "rejects",
   "invalid/wrong-manifest-media-type.json": "rejects",
   "invalid/wrong-artifact-type.json": "rejects",
-  "invalid/config-not-empty.json": "rejects"
+  "invalid/config-not-empty.json": "rejects",
+  "invalid/too-few-layers.json": "rejects",
+  "invalid/too-many-layers.json": "rejects",
+  "invalid/duplicate-layer-media-type.json": "rejects",
+  "invalid/wrong-layer-media-type.json": "rejects",
+  "invalid/layer-extra-field.json": "rejects",
+  "invalid/layer-bad-digest.json": "rejects",
+  "invalid/layer-bad-size.json": "rejects"
 }
