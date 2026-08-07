@@ -476,7 +476,7 @@ EOF
 "$PUBLISH_DECISION_BASH" .github/scripts/publish-decision.test.sh 2>&1 | tail -3
 ```
 
-Expected: `passed=172 failed=9`. The 9 failures are specific "happy path" call sites that build a fully valid marker via a bare `marker()` call and were relying on its default content being trustworthy for something else the case is testing (migration checksums, tag/digest-object agreement) — they now fail because `evidence_set_problems` doesn't exist yet (Step 7) and because they don't pass matching evidence-set-lookup overrides (Step 11 fixes the call sites; Step 7-8 add the function and branch these fixtures will exercise).
+Expected: `passed=181 failed=0` — the entire pre-existing corpus passes at this point, byte-for-byte the same as before Task 1. This is a genuinely clean checkpoint, not a partial one: `evidence_set_problems`/the `marker_problems()` cross-check don't exist yet (that's Step 7), so nothing in the subject enforces `evidenceSetDigest` — the two new lookups are structurally present (satisfying `validate()`) and nothing downstream reads them yet. The 9 "happy path" call sites that will need fixing don't fail until Step 7-8 add the code that checks what they're missing; Step 10 is where `passed=172 failed=9` actually appears, for the first time, with a real enforcing rule behind it.
 
 - [ ] **Step 7: Add `evidence_set_problems()` and the marker cross-check**
 
