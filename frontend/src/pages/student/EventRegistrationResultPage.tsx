@@ -121,8 +121,8 @@ export default function EventRegistrationResultPage() {
         </div>
 
         <p className="max-w-sm text-center text-[11px] font-semibold leading-relaxed text-slate-500">
-          Mã vé QR sẽ tự động hiển thị trong mục <span className="font-extrabold text-brand-600">"Ví vé"</span> ngay khi Ban tổ chức CLB phê
-          duyệt phiếu đăng ký của bạn.
+          Mã vé QR sẽ được gửi qua email ngay khi Ban tổ chức CLB phê duyệt phiếu đăng ký của bạn — mục{" "}
+          <span className="font-extrabold text-brand-600">"Ví vé"</span> chưa hỗ trợ hiển thị lại mã QR.
         </p>
 
         <div className="flex w-full flex-col gap-2 pt-2 sm:flex-row">

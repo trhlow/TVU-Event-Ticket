@@ -98,8 +98,8 @@ export default function MyTicketsPage() {
       <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
         <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
         <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-          Mã QR tự động hiển thị trong thẻ vé bên dưới ngay khi Ban tổ chức duyệt đăng ký. Nếu vé chưa
-          có mã QR để hiển thị, hệ thống đã gửi mã qua email — vui lòng kiểm tra hộp thư của bạn.
+          Mã QR hiện chỉ được gửi qua email ngay khi Ban tổ chức duyệt đăng ký — trang này chưa hỗ trợ
+          hiển thị lại mã QR. Vui lòng kiểm tra hộp thư của bạn.
         </p>
       </div>
 

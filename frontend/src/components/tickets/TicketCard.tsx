@@ -58,7 +58,7 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
 
         <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
           <div className="text-left">
-            <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Cấp ngày</span>
+            <span className="block text-[10px] font-bold uppercase leading-none text-slate-400">Đăng ký ngày</span>
             <span className="mt-1 block text-xs font-bold text-slate-600">{formatDateTime(ticket.issuedAt)}</span>
           </div>
 
@@ -72,7 +72,7 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
               className="btn-press flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-medium text-white shadow-sm hover:bg-brand-700"
             >
               <QrCode className="h-4 w-4" />
-              Hiển thị QR vé
+              Xem thông tin vé
             </button>
           ) : (
             <span className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
