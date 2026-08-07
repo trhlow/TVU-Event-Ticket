@@ -50,13 +50,15 @@ export const registrationService = {
   async listPendingForOrganizer(): Promise<Reservation[]> {
     return (await apiRequest<ReservationResponse[]>("/reservations/pending")).map(mapReservation);
   },
-  async submit(data: Pick<Reservation, "eventId"> & { note?: string }): Promise<Reservation> {
+  async submit(data: Pick<Reservation, "eventId">): Promise<Reservation> {
+    // CreateReservationRequest only accepts eventId — the backend has no `note` column, so
+    // sending one would silently vanish. Don't collect it on the frontend until that lands.
     return mapReservation(await apiRequest<ReservationResponse>("/reservations", {
       method: "POST",
       headers: {
         "Idempotency-Key": createRequestId(),
       },
-      body: JSON.stringify({ eventId: data.eventId, note: data.note }),
+      body: JSON.stringify({ eventId: data.eventId }),
     }));
   },
   async updateStatus(reservationId: string, status: Reservation["status"], rejectReason?: string): Promise<Reservation> {
