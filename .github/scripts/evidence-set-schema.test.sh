@@ -113,9 +113,11 @@ for name in on_disk:
         problems.append(f"the schema makes a reference nothing in {contracts.name}/ can answer -- "
                         f"{unresolvable}")
     else:
-        if want == "accepts" and errors:
+        if want not in ("accepts", "rejects"):
+            problems.append(f"unknown expected verdict {want!r} (must be 'accepts' or 'rejects')")
+        elif want == "accepts" and errors:
             problems.append(f"rejected but filed as valid: {describe(errors)}")
-        if want == "rejects" and not errors:
+        elif want == "rejects" and not errors:
             problems.append("accepted but filed as invalid")
 
     report(name, problems)

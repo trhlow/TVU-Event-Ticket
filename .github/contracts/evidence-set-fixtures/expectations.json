@@ -20,5 +20,11 @@
   "invalid/annotations-at-manifest.json": "rejects",
   "invalid/annotations-at-config.json": "rejects",
   "invalid/annotations-at-layer.json": "rejects",
-  "invalid/annotations-at-subject.json": "rejects"
+  "invalid/annotations-at-subject.json": "rejects",
+  "invalid/layer-size-not-integer.json": "rejects",
+  "invalid/subject-size-not-integer.json": "rejects",
+  "invalid/missing-vulnerability-scan.json": "rejects",
+  "invalid/duplicate-vulnerability-scan.json": "rejects",
+  "invalid/missing-subject.json": "rejects",
+  "invalid/layer-missing-digest.json": "rejects"
 }
