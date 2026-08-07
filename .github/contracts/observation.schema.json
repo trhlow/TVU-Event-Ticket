@@ -52,12 +52,13 @@
     "lookups": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Exactly eight, no more and no fewer. A missing one is a fact nobody established; an extra one is a misspelling of a key the collector meant to set, and both are unusable rather than partial.",
+      "description": "Exactly ten, no more and no fewer. A missing one is a fact nobody established; an extra one is a misspelling of a key the collector meant to set, and both are unusable rather than partial.",
       "required": [
         "finalMarker", "preparedMarker",
         "monolithTag", "frontendTag",
         "monolithDigestObject", "frontendDigestObject",
-        "monolithCandidate", "frontendCandidate"
+        "monolithCandidate", "frontendCandidate",
+        "monolithEvidenceSet", "frontendEvidenceSet"
       ],
       "properties": {
         "finalMarker": { "$ref": "#/$defs/markerLookup" },
@@ -67,7 +68,9 @@
         "monolithDigestObject": { "$ref": "#/$defs/skippableObjectLookup" },
         "frontendDigestObject": { "$ref": "#/$defs/skippableObjectLookup" },
         "monolithCandidate": { "$ref": "#/$defs/objectLookup" },
-        "frontendCandidate": { "$ref": "#/$defs/objectLookup" }
+        "frontendCandidate": { "$ref": "#/$defs/objectLookup" },
+        "monolithEvidenceSet": { "$ref": "#/$defs/evidenceSetLookup" },
+        "frontendEvidenceSet": { "$ref": "#/$defs/evidenceSetLookup" }
       }
     }
   },
@@ -237,13 +240,23 @@
     "evidence": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Four separate results, because they answer different questions. A single overall pass hides which of them was never run.",
-      "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
+      "description": "Four separate results, because they answer different questions. A single overall pass hides which of them was never run. evidenceSetDigest nests here rather than becoming an eighth top-level markerContent key (spec section 2) -- it is one more fact about evidence, not a new category of fact about the release.",
+      "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan", "evidenceSetDigest"],
       "properties": {
         "sbom": { "$ref": "#/$defs/perImageEvidence" },
         "vulnerabilityScan": { "$ref": "#/$defs/perImageEvidence" },
         "layerSecretScan": { "$ref": "#/$defs/perImageEvidence" },
-        "filesystemSecretScan": { "$ref": "#/$defs/perImageEvidence" }
+        "filesystemSecretScan": { "$ref": "#/$defs/perImageEvidence" },
+        "evidenceSetDigest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monolith", "frontend"],
+          "description": "3b commit 2: the digest of the evidence-set carrier the marker claims for each image. A marker no longer verifies evidence itself (section 3) -- this is a cross-check, not a source of truth: the decision resolves it against monolithEvidenceSet/frontendEvidenceSet's own already-established verification, and disagreement is CONFLICT, not a fact this field could assert on its own.",
+          "properties": {
+            "monolith": { "$ref": "#/$defs/digest" },
+            "frontend": { "$ref": "#/$defs/digest" }
+          }
+        }
       }
     },
 
@@ -346,6 +359,56 @@
         { "$ref": "#/$defs/error" },
         { "$ref": "#/$defs/skipped" }
       ]
+    },
+
+    "evidenceSetLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentEvidenceSet" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "presentEvidenceSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 2 (spec section 3): what the collector must prove before the decision may adopt an existing evidence-set instead of asking for a fresh scan. verification reuses the same shape a marker's own attestation check uses -- provenance is provenance whichever carrier it is attesting to. subjectMatches and layersValid are outcomes the collector computed against release-evidence-set.schema.json's shape (section 2); the decision does not re-parse a raw manifest here, matching section 8.6. The four reports pairs are loosely typed placeholders -- commit 4 gives reportLookup and attestationLookup their own real trust-boundary split (section 5); here each is only present/absent/error, wide enough to prove all four exist, not yet rich enough to say what a real one contains.",
+      "required": ["status", "queriedRef", "carrierDigest", "verification", "subjectMatches", "layersValid", "reports"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "carrierDigest": { "$ref": "#/$defs/digest" },
+        "verification": { "$ref": "#/$defs/verification" },
+        "subjectMatches": {
+          "type": "boolean",
+          "description": "Whether the carrier's own subject descriptor names this image's digest. False, not absence: the collector asked and got an answer, and a false one is the exact case section 3 calls CONFLICT (subject/structure mismatch), not UNKNOWN."
+        },
+        "layersValid": {
+          "type": "boolean",
+          "description": "Whether the carrier has exactly four layers, the four required mediaTypes, no duplicates -- release-evidence-set.schema.json's own shape, already frozen in commit 1. The decision trusts this boolean rather than re-deriving it from raw bytes."
+        },
+        "reports": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
+          "properties": {
+            "sbom": { "$ref": "#/$defs/reportAttestationPair" },
+            "vulnerabilityScan": { "$ref": "#/$defs/reportAttestationPair" },
+            "layerSecretScan": { "$ref": "#/$defs/reportAttestationPair" },
+            "filesystemSecretScan": { "$ref": "#/$defs/reportAttestationPair" }
+          }
+        }
+      }
+    },
+
+    "reportAttestationPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reportLookup", "attestationLookup"],
+      "properties": {
+        "reportLookup": { "$ref": "#/$defs/objectLookup" },
+        "attestationLookup": { "$ref": "#/$defs/objectLookup" }
+      }
     }
   }
 }
