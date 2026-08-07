@@ -304,6 +304,28 @@ MUTATIONS = {
         '            if layers[0].get("digest") != payload_digest:', "            if False:"),
     "payload_binding_size_unchecked": (
         '            if layers[0].get("size") != len(payload):', "            if False:"),
+    # 3b commit 2: adopt is refused, not silently narrowed, when the evidence-set has any problem at
+    # all -- deleting the guard would let a CONFLICT-worthy evidence-set slide straight into adopt.
+    "evidence_set_adopt_ignores_problems": (
+        'if set_problems:\n'
+        '                # Section 3\'s table: provenance/subject/structure mismatch, or a tag missing any\n'
+        '                # kind\'s attestation, is CONFLICT -- never a partial adopt, never a supplemental\n'
+        '                # sign to launder an artifact that is already there.\n'
+        '                return conflict(f"{image} evidence-set is not adoptable: "\n'
+        '                                + "; ".join(set_problems), cleanup_debt)',
+        'if False:\n'
+        '                return conflict("unreachable", cleanup_debt)'),
+    # A tag that exists but is missing a kind's attestation must be CONFLICT, not a partial adopt.
+    "evidence_set_attestation_pair_unchecked": (
+        'if type(attestation_lookup) is not dict or attestation_lookup.get("status") != "present":',
+        "if False:"),
+    # The marker's evidenceSetDigest claim must be typed before it is resolved against the lookup --
+    # without this a non-dict claim would be read as if it were one.
+    "marker_evidence_set_digest_unchecked": (
+        'evidence_set_digest = evidence.get("evidenceSetDigest")\n'
+        '        if type(evidence_set_digest) is not dict:',
+        'evidence_set_digest = evidence.get("evidenceSetDigest")\n'
+        '        if False:'),
 }
 
 

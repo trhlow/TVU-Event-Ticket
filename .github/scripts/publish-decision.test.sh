@@ -278,10 +278,17 @@ present_front_es="$(present_evidence_set "$FRONTEND_REPO" "$FRONT_ES")"
 # observation <final> <prepared> <monoTag> <frontTag> [monoObj] [frontObj] [monoCand] [frontCand]
 #             [monoEvidenceSet] [frontEvidenceSet]
 #
-# The two evidence-set lookups default to absent: every existing caller of observation() is
-# testing something about markers, tags or digest objects, and defaulting to "nothing to adopt"
-# keeps every one of those cases asking the same question it always did instead of accidentally
-# also exercising 3b's adopt path. Cases that DO want to exercise adopt/CONFLICT pass $9/$10.
+# The two evidence-set lookups default to a CLEAN, RESOLVING pair (present_mono_es/present_front_es),
+# matching marker()'s own default evidenceSetDigest -- not absent. This was tried the other way
+# first and found to be a mutation-testing blind spot: with an unresolved-by-default evidenceSetDigest,
+# every marker-bearing case testing an unrelated defect (a bad envelope constant, an unverified
+# signature, a payload-binding mismatch) was ALREADY going to land on CONFLICT for the unrelated
+# "evidenceSetDigest does not resolve" reason, so mutating away the guard actually under test changed
+# nothing observable -- the mutation runner reported 29 pre-existing guards SURVIVED, most of them
+# nothing to do with 3b. A clean default makes each case's own guard the only thing standing between
+# it and a trustworthy marker, the same principle as every other default in this function. The small
+# number of cases that must see an absent evidence-set (the ABSENT-state tests, and the "nothing to
+# adopt" case in the 3b commit 2 section below) override $9/$10 back to absent explicitly.
 observation() {
   cat <<EOF
 {"schemaVersion":1,"commit":"$SHA","environment":"production",
@@ -292,7 +299,7 @@ observation() {
             "monolithDigestObject":${5:-$(present_in "$MONOLITH_REPO" "$MONO")},
             "frontendDigestObject":${6:-$(present_in "$FRONTEND_REPO" "$FRONT")},
             "monolithCandidate":${7:-$absent_mono},"frontendCandidate":${8:-$absent_fe},
-            "monolithEvidenceSet":${9:-$absent_mono},"frontendEvidenceSet":${10:-$absent_fe}}}
+            "monolithEvidenceSet":${9:-$present_mono_es},"frontendEvidenceSet":${10:-$present_front_es}}}
 EOF
 }
 
@@ -412,10 +419,10 @@ echo "== ABSENT"
 # A clean slate has no digest to have queried, so the digest objects are skipped rather than
 # absent. Claiming absence there would be an observation nobody made.
 assert_decision "nothing published at all" \
-  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped")" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$absent_mono" "$absent_fe")" \
   ABSENT '["build_new"]' false false
 assert_decision "an orphan candidate is debt, not a release" \
-  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "$(present_in "$MONOLITH_REPO" "$MONO")")" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "$(present_in "$MONOLITH_REPO" "$MONO")" "" "$absent_mono" "$absent_fe")" \
   ABSENT '["build_new"]' true false
 assert_decision "a digest object present with no marker is unexplained, not absent" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$(present_in "$MONOLITH_REPO" "$MONO")" "$skipped")" \
@@ -1100,10 +1107,10 @@ print(json.dumps(doc))
 ' "$1" "$2"
 }
 assert_decision "nothing to adopt, nothing built: unchanged pre-3b behavior" \
-  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped")" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$absent_mono" "$absent_fe")" \
   ABSENT '["build_new"]' false false
 assert_decision "one image adoptable, the other has nothing yet" \
-  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es")" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es" "$absent_fe")" \
   ABSENT '["adopt_monolith_evidence_set","build_new_frontend_evidence_set"]' false false
 assert_decision "both images adoptable" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es" "$present_front_es")" \
@@ -1128,11 +1135,19 @@ assert_decision "a marker's evidenceSetDigest claim resolves against a clean, ma
   "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 assert_decision "a marker's evidenceSetDigest claim does not resolve: lookup absent" \
-  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe")" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$absent_mono" "$absent_fe")" \
   CONFLICT '[]' false false
 assert_decision "a marker's evidenceSetDigest claim does not resolve: digest disagrees" \
   "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" \
      "$(damaged_evidence_set 'doc["carrierDigest"] = "sha256:" + "7"*64; doc["verification"]["subjectDigest"] = doc["carrierDigest"]' "$present_mono_es")" "$present_front_es")" \
+  CONFLICT '[]' false false
+# marker_evidence_set_digest_unchecked's witness: evidenceSetDigest itself must be typed before it
+# is resolved against a lookup, or a null/non-dict claim would be read as though it were one. This
+# case has a fully clean, resolving evidence-set pair present on both images -- the ONLY thing
+# wrong is the marker's own claim -- so nothing else could produce CONFLICT in its place.
+assert_decision "a marker's evidenceSetDigest is null, not merely unresolved" \
+  "$(observation "$absent_release" "$(marker '{"_content":{"evidence":{"evidenceSetDigest":null}}}')" \
+     "$absent_mono" "$absent_fe")" \
   CONFLICT '[]' false false
 
 echo
