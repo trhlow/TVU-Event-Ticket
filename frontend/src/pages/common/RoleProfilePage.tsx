@@ -1,7 +1,11 @@
-import { Building2, Info, Mail, ShieldCheck, UserRound } from "lucide-react";
+import React, { useState } from "react";
+import { Building2, Info, Mail, Save, ShieldCheck, UserRound } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { requireCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
+import { authService } from "../../services/authService";
+import { useToast } from "../../hooks/useToast";
+import { Input } from "../../components/ui/input";
 
 interface RoleProfilePageProps {
   scope: "organizer" | "admin";
@@ -10,6 +14,25 @@ interface RoleProfilePageProps {
 export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
   const user = requireCurrentUser();
   const isAdmin = scope === "admin";
+  const { showToast } = useToast();
+  const [fullName, setFullName] = useState(user.fullName);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveName = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const trimmed = fullName.trim();
+    if (!trimmed || trimmed === user.fullName) return;
+    setIsSaving(true);
+    try {
+      const updated = await authService.updateDisplayName(trimmed);
+      setFullName(updated.fullName);
+      showToast("Cập nhật họ tên thành công.");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Không thể cập nhật họ tên.", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-left">
@@ -32,12 +55,26 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
             <p className="mt-1 text-sm font-semibold text-slate-500">Các trường này được cấp và quản lý bởi hệ thống, chỉ để tra cứu.</p>
           </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <form onSubmit={handleSaveName} className="mt-5 grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Họ và tên</span>
-              <span className="relative block">
-                <UserRound className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
-                <input className="tvu-input bg-slate-50 pl-10 text-slate-500" value={user.fullName} disabled />
+              <span className="relative flex items-center gap-2">
+                <span className="relative flex-1">
+                  <UserRound className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                  <Input
+                    className="pl-10"
+                    value={fullName}
+                    onChange={(event) => setFullName(event.target.value)}
+                    maxLength={100}
+                  />
+                </span>
+                <button
+                  type="submit"
+                  disabled={isSaving || !fullName.trim() || fullName.trim() === user.fullName}
+                  className="btn-press inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-600 px-3 text-xs font-extrabold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Save className="h-3.5 w-3.5" aria-hidden="true" /> Lưu
+                </button>
               </span>
             </label>
 
@@ -58,12 +95,12 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Trạng thái tài khoản</span>
               <input className="tvu-input bg-slate-50 text-slate-500" value={user.status === "ACTIVE" ? "Đang hoạt động" : "Đã khóa"} disabled />
             </label>
-          </div>
+          </form>
 
           <div className="mt-6 flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4">
             <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
             <p className="text-xs font-semibold leading-relaxed text-brand-800">
-              Hệ thống chưa hỗ trợ cập nhật hồ sơ cho tài khoản Ban tổ chức/Quản trị viên. Các trường thông tin liên hệ sẽ mở để chỉnh sửa khi tính năng này sẵn sàng.
+              Bạn có thể chỉnh sửa họ và tên. Email, vai trò hệ thống và trạng thái tài khoản do hệ thống quản lý, chỉ để tra cứu.
             </p>
           </div>
         </section>
