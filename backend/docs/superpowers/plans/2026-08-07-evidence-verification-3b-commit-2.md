@@ -189,6 +189,8 @@ field, per spec section 2's explicit instruction not to.
 
 This intentionally leaves the existing fixture corpus schema-invalid --
 Task 3 migrates it. Not run against any suite yet."
+```
+
 ---
 
 ### Task 2: Decision logic — evidence_set_problems, the adopt/build-new/CONFLICT path, and the marker cross-check
