@@ -1,0 +1,13 @@
+{
+  "valid/vulnerability-scan.json": "accepts",
+  "valid/layer-secret-scan.json": "accepts",
+  "valid/filesystem-secret-scan.json": "accepts",
+  "invalid/vulnerability-scan-carries-ruleset.json": "rejects",
+  "invalid/vulnerability-scan-missing-scanner.json": "rejects",
+  "invalid/vulnerability-scan-finding-missing-fixavailable.json": "rejects",
+  "invalid/vulnerability-scan-hits-cap-without-truncated.json": "rejects",
+  "invalid/layer-secret-scan-carries-vulnerability-db.json": "rejects",
+  "invalid/layer-secret-scan-missing-ruleset.json": "rejects",
+  "invalid/filesystem-secret-scan-carries-vulnerability-db.json": "rejects",
+  "invalid/filesystem-secret-scan-hits-cap-without-truncated.json": "rejects"
+}
