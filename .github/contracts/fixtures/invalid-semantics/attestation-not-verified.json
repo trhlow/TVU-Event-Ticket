@@ -22,10 +22,10 @@
     "preparedMarker": {
       "status": "present",
       "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567",
-      "markerDigest": "sha256:dbe6b93e5b32a625b343eb11e17f7feecc100acae738a904f342e585ca262b6f",
+      "markerDigest": "sha256:f0b4ad6de1a27cfe68cfd772803597af1854a55b5fbb40a0327b7dc6da6d62cf",
       "verification": {
         "attestationVerified": false,
-        "subjectDigest": "sha256:dbe6b93e5b32a625b343eb11e17f7feecc100acae738a904f342e585ca262b6f",
+        "subjectDigest": "sha256:f0b4ad6de1a27cfe68cfd772803597af1854a55b5fbb40a0327b7dc6da6d62cf",
         "signerRepository": "owner/name",
         "signerWorkflow": ".github/workflows/ci.yml",
         "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
@@ -160,8 +160,8 @@
           "layers": [
             {
               "mediaType": "application/vnd.tvu.release-manifest.v1+json",
-              "digest": "sha256:fa123e5525d9545b721816f9be820f101db83b5ba0eafbfce2d51372f6e4d453",
-              "size": 3439
+              "digest": "sha256:1d3b72cc772c1a45502140d3d31bf767a13d6d5497780c5c9c99f0e04efa19da",
+              "size": 3631
             }
           ]
         }
@@ -198,14 +198,136 @@
       "queriedRef": "ghcr.io/owner/name/frontend:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
     },
     "monolithEvidenceSet": {
-      "status": "absent",
-      "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name/monolith:sha-x"
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "carrierDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "verification": {
+        "attestationVerified": true,
+        "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "signerRepository": "owner/name",
+        "signerWorkflow": ".github/workflows/ci.yml",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "predicateType": "https://tvu.example/evidence-set",
+        "policyPassed": true
+      },
+      "subjectMatches": true,
+      "layersValid": true,
+      "reports": {
+        "sbom": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        "vulnerabilityScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        "layerSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        },
+        "filesystemSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+          }
+        }
+      }
     },
     "frontendEvidenceSet": {
-      "status": "absent",
-      "observedCode": 404,
-      "queriedRef": "ghcr.io/owner/name/frontend:sha-x"
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "carrierDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "verification": {
+        "attestationVerified": true,
+        "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "signerRepository": "owner/name",
+        "signerWorkflow": ".github/workflows/ci.yml",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "predicateType": "https://tvu.example/evidence-set",
+        "policyPassed": true
+      },
+      "subjectMatches": true,
+      "layersValid": true,
+      "reports": {
+        "sbom": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        },
+        "vulnerabilityScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        },
+        "layerSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        },
+        "filesystemSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        }
+      }
     }
   }
 }

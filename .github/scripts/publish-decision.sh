@@ -291,10 +291,10 @@ def validate(obs):
         #
         # The require below has no witness and cannot be given one. The key set of `lookups` was
         # pinned to exactly REQUIRED_LOOKUPS a few lines up, and LOOKUP_REPOSITORY has exactly those
-        # eight keys, so there is no observation -- collected or written by hand -- for which
+        # ten keys, so there is no observation -- collected or written by hand -- for which
         # `.get(name)` returns None. Deleting it leaves the suite green, and any case that seemed to
         # witness it would be passing for another reason. It stays as a developer-error guard: the
-        # day a ninth lookup joins REQUIRED_LOOKUPS and not this table, the decision says UNKNOWN
+        # day an eleventh lookup joins REQUIRED_LOOKUPS and not this table, the decision says UNKNOWN
         # instead of dying with a KeyError, which is also why this is `.get` plus a require rather
         # than a bare index. Same standing as the `"content" not in marker` early return further
         # down -- unwitnessable, kept deliberately, and declared rather than papered over with a
@@ -648,6 +648,13 @@ def evidence_set_problems(lookup, obs, where):
     if verification.get("sourceRevision") != obs["commit"]:
         problems.append(f"{where}.verification.sourceRevision is "
                         f"{verification.get('sourceRevision')!r}, expected {obs['commit']!r}")
+    predicate = verification.get("predicateType")
+    if type(predicate) is not str or not predicate:
+        # Which statement was verified, not merely that something was. Mirrors marker_problems'
+        # identical guard: an attestation of one predicate type says nothing about the claim
+        # another predicate type would have made.
+        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a non-empty "
+                        f"string naming what was attested")
     if verification.get("policyPassed") is not True:
         problems.append(f"{where}.verification.policyPassed is "
                         f"{verification.get('policyPassed')!r}, must be boolean true")

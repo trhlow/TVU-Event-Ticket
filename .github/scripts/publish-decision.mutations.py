@@ -193,7 +193,7 @@ MUTATIONS = {
     # so a subject that dies with a traceback and a subject that answers UNKNOWN are the same red to
     # it, and no arrangement of this runner can tell them apart. The `role is not None` require that
     # would decide between them has no witness at all and cannot be given one: the key set of
-    # `lookups` is pinned to exactly REQUIRED_LOOKUPS and the table holds exactly those eight keys,
+    # `lookups` is pinned to exactly REQUIRED_LOOKUPS and the table holds exactly those ten keys,
     # so no input reaches it with role unset. It is a developer-error guard, declared as one where
     # it stands, and deliberately absent from this table.
     "lookup_repository_table_incomplete": (
@@ -326,6 +326,70 @@ MUTATIONS = {
         '        if type(evidence_set_digest) is not dict:',
         'evidence_set_digest = evidence.get("evidenceSetDigest")\n'
         '        if False:'),
+    # Fix 3 (whole-branch review of 3b commit 2): evidence_set_problems() mirrors
+    # marker_problems()'s predicateType guard. Distinguished from verification_predicate_ignored
+    # above (which targets marker_problems()'s identical-looking guard) by including the comment
+    # that only exists beside the evidence-set copy, so str.replace's first match lands here.
+    "evidence_set_predicate_ignored": (
+        'if type(predicate) is not str or not predicate:\n'
+        "        # Which statement was verified, not merely that something was. Mirrors "
+        "marker_problems'\n"
+        "        # identical guard: an attestation of one predicate type says nothing about the "
+        "claim\n"
+        "        # another predicate type would have made.\n"
+        '        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a '
+        'non-empty "\n'
+        '                        f"string naming what was attested")',
+        'if False:\n'
+        "        # Which statement was verified, not merely that something was. Mirrors "
+        "marker_problems'\n"
+        "        # identical guard: an attestation of one predicate type says nothing about the "
+        "claim\n"
+        "        # another predicate type would have made.\n"
+        '        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a '
+        'non-empty "\n'
+        '                        f"string naming what was attested")'),
+    # Fix 4: the rest of evidence_set_problems()'s guards, previously present in the code but with
+    # no witness proving deletion changes anything observable.
+    "evidence_set_verification_missing": (
+        '    verification = lookup.get("verification")\n'
+        "    if type(verification) is not dict:",
+        '    verification = lookup.get("verification")\n'
+        "    if False:"),
+    "evidence_set_carrier_digest_format_unchecked": (
+        'if type(carrier_digest) is not str or not DIGEST.fullmatch(carrier_digest):',
+        "if False:"),
+    "evidence_set_subject_digest_mismatch_ignored": (
+        'if verification.get("subjectDigest") != carrier_digest:',
+        "if False:"),
+    "evidence_set_attestation_verified_ignored": (
+        '    if verification.get("subjectDigest") != carrier_digest:\n        problems.append(f"{where}.verification.subjectDigest is "\n                        f"{verification.get(\'subjectDigest\')!r}, not the carrier it describes")\n    if verification.get("attestationVerified") is not True:\n        problems.append(f"{where}.verification.attestationVerified is "\n                        f"{verification.get(\'attestationVerified\')!r}, must be boolean true")',
+        '    if verification.get("subjectDigest") != carrier_digest:\n        problems.append(f"{where}.verification.subjectDigest is "\n                        f"{verification.get(\'subjectDigest\')!r}, not the carrier it describes")\n    if False:\n        problems.append(f"{where}.verification.attestationVerified is "\n                        f"{verification.get(\'attestationVerified\')!r}, must be boolean true")'),
+    "evidence_set_signer_repository_ignored": (
+        '    if verification.get("subjectDigest") != carrier_digest:\n        problems.append(f"{where}.verification.subjectDigest is "\n                        f"{verification.get(\'subjectDigest\')!r}, not the carrier it describes")\n    if verification.get("attestationVerified") is not True:\n        problems.append(f"{where}.verification.attestationVerified is "\n                        f"{verification.get(\'attestationVerified\')!r}, must be boolean true")\n    if verification.get("signerRepository") != expected["sourceRepository"]:\n        problems.append(f"{where} signed by {verification.get(\'signerRepository\')!r}, expected "\n                        f"{expected[\'sourceRepository\']!r}")',
+        '    if verification.get("subjectDigest") != carrier_digest:\n        problems.append(f"{where}.verification.subjectDigest is "\n                        f"{verification.get(\'subjectDigest\')!r}, not the carrier it describes")\n    if verification.get("attestationVerified") is not True:\n        problems.append(f"{where}.verification.attestationVerified is "\n                        f"{verification.get(\'attestationVerified\')!r}, must be boolean true")\n    if False:\n        problems.append(f"{where} signed by {verification.get(\'signerRepository\')!r}, expected "\n                        f"{expected[\'sourceRepository\']!r}")'),
+    "evidence_set_source_revision_ignored": (
+        '    if verification.get("subjectDigest") != carrier_digest:\n        problems.append(f"{where}.verification.subjectDigest is "\n                        f"{verification.get(\'subjectDigest\')!r}, not the carrier it describes")\n    if verification.get("attestationVerified") is not True:\n        problems.append(f"{where}.verification.attestationVerified is "\n                        f"{verification.get(\'attestationVerified\')!r}, must be boolean true")\n    if verification.get("signerRepository") != expected["sourceRepository"]:\n        problems.append(f"{where} signed by {verification.get(\'signerRepository\')!r}, expected "\n                        f"{expected[\'sourceRepository\']!r}")\n    if verification.get("signerWorkflow") != expected["signerWorkflow"]:\n        problems.append(f"{where} signed by workflow {verification.get(\'signerWorkflow\')!r}, "\n                        f"expected {expected[\'signerWorkflow\']!r}")\n    if verification.get("sourceRevision") != obs["commit"]:\n        problems.append(f"{where}.verification.sourceRevision is "\n                        f"{verification.get(\'sourceRevision\')!r}, expected {obs[\'commit\']!r}")',
+        '    if verification.get("subjectDigest") != carrier_digest:\n        problems.append(f"{where}.verification.subjectDigest is "\n                        f"{verification.get(\'subjectDigest\')!r}, not the carrier it describes")\n    if verification.get("attestationVerified") is not True:\n        problems.append(f"{where}.verification.attestationVerified is "\n                        f"{verification.get(\'attestationVerified\')!r}, must be boolean true")\n    if verification.get("signerRepository") != expected["sourceRepository"]:\n        problems.append(f"{where} signed by {verification.get(\'signerRepository\')!r}, expected "\n                        f"{expected[\'sourceRepository\']!r}")\n    if verification.get("signerWorkflow") != expected["signerWorkflow"]:\n        problems.append(f"{where} signed by workflow {verification.get(\'signerWorkflow\')!r}, "\n                        f"expected {expected[\'signerWorkflow\']!r}")\n    if False:\n        problems.append(f"{where}.verification.sourceRevision is "\n                        f"{verification.get(\'sourceRevision\')!r}, expected {obs[\'commit\']!r}")'),
+    "evidence_set_policy_passed_ignored": (
+        '        # Which statement was verified, not merely that something was. Mirrors marker_problems\'\n        # identical guard: an attestation of one predicate type says nothing about the claim\n        # another predicate type would have made.\n        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a non-empty "\n                        f"string naming what was attested")\n    if verification.get("policyPassed") is not True:\n        problems.append(f"{where}.verification.policyPassed is "\n                        f"{verification.get(\'policyPassed\')!r}, must be boolean true")',
+        '        # Which statement was verified, not merely that something was. Mirrors marker_problems\'\n        # identical guard: an attestation of one predicate type says nothing about the claim\n        # another predicate type would have made.\n        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a non-empty "\n                        f"string naming what was attested")\n    if False:\n        problems.append(f"{where}.verification.policyPassed is "\n                        f"{verification.get(\'policyPassed\')!r}, must be boolean true")'),
+    "evidence_set_layers_valid_ignored": (
+        'if lookup.get("layersValid") is not True:',
+        "if False:"),
+    "evidence_set_reports_missing": (
+        '    reports = lookup.get("reports")\n'
+        "    if type(reports) is not dict:",
+        '    reports = lookup.get("reports")\n'
+        "    if False:"),
+    "evidence_set_pair_not_a_dict_ignored": (
+        "        pair = reports.get(kind)\n"
+        "        if type(pair) is not dict:",
+        "        pair = reports.get(kind)\n"
+        "        if False:"),
+    "evidence_set_report_lookup_presence_ignored": (
+        'if type(report_lookup) is not dict or report_lookup.get("status") != "present":',
+        "if False:"),
 }
 
 

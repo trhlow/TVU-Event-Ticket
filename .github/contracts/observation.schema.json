@@ -181,7 +181,7 @@
         },
         "subjectDigest": {
           "$ref": "#/$defs/digest",
-          "description": "The digest the attestation was verified against. Must equal markerDigest, or the verification describes a different object."
+          "description": "The digest the attestation was verified against. Must equal the digest of the object it describes -- markerDigest for a marker's own verification, carrierDigest for presentEvidenceSet's -- or the verification describes a different object."
         },
         "signerRepository": { "type": "string", "minLength": 1 },
         "signerWorkflow": { "type": "string", "minLength": 1 },
@@ -372,7 +372,7 @@
     "presentEvidenceSet": {
       "type": "object",
       "additionalProperties": false,
-      "description": "3b commit 2 (spec section 3): what the collector must prove before the decision may adopt an existing evidence-set instead of asking for a fresh scan. verification reuses the same shape a marker's own attestation check uses -- provenance is provenance whichever carrier it is attesting to. subjectMatches and layersValid are outcomes the collector computed against release-evidence-set.schema.json's shape (section 2); the decision does not re-parse a raw manifest here, matching section 8.6. The four reports pairs are loosely typed placeholders -- commit 4 gives reportLookup and attestationLookup their own real trust-boundary split (section 5); here each is only present/absent/error, wide enough to prove all four exist, not yet rich enough to say what a real one contains.",
+      "description": "3b commit 2 (spec section 3): what the collector must prove before the decision may adopt an existing evidence-set instead of asking for a fresh scan. verification reuses the same shape a marker's own attestation check uses -- provenance is provenance whichever carrier it is attesting to. subjectMatches and layersValid are outcomes the collector computed against release-evidence-set.schema.json's shape (section 2); the decision does not re-parse a raw manifest here, matching section 8.6. The four reports pairs are loosely typed placeholders -- commit 4 gives reportLookup and attestationLookup their own real trust-boundary split (section 5); here each is only present/absent/error, wide enough to prove all four exist, not yet rich enough to say what a real one contains.\n\nRe-resolve-before-write is stated here as a precondition, not as an enforced rule: whatever writes a marker's evidenceSetDigest claim against this lookup must re-resolve the evidence-set tag (or digest lookup) immediately before writing, so the carrierDigest it commits to is still the carrier this lookup observed and not one a concurrent evidence-set build already replaced underneath it. Nothing validates any of this yet, because no writer of this claim exists yet to keep it -- the same debt commit 1's lifecycle/cleanupDebt paragraph records for release-evidence-set.schema.json: a schema can state what must eventually be true without a fixture pretending the claim is already being kept.",
       "required": ["status", "queriedRef", "carrierDigest", "verification", "subjectMatches", "layersValid", "reports"],
       "properties": {
         "status": { "const": "present" },

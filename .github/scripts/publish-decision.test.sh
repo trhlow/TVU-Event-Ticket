@@ -417,10 +417,11 @@ assert_decision "duplicate keys cannot hide an error behind an absence" \
 echo
 echo "== ABSENT"
 # A clean slate has no digest to have queried, so the digest objects are skipped rather than
-# absent. Claiming absence there would be an observation nobody made.
-assert_decision "nothing published at all" \
-  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$absent_mono" "$absent_fe")" \
-  ABSENT '["build_new"]' false false
+# absent. Claiming absence there would be an observation nobody made. The unremarkable "nothing
+# published, nothing to adopt" case itself lives in the 3b commit 2 section below (as "nothing to
+# adopt, nothing built: unchanged pre-3b behavior"), where it reads as the pre-3b baseline the
+# evidence-set adopt/build_new logic is measured against -- byte-identical to a case that used to
+# live here, kept in the section it is now narratively local to rather than duplicated in both.
 assert_decision "an orphan candidate is debt, not a release" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "$(present_in "$MONOLITH_REPO" "$MONO")" "" "$absent_mono" "$absent_fe")" \
   ABSENT '["build_new"]' true false
@@ -431,13 +432,13 @@ assert_decision "a digest object present with no marker is unexplained, not abse
 echo
 echo "== PARTIAL, only with a trustworthy prepared marker and digests that still exist"
 assert_decision "both tags missing" \
-  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 assert_decision "one tag missing" \
-  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$absent_fe" "" "" "" "")" \
   PARTIAL '["promote_frontend_tag","publish_final_marker"]' false false
 assert_decision "both tags right, final marker missing" \
-  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "")" \
   PARTIAL '["publish_final_marker"]' false false
 assert_decision "a marker whose digest is no longer in the registry cannot be resumed" \
   "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "$absent_mono")" \
@@ -446,7 +447,7 @@ assert_decision "a marker whose digest is no longer in the registry cannot be re
 echo
 echo "== COMPLETE"
 assert_decision "final marker and both tags agree" \
-  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "")" \
   COMPLETE '["verify_only"]' false false
 # `skipped` means the question was never asked, and its only permitted reason is that no digest was
 # claimed. Beside a marker that DOES claim one, the observation contradicts itself: the collector
@@ -455,10 +456,10 @@ assert_decision "final marker and both tags agree" \
 # "its digest object is not in the registry", which is a claim about the registry the observation
 # never makes. Self-contradiction is UNKNOWN, the same rule as everywhere else here.
 assert_decision "a digest object skipped while the marker claims that digest" \
-  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$skipped" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "$skipped" "" "" "")" \
   UNKNOWN '[]' false false
 assert_decision "leftover candidate does not invalidate it" \
-  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "$(present_in "$MONOLITH_REPO" "$MONO")" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$(marker)" "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "$(present_in "$MONOLITH_REPO" "$MONO")" "")" \
   COMPLETE '["verify_only"]' true false
 
 echo
@@ -609,6 +610,11 @@ assert_decision "a status that is a number"   "$(observation '{"status":404}' "$
 # justification and an unrecognised one means nobody knows why the lookup is missing.
 assert_decision "skipped for an unrecognised reason"   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" '{"status":"skipped","reason":"felt_like_it","queriedRef":null}' "$skipped")"   UNKNOWN '[]' false false
 assert_decision "only a digest object may be skipped"   "$(observation '{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}' "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped")"   UNKNOWN '[]' false false
+# Fix 6: an evidence-set lookup has no "skipped" member in its own schema (evidenceSetLookup's
+# oneOf lists only presentEvidenceSet/absent/error) even though every lookup shares one status
+# type-check in validate(). Same guard as the case above, witnessed on the other kind of lookup
+# that isn't a digest object.
+assert_decision "an evidence-set lookup may not be skipped either"   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$skipped")"   UNKNOWN '[]' false false
 
 echo
 echo "== the observation and the schema agree on what a lookup is"
@@ -658,8 +664,8 @@ echo "== each lookup is pinned to its own repository, not to a shared scope"
 #
 # What they do not show -- and what nothing here can show -- is what becomes of a lookup with no
 # entry in the table. The key set of `lookups` is pinned to exactly REQUIRED_LOOKUPS and the table
-# holds exactly those eight keys, so no observation reaches the `role is not None` require with role
-# unset. That require is a developer-error guard against a ninth lookup somebody adds to one list
+# holds exactly those ten keys, so no observation reaches the `role is not None` require with role
+# unset. That require is a developer-error guard against an eleventh lookup somebody adds to one list
 # and not the other, not a rule about any input; the subject now says so where it stands, and this
 # suite claims no evidence for it.
 for entry in \
@@ -810,18 +816,18 @@ done
 # version string would have rejected the first release that added one, and the schema, not the
 # release, would have been wrong.
 assert_decision "several repeatables share the absence of a version" \
-  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":null,"type":"SQL","script":"R__one.sql","checksum":1,"success":true},{"installedRank":2,"version":null,"type":"SQL","script":"R__two.sql","checksum":2,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":null,"type":"SQL","script":"R__one.sql","checksum":1,"success":true},{"installedRank":2,"version":null,"type":"SQL","script":"R__two.sql","checksum":2,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 # Flyway records no checksum for some entries, and a release must not be blocked by an absence
 # Flyway itself produced.
 assert_decision "a migration Flyway recorded no checksum for" \
-  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":null,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":null,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 # The canonical form is ordered by installedRank, so the order the collector happened to read the
 # table in cannot change the checksum. Both of these hash to the same value by construction: the
 # fixture sorts before hashing, and the subject has to do the same or one of them is rejected.
 assert_decision "migrations listed out of order still hash the same" \
-  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":2,"version":"2","type":"SQL","script":"V2__b.sql","checksum":2,"success":true},{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker '{"_migrations":[{"installedRank":2,"version":"2","type":"SQL","script":"V2__b.sql","checksum":2,"success":true},{"installedRank":1,"version":"1","type":"SQL","script":"V1__a.sql","checksum":1,"success":true}]}')" "$absent_mono" "$absent_fe" "" "" "" "")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 
 echo
@@ -1113,7 +1119,7 @@ assert_decision "one image adoptable, the other has nothing yet" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es" "$absent_fe")" \
   ABSENT '["adopt_monolith_evidence_set","build_new_frontend_evidence_set"]' false false
 assert_decision "both images adoptable" \
-  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "")" \
   ABSENT '["adopt_monolith_evidence_set","adopt_frontend_evidence_set"]' false false
 assert_decision "adopt refused: one kind is missing its attestation" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
@@ -1127,12 +1133,65 @@ assert_decision "adopt refused: subject does not match this image" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      "$(damaged_evidence_set 'doc["subjectMatches"] = False' "$present_mono_es")")" \
   CONFLICT '[]' false false
+# Fix 3: evidence_set_problems() mirrors marker_problems()'s predicateType guard -- an attestation
+# naming no predicate type says nothing about the claim it makes, whether it verifies a marker or an
+# evidence-set carrier.
+assert_decision "adopt refused: predicateType is empty" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["predicateType"] = ""' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+# Fix 4: the remaining evidence_set_problems() guards, each with its own minimal, single-cause
+# witness -- one field changed away from present_mono_es's clean baseline.
+assert_decision "adopt refused: no verification recorded" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"] = None' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: carrierDigest is not a sha256 reference" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["carrierDigest"] = "not-a-digest"; doc["verification"]["subjectDigest"] = "not-a-digest"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: verification.subjectDigest does not name the carrier" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["subjectDigest"] = "sha256:" + "7"*64' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: attestationVerified is not true" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["attestationVerified"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: signerRepository mismatch" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["signerRepository"] = "someone/else"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: sourceRevision mismatch" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["sourceRevision"] = "ffffffffffffffffffffffffffffffffffffffff"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: policyPassed is not true" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["verification"]["policyPassed"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: layersValid is not true" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["layersValid"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: reports is missing" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"] = None' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: a report pair is not an object" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"] = "not-a-pair"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: a report's reportLookup is not present" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x"}' "$present_mono_es")")" \
+  CONFLICT '[]' false false
 assert_decision "evidence-set lookup error surfaces through the same UNKNOWN gate as any other" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      '{"status":"error","code":503,"queriedRef":"ghcr.io/owner/name/monolith:sha-x"}')" \
   UNKNOWN '[]' false true
 assert_decision "a marker's evidenceSetDigest claim resolves against a clean, matching evidence-set" \
-  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$present_mono_es" "$present_front_es")" \
+  "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "")" \
   PARTIAL '["promote_monolith_tag","promote_frontend_tag","publish_final_marker"]' false false
 assert_decision "a marker's evidenceSetDigest claim does not resolve: lookup absent" \
   "$(observation "$absent_release" "$(marker)" "$absent_mono" "$absent_fe" "" "" "" "" "$absent_mono" "$absent_fe")" \
