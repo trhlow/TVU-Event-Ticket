@@ -120,6 +120,7 @@ harness following `evidence-set-schema.test.sh`'s exact structure.
       "maxItems": 100,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["severity", "fixAvailable"],
         "properties": {
           "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
@@ -176,6 +177,7 @@ harness following `evidence-set-schema.test.sh`'s exact structure.
       "maxItems": 100,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["severity", "fixAvailable"],
         "properties": {
           "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
@@ -232,6 +234,7 @@ harness following `evidence-set-schema.test.sh`'s exact structure.
       "maxItems": 100,
       "items": {
         "type": "object",
+        "additionalProperties": false,
         "required": ["severity", "fixAvailable"],
         "properties": {
           "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
