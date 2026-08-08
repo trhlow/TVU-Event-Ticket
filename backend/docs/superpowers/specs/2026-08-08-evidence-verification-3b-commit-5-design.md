@@ -17,19 +17,36 @@
   `predicate.reportDigest` cross-check and full attestation-selection tuple (§8, commit 7), byte-cap
   enforcement at fetch time (§7, still no scanner/collector script exists).
 
-## Decision 1: `normalizedPredicate` reuses `normalizedReport`'s shape, as a second independent copy
+## Decision 1: `normalizedPredicate` reuses `normalizedReport`'s shape, as a second independent copy — and both are wired ONLY for the three scan kinds, via a parallel pair type
 
 §6 describes one table of fields (`scanner`, `target`, `policy`, `findings`, `declaredOutcome`) and
 says the decision compares `recomputedOutcome` against **both** `normalizedReport.declaredOutcome`
 and `normalizedPredicate.declaredOutcome` as independent sources, plus the marker's own claim. That
 only makes sense if both normalized documents share the same shape — an attestation "vouches for" a
 report by attesting to matching content, so the predicate's own normalized view has to carry the
-same fields to be comparable at all. A new shared `$def` (`normalizedScanContent`, referenced by
-both `presentReport.normalizedReport` and `presentAttestation.normalizedPredicate`) avoids
-restating the shape twice and, more importantly, makes "these two must independently say the same
-thing" a structural fact instead of an accident of two schemas that happen to match today.
+same fields to be comparable at all. A new shared `$def` (`normalizedScanContent`) avoids restating
+the shape twice and, more importantly, makes "these two must independently say the same thing" a
+structural fact instead of an accident of two schemas that happen to match today.
 
-This is a distinct document from commit 3's three standalone predicate schemas
+**Correction found during scratch verification, before the plan was written:** `presentReport` and
+`presentAttestation` are shared by all four report kinds (`reportAttestationPair` is `$ref`'d
+identically for `sbom`, `vulnerabilityScan`, `layerSecretScan`, `filesystemSecretScan`). §4 states
+explicitly that SBOM does not share the scan contract ("SBOM khong dung chung contract voi scan"),
+and SBOM's own real shape is commit 6's job. Retyping `presentReport.normalizedReport` directly to
+`normalizedScanContent` would therefore have forced SBOM's report into a shape it does not have, six
+months before that shape is even decided. The fix: `presentReport`/`presentAttestation` stay exactly
+as commit 4 left them (generic `{"type":"object"}` placeholder, still correct for SBOM), and a
+**parallel pair type** — `scanReportAttestationPair`, `scanReportEvidenceLookup`,
+`scanPresentReport`, `scanAttestationEvidenceLookup`, `scanPresentAttestation` — duplicates the same
+five structural fields but types `normalizedReport`/`normalizedPredicate` as `normalizedScanContent`.
+`presentEvidenceSet.reports`'s three scan-kind properties point at the new pair type;
+`reports.sbom` stays on the original. The duplication mirrors this schema's own established
+precedent that `additionalProperties: false` objects are not safely composable via `allOf` (every
+`*Lookup` union already duplicates `absent`/`error` rather than composing them) — five duplicated
+`$defs` is the cost of a real, spec-stated contract split, the same trade commit 3 made by writing
+three separate predicate schema files instead of one polymorphic one.
+
+This `normalizedScanContent` document is distinct from commit 3's three standalone predicate schemas
 (`vulnerabilityScan.schema.json` etc.), which validate what a scanner tool's raw attestation
 predicate must contain *before* the collector normalizes it — the same relationship
 `presentEvidenceSet` already has to `release-evidence-set.schema.json` (this schema trusts a
@@ -51,22 +68,51 @@ pattern commit 3's predicate schemas already established (`findings` shape reuse
 reinvented) — this is the same list this contract has capped before, just now living in
 `normalizedReport`/`normalizedPredicate` instead of a raw predicate.
 
-## Decision 3: sort/dedup/verdict-policy logic lives in `evidence_set_problems()`, not a new function
+## Decision 3: `counts` is a separate, always-complete field from `findings` — and the verdict reads only `counts`
 
-`evidence_set_problems()` already iterates the four kinds and already has `obs`/`expected` in scope.
-Recomputation adds, per kind, inside the existing loop: sort `findings` by the five-tuple (ordering
-is a decision-side computation, not a schema keyword — §6 says JSON Schema cannot express a sort),
-detect a full-tuple duplicate (⇒ problem, "trùng ngữ nghĩa" logic from §8 does not apply here; this
-is exact-duplicate-within-one-report, not cross-attestation semantic duplication), aggregate counts
-by `(severity, fixAvailable)` post-ignore-list, and apply the two verdict-policy rules named in §6:
-vulnerability fails on any `CRITICAL` or any `HIGH` with `fixAvailable: true`; both secret-scan kinds
-fail on any finding at all. The result (`recomputedOutcome`) is compared against
-`normalizedReport.declaredOutcome`, `normalizedPredicate.declaredOutcome`, and
-`content.evidence.<kind>.<image>.passed` (already in `markerContent`, unchanged since before this
-series) — any pairwise disagreement is a problem, folded into the same CONFLICT path
-`evidence_set_problems()`'s other checks already produce. A `findings` list that is not `truncated`
-but whose length or aggregated counts disagree with what `declaredOutcome` implies is also a
-problem, per §6's own "danh sách không truncated mà không khớp counts ⇒ CONFLICT."
+**Correction found during scratch verification:** an initial design put every finding into one flat
+`findings` array and derived the verdict by iterating it. That contradicts §6's own text: "Verdict
+tính từ **counts**, nên một danh sách bị truncate không đổi được kết quả" (verdict computed from
+counts, so a truncated list cannot change the result) only holds if `counts` is a field the collector
+reports independently of the (possibly truncated) visible list — otherwise a truncated `findings`
+array silently truncates the verdict's own input too. `normalizedScanContent` therefore carries two
+separate fields: `counts` (a complete `{severity: {withFix, withoutFix}}` aggregate over every
+finding post-ignore-list, always untruncated, new `$def`s `scanCounts`/`severityCount`) and
+`findings` (the existing capped, at/above-threshold, possibly-truncated list, for audit and
+duplicate-detection — not the verdict's input). `recomputedOutcome` is computed from `counts` alone.
+
+`evidence_set_problems()` already iterates the four kinds and already has `obs`/`expected` in scope,
+but SBOM must not run scan-content checks (Decision 1), so this logic is gated on
+`kind in SCAN_REPORT_KINDS`. Per scan kind, for each of `normalizedReport`/`normalizedPredicate`
+independently (a new helper, `scan_content_problems(kind, content, where)`, returns
+`(problems, recomputed_outcome_or_None)`):
+
+- sort `findings` by the five-tuple and flag if not already sorted (ordering is a decision-side
+  computation, not a schema keyword — §6 says JSON Schema cannot express a sort);
+- detect a full-tuple duplicate within the visible list (⇒ problem — this is exact-duplicate-within-
+  one-report, not §8's cross-attestation "semantic duplicate," a different rule for a different
+  situation);
+- recompute `recomputedOutcome` from `counts` via the two verdict-policy rules;
+- if `truncated` is `False`, cross-check that `len(findings)` equals what `counts` implies for
+  severities at or above `policy.severityThreshold` (§6's "danh sách không truncated mà không khớp
+  counts ⇒ CONFLICT");
+- flag if `declaredOutcome` disagrees with `recomputedOutcome`;
+- **flag if `recomputedOutcome` is `False`, unconditionally** — found missing in the first pass of
+  scratch verification: §10's matrix lists "`recomputedOutcome` fail" as its own CONFLICT trigger,
+  independent of whether every source agrees. A self-consistent "report, attestation, and marker all
+  honestly agree the scan failed" observation must still block, not merely be internally consistent.
+
+The caller then compares the two `recomputed_outcome` values it got back (report's vs. predicate's)
+— disagreement is a third problem, distinct from either individually failing. The **third** source
+(`content.evidence.<kind>.<image>.passed`, in `markerContent`) is compared separately, inside
+`marker_problems()`'s existing per-kind/per-image loop where that field is already in scope: it
+re-derives the report's own `recomputedOutcome` from `obs["lookups"][f"{image}EvidenceSet"]` and
+flags a mismatch against the marker's claim. This is deliberately where the closed loophole actually
+lives — verified empirically in scratch: a marker claiming `passed: true` while the evidence-set's
+real, honestly-reported evidence recomputes to `False` is caught with the message "...passed is
+True, but the evidence-set's own report recomputes to False," where before this commit a marker's
+`passed` claim was accepted at face value (only checked for being literally `True`, never checked
+against anything independent).
 
 ## Decision 4: the mandatory 101st-finding witness is a fixture, not a schema rule
 
@@ -85,21 +131,44 @@ still fail correctly under truncation).
 
 ## Files touched
 
-- `.github/contracts/observation.schema.json` — `presentReport.normalizedReport` and
-  `presentAttestation.normalizedPredicate` retyped from `{"type":"object"}` to `#/$defs/
-  normalizedScanContent`; new `$defs`: `normalizedScanContent`, `finding`, `scanPolicy`.
-- `.github/scripts/publish-decision.sh` — `evidence_set_problems()` extended with recompute logic;
-  new helper(s) for sort/dedup/aggregate (exact function boundary left to the plan, not fixed here).
-- `.github/contracts/fixtures/` + `.github/scripts/publish-decision.test.sh` — migration for any
-  fixture currently relying on the loosely-typed placeholder (commit 4's migration already gave every
-  fixture a concrete, if minimal, `normalizedReport: {}`/`normalizedPredicate: {}` — those become
-  schema-invalid once the `$def` is real, same "widened field invalidates every existing document"
-  situation commit 2's Task 3 and commit 4's Task 3 both already handled) — plus new witness
-  fixtures for the recompute logic itself, including the 101st-finding witness.
+- `.github/contracts/observation.schema.json` — `presentReport`/`presentAttestation` unchanged (stay
+  generic, still correct for SBOM); new `$defs`: `scanReportAttestationPair`,
+  `scanReportEvidenceLookup`, `scanPresentReport`, `scanAttestationEvidenceLookup`,
+  `scanPresentAttestation`, `normalizedScanContent`, `scanCounts`, `severityCount`, `scanPolicy`,
+  `finding`; `presentEvidenceSet.reports`'s three scan-kind properties re-`$ref`'d to
+  `scanReportAttestationPair` (`sbom` stays on `reportAttestationPair`).
+- `.github/scripts/publish-decision.sh` — new module-level `SCAN_REPORT_KINDS`, `SEVERITY_RANK`;
+  new functions `finding_sort_key`, `finding_tuple`, `recomputed_outcome`, `scan_content_problems`;
+  `evidence_set_problems()`'s reports loop extended (gated on `kind in SCAN_REPORT_KINDS`) to call
+  `scan_content_problems()` on both halves and compare their two recomputed outcomes;
+  `marker_problems()`'s existing per-kind/per-image loop extended with the third-source comparison
+  against `content.evidence.<kind>.<image>.passed`.
+- `.github/contracts/fixtures/` + `.github/scripts/publish-decision.test.sh` — migration for every
+  fixture whose scan-kind `normalizedReport`/`normalizedPredicate` was the loosely-typed `{}`
+  placeholder (commit 4 left `sbom`'s copies as `{}` too, but those are untouched by this commit's
+  schema change and need no migration) — plus new witness fixtures for the recompute logic,
+  including the 101st-finding witness and the lying-marker case (marker claims `passed: true` while
+  honestly-reported evidence recomputes to `False`), both empirically verified in scratch before
+  this plan was written.
 - `.github/scripts/publish-decision.mutations.py` — new mutation rules for the recompute logic.
 - **Not touched:** `.github/contracts/predicates/*.schema.json` (commit 3's schemas, still unwired,
   per Decision 1), the SBOM-specific `documentValidated` field (commit 6), attestation-selection
   tuple enforcement (commit 7).
+
+## Known local-environment artifact (not a defect, not fixed in this commit)
+
+Verifying this commit's larger observations (six `normalizedScanContent` copies per evidence-set)
+against the real `publish-decision.sh` locally on Windows hit `Argument list too long` from MSYS/
+git-bash once a fixture's serialized JSON passed roughly 20-25 KB — `publish-decision.sh` passes the
+whole observation as a single command-line argument to the embedded Python interpreter (line ~45),
+and MSYS's `exec` emulation has a much lower ceiling than either native Windows `CreateProcess` or
+Linux's `ARG_MAX` (~2 MB on GitHub Actions ubuntu runners). Piping the observation via stdin instead
+was tried and is **not** a viable fix: stdin is already consumed by the heredoc carrying the Python
+program itself, so the two cannot share one stream. Confirmed local-only: extracting the embedded
+Python and invoking it directly with the observation passed by file path (bypassing the argv-length
+ceiling entirely) reproduces correct behavior for every case tested. No script change is needed or
+proposed; this is recorded so a future session hitting the same "Argument list too long" on Windows
+doesn't mistake it for a regression.
 
 ## Test coverage from spec §6 / §10
 
