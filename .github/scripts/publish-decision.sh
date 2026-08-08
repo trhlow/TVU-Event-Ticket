@@ -618,6 +618,9 @@ def marker_problems(marker, obs, where):
     return problems
 
 
+EVIDENCE_REPORT_KINDS = ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan")
+
+
 def evidence_set_problems(lookup, obs, where):
     """Everything wrong with a present evidence-set lookup. Empty means it may be adopted, or a
     marker's evidenceSetDigest claim against it may be trusted."""
@@ -670,7 +673,7 @@ def evidence_set_problems(lookup, obs, where):
     if type(reports) is not dict:
         problems.append(f"{where}.reports is missing")
         return problems
-    for kind in ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"):
+    for kind in EVIDENCE_REPORT_KINDS:
         pair = reports.get(kind)
         if type(pair) is not dict:
             problems.append(f"{where}.reports.{kind} is missing")
@@ -679,6 +682,17 @@ def evidence_set_problems(lookup, obs, where):
         if type(report_lookup) is not dict or report_lookup.get("status") != "present":
             problems.append(f"{where}.reports.{kind}.reportLookup is not present; adopt requires "
                             f"every report to already exist, not a partial set")
+        elif not (report_lookup.get("digestVerified") is True
+                  and report_lookup.get("sizeVerified") is True
+                  and report_lookup.get("schemaValid") is True):
+            # Section 5: "fetched but wrong schema is CONFLICT, not merely a lookup that ran." A
+            # reportLookup can be status:present (the fetch succeeded) while any of these three
+            # outcomes is false (the bytes it fetched didn't verify) -- two different facts the old
+            # shared objectLookup this replaces could not distinguish at all.
+            problems.append(f"{where}.reports.{kind}.reportLookup fetched but not verified: "
+                            f"digestVerified={report_lookup.get('digestVerified')!r}, "
+                            f"sizeVerified={report_lookup.get('sizeVerified')!r}, "
+                            f"schemaValid={report_lookup.get('schemaValid')!r}")
         attestation_lookup = pair.get("attestationLookup")
         if type(attestation_lookup) is not dict or attestation_lookup.get("status") != "present":
             # Section 3: a tag that exists but is missing a kind's attestation is CONFLICT, and the
@@ -686,6 +700,9 @@ def evidence_set_problems(lookup, obs, where):
             problems.append(f"{where}.reports.{kind}.attestationLookup is not present; adopting "
                             f"without every kind's attestation would sign on trust rather than "
                             f"verify it")
+        elif attestation_lookup.get("attestationVerified") is not True:
+            problems.append(f"{where}.reports.{kind}.attestationLookup.attestationVerified is "
+                            f"{attestation_lookup.get('attestationVerified')!r}, must be boolean true")
     return problems
 
 
@@ -765,6 +782,36 @@ def inventory_problems(inventory, monolith_digest, where):
     return problems
 
 
+def nested_evidence_failures(lookups):
+    """The 16 report/attestation lookups nested inside the two evidence-set lookups, named and
+    enumerated explicitly rather than discovered by recursing on every object with a `status` key --
+    section 5's own constraint, because a recursive walk would also match status-shaped objects that
+    mean something else entirely. Gated on the evidence-set's own lookup being present: an absent or
+    errored evidence-set has no `reports` key to walk into at all. Also defensive against a
+    structurally malformed `reports` or pair -- a missing `reports` key or a pair that is not an
+    object is evidence_set_problems()'s own CONFLICT to report, not a crash this scan should cause
+    before that code ever runs (found by running this against the existing 'reports is missing' and
+    'a report pair is not an object' fixtures before writing this plan -- both crashed the first,
+    unguarded version with a TypeError)."""
+    failures = []
+    for image in IMAGES:
+        evidence_set = lookups[f"{image}EvidenceSet"]
+        if evidence_set["status"] != "present":
+            continue
+        reports = evidence_set.get("reports")
+        if type(reports) is not dict:
+            continue
+        for kind in EVIDENCE_REPORT_KINDS:
+            pair = reports.get(kind)
+            if type(pair) is not dict:
+                continue
+            for half in ("reportLookup", "attestationLookup"):
+                lookup = pair.get(half)
+                if type(lookup) is dict and lookup.get("status") == "error":
+                    failures.append((f"{image}EvidenceSet.reports.{kind}.{half}", lookup))
+    return failures
+
+
 def decide(obs):
     lookups = obs["lookups"]
     cleanup_debt = any(lookups[f"{image}Candidate"]["status"] == "present" for image in IMAGES)
@@ -774,8 +821,14 @@ def decide(obs):
     # first -- `finalMarker` before `frontendTag`, a fact about spelling, not about the registry.
     # Retrying while a 403 stands meets the same 403, so `retryable` holds only when every error is
     # worth another attempt. One error behaves exactly as before, which is why no case caught this.
+    #
+    # Extended (3b commit 4, spec section 5) to the 16 report/attestation lookups nested inside the
+    # two evidence-set lookups: a nested error must reach this same gate before evidence_set_
+    # problems() ever sees it, or a lookup that merely failed to run becomes indistinguishable from
+    # one that ran and found nothing -- UNKNOWN vs. CONFLICT, a retry vs. a person's problem.
     failures = [(name, lookups[name]) for name in sorted(lookups)
                 if lookups[name]["status"] == "error"]
+    failures += nested_evidence_failures(lookups)
     if failures:
         retryable = all(retryable_failure(lookup) for _, lookup in failures)
         reason = "; ".join(f"{name}: lookup failed with code={lookup.get('code')}"
