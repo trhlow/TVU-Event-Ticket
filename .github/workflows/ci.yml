@@ -371,6 +371,11 @@ jobs:
           # reject only. It exists at all because release-envelope.schema.json shipped once with
           # zero witnesses on its entire validated content and a whole-branch review had to find that.
           bash .github/scripts/evidence-set-schema.test.sh
+          # Three standalone predicate schemas (spec section 7) freezing what a scanner attestation
+          # must contain and excluding the other kind's identity fields. Like evidence-set-schema.
+          # test.sh, no decision-side consumer exists yet -- 3b commit 4 gives report/attestation
+          # lookups their own real trust boundary -- so this suite asserts schema accept/reject only.
+          bash .github/scripts/predicates-schema.test.sh
 
       - name: Test the frontend config canonicaliser
         # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
