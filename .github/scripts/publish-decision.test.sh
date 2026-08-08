@@ -261,8 +261,13 @@ skipped='{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}'
 # present_in() already gives MONO/FRONT.
 present_evidence_set() {
   local repo="$1" digest="$2"
-  local pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'","digest":"'"$digest"'"},
-               "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'","digest":"'"$digest"'"}}'
+  local pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
+                 "descriptor":{"mediaType":"application/vnd.evts.evidence.report.v1+json","digest":"'"$digest"'","size":1024},
+                 "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":{}},
+               "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
+                 "subjectDigest":"'"$digest"'","predicateType":"https://tvu.example/report-attestation",
+                 "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
+                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":{}}}'
   cat <<EOF
 {"status":"present","queriedRef":"$repo@$digest","carrierDigest":"$digest",
  "verification":{"attestationVerified":true,"subjectDigest":"$digest",
@@ -1123,7 +1128,7 @@ assert_decision "both images adoptable" \
   ABSENT '["adopt_monolith_evidence_set","adopt_frontend_evidence_set"]' false false
 assert_decision "adopt refused: one kind is missing its attestation" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
-     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x"}' "$present_mono_es")")" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"] = {"status": "absent", "reason": "no_matching_attestation", "paginationComplete": True, "queried": {"repository": "owner/name/monolith", "workflow": ".github/workflows/publish.yml", "sourceRevision": "0"*40, "subjectDigest": "sha256:" + "5"*64, "predicateType": "https://tvu.example/report-attestation"}}' "$present_mono_es")")" \
   CONFLICT '[]' false false
 assert_decision "adopt refused: provenance names a different workflow" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \

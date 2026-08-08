@@ -360,48 +360,104 @@
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         },
         "vulnerabilityScan": {
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         },
         "layerSecretScan": {
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         },
         "filesystemSecretScan": {
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
-            "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         }
       },
@@ -427,48 +483,104 @@
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         },
         "vulnerabilityScan": {
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         },
         "layerSecretScan": {
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         },
         "filesystemSecretScan": {
           "reportLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {}
           },
           "attestationLookup": {
             "status": "present",
             "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
-            "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {}
           }
         }
       }
