@@ -406,8 +406,96 @@
       "additionalProperties": false,
       "required": ["reportLookup", "attestationLookup"],
       "properties": {
-        "reportLookup": { "$ref": "#/$defs/objectLookup" },
-        "attestationLookup": { "$ref": "#/$defs/objectLookup" }
+        "reportLookup": { "$ref": "#/$defs/reportEvidenceLookup" },
+        "attestationLookup": { "$ref": "#/$defs/attestationEvidenceLookup" }
+      }
+    },
+
+    "reportEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentReport" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "presentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 4 (spec section 5): what a report lookup proves -- descriptor bytes/hash/schema, nothing about signer or source revision. That half is attestationEvidenceLookup's job.",
+      "required": ["status", "queriedRef", "descriptor", "digestVerified", "sizeVerified", "schemaValid", "normalizedReport"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "digestVerified": { "type": "boolean" },
+        "sizeVerified": { "type": "boolean" },
+        "schemaValid": { "type": "boolean" },
+        "normalizedReport": {
+          "type": "object",
+          "description": "Loosely typed until commit 5 (spec section 6) gives it real shape."
+        }
+      }
+    },
+
+    "attestationEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentAttestation" },
+        { "$ref": "#/$defs/attestationAbsent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "presentAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 4 (spec section 5): what an attestation lookup proves -- signer, source revision, predicate type, verify-bundle outcome. Not policyPassed: whether a report's findings pass policy is recomputed by the decision in commit 5, not asserted by the collector at lookup time.",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "attestationVerified": { "type": "boolean" },
+        "normalizedPredicate": {
+          "type": "object",
+          "description": "Loosely typed until commit 5 (spec section 6) gives it real shape."
+        }
+      }
+    },
+
+    "attestationAbsent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 4 (spec section 5): the GitHub Attestations API answers 'not found' with a 200 and an empty list after full pagination, not a 404 -- asserting observedCode: 404 here would assert an HTTP status nobody received. paginationComplete is what turns 'gave up partway' into 'searched, and found nothing'. queried is loosely typed -- the full tuple (repository, workflow, sourceRevision, subjectDigest, predicateType, and a report digest for the three scan kinds) is enforced by commit 7 (spec section 8); today it only has to record what was searched for.",
+      "required": ["status", "reason", "paginationComplete", "queried"],
+      "properties": {
+        "status": { "const": "absent" },
+        "reason": { "const": "no_matching_attestation" },
+        "paginationComplete": { "const": true },
+        "queried": {
+          "type": "object",
+          "required": ["repository", "workflow", "sourceRevision", "subjectDigest", "predicateType"],
+          "properties": {
+            "repository": { "type": "string", "minLength": 1 },
+            "workflow": { "type": "string", "minLength": 1 },
+            "sourceRevision": { "$ref": "#/$defs/sha1" },
+            "subjectDigest": { "$ref": "#/$defs/digest" },
+            "predicateType": { "type": "string", "minLength": 1 }
+          }
+        }
       }
     }
   }
