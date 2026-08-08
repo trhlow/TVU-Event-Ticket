@@ -1191,6 +1191,34 @@ assert_decision "adopt refused: a report's reportLookup is not present" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x"}' "$present_mono_es")")" \
   CONFLICT '[]' false false
+# Fix (3b commit 4): reportLookup/attestationLookup can be status:present while the fetch or
+# verification it represents actually failed -- the old shared objectLookup this replaces could not
+# express that distinction at all.
+assert_decision "adopt refused: reportLookup fetched but digest did not verify" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"]["digestVerified"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: reportLookup fetched but schema was invalid" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["schemaValid"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: attestationLookup present but attestationVerified is false" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["layerSecretScan"]["attestationLookup"]["attestationVerified"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+# Fix (3b commit 4): the attestation API's own absent shape (pagination-complete empty list) is
+# distinct from a report lookup's absent shape (404) -- proven here by using the wrong one.
+assert_decision "adopt refused: attestationLookup absent via the wrong shape (404, not pagination)" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["filesystemSecretScan"]["attestationLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x"}' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+# Fix (3b commit 4): a nested error (not absence) at one of the 16 report/attestation lookups must
+# reach the same UNKNOWN/retryable gate as a top-level lookup error, not be folded into CONFLICT by
+# evidence_set_problems() treating "errored" the same as "absent."
+assert_decision "a nested report-lookup error is UNKNOWN and retryable, not CONFLICT" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"] = {"status": "error", "queriedRef": doc["reports"]["sbom"]["reportLookup"]["queriedRef"], "code": 503}' "$present_mono_es")")" \
+  UNKNOWN '[]' false true
 assert_decision "evidence-set lookup error surfaces through the same UNKNOWN gate as any other" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      '{"status":"error","code":503,"queriedRef":"ghcr.io/owner/name/monolith:sha-x"}')" \
