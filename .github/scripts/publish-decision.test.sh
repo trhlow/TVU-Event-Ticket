@@ -804,15 +804,31 @@ echo
 echo "== evidence answers four questions, and each one has to have been answered"
 # `_content` for the same reason as the inventory block above: a marker whose content is judged has
 # to carry an envelope built from that content, or payload binding answers in the rule's place.
+#
+# The three "passed is not boolean true" sub-cases below deliberately use SBOM, not a scan kind. Fix
+# (3b commit 5 blind spot, found by the CI mutation sweep after this branch was pushed): with a
+# scan kind and the default clean, resolving evidence-set, damaging entry.passed to false/"true"/null
+# ALSO trips guard #7's own marker-vs-evidence-set comparison (recomputed=True from the clean
+# evidence-set, entry.passed != True -> mismatch, since kind is in SCAN_REPORT_KINDS) -- both guards
+# then independently produce CONFLICT on the same fixture, and deleting the older, more basic
+# "passed must be true" guard changed nothing observable. Making the evidence-set absent instead
+# does not fix this: marker()'s own evidenceSetDigest claim then fails to resolve against an absent
+# lookup, a DIFFERENT pre-existing check in this same function, so that collision just replaces this
+# one. SBOM is the one kind never in SCAN_REPORT_KINDS (commit 6 is what eventually gives it its own
+# shape) -- guard #7's `if kind in SCAN_REPORT_KINDS:` gate skips it outright, and the identical
+# shared "passed must be true" line these three cases exercise is not kind-specific code, so testing
+# it via sbom instead of a scan kind proves exactly the same guard. Exactly the "a new guard that
+# fires on more markers can blind old witnesses" failure mode this project's own history has hit
+# repeatedly (3a work, 3b commit 2, 3b commit 4).
 for entry in \
   '{"verification":{"predicateType":null}}|verification does not say what was attested' \
   '{"verification":{"predicateType":""}}|attested predicate type is empty' \
   '{"_content":{"evidence":{"layerSecretScan":null}}}|no layer secret scan' \
   '{"_content":{"evidence":{"filesystemSecretScan":null}}}|no filesystem secret scan' \
   '{"_content":{"evidence":{"sbom":{"monolith":{"predicateType":null}}}}}|sbom does not say what it states' \
-  '{"_content":{"evidence":{"vulnerabilityScan":{"monolith":{"passed":false}}}}}|vulnerability scan did not pass' \
-  '{"_content":{"evidence":{"layerSecretScan":{"frontend":{"passed":"true"}}}}}|layer scan result is a string' \
-  '{"_content":{"evidence":{"filesystemSecretScan":{"monolith":{"passed":null}}}}}|filesystem scan has no result' \
+  '{"_content":{"evidence":{"sbom":{"monolith":{"passed":false}}}}}|sbom did not pass' \
+  '{"_content":{"evidence":{"sbom":{"frontend":{"passed":"true"}}}}}|sbom result is a string' \
+  '{"_content":{"evidence":{"sbom":{"monolith":{"passed":null}}}}}|sbom has no result' \
   ; do
   override="${entry%%|*}"; label="${entry##*|}"
   assert_decision "prepared marker: $label" \
