@@ -582,6 +582,28 @@ def marker_problems(marker, obs, where):
                     problems.append(f"{where}.content.evidence.{kind}.{image}.passed is "
                                     f"{entry.get('passed')!r}, must be boolean true")
 
+                if kind in SCAN_REPORT_KINDS:
+                    # 3b commit 5 (spec section 6): the third independent source. A marker cannot
+                    # merely agree with itself -- its own passed claim is compared against what the
+                    # evidence-set's own report actually recomputes, the same "not trusted on its
+                    # word" rule commit 2 already applies to evidenceSetDigest.
+                    evidence_set_lookup = obs["lookups"][f"{image}EvidenceSet"]
+                    if evidence_set_lookup["status"] == "present":
+                        es_reports = evidence_set_lookup.get("reports")
+                        es_pair = es_reports.get(kind) if type(es_reports) is dict else None
+                        es_report_lookup = es_pair.get("reportLookup") if type(es_pair) is dict else None
+                        if type(es_report_lookup) is dict and es_report_lookup.get("status") == "present":
+                            es_report_content = es_report_lookup.get("normalizedReport")
+                            if type(es_report_content) is dict:
+                                es_counts = es_report_content.get("counts")
+                                if type(es_counts) is dict:
+                                    marker_recomputed = recomputed_outcome(kind, es_counts)
+                                    if entry.get("passed") is not marker_recomputed:
+                                        problems.append(
+                                            f"{where}.content.evidence.{kind}.{image}.passed is "
+                                            f"{entry.get('passed')!r}, but the evidence-set's own "
+                                            f"report recomputes to {marker_recomputed!r}")
+
         # 3b commit 2 (spec section 3): the marker no longer verifies evidence itself, it only
         # claims a digest and the decision resolves that claim against the lookup that already did
         # the verifying. A marker asserting evidenceSetDigest with nothing to back it, or a digest
@@ -619,6 +641,92 @@ def marker_problems(marker, obs, where):
 
 
 EVIDENCE_REPORT_KINDS = ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan")
+# SBOM does not share the scan contract (section 4) -- its own recomputed verdict is commit 6's job.
+SCAN_REPORT_KINDS = ("vulnerabilityScan", "layerSecretScan", "filesystemSecretScan")
+SEVERITY_RANK = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1, "UNKNOWN": 0}
+
+
+def finding_sort_key(finding):
+    return (
+        -SEVERITY_RANK.get(finding.get("severity"), -1),
+        0 if finding.get("fixAvailable") else 1,
+        finding.get("packageName"),
+        finding.get("vulnerabilityId"),
+        finding.get("targetPath"),
+    )
+
+
+def finding_tuple(finding):
+    return (finding.get("severity"), finding.get("fixAvailable"), finding.get("packageName"),
+            finding.get("vulnerabilityId"), finding.get("targetPath"))
+
+
+def recomputed_outcome(kind, counts):
+    """True = passed. Section 6's two verdict-policy rules: vulnerabilityScan fails on any
+    CRITICAL or any HIGH with a fix; both secret-scan kinds fail on any finding at all."""
+    def count(severity, key):
+        entry = counts.get(severity)
+        return entry.get(key, 0) if type(entry) is dict else 0
+
+    if kind == "vulnerabilityScan":
+        fails = (count("CRITICAL", "withFix") + count("CRITICAL", "withoutFix") > 0
+                 or count("HIGH", "withFix") > 0)
+    else:
+        fails = any(count(severity, "withFix") + count(severity, "withoutFix") > 0
+                    for severity in SEVERITY_RANK)
+    return not fails
+
+
+def scan_content_problems(kind, content, where):
+    """Everything wrong with one kind's normalizedReport or normalizedPredicate that the schema
+    cannot already see -- sort order, exact-duplicate findings, and (section 6) the verdict
+    recomputed from counts. Returns (problems, recomputed_outcome_or_None). The schema already
+    guarantees content's own shape when the lookup is status:present, so this does not re-check
+    types the schema already requires -- only cross-cutting/value-level facts, same split as every
+    other check in this function."""
+    problems = []
+    findings = content.get("findings", [])
+    ordered = sorted(findings, key=finding_sort_key)
+    if [finding_tuple(f) for f in ordered] != [finding_tuple(f) for f in findings]:
+        problems.append(f"{where}.findings is not sorted by severity desc, fixAvailable, "
+                        f"packageName, vulnerabilityId, targetPath (section 6)")
+    seen = set()
+    for finding in findings:
+        tup = finding_tuple(finding)
+        if tup in seen:
+            problems.append(f"{where}.findings has a duplicate entry {tup!r}; a report listing "
+                            f"the same finding twice cannot be trusted for its counts")
+        seen.add(tup)
+
+    counts = content.get("counts", {})
+    recomputed = recomputed_outcome(kind, counts)
+
+    if content.get("truncated") is not True:
+        # Untruncated means findings is a complete view of everything at or above the policy
+        # threshold -- if its length disagrees with what counts implies for those severities, the
+        # two halves of this document contradict each other and neither can be trusted blind.
+        threshold_rank = SEVERITY_RANK.get(content.get("policy", {}).get("severityThreshold"), 0)
+        expected_visible = sum(
+            counts.get(severity, {}).get("withFix", 0) + counts.get(severity, {}).get("withoutFix", 0)
+            for severity, rank in SEVERITY_RANK.items() if rank >= threshold_rank
+        )
+        if len(findings) != expected_visible:
+            problems.append(f"{where}.findings has {len(findings)} entries but counts implies "
+                            f"{expected_visible} at or above the policy threshold, and truncated "
+                            f"is false")
+
+    if content.get("declaredOutcome") is not recomputed:
+        problems.append(f"{where}.declaredOutcome is {content.get('declaredOutcome')!r}, but "
+                        f"recomputed from counts it is {recomputed!r}")
+
+    if recomputed is False:
+        # Section 10's matrix: "recomputedOutcome fail" is its own CONFLICT trigger, independent of
+        # whether every source agrees on it. A scan that failed policy blocks the release even when
+        # the report, the attestation, and the marker all self-consistently say so -- agreement is
+        # not permission.
+        problems.append(f"{where}: recomputed verdict fails policy (counts={counts!r})")
+
+    return problems, recomputed
 
 
 def evidence_set_problems(lookup, obs, where):
@@ -703,6 +811,34 @@ def evidence_set_problems(lookup, obs, where):
         elif attestation_lookup.get("attestationVerified") is not True:
             problems.append(f"{where}.reports.{kind}.attestationLookup.attestationVerified is "
                             f"{attestation_lookup.get('attestationVerified')!r}, must be boolean true")
+
+        # 3b commit 5 (spec section 6): SBOM does not share this contract (section 4, commit 6's
+        # job) -- only the three scan kinds get a recomputed verdict here. Guarded on both halves
+        # already being present and verified above: a report or attestation that failed its own
+        # checks has nothing trustworthy to recompute from, and piling a second, derived complaint
+        # on top of an already-reported problem would not name anything new.
+        if (kind in SCAN_REPORT_KINDS
+                and type(report_lookup) is dict and report_lookup.get("status") == "present"
+                and type(attestation_lookup) is dict and attestation_lookup.get("status") == "present"):
+            report_content = report_lookup.get("normalizedReport")
+            attestation_content = attestation_lookup.get("normalizedPredicate")
+            report_outcome = attestation_outcome = None
+            if type(report_content) is dict:
+                report_problems, report_outcome = scan_content_problems(
+                    kind, report_content, f"{where}.reports.{kind}.reportLookup.normalizedReport")
+                problems += report_problems
+            if type(attestation_content) is dict:
+                attestation_problems, attestation_outcome = scan_content_problems(
+                    kind, attestation_content,
+                    f"{where}.reports.{kind}.attestationLookup.normalizedPredicate")
+                problems += attestation_problems
+            if (report_outcome is not None and attestation_outcome is not None
+                    and report_outcome != attestation_outcome):
+                # Section 5's whole point: two independent sources, compared, not merged. Agreement
+                # on shape does not imply agreement on content.
+                problems.append(f"{where}.reports.{kind}: report recomputes to {report_outcome!r}, "
+                                f"attestation recomputes to {attestation_outcome!r} -- two "
+                                f"independent sources disagree")
     return problems
 
 
