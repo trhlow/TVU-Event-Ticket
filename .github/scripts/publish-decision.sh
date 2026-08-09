@@ -825,6 +825,12 @@ def evidence_set_problems(lookup, obs, where):
         elif attestation_lookup.get("attestationVerified") is not True:
             problems.append(f"{where}.reports.{kind}.attestationLookup.attestationVerified is "
                             f"{attestation_lookup.get('attestationVerified')!r}, must be boolean true")
+        elif attestation_lookup.get("paginationComplete") is not True:
+            # 3b commit 7 (spec section 8): a selection made from a partial page is a selection
+            # nobody proved was the only match -- "I found one" is not "I found one and there were
+            # no others" until pagination actually finished.
+            problems.append(f"{where}.reports.{kind}.attestationLookup.paginationComplete is "
+                            f"{attestation_lookup.get('paginationComplete')!r}, must be boolean true")
 
         # 3b commit 5 (spec section 6): SBOM does not share this contract (section 4, commit 6's
         # job) -- only the three scan kinds get a recomputed verdict here. Guarded on both halves
@@ -854,6 +860,20 @@ def evidence_set_problems(lookup, obs, where):
                                 f"attestation recomputes to {attestation_outcome!r} -- two "
                                 f"independent sources disagree")
 
+            # 3b commit 7 (spec section 8/10, Plan Decision A): the three scan kinds carry
+            # reportDigest directly on the signed predicate -- contrast SBOM's reverse binding
+            # (commit 6), which has to canonicalize its way there. Read only from the attestation
+            # side and compared against the report's own descriptor digest, the same forward-vs-
+            # reverse asymmetry the schema's own field description already states.
+            if (type(report_content) is dict and type(attestation_content) is dict
+                    and report_lookup.get("descriptor", {}).get("digest")
+                    != attestation_content.get("reportDigest")):
+                problems.append(
+                    f"{where}.reports.{kind}: attestation's reportDigest is "
+                    f"{attestation_content.get('reportDigest')!r}, but the report's own descriptor "
+                    f"digest is {report_lookup.get('descriptor', {}).get('digest')!r} -- the signed "
+                    f"predicate does not name the report actually fetched")
+
         # 3b commit 6 (spec section 4): SBOM's reverse-direction binding. The decision has no bytes
         # and cannot canonicalize anything itself -- it trusts the collector's already-canonicalized
         # digest/size the same way it already trusts layersValid and schemaValid, and compares that
@@ -878,6 +898,44 @@ def evidence_set_problems(lookup, obs, where):
                         f"{where}.reports.{kind}: attestation's canonicalSize is "
                         f"{predicate_content.get('canonicalSize')!r}, but the SBOM layer's own "
                         f"descriptor size is {descriptor.get('size')!r}")
+
+        # 3b commit 7 (spec section 8): semantic-duplicate check, every kind (not just
+        # SCAN_REPORT_KINDS -- SBOM attestations can have duplicates too, just with fewer
+        # projected fields, per attestationStatementProjection's optional reportDigest/policy/
+        # outcome). Guarded on the attestation lookup being present and verified already above;
+        # an attestation that failed its own checks has nothing trustworthy to compare duplicates
+        # against.
+        if type(attestation_lookup) is dict and attestation_lookup.get("status") == "present":
+            duplicates = attestation_lookup.get("duplicates")
+            if type(duplicates) is list:
+                selected = {
+                    "subjectDigest": attestation_lookup.get("subjectDigest"),
+                    "sourceRevision": attestation_lookup.get("sourceRevision"),
+                    "signerRepository": attestation_lookup.get("signerRepository"),
+                    "signerWorkflow": attestation_lookup.get("signerWorkflow"),
+                    "predicateType": attestation_lookup.get("predicateType"),
+                    "reportDigest": (attestation_content.get("reportDigest")
+                                     if type(attestation_content) is dict else None),
+                    "policy": (attestation_content.get("policy")
+                               if type(attestation_content) is dict else None),
+                    "outcome": attestation_outcome,
+                }
+                for index, duplicate in enumerate(duplicates):
+                    if type(duplicate) is not dict:
+                        continue
+                    for field in ("subjectDigest", "sourceRevision", "signerRepository",
+                                  "signerWorkflow", "predicateType", "reportDigest", "policy",
+                                  "outcome"):
+                        if field not in duplicate and selected.get(field) is None:
+                            continue
+                        if duplicate.get(field) != selected.get(field):
+                            problems.append(
+                                f"{where}.reports.{kind}.attestationLookup.duplicates[{index}]."
+                                f"{field} is {duplicate.get(field)!r}, but the selected statement's "
+                                f"own {field} is {selected.get(field)!r} -- these are not the same "
+                                f"statement, and multiple trustworthy statements that disagree is "
+                                f"the case section 8 requires a person for")
+                            break
     return problems
 
 
