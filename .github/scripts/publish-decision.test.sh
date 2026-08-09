@@ -1579,6 +1579,17 @@ assert_decision "adopt refused: a semantic duplicate disagrees on outcome" \
 # would be the "force two cases to exist when only one is meaningfully constructible" the plan warned
 # against.
 
+# Fix (3b commit 7, task 5 follow-up): the scan-kind reportDigest binding check (Task 2) had no
+# witness anywhere in Task 4's corpus -- found by the targeted mutation run for this task's own new
+# rules, not by inspection. Damages only the attestation's own reportDigest to disagree with the
+# report's descriptor digest; counts/declaredOutcome stay clean, so the recompute-based guards
+# (scan_recomputed_failure_not_conflict, scan_report_attestation_disagreement_ignored) do not
+# co-fire -- this isolates the binding check alone.
+assert_decision "adopt refused: attestation's reportDigest disagrees with the report's own descriptor digest" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["attestationLookup"]["normalizedPredicate"]["reportDigest"] = "sha256:" + "9"*64' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
 echo
 echo "passed=$passed failed=$failed"
 [[ $failed -eq 0 ]]

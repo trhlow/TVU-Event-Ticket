@@ -475,6 +475,30 @@ MUTATIONS = {
     "sbom_canonical_size_unchecked": (
         'if predicate_content.get("canonicalSize") != descriptor.get("size"):',
         "if False:"),
+    # 3b commit 7 (spec section 8): a selection made from a partial page is not proven to be the
+    # only match. Without this, an attestation lookup that stopped mid-page reaches ADOPT the same
+    # as one that paged to completion.
+    "attestation_pagination_incomplete_ignored": (
+        'elif attestation_lookup.get("paginationComplete") is not True:',
+        "elif False:"),
+    # 3b commit 7 (spec section 8/10, Plan Decision A): the scan kinds' forward binding -- the
+    # signed predicate's own reportDigest must name the report actually fetched, not merely a
+    # report of the same kind. Neutralising the whole multi-line condition rather than one clause of
+    # it, matching how verification_predicate_ignored above handles a condition split across lines.
+    "attestation_report_digest_binding_ignored": (
+        '            if (type(report_content) is dict and type(attestation_content) is dict\n'
+        '                    and report_lookup.get("descriptor", {}).get("digest")\n'
+        '                    != attestation_content.get("reportDigest")):',
+        "            if False:"),
+    # 3b commit 7 (spec section 8): the semantic-duplicate comparison itself. One mutation for the
+    # whole per-field check rather than one per field in the tuple it iterates -- the loop applies
+    # the identical comparison to each of the eight projected fields in turn, the same shape as
+    # scan_findings_duplicates_allowed's `if tup in seen:` above, not the shape of
+    # payload_binding_digest_unchecked/payload_binding_size_unchecked's two independently-written
+    # checks.
+    "duplicate_field_mismatch_ignored": (
+        "                        if duplicate.get(field) != selected.get(field):",
+        "                        if False:"),
 }
 
 
