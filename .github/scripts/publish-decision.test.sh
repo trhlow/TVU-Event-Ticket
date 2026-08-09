@@ -274,6 +274,7 @@ present_evidence_set() {
   local scan_content
   scan_content='{"scanner":{"name":"trivy","version":"0.55.0"},
                "target":{"imageDigest":"'"$digest"'"},
+               "reportDigest":"'"$digest"'",
                "policy":{"severityThreshold":"HIGH","ignoreList":[],"ignoreFileDigest":"'"$(printf '0%.0s' {1..64})"'"},
                "counts":'"$CLEAN_COUNTS"',"findings":[],"truncated":false,"declaredOutcome":true}'
   local sbom_content='{"spdxVersion":"SPDX-2.3","documentValidated":true,"subjectDigest":"'"$digest"'",
@@ -284,14 +285,16 @@ present_evidence_set() {
                "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "subjectDigest":"'"$digest"'","predicateType":"https://tvu.example/report-attestation",
                  "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
-                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":'"$sbom_content"'}}'
+                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":'"$sbom_content"',
+                 "paginationComplete":true,"duplicates":[]}}'
   local scan_pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "descriptor":{"mediaType":"application/vnd.evts.evidence.report.v1+json","digest":"'"$digest"'","size":1024},
                  "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":'"$scan_content"'},
                "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "subjectDigest":"'"$digest"'","predicateType":"https://tvu.example/report-attestation",
                  "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
-                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":'"$scan_content"'}}'
+                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":'"$scan_content"',
+                 "paginationComplete":true,"duplicates":[]}}'
   cat <<EOF
 {"status":"present","queriedRef":"$repo@$digest","carrierDigest":"$digest",
  "verification":{"attestationVerified":true,"subjectDigest":"$digest",

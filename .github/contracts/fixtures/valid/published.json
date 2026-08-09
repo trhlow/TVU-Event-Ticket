@@ -397,7 +397,9 @@
               "packageCount": 5,
               "canonicalDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
               "canonicalSize": 1024
-            }
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         },
         "vulnerabilityScan": {
@@ -449,7 +451,8 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
             }
           },
           "attestationLookup": {
@@ -498,8 +501,11 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
-            }
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         },
         "layerSecretScan": {
@@ -551,7 +557,8 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
             }
           },
           "attestationLookup": {
@@ -600,8 +607,11 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
-            }
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         },
         "filesystemSecretScan": {
@@ -653,7 +663,8 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
             }
           },
           "attestationLookup": {
@@ -702,8 +713,11 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
-            }
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         }
       }
@@ -761,7 +775,9 @@
               "packageCount": 5,
               "canonicalDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
               "canonicalSize": 1024
-            }
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         },
         "vulnerabilityScan": {
@@ -813,7 +829,8 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
             }
           },
           "attestationLookup": {
@@ -862,8 +879,11 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
-            }
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         },
         "layerSecretScan": {
@@ -915,7 +935,8 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
             }
           },
           "attestationLookup": {
@@ -964,8 +985,11 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
-            }
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         },
         "filesystemSecretScan": {
@@ -1017,7 +1041,8 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
             }
           },
           "attestationLookup": {
@@ -1066,8 +1091,11 @@
               },
               "findings": [],
               "truncated": false,
-              "declaredOutcome": true
-            }
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            },
+            "paginationComplete": true,
+            "duplicates": []
           }
         }
       }
