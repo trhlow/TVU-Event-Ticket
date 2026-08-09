@@ -1352,19 +1352,31 @@ doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["declaredO
 
 # Fix (3b commit 5): the third independent source -- a final marker's own content.evidence.<kind>.
 # <image>.passed claim, compared against the evidence-set's own recomputed verdict (marker_problems(),
-# not evidence_set_problems(): a final marker present takes decide() down a different branch that
-# never calls evidence_set_problems() at all, so this is the only case in the suite that exercises
-# this specific guard). marker() defaults every kind's passed to True; only the evidence-set's
-# vulnerabilityScan report is damaged here, so the marker is "lying" -- it claims true while the
-# evidence honestly recomputes to false. Plan text (Task 2's docstring, this section's own preamble,
-# the plan's Self-Review) calls this the "lying-marker case" and claims it was already covered;
-# tracing marker_problems() and Task 4's other eight cases (none sets a marker at all, let alone a
-# passed claim) showed that guard was actually unwitnessed -- added here rather than carried forward.
-assert_decision "adopt refused: a final marker's passed claim disagrees with the evidence-set's own recomputed verdict" \
-  "$(observation "$(marker)" "$absent_release" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" \
-     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["findings"] = ['"$FAILING_FINDING"']
-doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"] = '"$FAILING_COUNTS"'
-doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")" "$present_front_es")" \
+# not evidence_set_problems() directly -- though marker_problems() DOES call evidence_set_problems()
+# internally, as part of its own evidenceSetDigest cross-check a few lines below this one). That
+# internal call is why the evidence-set passed into this case must stay fully CLEAN: an earlier
+# version of this case damaged the evidence-set's vulnerabilityScan report to make the marker "lie",
+# but that same damage also made evidence_set_problems() find the evidence-set untrustworthy via the
+# evidenceSetDigest cross-check, independently producing CONFLICT and leaving this guard's own
+# mutation unwitnessed (caught by this plan's own mutation sweep: 3 of 7 new rules survived, this one
+# among them -- see the two neighboring fixed cases too). The marker's own claim is overridden
+# instead, via marker()'s `_content` mechanism, against an untouched, fully-adoptable evidence-set --
+# the only difference between claim and reality is the one field this guard exists to catch.
+assert_decision "adopt refused: a final marker's passed claim disagrees with a clean evidence-set's own recomputed verdict" \
+  "$(observation "$(marker '{"_content":{"evidence":{"vulnerabilityScan":{"monolith":{"passed":false}}}}}')" "$absent_release" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): declaredOutcome disagreeing with a recomputed verdict that itself PASSES --
+# the only shape that isolates this guard from the independent recomputed-is-False trigger right
+# below it in scan_content_problems() (guard order: this mismatch check fires whenever declaredOutcome
+# != recomputed, in EITHER direction; every other case in this file that damages declaredOutcome also
+# damages counts/findings to the same failing verdict, so recomputed is already False and the
+# independent trigger fires regardless of this one -- caught unwitnessed by the same mutation sweep
+# noted above). Counts/findings are left at their clean default (matching CLEAN_COUNTS, no findings),
+# so recomputed is True; only declaredOutcome is forced to disagree with it.
+assert_decision "adopt refused: declaredOutcome disagrees with a recomputed verdict that actually passes" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")")" \
   CONFLICT '[]' false false
 
 assert_decision "evidence-set lookup error surfaces through the same UNKNOWN gate as any other" \

@@ -411,6 +411,48 @@ MUTATIONS = {
     "nested_evidence_errors_ignored": (
         "    failures += nested_evidence_failures(lookups)\n",
         "    failures += []\n"),
+    # 3b commit 5 (spec section 6): scan_content_problems' explicit sort tuple. Mirrors
+    # canonical_order_ignored's shape (a `sorted(...)` comparison neutralised), witnessed by Task
+    # 4's unsorted-findings case.
+    "scan_findings_sort_order_ignored": (
+        "    if [finding_tuple(f) for f in ordered] != [finding_tuple(f) for f in findings]:",
+        "    if False:"),
+    # The exact-duplicate-tuple loop. Mirrors repeatable_duplicates_allowed's shape (a `seen` set
+    # membership check neutralised).
+    "scan_findings_duplicates_allowed": (
+        "        if tup in seen:",
+        "        if False:"),
+    # The untruncated-list-vs-counts miscount check -- section 6's claim that a truncated list
+    # cannot change the verdict only holds if this guard is live.
+    "scan_untruncated_count_mismatch_ignored": (
+        "        if len(findings) != expected_visible:",
+        "        if False:"),
+    # declaredOutcome vs. recomputed: the report/attestation's own stated verdict must agree with
+    # what the decision recomputes from counts.
+    "scan_declared_outcome_ignored": (
+        '    if content.get("declaredOutcome") is not recomputed:',
+        "    if False:"),
+    # Decision-critical (found during this plan's own scratch verification): recomputedOutcome=False
+    # is independently a CONFLICT trigger, not merely a disagreement check -- a self-consistent-fail
+    # observation (every source honestly agrees) must still block. Distinguished from
+    # scan_declared_outcome_ignored immediately above it: that mutation targets the mismatch
+    # comparison, this one targets the independent failure check one line below it, so the exact
+    # string matched must not be the shorter substring the other guard also contains.
+    "scan_recomputed_failure_not_conflict": (
+        "    if recomputed is False:",
+        "    if False:"),
+    # The two-way report-vs-attestation comparison in evidence_set_problems(): two independent
+    # sources, compared, not merged. Agreement on shape does not imply agreement on content.
+    "scan_report_attestation_disagreement_ignored": (
+        "            if (report_outcome is not None and attestation_outcome is not None\n"
+        "                    and report_outcome != attestation_outcome):",
+        "            if False:"),
+    # The third independent source in marker_problems(): a marker's own passed claim compared
+    # against what the evidence-set's own report actually recomputes -- the same "not trusted on
+    # its word" rule commit 2 already applies to evidenceSetDigest.
+    "marker_scan_recompute_ignored": (
+        '                                    if entry.get("passed") is not marker_recomputed:',
+        "                                    if False:"),
 }
 
 
