@@ -1465,6 +1465,24 @@ assert_decision "adopt refused: sbom attestation's canonicalSize disagrees with 
      "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"]["normalizedPredicate"]["canonicalSize"] = 999999' "$present_mono_es")")" \
   CONFLICT '[]' false false
 
+# Fix (3b commit 6 blind spot, found by the local mutation sweep after this branch's Task 5 ran):
+# the scan-kind half of "passed must be true" (evidence_result_ignored -- the "evidence answers four
+# questions" loop above this function's own definition used to witness it via a scan kind, then via
+# sbom after commit 5's guard #7 forced a switch) lost its only witness entirely once commit 6 gave
+# sbom its own documentValidated check and every one of that loop's sub-cases moved there. Restoring
+# it for a scan kind hits the exact SCAN_REPORT_KINDS collision that switch was originally for (guard
+# #7 fires on any entry.passed != True against a clean, resolving evidence-set) -- but damaging the
+# evidence-set's own normalizedReport for this kind to something that is not a dict makes BOTH guard
+# #7's `if type(es_report_content) is dict:` gate AND evidence_set_problems()'s identical gate (reached
+# via marker_problems()'s own evidenceSetDigest cross-check) skip their comparisons entirely, so
+# neither collides. Final marker present (not prepared), mirroring commit 5's own "lying-marker" case
+# construction (final-marker-present + clean-except-one-field) since this isolates marker_problems()'s
+# per-kind loop specifically. Isolation confirmed by local removal of the guard before being kept.
+assert_decision "adopt refused: a scan evidence entry's own passed claim is not boolean true" \
+  "$(observation "$(marker '{"_content":{"evidence":{"vulnerabilityScan":{"monolith":{"passed":false}}}}}')" "$absent_release" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"] = None' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
 echo
 echo "passed=$passed failed=$failed"
 [[ $failed -eq 0 ]]

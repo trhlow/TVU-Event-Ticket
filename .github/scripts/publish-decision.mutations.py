@@ -453,6 +453,28 @@ MUTATIONS = {
     "marker_scan_recompute_ignored": (
         '                                    if entry.get("passed") is not marker_recomputed:',
         "                                    if False:"),
+    # 3b commit 6 (spec section 4): SPDX makes no verdict, so documentValidated -- not passed -- is
+    # the collector-trusted boolean marker_problems() checks for the sbom kind.
+    "sbom_document_validated_ignored": (
+        'if entry.get("documentValidated") is not True:',
+        "if False:"),
+    # The "not empty" half of section 4's three-part invariant: a SBOM naming zero packages is not
+    # evidence of anything, so packageCount must be typed and positive, not merely present.
+    "sbom_package_count_unchecked": (
+        "if type(package_count) is not int or package_count < 1:",
+        "if False:"),
+    # SBOM's reverse-direction binding, digest half: the attestation's signed canonicalDigest must
+    # name the same bytes as the SBOM layer's own descriptor, or the signed predicate is not
+    # describing the artifact actually on the layer.
+    "sbom_canonical_digest_unchecked": (
+        'if predicate_content.get("canonicalDigest") != descriptor.get("digest"):',
+        "if False:"),
+    # SBOM's reverse-direction binding, size half. Two independent statements about the payload
+    # (digest, size), so each needs its own mutation the way payload_binding_digest_unchecked and
+    # payload_binding_size_unchecked above are split.
+    "sbom_canonical_size_unchecked": (
+        'if predicate_content.get("canonicalSize") != descriptor.get("size"):',
+        "if False:"),
 }
 
 
