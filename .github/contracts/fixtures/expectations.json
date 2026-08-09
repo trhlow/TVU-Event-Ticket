@@ -109,6 +109,16 @@
     "schema": "rejects",
     "state": "CONFLICT"
   },
+  "invalid-structure/sbom-evidence-entry-carries-passed.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/scan-evidence-entry-carries-documentValidated.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
   "invalid-structure/schema-version-is-boolean.json": {
     "actions": [],
     "schema": "rejects",

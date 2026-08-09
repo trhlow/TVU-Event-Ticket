@@ -1432,5 +1432,39 @@ assert_decision "a marker's evidenceSetDigest is null, not merely unresolved" \
   CONFLICT '[]' false false
 
 echo
+echo "== 3b commit 6: stop asking a SBOM for a verdict it does not make"
+# Cases 1 (documentValidated:false) and 3 (packageCount:0) already exist -- see "evidence answers
+# four questions" above (the three sub-cases repurposed from the dead sbom passed-override
+# fixtures during Task 3's own follow-up fix). Isolation for both was verified here per this task's
+# required procedure (local removal of the guard under test, confirmed FAIL, reverted) even though
+# Task 3 added them without that step. Not duplicated.
+#
+# Case 2: the same kind-agnostic entry.subjectDigest check every evidence kind already shares
+# (marker_problems(), just above the sbom/scan split) has no existing witness anywhere in this
+# file -- searched for "another image"/"describes"/"covers"-style labels and any override touching
+# content.evidence.<kind>.<image>.subjectDigest; none found. Witnessed here via sbom specifically,
+# since that is this commit's own subject, though the check itself predates this commit and covers
+# every kind identically.
+assert_decision "prepared marker: a sbom evidence entry describes the other image" \
+  "$(observation "$absent_release" \
+     "$(marker '{"_content":{"evidence":{"sbom":{"monolith":{"subjectDigest":"'"$OTHER"'"}}}}}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+
+# Cases 4, 5: evidence_set_problems()'s reverse-direction SBOM binding -- the attestation's already-
+# canonicalized digest/size (normalizedPredicate) compared against the report lookup's own
+# descriptor (the SBOM layer as actually fetched). damaged_evidence_set/present_mono_es pattern
+# matches the adjacent 3b commit 2/4/5 cases above; the evidence-set is otherwise fully clean so
+# only the binding check under test can produce CONFLICT.
+assert_decision "adopt refused: sbom attestation's canonicalDigest disagrees with the report's own descriptor digest" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"]["normalizedPredicate"]["canonicalDigest"] = "sha256:" + "7"*64' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: sbom attestation's canonicalSize disagrees with the report's own descriptor size" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"]["normalizedPredicate"]["canonicalSize"] = 999999' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+echo
 echo "passed=$passed failed=$failed"
 [[ $failed -eq 0 ]]
