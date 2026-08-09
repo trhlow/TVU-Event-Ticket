@@ -1191,6 +1191,24 @@ assert_decision "adopt refused: a report's reportLookup is not present" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x"}' "$present_mono_es")")" \
   CONFLICT '[]' false false
+# The two cases above and below prove the presence check is load-bearing on its OWN, not merely that
+# something rejects a non-present lookup. Commit 4 turned each presence check into the `if` half of
+# an if/elif pair, and the `elif` (the verification-outcome check) fires on an absent lookup too --
+# reading digestVerified off a dict that has none yields None, which is not True. So deleting the
+# `if` still reached CONFLICT by the other branch, and the full mutation sweep reported both
+# presence guards SURVIVED even though every existing case still passed. These cases close that by
+# carrying the verification-outcome fields as true ON a non-present lookup: the elif then finds
+# nothing wrong, so only the presence check itself stands between this and a wrongly-adopted
+# evidence-set. Not schema-valid shapes on purpose -- assert_decision pipes raw JSON to the subject,
+# and what is under test here is the decision's own guard, not the schema's.
+assert_decision "adopt refused: reportLookup not present even though its outcomes claim verified" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x", "digestVerified": True, "sizeVerified": True, "schemaValid": True}' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+assert_decision "adopt refused: attestationLookup not present even though it claims verified" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"] = {"status": "absent", "observedCode": 404, "queriedRef": "x:sha-x", "attestationVerified": True}' "$present_mono_es")")" \
+  CONFLICT '[]' false false
 # Fix (3b commit 4): reportLookup/attestationLookup can be status:present while the fetch or
 # verification it represents actually failed -- the old shared objectLookup this replaces could not
 # express that distinction at all.

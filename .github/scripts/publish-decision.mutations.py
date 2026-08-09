@@ -390,6 +390,27 @@ MUTATIONS = {
     "evidence_set_report_lookup_presence_ignored": (
         'if type(report_lookup) is not dict or report_lookup.get("status") != "present":',
         "if False:"),
+    # 3b commit 4: reportLookup and attestationLookup are now two independent lookups, each with its
+    # own verification outcome fields. A reportLookup that is status:present can still have fetched
+    # bytes that failed digest/size/schema verification -- the old shared objectLookup this replaces
+    # could not distinguish "fetched" from "fetched and verified" at all.
+    "report_verification_outcomes_ignored": (
+        'elif not (report_lookup.get("digestVerified") is True\n'
+        '                  and report_lookup.get("sizeVerified") is True\n'
+        '                  and report_lookup.get("schemaValid") is True):',
+        "elif False:"),
+    # The attestationLookup's own verified outcome, distinguished from the pair's mere presence
+    # (evidence_set_attestation_pair_unchecked above, which targets the sibling `if` one line up).
+    "attestation_verified_outcome_ignored": (
+        'elif attestation_lookup.get("attestationVerified") is not True:',
+        "elif False:"),
+    # decide()'s retryable-error scan extended (3b commit 4, spec section 5) to the 16 report/
+    # attestation lookups nested inside the two evidence-set lookups. Without this, a nested lookup
+    # that errored is invisible to the scan and evidence_set_problems() sees it as if it simply never
+    # ran, turning a retryable UNKNOWN into a CONFLICT nobody can retry their way out of.
+    "nested_evidence_errors_ignored": (
+        "    failures += nested_evidence_failures(lookups)\n",
+        "    failures += []\n"),
 }
 
 
