@@ -17,10 +17,10 @@
     "finalMarker": {
       "status": "present",
       "queriedRef": "ghcr.io/owner/name/release:release-0123456789abcdef0123456789abcdef01234567",
-      "markerDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
+      "markerDigest": "sha256:e5584efa5f7dd0bfe48e8ba2e966a3cb51b34b35d0f1a17e05c1033f92dacad9",
       "verification": {
         "attestationVerified": true,
-        "subjectDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
+        "subjectDigest": "sha256:e5584efa5f7dd0bfe48e8ba2e966a3cb51b34b35d0f1a17e05c1033f92dacad9",
         "signerRepository": "owner/name",
         "signerWorkflow": ".github/workflows/ci.yml",
         "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
@@ -145,7 +145,7 @@
         "sizeVerified": true,
         "parsed": true,
         "raw": {
-          "schemaVersion": 2,
+          "schemaVersion": "2",
           "mediaType": "application/vnd.oci.image.manifest.v1+json",
           "artifactType": "application/vnd.tvu.release-manifest.v1+json",
           "config": {
