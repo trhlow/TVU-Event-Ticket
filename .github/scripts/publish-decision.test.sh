@@ -73,12 +73,18 @@ base = {
     "provenance": {"monolith": {"revision": sha, "subjectDigest": mono},
                    "frontend": {"revision": sha, "subjectDigest": front}},
     "evidence": {
+      "sbom": {"monolith": {"digest": "sha256:" + "a"*64, "subjectDigest": mono,
+                            "predicateType": "https://tvu.example/sbom",
+                            "documentValidated": True, "packageCount": 5},
+               "frontend": {"digest": "sha256:" + "a"*63 + "e", "subjectDigest": front,
+                            "predicateType": "https://tvu.example/sbom",
+                            "documentValidated": True, "packageCount": 5}},
       **{
         kind: {"monolith": {"digest": "sha256:" + letter*64, "subjectDigest": mono,
                             "predicateType": "https://tvu.example/" + kind, "passed": True},
                "frontend": {"digest": "sha256:" + letter*63 + "e", "subjectDigest": front,
                             "predicateType": "https://tvu.example/" + kind, "passed": True}}
-        for kind, letter in (("sbom", "a"), ("vulnerabilityScan", "b"),
+        for kind, letter in (("vulnerabilityScan", "b"),
                              ("layerSecretScan", "c"), ("filesystemSecretScan", "d"))
       },
       # 3b commit 2: matches MONO_ES/FRONT_ES, the carrierDigest present_evidence_set below
@@ -270,13 +276,15 @@ present_evidence_set() {
                "target":{"imageDigest":"'"$digest"'"},
                "policy":{"severityThreshold":"HIGH","ignoreList":[],"ignoreFileDigest":"'"$(printf '0%.0s' {1..64})"'"},
                "counts":'"$CLEAN_COUNTS"',"findings":[],"truncated":false,"declaredOutcome":true}'
-  local pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
+  local sbom_content='{"spdxVersion":"SPDX-2.3","documentValidated":true,"subjectDigest":"'"$digest"'",
+               "packageCount":5,"canonicalDigest":"'"$digest"'","canonicalSize":1024}'
+  local sbom_pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "descriptor":{"mediaType":"application/vnd.evts.evidence.report.v1+json","digest":"'"$digest"'","size":1024},
-                 "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":{}},
+                 "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":'"$sbom_content"'},
                "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "subjectDigest":"'"$digest"'","predicateType":"https://tvu.example/report-attestation",
                  "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
-                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":{}}}'
+                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":'"$sbom_content"'}}'
   local scan_pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "descriptor":{"mediaType":"application/vnd.evts.evidence.report.v1+json","digest":"'"$digest"'","size":1024},
                  "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":'"$scan_content"'},
@@ -290,7 +298,7 @@ present_evidence_set() {
                   "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
                   "sourceRevision":"$SHA","predicateType":"https://tvu.example/evidence-set","policyPassed":true},
  "subjectMatches":true,"layersValid":true,
- "reports":{"sbom":$pair,"vulnerabilityScan":$scan_pair,"layerSecretScan":$scan_pair,"filesystemSecretScan":$scan_pair}}
+ "reports":{"sbom":$sbom_pair,"vulnerabilityScan":$scan_pair,"layerSecretScan":$scan_pair,"filesystemSecretScan":$scan_pair}}
 EOF
 }
 present_mono_es="$(present_evidence_set "$MONOLITH_REPO" "$MONO_ES")"
@@ -805,30 +813,35 @@ echo "== evidence answers four questions, and each one has to have been answered
 # `_content` for the same reason as the inventory block above: a marker whose content is judged has
 # to carry an envelope built from that content, or payload binding answers in the rule's place.
 #
-# The three "passed is not boolean true" sub-cases below deliberately use SBOM, not a scan kind. Fix
-# (3b commit 5 blind spot, found by the CI mutation sweep after this branch was pushed): with a
-# scan kind and the default clean, resolving evidence-set, damaging entry.passed to false/"true"/null
-# ALSO trips guard #7's own marker-vs-evidence-set comparison (recomputed=True from the clean
-# evidence-set, entry.passed != True -> mismatch, since kind is in SCAN_REPORT_KINDS) -- both guards
-# then independently produce CONFLICT on the same fixture, and deleting the older, more basic
-# "passed must be true" guard changed nothing observable. Making the evidence-set absent instead
-# does not fix this: marker()'s own evidenceSetDigest claim then fails to resolve against an absent
-# lookup, a DIFFERENT pre-existing check in this same function, so that collision just replaces this
-# one. SBOM is the one kind never in SCAN_REPORT_KINDS (commit 6 is what eventually gives it its own
-# shape) -- guard #7's `if kind in SCAN_REPORT_KINDS:` gate skips it outright, and the identical
-# shared "passed must be true" line these three cases exercise is not kind-specific code, so testing
-# it via sbom instead of a scan kind proves exactly the same guard. Exactly the "a new guard that
-# fires on more markers can blind old witnesses" failure mode this project's own history has hit
-# repeatedly (3a work, 3b commit 2, 3b commit 4).
+# The three sub-cases below deliberately use SBOM, not a scan kind. History (fix for a 3b commit 5
+# blind spot, found by the CI mutation sweep after that branch was pushed): with a scan kind and the
+# default clean, resolving evidence-set, damaging entry.passed to false/"true"/null ALSO trips guard
+# #7's own marker-vs-evidence-set comparison (recomputed=True from the clean evidence-set, entry.passed
+# != True -> mismatch, since kind is in SCAN_REPORT_KINDS) -- both guards then independently produce
+# CONFLICT on the same fixture, and deleting the older, more basic "passed must be true" guard changed
+# nothing observable. Making the evidence-set absent instead does not fix this: marker()'s own
+# evidenceSetDigest claim then fails to resolve against an absent lookup, a DIFFERENT pre-existing
+# check in this same function, so that collision just replaces this one. SBOM is the one kind never in
+# SCAN_REPORT_KINDS -- guard #7's `if kind in SCAN_REPORT_KINDS:` gate skips it outright.
+#
+# 3b commit 6 replaced SBOM's shared "passed must be true" line with its own documentValidated/
+# packageCount checks (spec section 4: SPDX makes no verdict), which made the original three
+# passed:false/"true"/null sub-cases dead witnesses -- they still happened to report CONFLICT, but
+# only because the unconditional "documentValidated is not True" guard fired on the base marker()
+# fixture's then-missing documentValidated key, not because of anything these cases set. Repurposed
+# below into direct documentValidated/packageCount witnesses so this exercises the guard that
+# actually exists now, same "SBOM avoids the SCAN_REPORT_KINDS collision" reasoning as above still
+# applying. Exactly the "a new guard that fires on more markers can blind old witnesses" failure mode
+# this project's own history has hit repeatedly (3a work, 3b commit 2, 3b commit 4, 3b commit 5).
 for entry in \
   '{"verification":{"predicateType":null}}|verification does not say what was attested' \
   '{"verification":{"predicateType":""}}|attested predicate type is empty' \
   '{"_content":{"evidence":{"layerSecretScan":null}}}|no layer secret scan' \
   '{"_content":{"evidence":{"filesystemSecretScan":null}}}|no filesystem secret scan' \
   '{"_content":{"evidence":{"sbom":{"monolith":{"predicateType":null}}}}}|sbom does not say what it states' \
-  '{"_content":{"evidence":{"sbom":{"monolith":{"passed":false}}}}}|sbom did not pass' \
-  '{"_content":{"evidence":{"sbom":{"frontend":{"passed":"true"}}}}}|sbom result is a string' \
-  '{"_content":{"evidence":{"sbom":{"monolith":{"passed":null}}}}}|sbom has no result' \
+  '{"_content":{"evidence":{"sbom":{"monolith":{"documentValidated":false}}}}}|sbom document did not validate' \
+  '{"_content":{"evidence":{"sbom":{"frontend":{"packageCount":0}}}}}|sbom lists zero packages' \
+  '{"_content":{"evidence":{"sbom":{"monolith":{"documentValidated":null}}}}}|sbom document validation result is absent' \
   ; do
   override="${entry%%|*}"; label="${entry##*|}"
   assert_decision "prepared marker: $label" \

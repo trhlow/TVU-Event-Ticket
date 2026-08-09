@@ -17,10 +17,10 @@
     "finalMarker": {
       "status": "present",
       "queriedRef": "ghcr.io/owner/name/release:release-0123456789abcdef0123456789abcdef01234567",
-      "markerDigest": "sha256:f0b4ad6de1a27cfe68cfd772803597af1854a55b5fbb40a0327b7dc6da6d62cf",
+      "markerDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
       "verification": {
         "attestationVerified": true,
-        "subjectDigest": "sha256:f0b4ad6de1a27cfe68cfd772803597af1854a55b5fbb40a0327b7dc6da6d62cf",
+        "subjectDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
         "signerRepository": "owner/name",
         "signerWorkflow": ".github/workflows/ci.yml",
         "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
@@ -51,13 +51,15 @@
               "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
               "predicateType": "https://spdx.dev/Document/v2.3",
-              "passed": true
+              "documentValidated": true,
+              "packageCount": 5
             },
             "frontend": {
               "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
               "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
               "predicateType": "https://spdx.dev/Document/v2.3",
-              "passed": true
+              "documentValidated": true,
+              "packageCount": 5
             }
           },
           "vulnerabilityScan": {
@@ -155,8 +157,8 @@
           "layers": [
             {
               "mediaType": "application/vnd.tvu.release-manifest.v1+json",
-              "digest": "sha256:1d3b72cc772c1a45502140d3d31bf767a13d6d5497780c5c9c99f0e04efa19da",
-              "size": 3631
+              "digest": "sha256:1fb9fff4b2f185c9c466b9dbeef94750c2ba51ae28f6464d24372e8adb5a2cf6",
+              "size": 3687
             }
           ]
         }
@@ -165,10 +167,10 @@
     "preparedMarker": {
       "status": "present",
       "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567",
-      "markerDigest": "sha256:f0b4ad6de1a27cfe68cfd772803597af1854a55b5fbb40a0327b7dc6da6d62cf",
+      "markerDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
       "verification": {
         "attestationVerified": true,
-        "subjectDigest": "sha256:f0b4ad6de1a27cfe68cfd772803597af1854a55b5fbb40a0327b7dc6da6d62cf",
+        "subjectDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
         "signerRepository": "owner/name",
         "signerWorkflow": ".github/workflows/ci.yml",
         "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
@@ -199,13 +201,15 @@
               "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
               "predicateType": "https://spdx.dev/Document/v2.3",
-              "passed": true
+              "documentValidated": true,
+              "packageCount": 5
             },
             "frontend": {
               "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
               "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
               "predicateType": "https://spdx.dev/Document/v2.3",
-              "passed": true
+              "documentValidated": true,
+              "packageCount": 5
             }
           },
           "vulnerabilityScan": {
@@ -303,8 +307,8 @@
           "layers": [
             {
               "mediaType": "application/vnd.tvu.release-manifest.v1+json",
-              "digest": "sha256:1d3b72cc772c1a45502140d3d31bf767a13d6d5497780c5c9c99f0e04efa19da",
-              "size": 3631
+              "digest": "sha256:1fb9fff4b2f185c9c466b9dbeef94750c2ba51ae28f6464d24372e8adb5a2cf6",
+              "size": 3687
             }
           ]
         }
