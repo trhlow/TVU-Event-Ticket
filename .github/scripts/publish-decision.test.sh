@@ -854,6 +854,23 @@ for entry in \
     CONFLICT '[]' false false
 done
 
+# 3a commit 6 (spec section 7/10): a non-empty but WRONG predicate type used to pass both guards
+# above -- they only required non-empty until this commit tightened them to an exact match against
+# the one constant each site is allowed to claim. A non-empty string that names some OTHER
+# statement is not an attestation of THIS one. Isolation for both cases confirmed by hand: running
+# each against a LOCAL, uncommitted copy of publish-decision.sh with only the guard under test
+# reverted to `type(predicate) is not str or not predicate` produced COMPLETE instead of CONFLICT;
+# the copy was discarded afterward.
+assert_decision "final marker: verification.predicateType is non-empty but not the marker provenance constant" \
+  "$(observation "$(marker '{"verification":{"predicateType":"https://example.invalid/not-a-real-predicate"}}')" \
+     "$(marker)" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")")" \
+  CONFLICT '[]' false false
+assert_decision "prepared marker: evidence.sbom.monolith.predicateType is non-empty but not the sbom constant" \
+  "$(observation "$absent_release" \
+     "$(marker '{"_content":{"evidence":{"sbom":{"monolith":{"predicateType":"https://example.invalid/not-a-real-predicate"}}}}}')" \
+     "$absent_mono" "$absent_fe")" \
+  CONFLICT '[]' false false
+
 echo
 echo "== the Flyway inventory records the order Flyway applied things in"
 for entry in \

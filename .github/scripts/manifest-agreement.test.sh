@@ -9,7 +9,7 @@
 # single source in the documentary sense only. This file is the thing that makes that arrangement
 # safe: if it stops working, the three drift apart in silence and one SHA stops naming one artifact.
 #
-# Two checks:
+# Three checks:
 #
 #   1. The constants do not drift. Each value is read out of the schema and compared with what
 #      envelope.py says, and the *paths* the schema's markerEnvelope declares constant are compared
@@ -23,9 +23,11 @@
 #      passing validation buys nothing, so nobody can later replace the decision's checks with "we
 #      validated it". Spec section 9 items 3 and 4.
 #
-# Section 9 items 1 and 2 are about release-manifest.schema.json, which does not exist until commit
-# 6. Nothing here stands in for them: a line asserting True is a green line that means nothing, and
-# would report the same green after commit 6 forgot to add the real one.
+#   3. release-manifest.schema.json (added commit 6) is a real, strict subset of markerContent.
+#      Real: a document it accepts in full, embedded at lookups.finalMarker.content, still validates
+#      against observation.schema.json. Strict: a document valid per markerContent but carrying an
+#      invented predicateType is rejected by release-manifest.schema.json alone. Spec section 9
+#      items 1 and 2.
 set -uo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -329,6 +331,61 @@ for _label, _mutate in (
     if not list(marker_envelope_validator.iter_errors(_broken)):
         _problems.append(f"markerEnvelope accepts a manifest carrying {_label}")
 report("markerEnvelope describes exactly what envelope.py builds", _problems)
+
+# ---------------------------------------------------------------------------------------------
+# Check 3: release-manifest.schema.json is a real, strict subset of markerContent (spec section 9,
+# items 1 and 2). Nothing before commit 6 could write this check -- the schema under test did not
+# exist.
+# ---------------------------------------------------------------------------------------------
+
+manifest_schema = json.loads((contracts / "release-manifest.schema.json").read_text(encoding="utf-8"))
+manifest_validator = jsonschema.Draft202012Validator(manifest_schema, registry=registry)
+
+# The same template check 2's gate_check() reads fixtures out of: a real, full observation this
+# suite does not own the shape of, so a template drift shows up here as a schema error rather than
+# silently validating against a document nobody produces. lookups.finalMarker.content is the only
+# thing either case below replaces.
+_observation_template = json.loads((fixtures / "valid" / "published.json").read_text(encoding="utf-8"))
+
+
+def _embedded(content):
+    doc = json.loads(json.dumps(_observation_template))
+    doc["lookups"]["finalMarker"]["content"] = content
+    return doc
+
+
+_valid_manifest_path = contracts / "release-manifest-fixtures" / "valid-manifest.json"
+_valid_manifest = json.loads(_valid_manifest_path.read_text(encoding="utf-8"))
+
+# Item 1: subset is real. A document release-manifest.schema.json accepts in full, embedded at
+# lookups.finalMarker.content, must also be observation.schema.json-valid. Guaranteed structurally
+# by the allOf (spec section 3) -- what this catches is a $ref resolving to the wrong file or a
+# registry missing an entry, not a logic bug.
+_problems = [f"{_valid_manifest_path.name} is not release-manifest.schema.json-valid: {error.message}"
+             for error in manifest_validator.iter_errors(_valid_manifest)]
+_problems += [f"embedded at lookups.finalMarker.content, {_valid_manifest_path.name} is not "
+              f"observation.schema.json-valid: {error.message}"
+              for error in validator.iter_errors(_embedded(_valid_manifest))]
+report("a release-manifest.schema.json-valid document is observation.schema.json-valid too "
+       "(subset is real)", _problems)
+
+# Item 2: subset is strict. Spec section 9's own suggested construction: an invented, non-empty
+# predicateType. markerContent accepts any non-empty string there; release-manifest.schema.json's
+# tightened const rejects it. Both must hold on the SAME document, or this is not a witness of
+# strictness -- it would equally be satisfied by a document that is simply broken.
+_strict_manifest_path = contracts / "release-manifest-fixtures" / "invented-predicate-type.json"
+_strict_manifest = json.loads(_strict_manifest_path.read_text(encoding="utf-8"))
+
+_problems = []
+if not list(manifest_validator.iter_errors(_strict_manifest)):
+    _problems.append(f"{_strict_manifest_path.name}: release-manifest.schema.json accepted it, so "
+                      f"an invented predicateType witnesses nothing")
+if list(validator.iter_errors(_embedded(_strict_manifest))):
+    _problems.append(f"{_strict_manifest_path.name}: embedded at lookups.finalMarker.content, "
+                      f"observation.schema.json rejected it too -- markerContent's own rule caught "
+                      f"it, not release-manifest.schema.json's tightened one")
+report("a document valid per markerContent but rejected by release-manifest.schema.json alone "
+       "(subset is strict)", _problems)
 
 
 def decide(path):
