@@ -248,7 +248,45 @@
             "digestVerified": true,
             "sizeVerified": true,
             "schemaValid": true,
-            "normalizedReport": {}
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           },
           "attestationLookup": {
             "status": "present",
@@ -259,7 +297,45 @@
             "signerWorkflow": ".github/workflows/publish.yml",
             "sourceRevision": "0000000000000000000000000000000000000000",
             "attestationVerified": true,
-            "normalizedPredicate": {}
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           }
         },
         "layerSecretScan": {
@@ -274,7 +350,45 @@
             "digestVerified": true,
             "sizeVerified": true,
             "schemaValid": true,
-            "normalizedReport": {}
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           },
           "attestationLookup": {
             "status": "present",
@@ -285,7 +399,45 @@
             "signerWorkflow": ".github/workflows/publish.yml",
             "sourceRevision": "0000000000000000000000000000000000000000",
             "attestationVerified": true,
-            "normalizedPredicate": {}
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           }
         },
         "filesystemSecretScan": {
@@ -300,7 +452,45 @@
             "digestVerified": true,
             "sizeVerified": true,
             "schemaValid": true,
-            "normalizedReport": {}
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           },
           "attestationLookup": {
             "status": "present",
@@ -311,7 +501,45 @@
             "signerWorkflow": ".github/workflows/publish.yml",
             "sourceRevision": "0000000000000000000000000000000000000000",
             "attestationVerified": true,
-            "normalizedPredicate": {}
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           }
         }
       }
@@ -370,7 +598,45 @@
             "digestVerified": true,
             "sizeVerified": true,
             "schemaValid": true,
-            "normalizedReport": {}
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           },
           "attestationLookup": {
             "status": "present",
@@ -381,7 +647,45 @@
             "signerWorkflow": ".github/workflows/publish.yml",
             "sourceRevision": "0000000000000000000000000000000000000000",
             "attestationVerified": true,
-            "normalizedPredicate": {}
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           }
         },
         "layerSecretScan": {
@@ -396,7 +700,45 @@
             "digestVerified": true,
             "sizeVerified": true,
             "schemaValid": true,
-            "normalizedReport": {}
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           },
           "attestationLookup": {
             "status": "present",
@@ -407,7 +749,45 @@
             "signerWorkflow": ".github/workflows/publish.yml",
             "sourceRevision": "0000000000000000000000000000000000000000",
             "attestationVerified": true,
-            "normalizedPredicate": {}
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           }
         },
         "filesystemSecretScan": {
@@ -422,7 +802,45 @@
             "digestVerified": true,
             "sizeVerified": true,
             "schemaValid": true,
-            "normalizedReport": {}
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           },
           "attestationLookup": {
             "status": "present",
@@ -433,7 +851,45 @@
             "signerWorkflow": ".github/workflows/publish.yml",
             "sourceRevision": "0000000000000000000000000000000000000000",
             "attestationVerified": true,
-            "normalizedPredicate": {}
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true
+            }
           }
         }
       }

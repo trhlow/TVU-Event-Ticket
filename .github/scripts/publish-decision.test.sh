@@ -259,8 +259,16 @@ skipped='{"status":"skipped","reason":"no_claimed_digest","queriedRef":null}'
 # lookup. Matches marker()'s default evidenceSetDigest when called with MONO_ES/FRONT_ES, so a
 # bare marker() and a bare present_evidence_set() agree by construction, the same pairing
 # present_in() already gives MONO/FRONT.
+CLEAN_COUNTS='{"CRITICAL":{"withFix":0,"withoutFix":0},"HIGH":{"withFix":0,"withoutFix":0},
+               "MEDIUM":{"withFix":0,"withoutFix":0},"LOW":{"withFix":0,"withoutFix":0},
+               "UNKNOWN":{"withFix":0,"withoutFix":0}}'
+
 present_evidence_set() {
   local repo="$1" digest="$2"
+  local scan_content='{"scanner":{"name":"trivy","version":"0.55.0"},
+               "target":{"imageDigest":"'"$digest"'"},
+               "policy":{"severityThreshold":"HIGH","ignoreList":[],"ignoreFileDigest":"'"$(printf '0%.0s' {1..64})"'"},
+               "counts":'"$CLEAN_COUNTS"',"findings":[],"truncated":false,"declaredOutcome":true}'
   local pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
                  "descriptor":{"mediaType":"application/vnd.evts.evidence.report.v1+json","digest":"'"$digest"'","size":1024},
                  "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":{}},
@@ -268,13 +276,20 @@ present_evidence_set() {
                  "subjectDigest":"'"$digest"'","predicateType":"https://tvu.example/report-attestation",
                  "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
                  "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":{}}}'
+  local scan_pair='{"reportLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
+                 "descriptor":{"mediaType":"application/vnd.evts.evidence.report.v1+json","digest":"'"$digest"'","size":1024},
+                 "digestVerified":true,"sizeVerified":true,"schemaValid":true,"normalizedReport":'"$scan_content"'},
+               "attestationLookup":{"status":"present","queriedRef":"'"$repo"'@'"$digest"'",
+                 "subjectDigest":"'"$digest"'","predicateType":"https://tvu.example/report-attestation",
+                 "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
+                 "sourceRevision":"'"$SHA"'","attestationVerified":true,"normalizedPredicate":'"$scan_content"'}}'
   cat <<EOF
 {"status":"present","queriedRef":"$repo@$digest","carrierDigest":"$digest",
  "verification":{"attestationVerified":true,"subjectDigest":"$digest",
                   "signerRepository":"owner/name","signerWorkflow":".github/workflows/publish.yml",
                   "sourceRevision":"$SHA","predicateType":"https://tvu.example/evidence-set","policyPassed":true},
  "subjectMatches":true,"layersValid":true,
- "reports":{"sbom":$pair,"vulnerabilityScan":$pair,"layerSecretScan":$pair,"filesystemSecretScan":$pair}}
+ "reports":{"sbom":$pair,"vulnerabilityScan":$scan_pair,"layerSecretScan":$scan_pair,"filesystemSecretScan":$scan_pair}}
 EOF
 }
 present_mono_es="$(present_evidence_set "$MONOLITH_REPO" "$MONO_ES")"
