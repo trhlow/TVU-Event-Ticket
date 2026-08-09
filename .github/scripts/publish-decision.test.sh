@@ -1350,6 +1350,23 @@ doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["policy"][
 doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")")" \
   CONFLICT '[]' false false
 
+# Fix (3b commit 5): the third independent source -- a final marker's own content.evidence.<kind>.
+# <image>.passed claim, compared against the evidence-set's own recomputed verdict (marker_problems(),
+# not evidence_set_problems(): a final marker present takes decide() down a different branch that
+# never calls evidence_set_problems() at all, so this is the only case in the suite that exercises
+# this specific guard). marker() defaults every kind's passed to True; only the evidence-set's
+# vulnerabilityScan report is damaged here, so the marker is "lying" -- it claims true while the
+# evidence honestly recomputes to false. Plan text (Task 2's docstring, this section's own preamble,
+# the plan's Self-Review) calls this the "lying-marker case" and claims it was already covered;
+# tracing marker_problems() and Task 4's other eight cases (none sets a marker at all, let alone a
+# passed claim) showed that guard was actually unwitnessed -- added here rather than carried forward.
+assert_decision "adopt refused: a final marker's passed claim disagrees with the evidence-set's own recomputed verdict" \
+  "$(observation "$(marker)" "$absent_release" "$(present_in "$MONOLITH_REPO" "$MONO")" "$(present_in "$FRONTEND_REPO" "$FRONT")" "" "" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["findings"] = ['"$FAILING_FINDING"']
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"] = '"$FAILING_COUNTS"'
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")" "$present_front_es")" \
+  CONFLICT '[]' false false
+
 assert_decision "evidence-set lookup error surfaces through the same UNKNOWN gate as any other" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      '{"status":"error","code":503,"queriedRef":"ghcr.io/owner/name/monolith:sha-x"}')" \
