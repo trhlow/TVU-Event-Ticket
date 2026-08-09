@@ -816,6 +816,14 @@ def evidence_set_problems(lookup, obs, where):
                             f"sizeVerified={report_lookup.get('sizeVerified')!r}, "
                             f"schemaValid={report_lookup.get('schemaValid')!r}")
         attestation_lookup = pair.get("attestationLookup")
+        # Initialized here, unconditionally, not only inside the SCAN_REPORT_KINDS branch below --
+        # the semantic-duplicate check further down reads these for every kind, including sbom,
+        # which is EVIDENCE_REPORT_KINDS' own first entry. Left assigned only inside that branch,
+        # the very first loop iteration would reference an unassigned local (a real UnboundLocalError,
+        # not a graceful None) the first time any fixture gives sbom's attestationLookup a
+        # duplicates list -- found by task review before any fixture actually triggered it.
+        attestation_content = None
+        attestation_outcome = None
         if type(attestation_lookup) is not dict or attestation_lookup.get("status") != "present":
             # Section 3: a tag that exists but is missing a kind's attestation is CONFLICT, and the
             # pipeline does not sign supplementally afterward to launder an artifact already there.
