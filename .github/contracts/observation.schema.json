@@ -557,7 +557,7 @@
     "scanAttestationEvidenceLookup": {
       "oneOf": [
         { "$ref": "#/$defs/scanPresentAttestation" },
-        { "$ref": "#/$defs/attestationAbsent" },
+        { "$ref": "#/$defs/scanAttestationAbsent" },
         { "$ref": "#/$defs/error" }
       ]
     },
@@ -565,8 +565,8 @@
     "scanPresentAttestation": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Identical to presentAttestation except normalizedPredicate has scanPresentAttestation's own real shape (normalizedScanContent) instead of the generic placeholder.",
-      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate"],
+      "description": "Identical to presentAttestation except normalizedPredicate has scanPresentAttestation's own real shape (normalizedScanContent) instead of the generic placeholder. 3b commit 7 (spec section 8): paginationComplete -- a selection made before pagination finished proves nothing about uniqueness -- and duplicates, every OTHER trustworthy statement that also matched the selection tuple (empty when this was the only match).",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate", "paginationComplete", "duplicates"],
       "properties": {
         "status": { "const": "present" },
         "queriedRef": { "type": "string", "minLength": 1 },
@@ -576,7 +576,13 @@
         "signerWorkflow": { "type": "string", "minLength": 1 },
         "sourceRevision": { "$ref": "#/$defs/sha1" },
         "attestationVerified": { "type": "boolean" },
-        "normalizedPredicate": { "$ref": "#/$defs/normalizedScanContent" }
+        "normalizedPredicate": { "$ref": "#/$defs/normalizedScanContent" },
+        "paginationComplete": { "type": "boolean" },
+        "duplicates": {
+          "type": "array",
+          "minItems": 0,
+          "items": { "$ref": "#/$defs/attestationStatementProjection" }
+        }
       }
     },
 
@@ -627,7 +633,7 @@
     "sbomAttestationEvidenceLookup": {
       "oneOf": [
         { "$ref": "#/$defs/sbomPresentAttestation" },
-        { "$ref": "#/$defs/attestationAbsent" },
+        { "$ref": "#/$defs/sbomAttestationAbsent" },
         { "$ref": "#/$defs/error" }
       ]
     },
@@ -635,8 +641,8 @@
     "sbomPresentAttestation": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Identical to presentAttestation except normalizedPredicate has sbomPresentAttestation's own real shape (sbomDocumentContent) instead of the generic placeholder. Its canonicalDigest/canonicalSize are what the reverse-direction binding (spec section 4) compares against this same pair's reportLookup.descriptor.",
-      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate"],
+      "description": "Identical to presentAttestation except normalizedPredicate has sbomPresentAttestation's own real shape (sbomDocumentContent) instead of the generic placeholder. Its canonicalDigest/canonicalSize are what the reverse-direction binding (spec section 4) compares against this same pair's reportLookup.descriptor. 3b commit 7 (spec section 8): paginationComplete and duplicates, same as scanPresentAttestation.",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate", "paginationComplete", "duplicates"],
       "properties": {
         "status": { "const": "present" },
         "queriedRef": { "type": "string", "minLength": 1 },
@@ -646,7 +652,13 @@
         "signerWorkflow": { "type": "string", "minLength": 1 },
         "sourceRevision": { "$ref": "#/$defs/sha1" },
         "attestationVerified": { "type": "boolean" },
-        "normalizedPredicate": { "$ref": "#/$defs/sbomDocumentContent" }
+        "normalizedPredicate": { "$ref": "#/$defs/sbomDocumentContent" },
+        "paginationComplete": { "type": "boolean" },
+        "duplicates": {
+          "type": "array",
+          "minItems": 0,
+          "items": { "$ref": "#/$defs/attestationStatementProjection" }
+        }
       }
     },
 
@@ -669,7 +681,7 @@
       "type": "object",
       "additionalProperties": false,
       "description": "3b commit 5 (spec section 6): the collector's already-normalized view of a scan report or, independently, of the predicate an attestation vouches for -- shared by reportLookup.present.normalizedReport and attestationLookup.present.normalizedPredicate so that the decision comparing them is comparing two documents of the same shape, not an accident. scanner here is intentionally minimal (name/version only) -- vulnerability-DB vs. ruleset identity is section 7's own predicate schema's concern (commit 3, still unwired into this comparison view), not re-validated here.",
-      "required": ["scanner", "target", "policy", "counts", "findings", "truncated", "declaredOutcome"],
+      "required": ["scanner", "target", "policy", "counts", "findings", "truncated", "declaredOutcome", "reportDigest"],
       "properties": {
         "scanner": {
           "type": "object",
@@ -687,6 +699,10 @@
           "properties": {
             "imageDigest": { "$ref": "#/$defs/digest" }
           }
+        },
+        "reportDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "3b commit 7 (Plan Decision A, spec section 8/10): the report's own digest, as the attestation's signed predicate claims it directly (contrast SBOM's canonicalDigest, which the decision must canonicalize its way to). Only the attestation side's value is read by the decision's binding check (Task 2); the report side carries the same field for shape symmetry, matching sbomDocumentContent's own canonicalDigest/canonicalSize precedent."
         },
         "policy": { "$ref": "#/$defs/scanPolicy" },
         "counts": {
@@ -767,26 +783,75 @@
       }
     },
 
-    "attestationAbsent": {
+    "scanAttestationAbsent": {
       "type": "object",
       "additionalProperties": false,
-      "description": "3b commit 4 (spec section 5): the GitHub Attestations API answers 'not found' with a 200 and an empty list after full pagination, not a 404 -- asserting observedCode: 404 here would assert an HTTP status nobody received. paginationComplete is what turns 'gave up partway' into 'searched, and found nothing'. queried is loosely typed -- the full tuple (repository, workflow, sourceRevision, subjectDigest, predicateType, and a report digest for the three scan kinds) is enforced by commit 7 (spec section 8); today it only has to record what was searched for.",
+      "description": "3b commit 7 (spec section 8): the GitHub Attestations API answers 'not found' with a 200 and an empty list after full pagination, not a 404. queried is now the FULL selection tuple, including reportDigest -- commit 4's loosely-typed placeholder is gone.",
       "required": ["status", "reason", "paginationComplete", "queried"],
       "properties": {
         "status": { "const": "absent" },
         "reason": { "const": "no_matching_attestation" },
         "paginationComplete": { "const": true },
-        "queried": {
-          "type": "object",
-          "required": ["repository", "workflow", "sourceRevision", "subjectDigest", "predicateType"],
-          "properties": {
-            "repository": { "type": "string", "minLength": 1 },
-            "workflow": { "type": "string", "minLength": 1 },
-            "sourceRevision": { "$ref": "#/$defs/sha1" },
-            "subjectDigest": { "$ref": "#/$defs/digest" },
-            "predicateType": { "type": "string", "minLength": 1 }
-          }
-        }
+        "queried": { "$ref": "#/$defs/scanAttestationSelectionTuple" }
+      }
+    },
+
+    "sbomAttestationAbsent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): identical to scanAttestationAbsent except queried is sbomAttestationSelectionTuple -- no reportDigest, structurally, since SBOM does not carry one (section 4).",
+      "required": ["status", "reason", "paginationComplete", "queried"],
+      "properties": {
+        "status": { "const": "absent" },
+        "reason": { "const": "no_matching_attestation" },
+        "paginationComplete": { "const": true },
+        "queried": { "$ref": "#/$defs/sbomAttestationSelectionTuple" }
+      }
+    },
+
+    "scanAttestationSelectionTuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): the full tuple a collector must select an attestation by -- never 'the first result'. reportDigest is required here for the three scan kinds, which carry it directly on the predicate (contrast sbomAttestationSelectionTuple).",
+      "required": ["repository", "workflow", "sourceRevision", "subjectDigest", "predicateType", "reportDigest"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "reportDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+
+    "sbomAttestationSelectionTuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): identical to scanAttestationSelectionTuple minus reportDigest -- SPDX carries no report digest (section 4), and requiring one for every kind was the previous, self-contradictory rule section 8 replaces.",
+      "required": ["repository", "workflow", "sourceRevision", "subjectDigest", "predicateType"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "attestationStatementProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): what two TRUSTWORTHY statements matching the same selection tuple must agree on to be a semantic duplicate rather than a genuine conflict. Deliberately excludes run ID, run attempt, timestamp, bundle signature bytes, and cert serial -- two reruns of one workflow produce different values for all five, and none of them describe what was attested. reportDigest/policy/outcome are optional: SBOM statements have none of the three (no verdict, no policy, no report digest -- commit 6 section 4), so a SBOM entry in duplicates[] only ever carries the five identity/provenance fields.",
+      "required": ["subjectDigest", "sourceRevision", "signerRepository", "signerWorkflow", "predicateType"],
+      "properties": {
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "reportDigest": { "$ref": "#/$defs/digest" },
+        "policy": { "$ref": "#/$defs/scanPolicy" },
+        "outcome": { "type": "boolean" }
       }
     }
   }
