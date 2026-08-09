@@ -74,16 +74,18 @@ base = {
                    "frontend": {"revision": sha, "subjectDigest": front}},
     "evidence": {
       "sbom": {"monolith": {"digest": "sha256:" + "a"*64, "subjectDigest": mono,
-                            "predicateType": "https://tvu.example/sbom",
+                            "predicateType": "https://spdx.dev/Document/v2.3",
                             "documentValidated": True, "packageCount": 5},
                "frontend": {"digest": "sha256:" + "a"*63 + "e", "subjectDigest": front,
-                            "predicateType": "https://tvu.example/sbom",
+                            "predicateType": "https://spdx.dev/Document/v2.3",
                             "documentValidated": True, "packageCount": 5}},
       **{
         kind: {"monolith": {"digest": "sha256:" + letter*64, "subjectDigest": mono,
-                            "predicateType": "https://tvu.example/" + kind, "passed": True},
+                            "predicateType": "https://evts.id.vn/attestations/" + kind + "/v1",
+                            "passed": True},
                "frontend": {"digest": "sha256:" + letter*63 + "e", "subjectDigest": front,
-                            "predicateType": "https://tvu.example/" + kind, "passed": True}}
+                            "predicateType": "https://evts.id.vn/attestations/" + kind + "/v1",
+                            "passed": True}}
         for kind, letter in (("vulnerabilityScan", "b"),
                              ("layerSecretScan", "c"), ("filesystemSecretScan", "d"))
       },

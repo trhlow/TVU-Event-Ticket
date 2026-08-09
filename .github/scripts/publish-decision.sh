@@ -51,7 +51,8 @@ import sys
 sys.path.insert(0, sys.argv[1])
 from canonical import canonical_bytes, strict_loads
 from envelope import (ARTIFACT_TYPE, EMPTY_CONFIG_DATA, EMPTY_CONFIG_DIGEST,
-                      EMPTY_CONFIG_MEDIA_TYPE, EMPTY_CONFIG_SIZE, MANIFEST_MEDIA_TYPE)
+                      EMPTY_CONFIG_MEDIA_TYPE, EMPTY_CONFIG_SIZE, MANIFEST_MEDIA_TYPE,
+                      PREDICATE_TYPES)
 
 # One rule per line, so deleting one is one mutation with one witness. Folding the four config
 # constants behind a single comparison would let one witness redden the deletion of all four, and
@@ -367,11 +368,15 @@ def marker_problems(marker, obs, where):
         problems.append(f"{where}.verification.sourceRevision is "
                         f"{verification.get('sourceRevision')!r}, expected {obs['commit']!r}")
     predicate = verification.get("predicateType")
-    if type(predicate) is not str or not predicate:
-        # Which statement was verified, not merely that something was. An attestation of one
-        # predicate type says nothing about the claim another predicate type would have made.
-        problems.append(f"{where}.verification.predicateType is {predicate!r}, must be a non-empty "
-                        f"string naming what was attested")
+    if predicate != PREDICATE_TYPES["markerProvenance"]:
+        # 3a commit 6 (spec section 7/10): the marker's own provenance attestation must name
+        # exactly the one predicate type this contract pins, not merely any non-empty string. A
+        # non-empty-but-wrong predicate type used to pass this check silently -- an attestation of
+        # SOME statement is not an attestation of THIS one, and section 10 requires the decision
+        # itself catch this, not only the manifest schema a producer might not even validate
+        # against.
+        problems.append(f"{where}.verification.predicateType is {predicate!r}, expected "
+                        f"{PREDICATE_TYPES['markerProvenance']!r}")
     if verification.get("policyPassed") is not True:
         problems.append(f"{where}.verification.policyPassed is "
                         f"{verification.get('policyPassed')!r}, must be boolean true")
@@ -573,9 +578,14 @@ def marker_problems(marker, obs, where):
                     problems.append(f"{where}.content.evidence.{kind}.{image} describes "
                                     f"{entry.get('subjectDigest')!r}, not the image it covers")
                 predicate = entry.get("predicateType")
-                if type(predicate) is not str or not predicate:
+                if predicate != PREDICATE_TYPES[kind]:
+                    # 3a commit 6 (spec section 7/10): each evidence kind's predicate type is one
+                    # of the five constants this contract pins -- PREDICATE_TYPES is keyed
+                    # identically to EVIDENCE_REPORT_KINDS ("sbom", "vulnerabilityScan",
+                    # "layerSecretScan", "filesystemSecretScan"), so this reads the one constant
+                    # this specific kind is allowed to claim.
                     problems.append(f"{where}.content.evidence.{kind}.{image}.predicateType is "
-                                    f"{predicate!r}, must name what the document states")
+                                    f"{predicate!r}, expected {PREDICATE_TYPES[kind]!r}")
                 if kind == "sbom":
                     # 3b commit 6 (spec section 4): SPDX makes no verdict -- documentValidated
                     # replaces passed, and packageCount is the "not empty" half of section 4's
