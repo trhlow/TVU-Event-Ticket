@@ -265,7 +265,8 @@ CLEAN_COUNTS='{"CRITICAL":{"withFix":0,"withoutFix":0},"HIGH":{"withFix":0,"with
 
 present_evidence_set() {
   local repo="$1" digest="$2"
-  local scan_content='{"scanner":{"name":"trivy","version":"0.55.0"},
+  local scan_content
+  scan_content='{"scanner":{"name":"trivy","version":"0.55.0"},
                "target":{"imageDigest":"'"$digest"'"},
                "policy":{"severityThreshold":"HIGH","ignoreList":[],"ignoreFileDigest":"'"$(printf '0%.0s' {1..64})"'"},
                "counts":'"$CLEAN_COUNTS"',"findings":[],"truncated":false,"declaredOutcome":true}'
