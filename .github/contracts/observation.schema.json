@@ -243,10 +243,10 @@
       "description": "Four separate results, because they answer different questions. A single overall pass hides which of them was never run. evidenceSetDigest nests here rather than becoming an eighth top-level markerContent key (spec section 2) -- it is one more fact about evidence, not a new category of fact about the release.",
       "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan", "evidenceSetDigest"],
       "properties": {
-        "sbom": { "$ref": "#/$defs/perImageEvidence" },
-        "vulnerabilityScan": { "$ref": "#/$defs/perImageEvidence" },
-        "layerSecretScan": { "$ref": "#/$defs/perImageEvidence" },
-        "filesystemSecretScan": { "$ref": "#/$defs/perImageEvidence" },
+        "sbom": { "$ref": "#/$defs/sbomPerImageEvidence" },
+        "vulnerabilityScan": { "$ref": "#/$defs/scanPerImageEvidence" },
+        "layerSecretScan": { "$ref": "#/$defs/scanPerImageEvidence" },
+        "filesystemSecretScan": { "$ref": "#/$defs/scanPerImageEvidence" },
         "evidenceSetDigest": {
           "type": "object",
           "additionalProperties": false,
@@ -260,20 +260,54 @@
       }
     },
 
-    "perImageEvidence": {
+    "sbomPerImageEvidence": {
       "type": "object",
       "additionalProperties": false,
       "required": ["monolith", "frontend"],
       "properties": {
-        "monolith": { "$ref": "#/$defs/evidenceEntry" },
-        "frontend": { "$ref": "#/$defs/evidenceEntry" }
+        "monolith": { "$ref": "#/$defs/sbomEvidenceEntry" },
+        "frontend": { "$ref": "#/$defs/sbomEvidenceEntry" }
       }
     },
 
-    "evidenceEntry": {
+    "scanPerImageEvidence": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Existence, subject, predicate type and outcome. A digest alone proves a file was produced, not that it describes this image or that anything passed.",
+      "required": ["monolith", "frontend"],
+      "properties": {
+        "monolith": { "$ref": "#/$defs/scanEvidenceEntry" },
+        "frontend": { "$ref": "#/$defs/scanEvidenceEntry" }
+      }
+    },
+
+    "sbomEvidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 6 (spec section 4): SPDX is an inventory predicate, not a verdict -- it has no pass/fail, so this carries documentValidated (did the document validate against SPDX 2.3) instead of scanEvidenceEntry's passed. packageCount is the 'not empty' half of section 4's three-part invariant; the third half (subject = image being released) is subjectDigest below, already checked against the image it is filed under the same way every evidence entry is.",
+      "required": ["digest", "subjectDigest", "predicateType", "documentValidated", "packageCount"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "subjectDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "The image this evidence is about. Must equal the image it is filed under; otherwise a SBOM of one image vouches for another."
+        },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "documentValidated": {
+          "type": "boolean",
+          "description": "Whether the SBOM validated against SPDX 2.3 -- the collector's single computed answer, the same collector-trusted-boolean pattern as layersValid and schemaValid. Does not fold in emptiness or subject mismatch; those are packageCount and subjectDigest, checked separately."
+        },
+        "packageCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Package count as reported by the collector. Must be >= 1 for the document to count as non-empty (spec section 4); 0 is a valid integer here so the decision can say CONFLICT about it by name rather than the schema silently rejecting the shape."
+        }
+      }
+    },
+
+    "scanEvidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Existence, subject, predicate type and outcome. A digest alone proves a file was produced, not that it describes this image or that anything passed. Identical to the pre-commit-6 evidenceEntry this replaces for the three scan kinds -- only sbomEvidenceEntry's shape actually changed.",
       "required": ["digest", "subjectDigest", "predicateType", "passed"],
       "properties": {
         "digest": { "$ref": "#/$defs/digest" },
@@ -392,7 +426,7 @@
           "additionalProperties": false,
           "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
           "properties": {
-            "sbom": { "$ref": "#/$defs/reportAttestationPair" },
+            "sbom": { "$ref": "#/$defs/sbomReportAttestationPair" },
             "vulnerabilityScan": { "$ref": "#/$defs/scanReportAttestationPair" },
             "layerSecretScan": { "$ref": "#/$defs/scanReportAttestationPair" },
             "filesystemSecretScan": { "$ref": "#/$defs/scanReportAttestationPair" }
@@ -543,6 +577,91 @@
         "sourceRevision": { "$ref": "#/$defs/sha1" },
         "attestationVerified": { "type": "boolean" },
         "normalizedPredicate": { "$ref": "#/$defs/normalizedScanContent" }
+      }
+    },
+
+    "sbomReportAttestationPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 6 (spec section 4): the same pairing as scanReportAttestationPair, but for SBOM, which does not share the scan contract -- normalizedReport/normalizedPredicate get sbomDocumentContent instead of normalizedScanContent. Re-points presentEvidenceSet.reports.sbom, replacing the loosely-typed reportAttestationPair placeholder commit 4 left it as.",
+      "required": ["reportLookup", "attestationLookup"],
+      "properties": {
+        "reportLookup": { "$ref": "#/$defs/sbomReportEvidenceLookup" },
+        "attestationLookup": { "$ref": "#/$defs/sbomAttestationEvidenceLookup" }
+      }
+    },
+
+    "sbomReportEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/sbomPresentReport" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "sbomPresentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentReport except normalizedReport has sbomPresentReport's own real shape (sbomDocumentContent) instead of the generic placeholder.",
+      "required": ["status", "queriedRef", "descriptor", "digestVerified", "sizeVerified", "schemaValid", "normalizedReport"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "digestVerified": { "type": "boolean" },
+        "sizeVerified": { "type": "boolean" },
+        "schemaValid": { "type": "boolean" },
+        "normalizedReport": { "$ref": "#/$defs/sbomDocumentContent" }
+      }
+    },
+
+    "sbomAttestationEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/sbomPresentAttestation" },
+        { "$ref": "#/$defs/attestationAbsent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "sbomPresentAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentAttestation except normalizedPredicate has sbomPresentAttestation's own real shape (sbomDocumentContent) instead of the generic placeholder. Its canonicalDigest/canonicalSize are what the reverse-direction binding (spec section 4) compares against this same pair's reportLookup.descriptor.",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "attestationVerified": { "type": "boolean" },
+        "normalizedPredicate": { "$ref": "#/$defs/sbomDocumentContent" }
+      }
+    },
+
+    "sbomDocumentContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 6 (spec section 4): the collector's already-normalized view of a SBOM document or, independently, of the predicate an attestation vouches for -- shared by reportLookup.present.normalizedReport and attestationLookup.present.normalizedPredicate, the same symmetry normalizedScanContent (commit 5) already established for the three scan kinds. No policy, no findings, no counts, no declaredOutcome -- SPDX makes no verdict (section 4's whole point). canonicalDigest/canonicalSize are read only from the attestation side by the decision (section 4's reverse-direction binding: the signed predicate is canonicalized and compared against the SBOM layer's own descriptor) -- both sides carry them for shape symmetry, but only the attestation side's values are meaningful to that check.",
+      "required": ["spdxVersion", "documentValidated", "subjectDigest", "packageCount", "canonicalDigest", "canonicalSize"],
+      "properties": {
+        "spdxVersion": { "type": "string", "minLength": 1 },
+        "documentValidated": { "type": "boolean" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "packageCount": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/$defs/digest" },
+        "canonicalSize": { "type": "integer", "minimum": 0 }
       }
     },
 
