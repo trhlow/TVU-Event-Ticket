@@ -393,9 +393,9 @@
           "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
           "properties": {
             "sbom": { "$ref": "#/$defs/reportAttestationPair" },
-            "vulnerabilityScan": { "$ref": "#/$defs/reportAttestationPair" },
-            "layerSecretScan": { "$ref": "#/$defs/reportAttestationPair" },
-            "filesystemSecretScan": { "$ref": "#/$defs/reportAttestationPair" }
+            "vulnerabilityScan": { "$ref": "#/$defs/scanReportAttestationPair" },
+            "layerSecretScan": { "$ref": "#/$defs/scanReportAttestationPair" },
+            "filesystemSecretScan": { "$ref": "#/$defs/scanReportAttestationPair" }
           }
         }
       }
@@ -442,7 +442,7 @@
         "schemaValid": { "type": "boolean" },
         "normalizedReport": {
           "type": "object",
-          "description": "Loosely typed until commit 5 (spec section 6) gives it real shape."
+          "description": "Loosely typed here: this shape is shared by all four report kinds, and SBOM does not share the scan contract (spec section 4, 'SBOM khong dung chung contract voi scan') -- SBOM's own real shape is commit 6's job. The three scan kinds get real shape via scanPresentReport instead (spec section 6, commit 5), referenced from presentEvidenceSet.reports for those three kinds only."
         }
       }
     },
@@ -471,8 +471,180 @@
         "attestationVerified": { "type": "boolean" },
         "normalizedPredicate": {
           "type": "object",
-          "description": "Loosely typed until commit 5 (spec section 6) gives it real shape."
+          "description": "Loosely typed here for the same reason presentReport.normalizedReport is: shared by all four kinds, and SBOM does not share the scan contract (section 4). The three scan kinds get real shape via scanPresentAttestation instead."
         }
+      }
+    },
+
+    "scanReportAttestationPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 5 (spec section 6): the same pairing as reportAttestationPair, but for the three report kinds that share the scan contract -- normalizedReport/normalizedPredicate get real shape here (scanPresentReport/scanPresentAttestation) rather than the generic placeholder reportAttestationPair still uses for SBOM (section 4: SBOM does not share the scan contract; its own real shape is commit 6's job).",
+      "required": ["reportLookup", "attestationLookup"],
+      "properties": {
+        "reportLookup": { "$ref": "#/$defs/scanReportEvidenceLookup" },
+        "attestationLookup": { "$ref": "#/$defs/scanAttestationEvidenceLookup" }
+      }
+    },
+
+    "scanReportEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/scanPresentReport" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "scanPresentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentReport except normalizedReport has scanPresentReport's own real shape (normalizedScanContent) instead of the generic placeholder -- duplicated rather than composed via allOf, matching this schema's own established precedent (e.g. absent/error duplicated across every *Lookup union) that additionalProperties:false objects are not safely composable.",
+      "required": ["status", "queriedRef", "descriptor", "digestVerified", "sizeVerified", "schemaValid", "normalizedReport"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "digestVerified": { "type": "boolean" },
+        "sizeVerified": { "type": "boolean" },
+        "schemaValid": { "type": "boolean" },
+        "normalizedReport": { "$ref": "#/$defs/normalizedScanContent" }
+      }
+    },
+
+    "scanAttestationEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/scanPresentAttestation" },
+        { "$ref": "#/$defs/attestationAbsent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "scanPresentAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentAttestation except normalizedPredicate has scanPresentAttestation's own real shape (normalizedScanContent) instead of the generic placeholder.",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "attestationVerified": { "type": "boolean" },
+        "normalizedPredicate": { "$ref": "#/$defs/normalizedScanContent" }
+      }
+    },
+
+    "normalizedScanContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 5 (spec section 6): the collector's already-normalized view of a scan report or, independently, of the predicate an attestation vouches for -- shared by reportLookup.present.normalizedReport and attestationLookup.present.normalizedPredicate so that the decision comparing them is comparing two documents of the same shape, not an accident. scanner here is intentionally minimal (name/version only) -- vulnerability-DB vs. ruleset identity is section 7's own predicate schema's concern (commit 3, still unwired into this comparison view), not re-validated here.",
+      "required": ["scanner", "target", "policy", "counts", "findings", "truncated", "declaredOutcome"],
+      "properties": {
+        "scanner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["imageDigest"],
+          "properties": {
+            "imageDigest": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "policy": { "$ref": "#/$defs/scanPolicy" },
+        "counts": {
+          "$ref": "#/$defs/scanCounts",
+          "description": "The complete aggregate by (severity, fixAvailable), computed by the collector over every finding after ignore rules are applied -- not just the ones the bounded findings list below can show. The decision recomputes its verdict from this, not from findings, so a truncated findings list cannot change the result (section 6)."
+        },
+        "findings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/finding" },
+          "description": "Bounded list of findings at or above policy.severityThreshold, for audit and duplicate-detection -- not the verdict's own input. May be a strict subset of what counts aggregates (findings below the threshold are never listed here even when truncated is false)."
+        },
+        "truncated": { "type": "boolean" },
+        "declaredOutcome": { "type": "boolean" }
+      },
+      "if": {
+        "properties": { "findings": { "minItems": 100 } },
+        "required": ["findings"]
+      },
+      "then": {
+        "properties": { "truncated": { "const": true } }
+      }
+    },
+
+    "scanCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"],
+      "description": "Section 6: aggregated by (severity, fixAvailable), not merely by severity -- a policy that fails on 'HIGH with a fix' cannot be recomputed from a severity-only count when the visible findings list is truncated.",
+      "properties": {
+        "CRITICAL": { "$ref": "#/$defs/severityCount" },
+        "HIGH": { "$ref": "#/$defs/severityCount" },
+        "MEDIUM": { "$ref": "#/$defs/severityCount" },
+        "LOW": { "$ref": "#/$defs/severityCount" },
+        "UNKNOWN": { "$ref": "#/$defs/severityCount" }
+      }
+    },
+
+    "severityCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["withFix", "withoutFix"],
+      "properties": {
+        "withFix": { "type": "integer", "minimum": 0 },
+        "withoutFix": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "scanPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severityThreshold", "ignoreList", "ignoreFileDigest"],
+      "description": "Section 6: policy and ruleset must come from a file Git tracks, and the digest of that file lives here -- an ignore file that changes is a verdict basis that changes, and it must show up rather than move silently.",
+      "properties": {
+        "severityThreshold": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
+        "ignoreList": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "ignoreFileDigest": { "$ref": "#/$defs/hex64" }
+      }
+    },
+
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Section 6's own sort tuple names exactly these five fields: severity rank descending, fixAvailable (true first), packageName, vulnerabilityId, targetPath, all compared by code point.",
+      "required": ["severity", "fixAvailable", "packageName", "vulnerabilityId", "targetPath"],
+      "properties": {
+        "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
+        "fixAvailable": {
+          "type": "boolean",
+          "description": "Computed by the collector from Trivy's own FixedVersion being non-empty, not inferred from text (section 6). The schema can only require the boolean exist, not how it was derived."
+        },
+        "packageName": { "type": "string", "minLength": 1 },
+        "vulnerabilityId": { "type": "string", "minLength": 1 },
+        "targetPath": { "type": "string", "minLength": 1 }
       }
     },
 
