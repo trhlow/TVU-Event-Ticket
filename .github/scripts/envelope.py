@@ -13,7 +13,7 @@ from canonical import canonical_bytes
 __all__ = ["envelope_for", "marker_digest",
            "MANIFEST_MEDIA_TYPE", "ARTIFACT_TYPE",
            "EMPTY_CONFIG_MEDIA_TYPE", "EMPTY_CONFIG_DIGEST",
-           "EMPTY_CONFIG_SIZE", "EMPTY_CONFIG_DATA"]
+           "EMPTY_CONFIG_SIZE", "EMPTY_CONFIG_DATA", "PREDICATE_TYPES"]
 
 MANIFEST_MEDIA_TYPE = "application/vnd.oci.image.manifest.v1+json"
 ARTIFACT_TYPE = "application/vnd.tvu.release-manifest.v1+json"
@@ -21,6 +21,13 @@ EMPTY_CONFIG_MEDIA_TYPE = "application/vnd.oci.empty.v1+json"
 EMPTY_CONFIG_DIGEST = "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
 EMPTY_CONFIG_SIZE = 2
 EMPTY_CONFIG_DATA = "e30="
+PREDICATE_TYPES = {
+    "markerProvenance": "https://slsa.dev/provenance/v1",
+    "sbom": "https://spdx.dev/Document/v2.3",
+    "vulnerabilityScan": "https://evts.id.vn/attestations/vulnerabilityScan/v1",
+    "layerSecretScan": "https://evts.id.vn/attestations/layerSecretScan/v1",
+    "filesystemSecretScan": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
+}
 
 
 def envelope_for(content):
