@@ -1253,6 +1253,103 @@ assert_decision "a nested report-lookup error is UNKNOWN and retryable, not CONF
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      "$(damaged_evidence_set 'doc["reports"]["sbom"]["reportLookup"] = {"status": "error", "queriedRef": doc["reports"]["sbom"]["reportLookup"]["queriedRef"], "code": 503}' "$present_mono_es")")" \
   UNKNOWN '[]' false true
+# Fix (3b commit 5): a self-consistent failing scan (report, attestation, and -- if you set it --
+# the marker all honestly agree it failed) must still be CONFLICT. Verified empirically in scratch:
+# recomputedOutcome=False is its own trigger (section 10's matrix), not merely a disagreement check.
+FAILING_FINDING='{"severity": "CRITICAL", "fixAvailable": True, "packageName": "libfoo", "vulnerabilityId": "CVE-2026-0001", "targetPath": "/usr/lib/libfoo.so"}'
+FAILING_COUNTS='{"CRITICAL": {"withFix": 1, "withoutFix": 0}, "HIGH": {"withFix": 0, "withoutFix": 0}, "MEDIUM": {"withFix": 0, "withoutFix": 0}, "LOW": {"withFix": 0, "withoutFix": 0}, "UNKNOWN": {"withFix": 0, "withoutFix": 0}}'
+assert_decision "adopt refused: recomputed verdict fails policy even when every source agrees" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'pair = doc["reports"]["vulnerabilityScan"]
+pair["reportLookup"]["normalizedReport"]["findings"] = ['"$FAILING_FINDING"']
+pair["reportLookup"]["normalizedReport"]["counts"] = '"$FAILING_COUNTS"'
+pair["reportLookup"]["normalizedReport"]["declaredOutcome"] = False
+pair["attestationLookup"]["normalizedPredicate"]["findings"] = ['"$FAILING_FINDING"']
+pair["attestationLookup"]["normalizedPredicate"]["counts"] = '"$FAILING_COUNTS"'
+pair["attestationLookup"]["normalizedPredicate"]["declaredOutcome"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): report and attestation disagree on the recomputed outcome -- section 5's whole
+# point, two independent sources compared, not merged.
+assert_decision "adopt refused: report and attestation recompute to different outcomes" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'pair = doc["reports"]["vulnerabilityScan"]
+pair["reportLookup"]["normalizedReport"]["findings"] = ['"$FAILING_FINDING"']
+pair["reportLookup"]["normalizedReport"]["counts"] = '"$FAILING_COUNTS"'
+pair["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): findings out of sort order.
+assert_decision "adopt refused: findings not sorted per section 6's tuple" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["findings"] = [
+    {"severity": "LOW", "fixAvailable": False, "packageName": "a", "vulnerabilityId": "CVE-1", "targetPath": "/x"},
+    {"severity": "HIGH", "fixAvailable": False, "packageName": "b", "vulnerabilityId": "CVE-2", "targetPath": "/y"}
+]
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"]["LOW"]["withoutFix"] = 1
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"]["HIGH"]["withoutFix"] = 1
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["policy"]["severityThreshold"] = "LOW"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): exact-duplicate finding tuple -- counts can no longer be trusted.
+assert_decision "adopt refused: duplicate finding tuple" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'dup = {"severity": "HIGH", "fixAvailable": False, "packageName": "a", "vulnerabilityId": "CVE-1", "targetPath": "/x"}
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["findings"] = [dup, dict(dup)]
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"]["HIGH"]["withoutFix"] = 2
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["policy"]["severityThreshold"] = "HIGH"' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): untruncated findings list whose length disagrees with what counts implies.
+assert_decision "adopt refused: findings not truncated but miscounted" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"]["HIGH"]["withoutFix"] = 5
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["policy"]["severityThreshold"] = "HIGH"
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["findings"] = []
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["truncated"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): the mandatory 101st-finding witness. 100 LOW findings visible (truncated:true),
+# counts implying an unlisted HIGH+fix finding -- the verdict must still fail, proving it is computed
+# from counts, not from the (capped, truncated) visible list. Verified empirically in scratch.
+assert_decision "adopt refused: 101st finding (HIGH, fix available) still fails the verdict" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'low_findings = [{"severity": "LOW", "fixAvailable": False, "packageName": f"pkg{i:03d}", "vulnerabilityId": f"CVE-2026-{i:04d}", "targetPath": "/x"} for i in range(100)]
+content = doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]
+content["policy"]["severityThreshold"] = "LOW"
+content["findings"] = low_findings
+content["counts"] = {"CRITICAL": {"withFix": 0, "withoutFix": 0}, "HIGH": {"withFix": 1, "withoutFix": 0}, "MEDIUM": {"withFix": 0, "withoutFix": 0}, "LOW": {"withFix": 0, "withoutFix": 100}, "UNKNOWN": {"withFix": 0, "withoutFix": 0}}
+content["truncated"] = True
+content["declaredOutcome"] = False
+pred = doc["reports"]["vulnerabilityScan"]["attestationLookup"]["normalizedPredicate"]
+pred["policy"]["severityThreshold"] = "LOW"
+pred["findings"] = low_findings
+pred["counts"] = content["counts"]
+pred["truncated"] = True
+pred["declaredOutcome"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): vulnerability verdict policy, CRITICAL-only case (no fix needed to fail).
+assert_decision "adopt refused: vulnerability scan fails on CRITICAL with no fix" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'f = {"severity": "CRITICAL", "fixAvailable": False, "packageName": "a", "vulnerabilityId": "CVE-1", "targetPath": "/x"}
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["findings"] = [f]
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["counts"]["CRITICAL"]["withoutFix"] = 1
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["policy"]["severityThreshold"] = "LOW"
+doc["reports"]["vulnerabilityScan"]["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Fix (3b commit 5): secret-scan verdict policy -- any single finding fails, unlike vulnerability's
+# severity-gated rule.
+assert_decision "adopt refused: layer secret scan fails on any finding" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'f = {"severity": "LOW", "fixAvailable": False, "packageName": "a", "vulnerabilityId": "SECRET-1", "targetPath": "/x"}
+doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["findings"] = [f]
+doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["counts"]["LOW"]["withoutFix"] = 1
+doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["policy"]["severityThreshold"] = "LOW"
+doc["reports"]["layerSecretScan"]["reportLookup"]["normalizedReport"]["declaredOutcome"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
 assert_decision "evidence-set lookup error surfaces through the same UNKNOWN gate as any other" \
   "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
      '{"status":"error","code":503,"queriedRef":"ghcr.io/owner/name/monolith:sha-x"}')" \
