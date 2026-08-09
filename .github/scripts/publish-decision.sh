@@ -576,7 +576,21 @@ def marker_problems(marker, obs, where):
                 if type(predicate) is not str or not predicate:
                     problems.append(f"{where}.content.evidence.{kind}.{image}.predicateType is "
                                     f"{predicate!r}, must name what the document states")
-                if entry.get("passed") is not True:
+                if kind == "sbom":
+                    # 3b commit 6 (spec section 4): SPDX makes no verdict -- documentValidated
+                    # replaces passed, and packageCount is the "not empty" half of section 4's
+                    # three-part invariant (the third half, subject = image, is the subjectDigest
+                    # check just above, already common to every kind).
+                    if entry.get("documentValidated") is not True:
+                        problems.append(f"{where}.content.evidence.{kind}.{image}."
+                                        f"documentValidated is {entry.get('documentValidated')!r}, "
+                                        f"must be boolean true")
+                    package_count = entry.get("packageCount")
+                    if type(package_count) is not int or package_count < 1:
+                        problems.append(f"{where}.content.evidence.{kind}.{image}.packageCount is "
+                                        f"{package_count!r}, must be a positive integer -- a SBOM "
+                                        f"naming zero packages is not evidence of anything")
+                elif entry.get("passed") is not True:
                     # A digest proves a file was produced. It does not say the scan behind it found
                     # nothing, and a failing scan filed as evidence is evidence against release.
                     problems.append(f"{where}.content.evidence.{kind}.{image}.passed is "
@@ -839,6 +853,31 @@ def evidence_set_problems(lookup, obs, where):
                 problems.append(f"{where}.reports.{kind}: report recomputes to {report_outcome!r}, "
                                 f"attestation recomputes to {attestation_outcome!r} -- two "
                                 f"independent sources disagree")
+
+        # 3b commit 6 (spec section 4): SBOM's reverse-direction binding. The decision has no bytes
+        # and cannot canonicalize anything itself -- it trusts the collector's already-canonicalized
+        # digest/size the same way it already trusts layersValid and schemaValid, and compares that
+        # trusted value against the report lookup's own descriptor (the SBOM layer as fetched
+        # directly, not vouched for by anyone). Guarded the same way commit 5's scan branch is: both
+        # halves must already be present and internally verified, or there is nothing trustworthy to
+        # compare.
+        if (kind == "sbom"
+                and type(report_lookup) is dict and report_lookup.get("status") == "present"
+                and type(attestation_lookup) is dict and attestation_lookup.get("status") == "present"):
+            descriptor = report_lookup.get("descriptor")
+            predicate_content = attestation_lookup.get("normalizedPredicate")
+            if type(descriptor) is dict and type(predicate_content) is dict:
+                if predicate_content.get("canonicalDigest") != descriptor.get("digest"):
+                    problems.append(
+                        f"{where}.reports.{kind}: attestation's canonicalDigest is "
+                        f"{predicate_content.get('canonicalDigest')!r}, but the SBOM layer's own "
+                        f"descriptor digest is {descriptor.get('digest')!r} -- the signed predicate "
+                        f"does not name the bytes actually on the layer")
+                if predicate_content.get("canonicalSize") != descriptor.get("size"):
+                    problems.append(
+                        f"{where}.reports.{kind}: attestation's canonicalSize is "
+                        f"{predicate_content.get('canonicalSize')!r}, but the SBOM layer's own "
+                        f"descriptor size is {descriptor.get('size')!r}")
     return problems
 
 
