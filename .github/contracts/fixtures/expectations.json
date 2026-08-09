@@ -119,6 +119,16 @@
     "schema": "rejects",
     "state": "CONFLICT"
   },
+  "invalid-structure/scan-queried-tuple-missing-report-digest.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/sbom-queried-tuple-carries-report-digest.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
   "invalid-structure/schema-version-is-boolean.json": {
     "actions": [],
     "schema": "rejects",

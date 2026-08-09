@@ -1487,5 +1487,98 @@ assert_decision "adopt refused: a scan evidence entry's own passed claim is not 
   CONFLICT '[]' false false
 
 echo
+echo "== 3b commit 7: select an attestation by its whole tuple"
+# Fix (3b commit 7, found by this task's own isolation check): the "not present" guard just above
+# (`if type(attestation_lookup) is not dict or attestation_lookup.get("status") != "present":`) is
+# the pre-existing (3b commit 2/4) guard behind every "adopt refused: ...attestationLookup...not
+# present..." case already in this file. Commit 7 added TWO new `elif` branches to that SAME chain
+# (attestationVerified was already there; paginationComplete is new). Every existing witness for the
+# "not present" guard constructs its absent-shaped attestationLookup WITHOUT a paginationComplete key
+# -- `.get("paginationComplete")` on it is None, `is not True`, and the new elif now fires and
+# produces its own CONFLICT before the "not present" guard is ever the one asked to explain anything.
+# Confirmed empirically: with the "not present" guard mutated to `if False:` (leaving both elifs
+# alone), the WHOLE existing corpus stays green -- every one of those cases still reaches CONFLICT
+# through the paginationComplete or attestationVerified elif instead. The "not present" guard
+# currently has no case in this file that isolates it; this fixture is the fix. Building the closest
+# thing to spec section 10 test 1 at the same time: an absent attestationLookup whose own `queried`
+# tuple looks internally like a real selection (repository/workflow/sourceRevision/subjectDigest/
+# predicateType/reportDigest all present and well-formed) but names a subject nothing here was
+# actually filed under -- `queried` itself is never read by this decision (grepped: no reference
+# anywhere in evidence_set_problems or elsewhere), so what actually proves CONFLICT here is the
+# "not present" guard alone, the same guard this case exists to un-blind. attestationVerified:true
+# and paginationComplete:true are placed on the absent-shaped lookup specifically so neither sibling
+# elif fires first -- schema-invalid on purpose (scanAttestationAbsent's additionalProperties:false
+# forbids attestationVerified entirely), matching this file's own established precedent for
+# decision-only witnesses (see "attestationLookup not present even though it claims verified" above).
+assert_decision "adopt refused: absent attestation whose own queried tuple disagrees with reality" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["vulnerabilityScan"]["attestationLookup"] = {"status": "absent", "reason": "no_matching_attestation", "attestationVerified": True, "paginationComplete": True, "queried": {"repository": "owner/name/monolith", "workflow": ".github/workflows/publish.yml", "sourceRevision": "0"*40, "subjectDigest": "sha256:" + "5"*64, "predicateType": "https://tvu.example/report-attestation", "reportDigest": "sha256:" + "6"*64}}' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Section 8: a selection made from a partial page proves nothing about uniqueness, even when
+# everything else about the attestation checks out. Isolation-verified by local removal of
+# ONLY this elif (leaving the other two branches untouched): the case flips to ABSENT/adopt.
+assert_decision "adopt refused: attestationLookup present but paginationComplete is false" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set 'doc["reports"]["sbom"]["attestationLookup"]["paginationComplete"] = False' "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Section 8's idempotency case: a second, independently-fetched, equally trustworthy statement that
+# matched the same selection tuple is not a conflict merely for existing, as long as it agrees with
+# the selected statement on every field attestationStatementProjection actually projects. The
+# duplicate is built by copying the selected statement's own fields (subjectDigest, sourceRevision,
+# signerRepository, signerWorkflow, predicateType, reportDigest, policy) rather than retyping them by
+# hand, so this case cannot accidentally pass by the duplicate and the selection drifting apart in a
+# way neither this case nor a real collector would ever produce.
+DUP_AGREE='pair = doc["reports"]["vulnerabilityScan"]
+sel = pair["attestationLookup"]
+content = sel["normalizedPredicate"]
+dup = {"subjectDigest": sel["subjectDigest"], "sourceRevision": sel["sourceRevision"],
+       "signerRepository": sel["signerRepository"], "signerWorkflow": sel["signerWorkflow"],
+       "predicateType": sel["predicateType"], "reportDigest": content["reportDigest"],
+       "policy": content["policy"], "outcome": True}
+sel["duplicates"] = [dup]'
+assert_decision "adopt allowed: a semantic duplicate agreeing on every projected field" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set "$DUP_AGREE" "$present_mono_es")")" \
+  ABSENT '["adopt_monolith_evidence_set","adopt_frontend_evidence_set"]' false false
+
+# The same duplicate shape as directly above, with only `outcome` forced to disagree -- proving the
+# comparison loop is reachable and actually compares, not merely silent because nothing in the corpus
+# ever gives it a disagreeing duplicate to look at. Isolation-verified by local removal of the loop's
+# own `if duplicate.get(field) != selected.get(field):` line: the case above (agreeing) is untouched
+# by that mutation, and this one (disagreeing) flips from CONFLICT to ABSENT/adopt -- the same
+# guard proven correct in both directions from one pair of cases.
+DUP_DISAGREE='pair = doc["reports"]["vulnerabilityScan"]
+sel = pair["attestationLookup"]
+content = sel["normalizedPredicate"]
+dup = {"subjectDigest": sel["subjectDigest"], "sourceRevision": sel["sourceRevision"],
+       "signerRepository": sel["signerRepository"], "signerWorkflow": sel["signerWorkflow"],
+       "predicateType": sel["predicateType"], "reportDigest": content["reportDigest"],
+       "policy": content["policy"], "outcome": False}
+sel["duplicates"] = [dup]'
+assert_decision "adopt refused: a semantic duplicate disagrees on outcome" \
+  "$(observation "$absent_release" "$absent_release" "$absent_mono" "$absent_fe" "$skipped" "$skipped" "" "" \
+     "$(damaged_evidence_set "$DUP_DISAGREE" "$present_mono_es")")" \
+  CONFLICT '[]' false false
+
+# Section 8's own test list also asks for a duplicate differing ONLY on a field excluded from
+# attestationStatementProjection (run ID, timestamp, etc.), which must still PASS. Traced directly:
+# the comparison loop just above iterates a fixed 8-name tuple
+# ("subjectDigest","sourceRevision","signerRepository","signerWorkflow","predicateType",
+# "reportDigest","policy","outcome") and never once inspects `duplicate.keys()` -- there is no
+# `set(duplicate) - PROJECTED_FIELDS` check anywhere in this function, at the decision level, that a
+# fixture could exercise. Confirmed empirically, not just by reading: a duplicate built identically
+# to "agreeing on every projected field" above, but carrying an extra "runId" key the schema's own
+# additionalProperties:false on attestationStatementProjection would reject outright, produces the
+# exact same PASS through the exact same lines -- and no guard-removal exists that could make this
+# case fail while the agreeing case above kept passing, because both reach the loop, run the same
+# eight comparisons, and never look at "runId" either way. Case 5 and case 7 of spec section 10's
+# list are therefore the SAME witness at the decision level, not two: the case directly above already
+# proves both, and this task does not add a second, separately-isolated fixture for it -- doing so
+# would be the "force two cases to exist when only one is meaningfully constructible" the plan warned
+# against.
+
+echo
 echo "passed=$passed failed=$failed"
 [[ $failed -eq 0 ]]
