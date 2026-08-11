@@ -17,6 +17,8 @@ import subprocess
 import tarfile
 import tempfile
 
+import canonical
+
 _HERE = pathlib.Path(__file__).resolve().parent
 _registry_spec = importlib.util.spec_from_file_location("local_registry", _HERE / "local-registry.py")
 _registry_module = importlib.util.module_from_spec(_registry_spec)
@@ -54,8 +56,10 @@ def _now_iso() -> str:
 
 
 def _run_trivy_fs_secret(tree_path: str, ruleset_path: str) -> list:
-    """Returns the raw findings list (list of {"severity", "fixAvailable"} dicts), honoring the
-    confirmed-real quirk that a Class:"secret" Results entry is entirely absent when nothing is found."""
+    """Returns the raw findings list, now with packageName/vulnerabilityId/targetPath alongside
+    severity/fixAvailable -- confirmed for real against a Trivy secret finding (RuleID, Category,
+    Severity, and the per-Results-entry Target for the file path). Honors the confirmed-real quirk
+    that a Class:"secret" Results entry is entirely absent when nothing is found."""
     try:
         proc = subprocess.run(
             ["trivy", "fs", "--scanners", "secret", "--secret-config", ruleset_path,
@@ -80,10 +84,14 @@ def _run_trivy_fs_secret(tree_path: str, ruleset_path: str) -> list:
     for result in raw.get("Results") or []:
         if result.get("Class") != "secret":
             continue  # e.g. the incidental "os-pkgs" entry Trivy always emits -- not a finding source
+        target = result.get("Target", "unknown-target")
         for secret in result.get("Secrets") or []:
             findings.append({
                 "severity": secret.get("Severity", "UNKNOWN"),
                 "fixAvailable": False,  # a leaked secret has no "fixed version"; always false by kind
+                "packageName": secret.get("Category") or "unknown-category",
+                "vulnerabilityId": secret.get("RuleID") or "unknown-rule",
+                "targetPath": target,
             })
     return findings
 
@@ -91,6 +99,42 @@ def _run_trivy_fs_secret(tree_path: str, ruleset_path: str) -> list:
 def _cap_findings(all_findings: list) -> tuple:
     truncated = len(all_findings) > MAX_FINDINGS
     return all_findings[:MAX_FINDINGS], truncated
+
+
+_SEVERITY_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "UNKNOWN": 4}
+
+
+def _build_normalized_secret_view(document: dict, image_name: str, all_findings: list) -> dict:
+    counts = {sev: {"withFix": 0, "withoutFix": 0} for sev in _SEVERITY_RANK}
+    for finding in all_findings:
+        sev = finding["severity"] if finding["severity"] in counts else "UNKNOWN"
+        counts[sev]["withoutFix"] += 1  # fixAvailable is always False for a secret finding
+
+    sorted_findings = sorted(
+        all_findings,
+        key=lambda f: (_SEVERITY_RANK.get(f["severity"], 99), not f["fixAvailable"],
+                        f["packageName"], f["vulnerabilityId"], f["targetPath"]),
+    )
+    capped = sorted_findings[:MAX_FINDINGS]
+    report_digest = "sha256:" + hashlib.sha256(canonical.canonical_bytes(document)).hexdigest()
+
+    # Any finding at all fails a secret scan (spec section 6) -- no severity threshold applies.
+    declared_outcome = len(all_findings) > 0
+
+    return {
+        "scanner": document["scanner"],
+        "target": {"imageDigest": "sha256:" + "0" * 64},
+        "reportDigest": report_digest,
+        # scanPolicy.ignoreFileDigest is hex64-shaped (no "sha256:" prefix), unlike ruleset.digest
+        # (which the predicate document schema requires WITH the prefix) -- strip it here rather than
+        # invent a second, separately-computed hash of the same tracked ruleset file.
+        "policy": {"severityThreshold": "UNKNOWN", "ignoreList": [],
+                   "ignoreFileDigest": document["ruleset"]["digest"].removeprefix("sha256:")},
+        "counts": counts,
+        "findings": capped,
+        "truncated": len(sorted_findings) > MAX_FINDINGS,
+        "declaredOutcome": declared_outcome,
+    }
 
 
 def collect_filesystem_secret_scan(tarball_path: str, image_name: str, ruleset_path: str) -> dict:
@@ -128,9 +172,11 @@ def collect_filesystem_secret_scan(tarball_path: str, image_name: str, ruleset_p
 
             all_findings = _run_trivy_fs_secret(str(extracted_dir), ruleset_path)
 
-    findings, truncated = _cap_findings(all_findings)
+    predicate_findings = [{"severity": f["severity"], "fixAvailable": f["fixAvailable"]}
+                           for f in all_findings]
+    findings, truncated = _cap_findings(predicate_findings)
 
-    return {
+    document = {
         "scanner": {"name": "trivy", "version": _trivy_version()},
         "ruleset": ruleset,
         "target": image_name,
@@ -138,6 +184,8 @@ def collect_filesystem_secret_scan(tarball_path: str, image_name: str, ruleset_p
         "findings": findings,
         "truncated": truncated,
     }
+    normalized = _build_normalized_secret_view(document, image_name, all_findings)
+    return document, normalized
 
 
 def _trivy_version() -> str:
@@ -245,9 +293,11 @@ def collect_layer_secret_scan(tarball_path: str, image_name: str, ruleset_path: 
                 # present and extractable in this one).
                 all_findings.extend(_run_trivy_fs_secret(str(extracted_dir), ruleset_path))
 
-    findings, truncated = _cap_findings(all_findings)
+    predicate_findings = [{"severity": f["severity"], "fixAvailable": f["fixAvailable"]}
+                           for f in all_findings]
+    findings, truncated = _cap_findings(predicate_findings)
 
-    return {
+    document = {
         "scanner": {"name": "trivy", "version": _trivy_version()},
         "ruleset": ruleset,
         "target": image_name,
@@ -255,3 +305,5 @@ def collect_layer_secret_scan(tarball_path: str, image_name: str, ruleset_path: 
         "findings": findings,
         "truncated": truncated,
     }
+    normalized = _build_normalized_secret_view(document, image_name, all_findings)
+    return document, normalized

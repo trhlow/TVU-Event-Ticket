@@ -77,10 +77,10 @@ RULESET = HERE / "collector-fixtures" / "trivy-secret-ruleset.yaml"
 sbom_result = collect_sbom_mod.collect_sbom(str(TARBALL), "tvu-collector-test:tiny")
 vuln_document, _vuln_normalized = collect_vuln_mod.collect_vulnerability_scan(
     str(TARBALL), "tvu-collector-test:tiny", str(HERE / "collector-fixtures" / "vulnerability-ignore.yaml"))
-layer_document = collect_secret_mod.collect_layer_secret_scan(str(TARBALL), "tvu-collector-test:tiny",
-                                                                str(RULESET))
-fs_document = collect_secret_mod.collect_filesystem_secret_scan(str(TARBALL), "tvu-collector-test:tiny",
-                                                                   str(RULESET))
+layer_document, _layer_normalized = collect_secret_mod.collect_layer_secret_scan(
+    str(TARBALL), "tvu-collector-test:tiny", str(RULESET))
+fs_document, _fs_normalized = collect_secret_mod.collect_filesystem_secret_scan(
+    str(TARBALL), "tvu-collector-test:tiny", str(RULESET))
 
 evidence_documents = {
     "sbom": sbom_result["document"],
