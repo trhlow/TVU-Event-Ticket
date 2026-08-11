@@ -115,6 +115,31 @@ config mặc định của Trivy) — mirror luật "policy phải từ file Git
 `--secret-config`); nội dung cụ thể là việc của task viết `collect-secret-scans.sh`, không phải của tài
 liệu thiết kế này.
 
+### 3.3b Xác nhận thật trên máy (2026-08-11), trước khi viết plan slice 2
+
+Chạy tay `crane`/`trivy fs` thật trước khi viết code, đúng kỷ luật "xác nhận trên lượt runner đầu,
+không đoán" — ba phát hiện không hiển nhiên, phải đưa vào plan slice 2:
+
+1. **`crane export`/`crane blob` không đọc trực tiếp file `docker save` hay image đã tag trong daemon
+   cục bộ** — cả hai subcommand chỉ nhận registry reference thật (thử `daemon://tvu-collector-test:tiny`
+   thất bại: crane coi `daemon` là một registry host và cố DNS lookup, build crane hiện tại không hỗ trợ
+   scheme đó). Cách chuẩn xác nhận hoạt động: chạy một registry tạm cục bộ (`docker run -d --rm -p
+   5500:5000 registry:2`), `crane push <tarball> localhost:5500/<name>:<tag>` (đẩy đúng byte tarball đã
+   build, không rebuild — vẫn giữ nguyên tắc §3.0), rồi `crane export`/`crane blob` trỏ vào
+   `localhost:5500/...`. Publish job (slice 5) đã cần chạy một registry tạm kiểu này hay tương đương;
+   collector (slice 2) cũng cần, chỉ khác là tạm thời và bỏ đi ngay sau khi extract xong.
+2. **`crane blob <ref>@<layer-digest>` hoạt động đúng như spec mô tả** — trả về đúng bytes nén
+   (gzip) của một layer, kích thước khớp con số trong manifest. Đã tự tay xác nhận (`gzip -t` báo hợp
+   lệ, 145 byte layer nhỏ khớp `manifest.json`'s `layers[].size`).
+3. **Khi `trivy fs --scanners secret` không tìm thấy secret nào, nó không hề in một `Results[]` entry
+   nào có `Class: "secret"`** — chỉ có entry `Class: "os-pkgs"` (phát hiện gói OS, một hiệu ứng phụ
+   Trivy luôn làm bất kể cờ `--scanners` truyền gì). Nghĩa là: script collector **không được** coi
+   "không có entry `Class: secret` nào trong `Results`" là lỗi — đó chính là "không tìm thấy secret",
+   tương đương `findings: []`. Chỉ khi entry đó tồn tại mới đọc `Secrets[]` bên trong nó.
+
+Registry tạm phải dọn dẹp (`docker stop`) trong `trap`/`finally`, cùng kỷ luật dọn đĩa ở §3.3a bên dưới
+— một job chết giữa đường không được để lại container registry treo lơ lửng chiếm cổng cho lần chạy sau.
+
 ### 3.3a Giới hạn byte và timeout — đã pin sẵn trong spec, không phải chọn
 
 Bảng cap đầy đủ nằm ở `evidence-verification-contract-design.md:331-343`, phải copy nguyên vào code khi
