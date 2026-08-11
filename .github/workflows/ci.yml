@@ -14,6 +14,37 @@ on:
 permissions:
   contents: read
 
+# --- Attestation creation template, for the publish job a later commit adds ---
+#
+# publish-decision.sh (already merged, CI-verified) hard-requires verification.attestationVerified:
+# true for both the marker and every evidence report -- there is no path around it (see design doc
+# 2026-08-11-collector-publish-job-design.md section 7b). Each artifact this pipeline pushes
+# (candidate images, both evidence-sets, prepared/final markers) needs its own real signed attestation
+# via actions/attest-build-provenance, which needs id-token/attestations write permission ON THE JOB
+# THAT CREATES IT, not at the workflow level (least-privilege, same rule this file's own top comment
+# already states for packages: write).
+#
+# publish:
+#   needs: [backend, frontend, lint]
+#   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+#   permissions:
+#     contents: read
+#     packages: write
+#     id-token: write
+#     attestations: write
+#   steps:
+#     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+#     # ... build/push steps that produce each artifact's real digest ...
+#     - name: Attest the monolith candidate image
+#       uses: actions/attest-build-provenance@<pin-to-a-real-commit-sha-when-wiring-this-in>
+#       with:
+#         subject-name: ghcr.io/trhlow/tvu-event-ticket/monolith
+#         subject-digest: ${{ steps.push-monolith-candidate.outputs.digest }}
+#         push-to-registry: true
+#     # ... repeat once per artifact: frontend candidate, monolith evidence-set, frontend evidence-set,
+#     #     prepared marker (final marker gets its own attestation only after COMPLETE, in the same
+#     #     step that promotes tags) ...
+
 jobs:
   # The backend is a single Maven module.  Keep frontend checks independent so
   # a UI-only change does not need a Java build and vice versa.
