@@ -251,6 +251,41 @@ việc chạm vào GHCR thật lần đầu tiên trong toàn bộ dự án này
 trước khi đi tiếp, theo đúng ranh giới tôi tự đặt suốt đêm cho những hành động chạm registry/production
 thật.
 
+## 7b. SỬA SAI 2026-08-11: §2 của tài liệu này đã sai — attestation ký thật KHÔNG phải tuỳ chọn
+
+Trước khi viết "observer" (đọc lại 10 lookup thật từ registry để gọi `publish-decision.sh`), đọc kỹ
+`observation.schema.json`'s `verification`/`presentAttestation`/`presentEvidenceSet` — phát hiện §2 của
+tài liệu này ("không thêm cosign đêm nay — digest+size binding đã tự chứng minh") **sai**, và mâu thuẫn
+trực tiếp với chính `publish-decision.sh` đã CI-verified suốt đêm:
+
+```
+publish-decision.sh:355, 774:  attestationVerified must be boolean true (không có nhánh nào cho false)
+publish-decision.sh:361-369:   signerRepository/signerWorkflow/sourceRevision phải khớp expected.*
+publish-decision.sh:843-845:   mỗi report trong evidence-set cũng đòi attestationVerified true riêng
+```
+
+`attestationVerified: true` là **bắt buộc**, không có đường nào để CONFLICT tránh được nếu thiếu —
+nghĩa là quyết định đã luôn giả định có **chữ ký attestation thật**, kiểu SLSA build provenance ký qua
+GitHub OIDC (đúng là điều `signerRepository`/`signerWorkflow`/`sourceRevision` mô tả — ba trường đó là
+chính xác những gì `gh attestation verify --repo ... --signer-workflow ...` trả về), không phải một thứ
+digest/size binding có thể thay thế.
+
+`gh attestation verify` đã có sẵn trên máy (qua `gh` CLI, đã đăng nhập) — dùng được cho bước xác minh.
+Nhưng **tạo** attestation (`actions/attest-build-provenance` action, cần `permissions: {id-token: write,
+attestations: write}`) chỉ chạy được thật bên trong một CI run thật (cần OIDC token của chính lượt chạy
+đó) — **không thể tạo cục bộ**, khác hẳn mọi thứ đã build đêm nay (SBOM, scan, Flyway, push OCI — tất cả
+test được bằng registry/Postgres tạm cục bộ). Đây là ranh giới thật, không phải một lựa chọn phạm vi.
+
+**Hệ quả:** không thể tiếp tục xây "observer" (bộ đọc 10 lookup) một cách có ý nghĩa mà không quyết định
+trước: có thêm bước ký attestation thật vào CI hay không. Không ký thì mọi marker/evidence-set publish
+job tạo ra sẽ luôn CONFLICT ở `attestationVerified` — xây observer trong tình huống đó là xây trên một
+nền tảng chắc chắn không bao giờ COMPLETE được, đúng loại công sức lãng phí mà kỷ luật "xác minh trước
+khi tin" của cả dự án này tồn tại để tránh.
+
+Dừng lại ở đây để hỏi người dùng: có muốn thêm `actions/attest-build-provenance` (kèm quyền
+`id-token`/`attestations: write` mới trong workflow) vào publish job không? Đây là quyết định kiến trúc
+bảo mật thật, không phải chi tiết triển khai — và tôi đã lỡ loại nó ra sai ở §2 ban đầu.
+
 ## 7a. Phát hiện 2026-08-11 (sau khi người dùng cho phép tiếp tục): `oras`/`crane` không đẩy được marker/evidence-set
 
 Trước khi viết plan cho publish job, thử thật `oras push` (công cụ duy nhất được nhắc tên sẵn trong
