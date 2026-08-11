@@ -76,9 +76,9 @@ report("filesystemSecretScan ruleset names the tracked file's real version and a
        and fs_document["ruleset"]["digest"].startswith("sha256:"),
        f"ruleset={fs_document.get('ruleset')!r}")
 
-report("filesystemSecretScan document has declaredOutcome False for a clean fixture "
+report("filesystemSecretScan document has declaredOutcome True (passed) for a clean fixture "
        "(secret scan fails on ANY finding, and this fixture has none)",
-       fs_document.get("declaredOutcome") is False,
+       fs_document.get("declaredOutcome") is True,
        f"declaredOutcome={fs_document.get('declaredOutcome')!r}")
 
 collect_layer_secret_scan = _module.collect_layer_secret_scan
@@ -99,8 +99,8 @@ report("layerSecretScan findings is empty for this clean fixture",
        layer_document.get("findings") == [] and layer_document.get("truncated") is False,
        f"findings={layer_document.get('findings')!r}, truncated={layer_document.get('truncated')!r}")
 
-report("layerSecretScan document has declaredOutcome False for a clean fixture",
-       layer_document.get("declaredOutcome") is False,
+report("layerSecretScan document has declaredOutcome True (passed) for a clean fixture",
+       layer_document.get("declaredOutcome") is True,
        f"declaredOutcome={layer_document.get('declaredOutcome')!r}")
 
 # A tarball with a declared layer size the collector cannot possibly match must raise CollectorError,

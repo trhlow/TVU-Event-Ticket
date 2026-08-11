@@ -53,8 +53,13 @@ def _digest_object_lookup(registry_ref: str, tag_lookup_result: dict,
 def assemble_observation(monolith_registry_ref: str, frontend_registry_ref: str,
                           release_registry_ref: str, commit: str, environment: str,
                           repo_root: str, bash: str = "bash",
-                          username: str = None, password: str = None) -> dict:
-    expected = build_expected(repo_root, bash=bash)
+                          username: str = None, password: str = None,
+                          expected_override: dict = None) -> dict:
+    # expected_override exists only for testing against a throwaway registry: build_expected's
+    # registry/repositories are real, hardcoded GHCR constants (build-expected.test.py proves them),
+    # and publish-decision.sh real-binds every queriedRef against them -- a local registry cannot
+    # satisfy that binding without substituting matching values. Production callers never pass this.
+    expected = expected_override if expected_override is not None else build_expected(repo_root, bash=bash)
 
     monolith_tag = read_object_lookup(monolith_registry_ref, f"monolith-{commit}",
                                        username=username, password=password)
@@ -80,10 +85,18 @@ def assemble_observation(monolith_registry_ref: str, frontend_registry_ref: str,
                                           source_revision=commit,
                                           username=username, password=password)
 
-    monolith_subject_digest = (monolith_tag.get("digest")
-                                if monolith_tag.get("status") == "present" else "sha256:" + "0" * 64)
-    frontend_subject_digest = (frontend_tag.get("digest")
-                                if frontend_tag.get("status") == "present" else "sha256:" + "0" * 64)
+    # Evidence sets are pushed with subject_digest set to the CANDIDATE digest (design doc section 4
+    # step 3 precedes step 4): the candidate tag is what exists at push time, pre-promotion, and stays
+    # pointing at the same digest afterward. Binding this comparison to *Tag instead (as an earlier
+    # version of this function did) made subjectMatches structurally unable to be true on the very
+    # first decision call of a run -- the one that decides whether promotion is safe -- since *Tag is
+    # legitimately absent until promotion happens. Found via run-publish.test.py's real end-to-end
+    # exercise (roadmap 2.4): the first test ever to combine a present evidence-set with a
+    # pre-promotion decision call.
+    monolith_subject_digest = (monolith_candidate.get("digest")
+                                if monolith_candidate.get("status") == "present" else "sha256:" + "0" * 64)
+    frontend_subject_digest = (frontend_candidate.get("digest")
+                                if frontend_candidate.get("status") == "present" else "sha256:" + "0" * 64)
 
     monolith_evidence_set = read_evidence_set_lookup(
         monolith_registry_ref, f"evidence-monolith-sha-{commit}", monolith_subject_digest,

@@ -117,7 +117,13 @@ def _secret_scan_extra_fields(ruleset: dict, all_findings: list) -> dict:
     capped = sorted_findings[:MAX_FINDINGS]
 
     # Any finding at all fails a secret scan (spec section 6) -- no severity threshold applies.
-    declared_outcome = len(all_findings) > 0
+    # declaredOutcome is "True = passed" (matching publish-decision.sh's recomputed_outcome, which this
+    # value is checked against): a real bug had this inverted (True whenever findings existed) until
+    # run-publish.test.py's real end-to-end exercise (roadmap 2.4) hit it against a real image and the
+    # decision's own recompute caught the mismatch -- the decision's independent recheck is why no
+    # unsafe image could ever have actually shipped on this bug's word alone, but the field itself was
+    # simply wrong.
+    declared_outcome = len(all_findings) == 0
 
     return {
         "findings": capped,
