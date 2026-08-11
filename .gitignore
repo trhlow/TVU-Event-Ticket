@@ -23,3 +23,7 @@ docs/superpowers/
 # publish-decision.sh imports canonical.py, so running it leaves bytecode beside the scripts.
 __pycache__/
 *.pyc
+
+# Collector test fixture images: rebuilt by the test suite from the tracked Dockerfile, never
+# committed -- a multi-MB binary that would only grow the repo for no benefit over rebuilding it.
+.github/scripts/collector-fixtures/*.tar
