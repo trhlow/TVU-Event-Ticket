@@ -51,7 +51,7 @@ export default function EventForm({
   const [formData, setFormData] = useState<Partial<Event>>({
     title: initialData?.title || '',
     description: initialData?.description || '',
-    bannerUrl: initialData?.bannerUrl || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=60',
+    bannerUrl: initialData?.bannerUrl || '',
     location: initialData?.location || '',
     startAt: toDatetimeLocalValue(initialData?.startAt),
     endAt: toDatetimeLocalValue(initialData?.endAt),
@@ -60,6 +60,7 @@ export default function EventForm({
     capacity: initialData?.capacity || 100,
   });
 
+  const isDraft = !initialData || initialData.status === 'DRAFT';
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { showToast } = useToast();
@@ -188,15 +189,20 @@ export default function EventForm({
           </div>
 
           <div className="space-y-1.5">
-            <FieldLabel htmlFor="event-bannerUrl">Banner minh họa (URL)</FieldLabel>
+            <FieldLabel htmlFor="event-bannerUrl">Banner minh họa (URL) — chưa hỗ trợ</FieldLabel>
             <Input
               id="event-bannerUrl"
               type="text"
               name="bannerUrl"
               value={formData.bannerUrl}
               onChange={handleChange}
-              placeholder="Nhập liên kết ảnh banner..."
+              placeholder="Tính năng banner hiện chưa được hệ thống lưu lại"
+              disabled
+              aria-describedby="event-bannerUrl-hint"
             />
+            <p id="event-bannerUrl-hint" className="text-[10px] font-semibold text-gray-500">
+              Hệ thống chưa lưu trường này — nội dung nhập vào sẽ không được ghi nhận.
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -266,7 +272,9 @@ export default function EventForm({
         <SectionHeading icon={Users} title="Sức chứa" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-1.5">
-            <FieldLabel htmlFor="event-capacity">Số lượng vé phát hành (Sức chứa) *</FieldLabel>
+            <FieldLabel htmlFor="event-capacity">
+              Số lượng vé phát hành (Sức chứa) * {!isDraft && '— đã khóa'}
+            </FieldLabel>
             <Input
               id="event-capacity"
               type="number"
@@ -274,10 +282,16 @@ export default function EventForm({
               value={formData.capacity}
               onChange={handleChange}
               min={1}
+              disabled={!isDraft}
               className={errors.capacity ? 'border-rose-400 focus-visible:border-rose-500' : ''}
               aria-invalid={!!errors.capacity}
-              aria-describedby={errors.capacity ? 'event-capacity-error' : undefined}
+              aria-describedby={errors.capacity ? 'event-capacity-error' : 'event-capacity-hint'}
             />
+            {!isDraft && (
+              <p id="event-capacity-hint" className="text-[10px] font-semibold text-gray-500">
+                Sự kiện đã mở đăng ký nên không thể đổi sức chứa nữa.
+              </p>
+            )}
             <FieldError id="event-capacity-error" message={errors.capacity} />
           </div>
         </div>

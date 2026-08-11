@@ -131,7 +131,7 @@ layout had ruled out. No URL the frontend calls changed.
 
 ## Quick start
 
-**Prerequisites:** Docker Desktop, JDK 25, Maven 3.9+, Node.js 22+.
+**Prerequisites:** Docker Desktop, JDK 25, Maven 3.9+, Node.js 24 (see `frontend/.nvmrc`).
 
 ```bash
 git clone https://github.com/trhlow/TVU-Event-Ticket.git

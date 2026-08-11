@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { QRCodeSVG } from "qrcode.react";
-import { AlertTriangle, Copy, ExternalLink, Printer, QrCode } from "lucide-react";
+import { AlertTriangle, Copy, Printer, QrCode } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import EmptyState from "../../components/common/EmptyState";
@@ -25,8 +25,11 @@ export default function OrganizerRegistrationQRPage() {
     setIsLoading(true);
     try {
       const data = await eventService.listByClubRemote(currentUser.clubId || "");
-      setEvents(data);
-      setSelectedEventId((current) => current || data[0]?.id || "");
+      // Only OPEN events actually accept registrations — offering a DRAFT/CLOSED event here would
+      // hand out a QR/link students can open but never successfully submit through.
+      const openEvents = data.filter((item) => item.status === "OPEN");
+      setEvents(openEvents);
+      setSelectedEventId((current) => current || openEvents[0]?.id || "");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Không thể tải danh sách sự kiện.", "error");
     } finally {
@@ -126,18 +129,13 @@ export default function OrganizerRegistrationQRPage() {
               <Button variant="outline" onClick={() => window.print()}>
                 <Printer className="h-4 w-4" /> In trang này
               </Button>
-              <Button variant="outline" asChild className="sm:col-span-2">
-                <Link to={`/student/events/${event.id}/register`}>
-                  <ExternalLink className="h-4 w-4" /> Xem trang đăng ký
-                </Link>
-              </Button>
             </div>
           </section>
         </div>
       ) : (
         <EmptyState
-          title="Chưa có sự kiện"
-          description="CLB chưa có sự kiện nào để tạo liên kết đăng ký."
+          title="Chưa có sự kiện đang mở đăng ký"
+          description="Chỉ sự kiện ở trạng thái Đang mở mới có thể tạo liên kết đăng ký. Hãy mở đăng ký cho sự kiện trước."
           icon={QrCode}
         />
       )}

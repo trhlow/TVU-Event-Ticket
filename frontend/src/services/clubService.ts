@@ -56,4 +56,7 @@ export const clubService = {
   async deactivate(clubId: string): Promise<void> {
     return apiRequest<void>(`/admin/clubs/${clubId}`, { method: "DELETE" });
   },
+  async reactivate(clubId: string): Promise<Club> {
+    return mapClub(await apiRequest<ClubResponse>(`/admin/clubs/${clubId}/activate`, { method: "PATCH" }));
+  },
 };

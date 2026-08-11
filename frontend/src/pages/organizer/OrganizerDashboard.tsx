@@ -61,6 +61,8 @@ export default function OrganizerDashboard() {
   const pendingCount = clubDashboard?.pending ?? pendingReservations.length;
   const checkInRate = clubDashboard?.checkInRate ?? null;
 
+  // Backend only reports registration counts per day (no check-in-by-day breakdown), so the line
+  // chart has just one real series — a declared-but-unfed "Đã điểm danh" key rendered an empty line.
   const lineChartData = useMemo(() => {
     if (clubDashboard?.registrationsByDay?.length) {
       return clubDashboard.registrationsByDay.map((entry) => ({
@@ -69,14 +71,16 @@ export default function OrganizerDashboard() {
       }));
     }
     return [
-      { name: "Đã cấp", "Lượt đăng ký": approvedCount, "Đã điểm danh": checkedInCount },
-      { name: "Chờ duyệt", "Lượt đăng ký": pendingCount, "Đã điểm danh": 0 },
+      { name: "Đã cấp", "Lượt đăng ký": approvedCount },
+      { name: "Chờ duyệt", "Lượt đăng ký": pendingCount },
     ];
-  }, [approvedCount, checkedInCount, clubDashboard, pendingCount]);
+  }, [approvedCount, clubDashboard, pendingCount]);
 
+  // checkedInCount is a subset of approvedCount (a checked-in ticket was already approved), so
+  // summing both as separate donut slices double-counts it. Split into non-overlapping buckets.
   const statusData = [
     { name: "Chờ duyệt", value: pendingCount },
-    { name: "Đã cấp vé", value: approvedCount },
+    { name: "Đã cấp vé (chưa điểm danh)", value: Math.max(approvedCount - checkedInCount, 0) },
     { name: "Đã điểm danh", value: checkedInCount },
   ];
 
@@ -141,7 +145,6 @@ export default function OrganizerDashboard() {
             xAxisKey="name"
             dataKeys={[
               { key: "Lượt đăng ký", name: "Lượt đăng ký", color: "#2563eb" },
-              { key: "Đã điểm danh", name: "Đã điểm danh", color: "#00a896" },
             ]}
           />
         </div>

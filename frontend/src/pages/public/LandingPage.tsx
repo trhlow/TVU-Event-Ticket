@@ -97,14 +97,8 @@ function eventStatusLabel(status: Event["status"]) {
   switch (status) {
     case "OPEN":
       return "Đang mở đăng ký";
-    case "UPCOMING":
-      return "Sắp diễn ra";
     case "CLOSED":
       return "Đã đóng đăng ký";
-    case "FULL":
-      return "Hết vé";
-    case "ENDED":
-      return "Đã kết thúc";
     default:
       return "Bản nháp";
   }
@@ -112,14 +106,12 @@ function eventStatusLabel(status: Event["status"]) {
 
 function eventStatusClass(status: Event["status"]) {
   if (status === "OPEN") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  if (status === "UPCOMING") return "border-blue-200 bg-blue-50 text-blue-700";
-  if (status === "FULL") return "border-amber-200 bg-amber-50 text-amber-700";
-  if (status === "ENDED") return "border-slate-200 bg-slate-100 text-slate-600";
+  if (status === "CLOSED") return "border-slate-200 bg-slate-100 text-slate-600";
   return "border-slate-200 bg-white text-slate-600";
 }
 
 function sortFeatured(events: Event[]) {
-  const rank: Record<Event["status"], number> = { OPEN: 0, UPCOMING: 1, FULL: 2, CLOSED: 3, ENDED: 4, DRAFT: 5 };
+  const rank: Record<Event["status"], number> = { OPEN: 0, CLOSED: 1, DRAFT: 2 };
   return [...events]
     .filter((event) => event.status !== "DRAFT")
     .sort((a, b) => rank[a.status] - rank[b.status] || new Date(a.startAt).getTime() - new Date(b.startAt).getTime())

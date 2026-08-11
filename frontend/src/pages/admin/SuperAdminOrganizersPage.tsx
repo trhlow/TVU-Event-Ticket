@@ -30,7 +30,11 @@ export default function SuperAdminOrganizersPage() {
       ]);
       setUsers(organizers);
       setClubs(clubItems);
-      setForm((value) => ({ ...value, clubId: value.clubId || clubItems[0]?.id || "" }));
+      // Backend rejects organizer creation for an inactive club with 409 — only offer clubs that
+      // will actually succeed. Existing organizers of a since-locked club still resolve fine below,
+      // since that lookup uses the full `clubs` list, not this active-only subset.
+      const activeClubs = clubItems.filter((club) => club.status === "ACTIVE");
+      setForm((value) => ({ ...value, clubId: activeClubs.some((club) => club.id === value.clubId) ? value.clubId : activeClubs[0]?.id || "" }));
     } catch (error) {
       setToastMsg(error instanceof Error ? error.message : "Không thể tải tài khoản Ban tổ chức.");
     }
@@ -42,7 +46,7 @@ export default function SuperAdminOrganizersPage() {
 
   const handleCreateOrganizer = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!form.fullName.trim() || !form.email.trim() || !form.clubId) return;
+    if (!form.fullName.trim() || !form.email.trim() || !form.clubId || activeClubs.length === 0) return;
     setIsSaving(true);
     try {
       await userService.createOrganizer({
@@ -90,6 +94,8 @@ export default function SuperAdminOrganizersPage() {
       setIsSaving(false);
     }
   };
+
+  const activeClubs = useMemo(() => clubs.filter((club) => club.status === "ACTIVE"), [clubs]);
 
   const filteredUsers = useMemo(
     () =>
@@ -205,7 +211,7 @@ export default function SuperAdminOrganizersPage() {
             <button
               type="submit"
               form="create-organizer-form"
-              disabled={isSaving}
+              disabled={isSaving || activeClubs.length === 0}
               className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white disabled:opacity-50"
             >
               {isSaving ? "Đang cấp..." : "Cấp tài khoản"}
@@ -217,6 +223,11 @@ export default function SuperAdminOrganizersPage() {
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
           Người dùng sẽ nhận mã OTP qua email khi đăng nhập, không cần mật khẩu tạm thời.
         </div>
+        {activeClubs.length === 0 && (
+          <div className="mt-3 rounded-xl border border-danger-200 bg-danger-50 px-3 py-3 text-sm font-semibold leading-6 text-danger-700">
+            Không còn CLB nào đang hoạt động. Hãy mở khóa hoặc tạo CLB mới trước khi cấp tài khoản Ban tổ chức.
+          </div>
+        )}
         <form id="create-organizer-form" onSubmit={handleCreateOrganizer} className="mt-5 grid gap-4">
           <input
             className="tvu-input"
@@ -237,9 +248,10 @@ export default function SuperAdminOrganizersPage() {
             className="tvu-input"
             value={form.clubId}
             onChange={(event) => setForm({ ...form, clubId: event.target.value })}
+            disabled={activeClubs.length === 0}
             required
           >
-            {clubs.map((club) => (
+            {activeClubs.map((club) => (
               <option key={club.id} value={club.id}>
                 {club.name}
               </option>
