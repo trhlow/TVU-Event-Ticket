@@ -75,5 +75,44 @@ report("filesystemSecretScan ruleset names the tracked file's real version and a
        and fs_document["ruleset"]["digest"].startswith("sha256:"),
        f"ruleset={fs_document.get('ruleset')!r}")
 
+collect_layer_secret_scan = _module.collect_layer_secret_scan
+
+layer_schema = json.loads(LAYER_SCHEMA_PATH.read_text(encoding="utf-8"))
+layer_registry = build_registry(LAYER_SCHEMA_PATH)
+layer_validator = jsonschema.Draft202012Validator(layer_schema, registry=layer_registry)
+
+layer_document = collect_layer_secret_scan(str(TARBALL), "tvu-collector-test:tiny", str(RULESET))
+
+layer_errors = sorted(layer_validator.iter_errors(layer_document), key=str)
+report("layerSecretScan document validates exactly",
+       not layer_errors,
+       "; ".join(f"{list(e.path)}: {e.message}" for e in layer_errors[:5]))
+
+report("layerSecretScan findings is empty for this clean fixture",
+       layer_document.get("findings") == [] and layer_document.get("truncated") is False,
+       f"findings={layer_document.get('findings')!r}, truncated={layer_document.get('truncated')!r}")
+
+# A tarball with a declared layer size the collector cannot possibly match must raise CollectorError,
+# not silently under-report -- this is the "descriptor declares a value the collector cannot trust"
+# case the byte-cap discipline exists to catch, exercised here via the simplest real trigger: a
+# tarball that does not exist at all still has to fail through CollectorError, not a bare
+# FileNotFoundError a caller wouldn't know to catch.
+missing_tarball = str(HERE / "collector-fixtures" / "this-file-does-not-exist.tar")
+# collect-secret-scan.py loads local-registry.py itself (via the same importlib.util hyphen-load
+# pattern this test uses) and, per the Interfaces contract, lets local-registry.py's own CollectorError
+# propagate unchanged rather than re-wrapping it -- so the class actually raised for this path is the
+# one collect-secret-scan.py's own internal load produced, not this test's separately-loaded
+# CollectorError (each importlib.util.spec_from_file_location + exec_module call mints a distinct class
+# object even for the same file/name, so `isinstance` only matches the exact load that raised it).
+local_registry_collector_error = _module._registry_module.CollectorError
+try:
+    collect_layer_secret_scan(missing_tarball, "does-not-matter", str(RULESET))
+    report("a missing tarball raises CollectorError (layer scan)", False, "no exception was raised")
+except (CollectorError, local_registry_collector_error):
+    report("a missing tarball raises CollectorError (layer scan)", True)
+except Exception as exc:  # noqa: BLE001
+    report("a missing tarball raises CollectorError (layer scan)", False,
+           f"raised {type(exc).__name__} instead")
+
 print(f"\npassed={passed} failed={failed}")
 sys.exit(1 if failed else 0)
