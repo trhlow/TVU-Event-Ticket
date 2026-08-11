@@ -149,6 +149,23 @@ try:
            and "subjectMatches is False" not in reason,
            f"reason={reason!r}")
 
+    subjects = result.get("subjects", [])
+    report("push_publish_artifacts emits exactly the 11 real attestation subjects this run needs "
+           "(8 per-kind reports + 2 evidence-set carriers + 1 marker)",
+           len(subjects) == 11
+           and sum(1 for s in subjects if s["kind"] == "generic") == 10
+           and sum(1 for s in subjects if s["kind"] == "provenance") == 1
+           and all(isinstance(s["digest"], str) and s["digest"].startswith("sha256:") for s in subjects),
+           f"subjects={[{'name': s['name'], 'kind': s['kind']} for s in subjects]!r}")
+    report("the marker subject carries no predicate (actions/attest-build-provenance supplies its own)",
+           next(s for s in subjects if s["name"] == "release-marker")["predicate"] is None,
+           f"marker subject={next(s for s in subjects if s['name'] == 'release-marker')!r}")
+    report("each report subject's predicate is the exact document pushed as that report's OCI blob "
+           "(the decision cross-checks these two, so they must be identical bytes)",
+           next(s for s in subjects if s["name"] == "monolith-sbom-report")["predicateType"]
+           == "https://spdx.dev/Document/v2.3",
+           f"sbom subject predicateType={next(s for s in subjects if s['name'] == 'monolith-sbom-report')['predicateType']!r}")
+
     lookups = result.get("observation", {}).get("lookups", {})
     report("both evidence-sets' subject correctly matches the candidate digest they were pushed "
            "against (assemble-observation.py's *Tag-vs-*Candidate binding fix)",
