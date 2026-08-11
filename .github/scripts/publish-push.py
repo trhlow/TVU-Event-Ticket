@@ -9,6 +9,7 @@ be large) to stdout so the calling step can also capture it into a job output di
 import argparse
 import importlib.util
 import json
+import os
 import pathlib
 import sys
 
@@ -41,10 +42,17 @@ def main():
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args()
 
+    # Read from the environment, not a flag: a secret does not belong in argv, which is visible to
+    # anything on the runner that can read /proc or the job's own step log if it ever echoes its
+    # command line. GHCR accepts the workflow's own GITHUB_TOKEN as the password for a push, scoped by
+    # this job's packages: write permission.
+    username = os.environ.get("GHCR_USERNAME")
+    password = os.environ.get("GHCR_TOKEN")
+
     result = _run_publish.push_publish_artifacts(
         args.monolith_tarball, args.frontend_tarball, args.monolith_ref, args.frontend_ref,
         args.release_ref, args.commit, args.environment, args.repo_root, args.ruleset,
-        args.ignore_file,
+        args.ignore_file, username=username, password=password,
     )
 
     output_dir = pathlib.Path(args.output_dir)

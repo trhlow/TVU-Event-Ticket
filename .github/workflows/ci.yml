@@ -14,36 +14,6 @@ on:
 permissions:
   contents: read
 
-# --- Attestation creation template, for the publish job a later commit adds ---
-#
-# publish-decision.sh (already merged, CI-verified) hard-requires verification.attestationVerified:
-# true for both the marker and every evidence report -- there is no path around it (see design doc
-# 2026-08-11-collector-publish-job-design.md section 7b). Each artifact this pipeline pushes
-# (candidate images, both evidence-sets, prepared/final markers) needs its own real signed attestation
-# via actions/attest-build-provenance, which needs id-token/attestations write permission ON THE JOB
-# THAT CREATES IT, not at the workflow level (least-privilege, same rule this file's own top comment
-# already states for packages: write).
-#
-# publish:
-#   needs: [backend, frontend, lint]
-#   if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-#   permissions:
-#     contents: read
-#     packages: write
-#     id-token: write
-#     attestations: write
-#   steps:
-#     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-#     # ... build/push steps that produce each artifact's real digest ...
-#     - name: Attest the monolith candidate image
-#       uses: actions/attest-build-provenance@<pin-to-a-real-commit-sha-when-wiring-this-in>
-#       with:
-#         subject-name: ghcr.io/trhlow/tvu-event-ticket/monolith
-#         subject-digest: ${{ steps.push-monolith-candidate.outputs.digest }}
-#         push-to-registry: true
-#     # ... repeat once per artifact: frontend candidate, monolith evidence-set, frontend evidence-set,
-#     #     prepared marker (final marker gets its own attestation only after COMPLETE, in the same
-#     #     step that promotes tags) ...
 
 jobs:
   # The backend is a single Maven module.  Keep frontend checks independent so
@@ -74,7 +44,13 @@ jobs:
 
   backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    # The path filter alone would let a push to main that only touches frontend code skip this job --
+    # but publish-prepare always needs BOTH images freshly built for the commit it is releasing, path
+    # filter or not. A skipped dependency skips its downstream jobs by default, so publish-prepare
+    # would silently skip (or fail on a missing artifact) the first time a real release touched only
+    # one side. The path filter still applies on pull_request, where fast incremental feedback matters
+    # and no publish ever runs.
+    if: needs.changes.outputs.backend == 'true' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -222,6 +198,23 @@ jobs:
         working-directory: backend
         run: docker build -t tvu/monolith:ci .
 
+      # Only on the run that can actually publish: an artifact upload on every PR run would be pure
+      # waste, and the byte that gets attested/pushed must be exactly the byte this job just tested --
+      # docker save right after the build that produced it, not a separate build in the publish job
+      # that could drift from what backend's own steps above just verified.
+      - name: Save the built monolith image for the publish job
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: backend
+        run: docker save tvu/monolith:ci | gzip > monolith-image.tar.gz
+
+      - name: Upload the monolith image artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: monolith-image
+          path: backend/monolith-image.tar.gz
+          retention-days: 1
+
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -231,7 +224,9 @@ jobs:
 
   frontend:
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    # Same reasoning as backend's own if: condition above -- publish-prepare always needs both images
+    # freshly built for the commit it is releasing.
+    if: needs.changes.outputs.frontend == 'true' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
     runs-on: ubuntu-latest
     # No job-level VITE_* here, deliberately. Vite gives an actual environment variable precedence
     # over .env.production, so a value set at this level reached `npm run build:production` and the
@@ -317,6 +312,20 @@ jobs:
       - name: Build deployable frontend image
         working-directory: frontend
         run: docker build -t tvu/frontend:ci .
+
+      # Same reasoning as backend's own "Save the built monolith image" step above.
+      - name: Save the built frontend image for the publish job
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: frontend
+        run: docker save tvu/frontend:ci | gzip > frontend-image.tar.gz
+
+      - name: Upload the frontend image artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-image
+          path: frontend/frontend-image.tar.gz
+          retention-days: 1
 
   # Aggregate gate. `backend` and `frontend` are skipped by their own `if:` when the
   # path filter does not match, and `dependency-review` does not exist at all on push
@@ -496,3 +505,176 @@ jobs:
 
           [ "$failed" -eq 0 ] || exit 1
           echo "All CI jobs accounted for."
+
+  # --- Publish: three jobs, because attestation creation cannot live inside a script a workflow
+  # merely invokes -- actions/attest-build-provenance and actions/attest each exchange the JOB's own
+  # OIDC token (id-token: write) for a Sigstore-signed attestation, which is only reachable from a
+  # discrete workflow step. See run-publish.py's own module docstring for the full reasoning.
+  #
+  # publish-decision.sh (already merged, CI-verified) hard-requires verification.attestationVerified:
+  # true for both the marker and every evidence report -- there is no path around it (design doc
+  # 2026-08-11-collector-publish-job-design.md section 7b).
+  #
+  # Registry paths are the real, hardcoded constants build-expected.py's own SOURCE_REPOSITORY/
+  # REGISTRY/REPOSITORIES already state (build-expected.test.py proves them) -- publish-decision.sh
+  # real-binds every queriedRef against exactly those values, so what gets pushed here must match them
+  # literally, not be derived from GitHub context expressions that could drift from that hardcoded set.
+
+  publish-prepare:
+    needs: [backend, frontend, lint]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      subjects: ${{ steps.push.outputs.subjects }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: monolith-image
+          path: publish-artifacts
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-image
+          path: publish-artifacts
+
+      - name: Decompress the built images
+        run: |
+          gunzip publish-artifacts/monolith-image.tar.gz
+          gunzip publish-artifacts/frontend-image.tar.gz
+
+      # Pinned to the exact versions this pipeline was built and real-TDD'd against tonight (design doc
+      # 2026-08-11-collector-publish-job-design.md's own record: syft 1.51.0, Trivy 0.73.0, crane
+      # 0.21.9 via scoop) -- a version drift here is exactly the kind of untested-behavior risk this
+      # whole pipeline exists to catch elsewhere, so it must not be introduced by "latest" here.
+      - name: Install crane, syft, trivy (pinned, checksummed)
+        env:
+          CRANE_VERSION: 0.21.9
+          CRANE_SHA256: 5c16d8ddb971cb1d5e6ed8b1e743da8224414eeba2c2762d8f1a61b2f095699e
+          SYFT_VERSION: 1.51.0
+          SYFT_SHA256: 2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
+          TRIVY_VERSION: 0.73.0
+          TRIVY_SHA256: 2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --output crane.tar.gz \
+            "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz"
+          echo "${CRANE_SHA256}  crane.tar.gz" | sha256sum --check --strict
+          tar -xzf crane.tar.gz crane
+          sudo install crane /usr/local/bin/crane
+
+          curl --fail --silent --show-error --location --output syft.tar.gz \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  syft.tar.gz" | sha256sum --check --strict
+          tar -xzf syft.tar.gz syft
+          sudo install syft /usr/local/bin/syft
+
+          curl --fail --silent --show-error --location --output trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum --check --strict
+          tar -xzf trivy.tar.gz trivy
+          sudo install trivy /usr/local/bin/trivy
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
+            --username "${{ github.actor }}" --password-stdin
+
+      - name: Push candidate images, evidence, and the prepared marker
+        id: push
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish-push.py \
+            --monolith-tarball publish-artifacts/monolith-image.tar \
+            --frontend-tarball publish-artifacts/frontend-image.tar \
+            --monolith-ref ghcr.io/trhlow/tvu-event-ticket/monolith \
+            --frontend-ref ghcr.io/trhlow/tvu-event-ticket/frontend \
+            --release-ref ghcr.io/trhlow/tvu-event-ticket/release \
+            --commit "${{ github.sha }}" --environment production \
+            --repo-root "$PWD" \
+            --ruleset .github/scripts/collector-fixtures/trivy-secret-ruleset.yaml \
+            --ignore-file .github/scripts/collector-fixtures/vulnerability-ignore.yaml \
+            --output-dir publish-artifacts/out
+          echo "subjects=$(cat publish-artifacts/out/subjects.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: publish-predicates
+          path: publish-artifacts/out/predicates
+          retention-days: 1
+
+  publish-attest:
+    needs: publish-prepare
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+    strategy:
+      # One real actions/attest or actions/attest-build-provenance step per subject -- this is a real
+      # workflow step, not a script loop, precisely because only a real step can exchange this job's
+      # OIDC token. fail-fast off: one unsigned subject must not hide whether the other ten would also
+      # have signed cleanly, since publish-finalize needs to know the real, complete picture either way.
+      matrix:
+        include: ${{ fromJson(needs.publish-prepare.outputs.subjects) }}
+      fail-fast: false
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: matrix.kind == 'generic'
+        with:
+          name: publish-predicates
+          path: predicates
+
+      # The one PREDICATE_TYPES entry (slsa.dev/provenance/v1) that actually matches what this action
+      # produces -- see run-publish.py's own module docstring. No predicate input: it builds its own
+      # real SLSA provenance statement from this job's GitHub Actions context.
+      - name: Attest build provenance
+        if: matrix.kind == 'provenance'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ matrix.name }}
+          subject-digest: ${{ matrix.digest }}
+          push-to-registry: true
+
+      # The 10 subjects (2 evidence-set carriers, 8 per-kind reports) carrying this project's own
+      # custom predicate types -- their predicate content is the exact document already pushed as that
+      # subject's OCI blob, downloaded above from publish-prepare's own artifact.
+      - name: Attest custom predicate
+        if: matrix.kind == 'generic'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ matrix.name }}
+          subject-digest: ${{ matrix.digest }}
+          predicate-type: ${{ matrix.predicateType }}
+          predicate-file: ${{ matrix.predicateFile }}
+          push-to-registry: true
+
+  publish-finalize:
+    needs: [publish-prepare, publish-attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Deliberately does not download publish-prepare's own artifacts or reuse anything it computed --
+      # design doc section 4's own rule is that the decision must never trust a job's memory of what it
+      # pushed. Everything here is re-read fresh from the registry, now carrying the real attestations
+      # publish-attest's matrix just created.
+      - name: Decide and finalize the release
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish-finalize.py \
+            --monolith-ref ghcr.io/trhlow/tvu-event-ticket/monolith \
+            --frontend-ref ghcr.io/trhlow/tvu-event-ticket/frontend \
+            --release-ref ghcr.io/trhlow/tvu-event-ticket/release \
+            --commit "${{ github.sha }}" --environment production \
+            --repo-root "$PWD"

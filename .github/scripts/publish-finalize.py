@@ -9,6 +9,7 @@ reporting green on a release that never happened.
 import argparse
 import importlib.util
 import json
+import os
 import pathlib
 import sys
 
@@ -35,9 +36,13 @@ def main():
     parser.add_argument("--repo-root", required=True)
     args = parser.parse_args()
 
+    # Read from the environment, not a flag -- same reasoning as publish-push.py.
+    username = os.environ.get("GHCR_USERNAME")
+    password = os.environ.get("GHCR_TOKEN")
+
     result = _run_publish.finalize_publish(
         args.monolith_ref, args.frontend_ref, args.release_ref, args.commit, args.environment,
-        args.repo_root,
+        args.repo_root, username=username, password=password,
     )
 
     print(json.dumps({"published": result["published"], "decision": result["decision"]}, sort_keys=True))
