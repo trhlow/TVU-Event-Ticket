@@ -251,6 +251,39 @@ việc chạm vào GHCR thật lần đầu tiên trong toàn bộ dự án này
 trước khi đi tiếp, theo đúng ranh giới tôi tự đặt suốt đêm cho những hành động chạm registry/production
 thật.
 
+## 7a. Phát hiện 2026-08-11 (sau khi người dùng cho phép tiếp tục): `oras`/`crane` không đẩy được marker/evidence-set
+
+Trước khi viết plan cho publish job, thử thật `oras push` (công cụ duy nhất được nhắc tên sẵn trong
+`publish-decision.test.sh`'s bình luận, dòng ~1114 — "oras push writes a layer title and the ORAS docs
+show a manifest created timestamp") lên một registry tạm cục bộ. Xác nhận đúng như bình luận đó cảnh
+báo, và tệ hơn: **không có cờ nào của `oras push` tắt được hai annotation mặc định này** — kể cả
+`--annotation-file` trỏ tới file JSON rỗng `{}` cũng không xoá được `layers[0].annotations
+["org.opencontainers.image.title"]` và manifest-level `annotations["org.opencontainers.image.created"]`.
+Cả hai đều là annotation §2 cấm tuyệt đối (annotations vắng mặt ở cả 3 cấp) — một `oras push` mặc định
+sẽ khiến `publish-decision.sh` coi marker/evidence-set đó là CONFLICT ngay từ vòng kiểm envelope đầu
+tiên.
+
+`crane` cũng không dùng được cho việc này theo cách khác: `crane push` chỉ nhận một tarball `docker
+save` của một **image thật** (đã dùng đúng việc này cho monolith/frontend ở `local-registry.py`), không
+có subcommand nào đẩy một manifest JSON tuỳ ý kèm nhiều blob custom media type như evidence-set/marker
+cần.
+
+**Kết luận: phải tự viết một client OCI Distribution API tối giản** (`oci-push.py`) — chỉ 2 việc, cả hai
+đều là HTTP thô qua `urllib.request` (thư viện chuẩn, không thêm dependency, giữ đúng ràng buộc "self-
+contained trong `.github/scripts/`"):
+
+1. `push_blob(registry_ref, content_bytes) -> digest` — `POST /v2/<repo>/blobs/uploads/` rồi `PUT`
+   phần location trả về kèm digest, bỏ qua nếu blob đã tồn tại (`HEAD` trước để idempotent).
+2. `push_manifest(registry_ref, manifest_bytes, content_type, tag) -> digest` — `PUT
+   /v2/<repo>/manifests/<tag>` với đúng `Content-Type` header, **`manifest_bytes` phải là
+   `canonical_bytes(manifest_dict)` y hệt bytes mà `publish-decision.sh` sẽ tính lại digest từ đó** —
+   registry lưu nguyên byte đã PUT, không tự viết lại JSON, nên đây là cách duy nhất giữ digest tự-nhất-
+   quán giữa lúc đẩy và lúc decision đọc lại.
+
+Không công cụ nào tự thêm field ngoài ý muốn theo cách này — mọi byte trong manifest do chính
+`envelope.py`/một hàm tương tự (`evidence_set_envelope_for`, chưa viết) tạo ra, y hệt cách
+`envelope_for()` đã tạo marker envelope không annotation từ đầu.
+
 ## 7. Việc để lại cho plan tiếp theo (`writing-plans`)
 
 Vì đây là kiến trúc lớn chưa từng có dòng code nào, thực thi theo đúng nhịp SDD đã dùng cho 3a/3b: chia
