@@ -11,6 +11,17 @@ quyết định, và đánh dấu toàn bộ tài liệu là **CHỜ NGƯỜI D�
 quyết định kiến trúc nào ở đây được xem là chốt cứng. Việc triển khai (xem plan đi kèm) chỉ bắt đầu ở
 phần không cần secret thật và hoàn toàn có thể quay lại nếu người dùng muốn đổi hướng.
 
+**Tự sửa lỗi ngay trong đêm viết tài liệu này:** bản đầu tiên chọn syft+grype+gitleaks+docker
+export/save như công cụ "còn mở để chọn". Sai — `.github/contracts/predicates/vulnerabilityScan.schema.json`,
+`.../layerSecretScan.schema.json`, `.../filesystemSecretScan.schema.json`, và
+`evidence-verification-contract-design.md` §7 (dòng 302, 313-343) đã **đóng băng sẵn**: Trivy cho cả
+vulnerability scan lẫn hai loại secret scan, `crane export`/`crane blob` cho extraction, cộng một bảng
+byte-cap/timeout đầy đủ. Phát hiện được vì đọc lại predicate schema trước khi viết plan, đúng kỷ luật
+"đọc code/spec thật trước khi tin giả định" đã dùng suốt đêm cho 3a/3b — không phải một lựa chọn kiến
+trúc còn mở, sửa lại ở §3.2/§3.3/§3.3a bên dưới. syft cho SBOM vẫn giữ nguyên (không bị spec pin tên
+tool, chỉ pin định dạng SPDX v2.3). Đã cài đúng bộ công cụ cục bộ (syft 1.51.0, Trivy 0.73.0,
+go-containerregistry/crane 0.21.9 qua scoop) để có thể build+test thật thay vì đoán hành vi output.
+
 ## 1. Phạm vi
 
 Hai mảnh còn thiếu của pipeline release-gate, cả hai đã CI-verified xong ở `publish-decision.sh`:
@@ -66,28 +77,53 @@ qua toàn bộ test suite, không phải một bản build lại có thể lệc
 `envelope.py`'s `PREDICATE_TYPES["sbom"]` đã cố định `https://spdx.dev/Document/v2.3` — syft xuất thẳng
 định dạng này (`syft <image> -o spdx-json`), không cần chuyển đổi. Chạy trên cả hai image.
 
-### 3.2 Vulnerability scan — grype, ăn thẳng SBOM của syft
+### 3.2 Vulnerability scan — Trivy, KHÔNG phải grype
 
-`grype sbom:<sbom-file>` thay vì `grype <image>` — không kéo lại image lần hai, và bảo đảm scan đúng
-những package mà SBOM đã liệt kê (hai bước lệch nhau là đúng thứ digest/size binding của §5.7 tồn tại
-để chặn ở tầng envelope; áp dụng cùng kỷ luật ở tầng nội dung). Output JSON của grype được bọc trong
-predicate tuỳ biến `https://evts.id.vn/attestations/vulnerabilityScan/v1` (đã có trong `PREDICATE_TYPES`
-và `.github/contracts/predicates/vulnerabilityScan.schema.json`).
+**Sửa lại so với bản đầu của tài liệu này** (viết trước khi đọc kỹ `.github/contracts/predicates/
+vulnerabilityScan.schema.json` và `evidence-verification-contract-design.md` §7): công cụ đã bị spec
+**cố định**, không phải lựa chọn còn mở. Bằng chứng, đọc trực tiếp từ code đã có:
 
-### 3.3 Secret scan — gitleaks, hai lượt khác nhau (§5's phân biệt layer/filesystem)
+- `vulnerabilityScan.schema.json`'s mô tả: "vulnerability scanning uses Trivy's own DB, not a
+  repo-tracked ruleset".
+- `evidence-verification-contract-design.md:302`: "Trivy vulnerability DB chỉ phục vụ vulnerability
+  scanning".
+- `evidence-verification-contract-design.md:271`: `fixAvailable` phải suy từ **`FixedVersion` của
+  Trivy** — một field đặt tên theo đúng Trivy's JSON output shape, không phải suy luận chung.
 
-Spec (`evidence-verification-contract-design.md:315-316`) đã tách rõ: `layerSecretScan` quét **từng
-layer riêng** (bắt secret bị xoá ở layer sau nhưng vẫn nằm trong image); `filesystemSecretScan` quét
-**rootfs đã flatten**. Hai công cụ khác nhau cho hai việc:
+Dùng `trivy image --format json <image>` (hoặc `trivy image --input <tarball>` để ăn đúng byte đã build,
+theo nguyên tắc §3.0), field `vulnerabilityDb.{identity,digest,updatedAt}` đọc từ Trivy's DB metadata
+(`trivy image --format json` bao gồm `Metadata.DBUpdatedAt` trong output nếu bật; xác nhận version chính
+xác ở task đầu tiên chạy thật, không đoán trước). `findings[].fixAvailable` = `FixedVersion` non-empty.
 
-- **filesystemSecretScan**: `docker create` container tạm từ image → `docker export` → `gitleaks detect
-  --source <rootfs>` trên rootfs đã giải nén.
-- **layerSecretScan**: `docker save` đã có tarball layer riêng (`manifest.json` liệt kê từng
-  `<layer-digest>/layer.tar`); giải nén **từng layer riêng**, chạy gitleaks trên mỗi layer, gộp kết quả.
-  Đây là bước duy nhất không có sẵn tool đóng gói — cần một script nhỏ lặp qua layer list.
+### 3.3 Secret scan — Trivy `fs --scanners secret`, extraction bằng `crane`, KHÔNG phải gitleaks/docker
 
-Cùng một tool (gitleaks) cho cả hai để giảm số công cụ phải bảo trì trong một đồ án capstone; khác nhau
-ở **input** đưa vào, không phải ở engine quét.
+**Cùng lỗi, cùng chỗ sửa.** `evidence-verification-contract-design.md` §7 (dòng 313-329) đã đóng băng cả
+tool lẫn cách extract, không để collector tự chọn:
+
+| | Công cụ extract | Whiteout | Quét bằng |
+|---|---|---|---|
+| `filesystemSecretScan` (flatten) | `crane export <image> -` (version + digest pinned) | **áp dụng** | `trivy fs --scanners secret` trên cây đã giải nén |
+| `layerSecretScan` (per-layer) | `crane blob <image>@<layer-digest>` từng layer riêng | **bỏ qua có chủ đích** | `trivy fs --scanners secret` trên từng layer, gộp kết quả |
+
+`crane` không phải `docker export`/`docker save`: `crane export` ghi thẳng ra tarball rootfs đã áp dụng
+whiteout mà không cần daemon chạy container thật (nhanh hơn, không cần quyền tạo container). `crane blob`
+lấy đúng blob nén của một layer theo digest, không unpack layer khác — đúng nghĩa "extract riêng".
+
+`ruleset.{version,digest}` phải là version+digest của **một file được Git track** trong repo (không phải
+config mặc định của Trivy) — mirror luật "policy phải từ file Git track, không phải workflow input" đã
+áp dụng ở mục 6 của master spec. Cần tạo file ruleset đó (Trivy hỗ trợ custom secret rules qua
+`--secret-config`); nội dung cụ thể là việc của task viết `collect-secret-scans.sh`, không phải của tài
+liệu thiết kế này.
+
+### 3.3a Giới hạn byte và timeout — đã pin sẵn trong spec, không phải chọn
+
+Bảng cap đầy đủ nằm ở `evidence-verification-contract-design.md:331-343`, phải copy nguyên vào code khi
+viết `collect-secret-scans.sh`/`collect-sbom-vuln.sh`, không diễn giải lại: report blob 8 MiB, carrier/
+marker manifest 64 KiB, marker payload 256 KiB, một layer blob (compressed) khi per-layer scan 2 GiB,
+tổng layer compressed một image 8 GiB, tổng bytes sau giải nén 24 GiB, số file sau giải nén 2 000 000,
+timeout mỗi lần extract+scan 20 phút, `findings` tối đa 100 mục rồi `truncated: true`. Descriptor khai
+vượt cap ⇒ CONFLICT, không tải. Vượt cap **trong lúc** giải nén ⇒ CONFLICT, dừng ngay. Mỗi lần extract
+phải dọn đĩa trong `trap`/`finally` kể cả khi fail.
 
 ### 3.4 Flyway inventory — chỉ monolith, đọc từ Postgres thật đã chạy migration
 
@@ -154,8 +190,10 @@ Vì đây là kiến trúc lớn chưa từng có dòng code nào, thực thi th
 nhỏ theo phần **không cần secret/registry thật trước**, phần cần push GHCR thật sau khi phần trước đã
 CI-verified độc lập:
 
-1. `collect-sbom-vuln.sh` (syft+grype) — test cục bộ với image build sẵn, không cần GHCR.
-2. `collect-secret-scans.sh` (gitleaks layer+filesystem) — cùng cách.
+1. `collect-sbom-vuln.sh` (syft cho SBOM, Trivy cho vulnerability scan) — test cục bộ với image build
+   sẵn, không cần GHCR.
+2. `collect-secret-scans.sh` (crane export/blob để extract, Trivy `fs --scanners secret` để quét,
+   layer+filesystem) — cùng cách.
 3. `collect-flyway-inventory.sh` (Postgres tạm) — cùng cách, tái dùng pattern Testcontainers.
 4. Ráp observation.json từ 3 script trên + validate bằng `observation.schema.json` — hoàn toàn local.
 5. Publish job thật (push GHCR, cần `permissions: packages: write` chạy trong CI) — chỉ sau khi 1-4 đã
