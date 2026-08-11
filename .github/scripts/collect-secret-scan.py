@@ -96,15 +96,14 @@ def _run_trivy_fs_secret(tree_path: str, ruleset_path: str) -> list:
     return findings
 
 
-def _cap_findings(all_findings: list) -> tuple:
-    truncated = len(all_findings) > MAX_FINDINGS
-    return all_findings[:MAX_FINDINGS], truncated
-
-
 _SEVERITY_RANK = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "UNKNOWN": 4}
 
 
-def _build_normalized_secret_view(document: dict, image_name: str, all_findings: list) -> dict:
+def _secret_scan_extra_fields(ruleset: dict, all_findings: list) -> dict:
+    """Computes policy/counts/declaredOutcome for a secret-scan document -- shared by
+    filesystemSecretScan and layerSecretScan, whose only difference is how all_findings was gathered.
+    Does NOT compute reportDigest: that must be done by the caller, last, once every other field of the
+    final document is in place (anti-circularity, see collect_vulnerability_scan's own comment)."""
     counts = {sev: {"withFix": 0, "withoutFix": 0} for sev in _SEVERITY_RANK}
     for finding in all_findings:
         sev = finding["severity"] if finding["severity"] in counts else "UNKNOWN"
@@ -116,23 +115,19 @@ def _build_normalized_secret_view(document: dict, image_name: str, all_findings:
                         f["packageName"], f["vulnerabilityId"], f["targetPath"]),
     )
     capped = sorted_findings[:MAX_FINDINGS]
-    report_digest = "sha256:" + hashlib.sha256(canonical.canonical_bytes(document)).hexdigest()
 
     # Any finding at all fails a secret scan (spec section 6) -- no severity threshold applies.
     declared_outcome = len(all_findings) > 0
 
     return {
-        "scanner": document["scanner"],
-        "target": {"imageDigest": "sha256:" + "0" * 64},
-        "reportDigest": report_digest,
+        "findings": capped,
+        "truncated": len(sorted_findings) > MAX_FINDINGS,
         # scanPolicy.ignoreFileDigest is hex64-shaped (no "sha256:" prefix), unlike ruleset.digest
         # (which the predicate document schema requires WITH the prefix) -- strip it here rather than
         # invent a second, separately-computed hash of the same tracked ruleset file.
         "policy": {"severityThreshold": "UNKNOWN", "ignoreList": [],
-                   "ignoreFileDigest": document["ruleset"]["digest"].removeprefix("sha256:")},
+                   "ignoreFileDigest": ruleset["digest"].removeprefix("sha256:")},
         "counts": counts,
-        "findings": capped,
-        "truncated": len(sorted_findings) > MAX_FINDINGS,
         "declaredOutcome": declared_outcome,
     }
 
@@ -172,18 +167,23 @@ def collect_filesystem_secret_scan(tarball_path: str, image_name: str, ruleset_p
 
             all_findings = _run_trivy_fs_secret(str(extracted_dir), ruleset_path)
 
-    findings, truncated = _cap_findings(all_findings)
+    extra = _secret_scan_extra_fields(ruleset, all_findings)
 
     document = {
         "scanner": {"name": "trivy", "version": _trivy_version()},
         "ruleset": ruleset,
         "target": image_name,
         "timestamp": _now_iso(),
-        "findings": findings,
-        "truncated": truncated,
+        "findings": extra["findings"],
+        "truncated": extra["truncated"],
+        "policy": extra["policy"],
+        "counts": extra["counts"],
+        "declaredOutcome": extra["declaredOutcome"],
     }
-    normalized = _build_normalized_secret_view(document, image_name, all_findings)
-    return document, normalized
+    # reportDigest must be computed LAST, over every other field already final -- the digest of a
+    # document that contains its own digest would be circular (Global Constraints).
+    document["reportDigest"] = "sha256:" + hashlib.sha256(canonical.canonical_bytes(document)).hexdigest()
+    return document
 
 
 def _trivy_version() -> str:
@@ -291,15 +291,20 @@ def collect_layer_secret_scan(tarball_path: str, image_name: str, ruleset_path: 
                 # present and extractable in this one).
                 all_findings.extend(_run_trivy_fs_secret(str(extracted_dir), ruleset_path))
 
-    findings, truncated = _cap_findings(all_findings)
+    extra = _secret_scan_extra_fields(ruleset, all_findings)
 
     document = {
         "scanner": {"name": "trivy", "version": _trivy_version()},
         "ruleset": ruleset,
         "target": image_name,
         "timestamp": _now_iso(),
-        "findings": findings,
-        "truncated": truncated,
+        "findings": extra["findings"],
+        "truncated": extra["truncated"],
+        "policy": extra["policy"],
+        "counts": extra["counts"],
+        "declaredOutcome": extra["declaredOutcome"],
     }
-    normalized = _build_normalized_secret_view(document, image_name, all_findings)
-    return document, normalized
+    # reportDigest must be computed LAST, over every other field already final -- the digest of a
+    # document that contains its own digest would be circular (Global Constraints).
+    document["reportDigest"] = "sha256:" + hashlib.sha256(canonical.canonical_bytes(document)).hexdigest()
+    return document

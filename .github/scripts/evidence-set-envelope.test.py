@@ -75,11 +75,11 @@ RULESET = HERE / "collector-fixtures" / "trivy-secret-ruleset.yaml"
 # Real evidence content -- exactly what the already-merged collectors produce, not a fixture invented
 # for this test.
 sbom_result = collect_sbom_mod.collect_sbom(str(TARBALL), "tvu-collector-test:tiny")
-vuln_document, _vuln_normalized = collect_vuln_mod.collect_vulnerability_scan(
+vuln_document = collect_vuln_mod.collect_vulnerability_scan(
     str(TARBALL), "tvu-collector-test:tiny", str(HERE / "collector-fixtures" / "vulnerability-ignore.yaml"))
-layer_document, _layer_normalized = collect_secret_mod.collect_layer_secret_scan(
+layer_document = collect_secret_mod.collect_layer_secret_scan(
     str(TARBALL), "tvu-collector-test:tiny", str(RULESET))
-fs_document, _fs_normalized = collect_secret_mod.collect_filesystem_secret_scan(
+fs_document = collect_secret_mod.collect_filesystem_secret_scan(
     str(TARBALL), "tvu-collector-test:tiny", str(RULESET))
 
 evidence_documents = {

@@ -58,8 +58,8 @@ fs_schema = json.loads(FS_SCHEMA_PATH.read_text(encoding="utf-8"))
 fs_registry = build_registry(FS_SCHEMA_PATH)
 fs_validator = jsonschema.Draft202012Validator(fs_schema, registry=fs_registry)
 
-fs_document, fs_normalized = collect_filesystem_secret_scan(str(TARBALL), "tvu-collector-test:tiny",
-                                                              str(RULESET))
+fs_document = collect_filesystem_secret_scan(str(TARBALL), "tvu-collector-test:tiny",
+                                               str(RULESET))
 
 fs_errors = sorted(fs_validator.iter_errors(fs_document), key=str)
 report("filesystemSecretScan document validates exactly",
@@ -76,10 +76,10 @@ report("filesystemSecretScan ruleset names the tracked file's real version and a
        and fs_document["ruleset"]["digest"].startswith("sha256:"),
        f"ruleset={fs_document.get('ruleset')!r}")
 
-report("filesystemSecretScan normalized view has declaredOutcome False for a clean fixture "
+report("filesystemSecretScan document has declaredOutcome False for a clean fixture "
        "(secret scan fails on ANY finding, and this fixture has none)",
-       fs_normalized.get("declaredOutcome") is False,
-       f"declaredOutcome={fs_normalized.get('declaredOutcome')!r}")
+       fs_document.get("declaredOutcome") is False,
+       f"declaredOutcome={fs_document.get('declaredOutcome')!r}")
 
 collect_layer_secret_scan = _module.collect_layer_secret_scan
 
@@ -87,8 +87,8 @@ layer_schema = json.loads(LAYER_SCHEMA_PATH.read_text(encoding="utf-8"))
 layer_registry = build_registry(LAYER_SCHEMA_PATH)
 layer_validator = jsonschema.Draft202012Validator(layer_schema, registry=layer_registry)
 
-layer_document, layer_normalized = collect_layer_secret_scan(str(TARBALL), "tvu-collector-test:tiny",
-                                                               str(RULESET))
+layer_document = collect_layer_secret_scan(str(TARBALL), "tvu-collector-test:tiny",
+                                            str(RULESET))
 
 layer_errors = sorted(layer_validator.iter_errors(layer_document), key=str)
 report("layerSecretScan document validates exactly",
@@ -99,9 +99,9 @@ report("layerSecretScan findings is empty for this clean fixture",
        layer_document.get("findings") == [] and layer_document.get("truncated") is False,
        f"findings={layer_document.get('findings')!r}, truncated={layer_document.get('truncated')!r}")
 
-report("layerSecretScan normalized view has declaredOutcome False for a clean fixture",
-       layer_normalized.get("declaredOutcome") is False,
-       f"declaredOutcome={layer_normalized.get('declaredOutcome')!r}")
+report("layerSecretScan document has declaredOutcome False for a clean fixture",
+       layer_document.get("declaredOutcome") is False,
+       f"declaredOutcome={layer_document.get('declaredOutcome')!r}")
 
 # A tarball with a declared layer size the collector cannot possibly match must raise CollectorError,
 # not silently under-report -- this is the "descriptor declares a value the collector cannot trust"
