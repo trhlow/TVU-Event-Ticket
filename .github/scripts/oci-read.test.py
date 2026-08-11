@@ -116,6 +116,30 @@ try:
     except Exception as exc:  # noqa: BLE001
         report("an unreachable registry raises ReadError from read_object_lookup", False,
                f"raised {type(exc).__name__} instead")
+
+    blob_content = b'{"marker-lookup-plan": "fetch_blob check"}'
+    blob_digest = oci_push.push_blob(registry_ref, blob_content)
+
+    fetch_blob = oci_read.fetch_blob
+
+    blob_result = fetch_blob(registry_ref, blob_digest, size_cap=65536)
+    report("fetch_blob verifies size and digest for a real pushed blob",
+           blob_result["sizeVerified"] is True and blob_result["digestVerified"] is True,
+           f"blob_result={blob_result!r}")
+    report("fetch_blob returns the exact bytes pushed",
+           blob_result["raw"] == blob_content,
+           f"raw is {blob_result['raw']!r}")
+
+    tiny_blob_result = fetch_blob(registry_ref, blob_digest, size_cap=1)
+    report("a blob over the size cap is refused before download",
+           tiny_blob_result["sizeVerified"] is False and tiny_blob_result["raw"] is None,
+           f"tiny_blob_result={tiny_blob_result!r}")
+
+    wrong_digest = "sha256:" + "0" * 64
+    missing_blob_result = fetch_blob(registry_ref, wrong_digest, size_cap=65536)
+    report("fetching a nonexistent blob digest returns sizeVerified False, not an exception",
+           missing_blob_result["sizeVerified"] is False and missing_blob_result["raw"] is None,
+           f"missing_blob_result={missing_blob_result!r}")
 finally:
     if container_id:
         subprocess.run(["docker", "stop", container_id], capture_output=True, text=True, timeout=30,

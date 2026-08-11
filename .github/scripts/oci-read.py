@@ -9,7 +9,7 @@ import re
 import urllib.error
 import urllib.request
 
-__all__ = ["fetch_manifest", "read_object_lookup", "ReadError"]
+__all__ = ["fetch_manifest", "read_object_lookup", "fetch_blob", "ReadError"]
 
 _WWW_AUTHENTICATE_PARAM = re.compile(r'(\w+)="([^"]*)"')
 
@@ -147,3 +147,30 @@ def read_object_lookup(registry_ref: str, ref: str,
     if not digest:
         return {"status": "error", "queriedRef": queried_ref, "detail": "no Docker-Content-Digest header"}
     return {"status": "present", "queriedRef": queried_ref, "digest": digest}
+
+
+def fetch_blob(registry_ref: str, digest: str, size_cap: int,
+                username: str = None, password: str = None) -> dict:
+    host, repo = _split_ref(registry_ref)
+    url = f"http://{host}/v2/{repo}/blobs/{digest}"
+
+    try:
+        head_resp = _request("HEAD", url, username=username, password=password)
+    except ReadError:
+        return {"sizeVerified": False, "digestVerified": False, "raw": None}
+
+    content_length = head_resp.headers.get("Content-Length")
+    if content_length is None or int(content_length) > size_cap:
+        return {"sizeVerified": False, "digestVerified": False, "raw": None}
+
+    get_resp = _request("GET", url, username=username, password=password)
+    raw = get_resp.read()
+
+    size_verified = len(raw) == int(content_length)
+    actual_digest = "sha256:" + hashlib.sha256(raw).hexdigest()
+    digest_verified = actual_digest == digest
+
+    if not (size_verified and digest_verified):
+        return {"sizeVerified": size_verified, "digestVerified": digest_verified, "raw": None}
+
+    return {"sizeVerified": True, "digestVerified": True, "raw": raw}
