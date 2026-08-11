@@ -75,5 +75,31 @@ except Exception as exc:  # noqa: BLE001
     report("a nonexistent artifact path raises AttestationCheckError", False,
            f"raised {type(exc).__name__} instead")
 
+verify_attestation_with_duplicates = _module.verify_attestation_with_duplicates
+
+unsigned_file2 = HERE / "collector-fixtures" / "definitely-unsigned-2.txt"
+unsigned_file2.write_text("nobody has ever attested this file either", encoding="utf-8")
+try:
+    dup_result = verify_attestation_with_duplicates(
+        str(unsigned_file2),
+        expected_repo="trhlow/TVU-Event-Ticket",
+        expected_signer_workflow="trhlow/TVU-Event-Ticket/.github/workflows/ci.yml@refs/heads/main",
+        expected_predicate_type="https://slsa.dev/provenance/v1",
+        expected_source_digest="0" * 40,
+    )
+    report("an unsigned artifact returns attestationVerified False with empty duplicates",
+           dup_result.get("attestationVerified") is False
+           and dup_result.get("duplicateStatements") == []
+           and dup_result.get("predicateBody") is None,
+           f"dup_result={dup_result!r}")
+    report("an unsigned artifact's paginationComplete is True (zero results is a complete, "
+           "not partial, answer)",
+           dup_result.get("paginationComplete") is True,
+           f"paginationComplete={dup_result.get('paginationComplete')!r}")
+except AttestationCheckError:
+    pass
+finally:
+    unsigned_file2.unlink()
+
 print(f"\npassed={passed} failed={failed}")
 sys.exit(1 if failed else 0)
