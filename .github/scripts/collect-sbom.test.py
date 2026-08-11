@@ -53,6 +53,16 @@ report("document.packages length matches packageCount",
        len(document.get("packages", [])) == result.get("packageCount"),
        f"{len(document.get('packages', []))} != {result.get('packageCount')}")
 
+import hashlib
+sys.path.insert(0, str(HERE))
+import canonical
+
+report("result carries canonicalDigest/canonicalSize of the SPDX document",
+       result.get("canonicalDigest")
+       == "sha256:" + hashlib.sha256(canonical.canonical_bytes(result["document"])).hexdigest()
+       and result.get("canonicalSize") == len(canonical.canonical_bytes(result["document"])),
+       f"canonicalDigest={result.get('canonicalDigest')!r}, canonicalSize={result.get('canonicalSize')!r}")
+
 # Negative case: a tarball that is not a valid docker-archive must raise CollectorError, not crash
 # with a bare subprocess traceback -- a caller (the observation assembler) needs a catchable failure.
 bogus = HERE / "collector-fixtures" / "not-a-real-tarball.tar"

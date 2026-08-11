@@ -6,8 +6,11 @@ built and tested (design doc section 3.0: the byte that was tested is the byte t
 by tag would risk syft resolving a different image than the one under test if the daemon's tag moved
 between build and collect.
 """
+import hashlib
 import json
 import subprocess
+
+import canonical
 
 __all__ = ["collect_sbom", "CollectorError"]
 
@@ -48,7 +51,13 @@ def collect_sbom(tarball_path: str, image_name: str) -> dict:
     if not isinstance(packages, list):
         raise CollectorError(f"SPDX document's 'packages' is {type(packages).__name__}, expected list")
 
-    return {"document": document, "packageCount": len(packages)}
+    canonical_payload = canonical.canonical_bytes(document)
+    return {
+        "document": document,
+        "packageCount": len(packages),
+        "canonicalDigest": "sha256:" + hashlib.sha256(canonical_payload).hexdigest(),
+        "canonicalSize": len(canonical_payload),
+    }
 
 
 if __name__ == "__main__":
