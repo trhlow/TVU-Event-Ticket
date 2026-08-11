@@ -33,8 +33,14 @@ _PREDICATE_TYPE_KEYS = {
 
 
 def read_evidence_set_attestation(registry_ref: str, evidence_set_tag: str, kind: str,
-                                   subject_digest: str, expected_source_repo: str,
-                                   expected_signer_workflow: str) -> dict:
+                                   subject_digest: str, source_revision: str,
+                                   expected_source_repo: str, expected_signer_workflow: str,
+                                   report_digest: str = None) -> dict:
+    # subject_digest (what the attestation is ABOUT -- the report's own digest) and source_revision
+    # (which commit the signing workflow ran from, gh's own --source-digest flag) are two different
+    # facts -- an earlier draft of this function conflated them into one parameter, which would have
+    # asked gh to verify the wrong thing entirely. Kept as two explicit parameters so a caller cannot
+    # make that mistake by accident.
     predicate_type = _envelope.PREDICATE_TYPES[_PREDICATE_TYPE_KEYS[kind]]
     artifact_ref = f"oci://{registry_ref}:{evidence_set_tag}"
 
@@ -42,15 +48,27 @@ def read_evidence_set_attestation(registry_ref: str, evidence_set_tag: str, kind
         result = verify_attestation_with_duplicates(
             artifact_ref, expected_repo=expected_source_repo,
             expected_signer_workflow=expected_signer_workflow,
-            expected_predicate_type=predicate_type, expected_source_digest=subject_digest,
+            expected_predicate_type=predicate_type, expected_source_digest=source_revision,
         )
     except AttestationCheckError as exc:
         return {"status": "error", "queriedRef": artifact_ref, "detail": str(exc)}
 
     if not result["attestationVerified"]:
+        # scanAttestationAbsent/sbomAttestationAbsent require `queried`, the FULL selection tuple --
+        # not a queriedRef string. SBOM's tuple has no reportDigest (SPDX carries none, spec section 4);
+        # the 3 scan kinds require it.
+        queried = {
+            "repository": expected_source_repo,
+            "workflow": expected_signer_workflow,
+            "sourceRevision": source_revision,
+            "subjectDigest": subject_digest,
+            "predicateType": predicate_type,
+        }
+        if kind != "sbom":
+            queried["reportDigest"] = report_digest or ("sha256:" + "0" * 64)
         return {
-            "status": "absent", "queriedRef": artifact_ref, "reason": "no_matching_attestation",
-            "paginationComplete": result["paginationComplete"],
+            "status": "absent", "reason": "no_matching_attestation",
+            "paginationComplete": result["paginationComplete"], "queried": queried,
         }
 
     normalized_predicate = (_build_normalized_report(kind, result["predicateBody"], subject_digest)
