@@ -172,9 +172,7 @@ def collect_filesystem_secret_scan(tarball_path: str, image_name: str, ruleset_p
 
             all_findings = _run_trivy_fs_secret(str(extracted_dir), ruleset_path)
 
-    predicate_findings = [{"severity": f["severity"], "fixAvailable": f["fixAvailable"]}
-                           for f in all_findings]
-    findings, truncated = _cap_findings(predicate_findings)
+    findings, truncated = _cap_findings(all_findings)
 
     document = {
         "scanner": {"name": "trivy", "version": _trivy_version()},
@@ -293,9 +291,7 @@ def collect_layer_secret_scan(tarball_path: str, image_name: str, ruleset_path: 
                 # present and extractable in this one).
                 all_findings.extend(_run_trivy_fs_secret(str(extracted_dir), ruleset_path))
 
-    predicate_findings = [{"severity": f["severity"], "fixAvailable": f["fixAvailable"]}
-                           for f in all_findings]
-    findings, truncated = _cap_findings(predicate_findings)
+    findings, truncated = _cap_findings(all_findings)
 
     document = {
         "scanner": {"name": "trivy", "version": _trivy_version()},
