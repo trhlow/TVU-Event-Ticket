@@ -118,7 +118,8 @@ try:
 
     result = read_marker_lookup(registry_ref, "prepared-testcommit",
                                  expected_source_repo="trhlow/TVU-Event-Ticket",
-                                 expected_signer_workflow="trhlow/TVU-Event-Ticket/.github/workflows/ci.yml@refs/heads/main")
+                                 expected_signer_workflow="trhlow/TVU-Event-Ticket/.github/workflows/ci.yml@refs/heads/main",
+                                 source_revision="a" * 40)
 
     report("read_marker_lookup reports present with the real markerDigest",
            result.get("status") == "present" and result.get("markerDigest") == expected_marker_digest,
@@ -145,7 +146,8 @@ try:
 
     absent_result = read_marker_lookup(registry_ref, "this-tag-was-never-pushed",
                                         expected_source_repo="trhlow/TVU-Event-Ticket",
-                                        expected_signer_workflow="trhlow/TVU-Event-Ticket/.github/workflows/ci.yml@refs/heads/main")
+                                        expected_signer_workflow="trhlow/TVU-Event-Ticket/.github/workflows/ci.yml@refs/heads/main",
+                                        source_revision="a" * 40)
     report("a missing marker tag reports absent",
            absent_result.get("status") == "absent",
            f"absent_result={absent_result!r}")

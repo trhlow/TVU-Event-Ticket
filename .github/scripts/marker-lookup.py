@@ -36,7 +36,7 @@ _PAYLOAD_SIZE_CAP = 256 * 1024
 
 
 def read_marker_lookup(registry_ref: str, tag: str, expected_source_repo: str,
-                        expected_signer_workflow: str,
+                        expected_signer_workflow: str, source_revision: str,
                         username: str = None, password: str = None) -> dict:
     queried_ref = f"{registry_ref}:{tag}"
     manifest_result = fetch_manifest(registry_ref, tag, size_cap=_MANIFEST_SIZE_CAP,
@@ -86,12 +86,16 @@ def read_marker_lookup(registry_ref: str, tag: str, expected_source_repo: str,
                 except (ValueError, UnicodeDecodeError):
                     content = None
 
+    # expected_source_digest is gh's --source-digest flag: the git commit sha1 the signing workflow
+    # ran from, NOT the marker's own sha256 digest. subjectDigest (what the attestation is about) and
+    # sourceRevision (which commit signed it) are two different facts -- this exact conflation has
+    # already been found and fixed in evidence-set-attestation.py and evidence-set-lookup.py.
     verification_result = verify_attestation(
         f"oci://{registry_ref}:{tag}",
         expected_repo=expected_source_repo,
         expected_signer_workflow=expected_signer_workflow,
         expected_predicate_type=_envelope.PREDICATE_TYPES["markerProvenance"],
-        expected_source_digest=marker_digest or "",
+        expected_source_digest=source_revision,
     )
     verification = {
         "attestationVerified": verification_result["attestationVerified"],
