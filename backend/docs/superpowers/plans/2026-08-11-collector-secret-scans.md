@@ -124,8 +124,14 @@ built-in rule set (no custom regex needed for this project — the predicate sch
 # these bytes would, and this file's own version is the version, not a separate ledger to fall out of
 # sync).
 version: "1"
-enable-builtin-rules: true
 ```
+
+**Correction, recorded after Task 2 actually ran Trivy against this file (commit `6d7e6a3`):** the
+`enable-builtin-rules: true` line originally here fails Trivy 0.73.0's real config schema —
+`enable-builtin-rules` is typed `[]string` (specific rule IDs to add on top of custom `rules:`), not a
+bool, so `true` fails to unmarshal and Trivy exits fatal before scanning. Confirmed by hand that
+omitting the field entirely still applies Trivy's full builtin rule set by default, which is this
+project's actual intent — the version above (without that line) is what's actually committed.
 
 - [ ] **Step 2: Write the failing test**
 
@@ -587,6 +593,13 @@ absolute paths and path traversal from the tar itself — a real, not cosmetic, 
 contents come from a container image, which is untrusted input by the same logic the byte caps exist
 for.
 
+**Correction, recorded after Task 2 actually ran this code (commit `6d7e6a3`):** `filter="data"` also
+rejects the fixture's real absolute-target symlinks (busybox's `bin/arch -> /bin/busybox`) with
+`AbsoluteLinkError`, on any OS — not the Windows-only quirk the note below originally guessed. The
+merged implementation uses `filter="tar"` instead (still blocks absolute member paths and traversal,
+permits absolute link targets) and catches `(tarfile.TarError, OSError)`. Task 3 below has already been
+updated to use the same fix from the start rather than repeating the discovery.
+
 - [ ] **Step 5: Run test to verify it passes**
 
 Run: `cd .github/scripts && python collect-secret-scan.test.py`
@@ -752,8 +765,15 @@ def collect_layer_secret_scan(tarball_path: str, image_name: str, ruleset_path: 
                                     f"layer {digest} exceeded the {MAX_EXTRACTED_FILE_COUNT} file "
                                     f"cap while extracting -- stopping immediately"
                                 )
-                        tf.extractall(extracted_dir, filter="data")
-                except tarfile.TarError as exc:
+                        # filter="tar", not "data": Task 2 found for real that this image's absolute-
+                        # target symlinks (e.g. busybox's bin/arch -> /bin/busybox) trip Python 3.12's
+                        # "data" filter's AbsoluteLinkError, on any OS -- not a Windows-only quirk as
+                        # first assumed. "tar" keeps the guard that matters for untrusted content
+                        # (absolute *member* paths, path traversal) without rejecting absolute link
+                        # *targets*. See collect_filesystem_secret_scan's own comment for the full
+                        # reasoning; use the identical filter here for the identical reason.
+                        tf.extractall(extracted_dir, filter="tar")
+                except (tarfile.TarError, OSError) as exc:
                     raise CollectorError(f"layer {digest} did not extract as a tar/gzip stream: {exc}") from exc
 
                 # Whiteouts are deliberately NOT applied here -- that is the entire point of a
