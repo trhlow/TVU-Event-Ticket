@@ -112,7 +112,13 @@ def read_object_lookup(registry_ref: str, ref: str,
                         username: str = None, password: str = None) -> dict:
     host, repo = _split_ref(registry_ref)
     url = f"http://{host}/v2/{repo}/manifests/{ref}"
-    queried_ref = f"{registry_ref}:{ref}"
+    # OCI convention (matching this project's own real fixtures, e.g.
+    # ghcr.io/owner/name/monolith@sha256:...): a digest reference is joined with "@", a tag with ":".
+    # Both address the same /v2/<repo>/manifests/<reference> endpoint -- only queriedRef's own
+    # separator needs to distinguish them, since that string is what a human or the decision reads
+    # back later, not what the HTTP request itself uses.
+    separator = "@" if ref.startswith("sha256:") else ":"
+    queried_ref = f"{registry_ref}{separator}{ref}"
     # A HEAD without an Accept header is not equivalent to a HEAD with one: registry:2 content-negotiates
     # even on HEAD, and defaults to a legacy schema this pipeline never pushes, returning a real 404 for
     # a manifest that genuinely exists. Confirmed by hand against a live registry:2 instance.
