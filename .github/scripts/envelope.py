@@ -27,6 +27,7 @@ PREDICATE_TYPES = {
     "vulnerabilityScan": "https://evts.id.vn/attestations/vulnerabilityScan/v1",
     "layerSecretScan": "https://evts.id.vn/attestations/layerSecretScan/v1",
     "filesystemSecretScan": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
+    "evidenceSet": "https://evts.id.vn/attestations/evidenceSet/v1",
 }
 
 
