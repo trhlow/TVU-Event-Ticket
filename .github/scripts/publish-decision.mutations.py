@@ -129,6 +129,12 @@ MUTATIONS = {
         "require(True,"),
     "skipped_ref_unchecked": (
         "require(ref is None,", "require(True,"),
+    # Targets evidence_set_problems()'s own predicateType guard (a non-empty-string check, never
+    # tightened -- that check is a 3b-owned constant outside this commit's five-constant table, per
+    # Plan Decision A). Before 3a commit 6 this same `old` text also matched marker_problems()'s
+    # marker-level predicateType check; that guard is now an exact-match comparison (see
+    # marker_predicate_type_unpinned below) and no longer contains this substring, so this entry's
+    # match narrowed to evidence_set_problems() alone rather than going stale outright.
     "verification_predicate_ignored": (
         'predicate = verification.get("predicateType")\n'
         "    if type(predicate) is not str or not predicate:",
@@ -136,10 +142,24 @@ MUTATIONS = {
     "evidence_kinds_narrowed": (
         'for kind in ("sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"):',
         'for kind in ("sbom", "vulnerabilityScan"):'),
-    "evidence_predicate_ignored": (
+    # 3a commit 6 (spec section 7/10, Task 2 Step 3): marker_problems()'s per-kind evidence
+    # predicateType check tightened from "non-empty string" to "exact match against
+    # PREDICATE_TYPES[kind]". This entry used to target the old loose check; that text no longer
+    # exists (Task 2 replaced it), which without this update would report STALE on every run --
+    # not a caught mutation, a broken one. Retargeted to the new comparison rather than left to rot.
+    "evidence_predicate_type_unpinned": (
         '                predicate = entry.get("predicateType")\n'
-        "                if type(predicate) is not str or not predicate:",
+        "                if predicate != PREDICATE_TYPES[kind]:",
         '                predicate = entry.get("predicateType")\n                if False:'),
+    # 3a commit 6 (spec section 7/10, Task 2 Step 2): marker_problems()'s marker-level predicateType
+    # check tightened the same way, against PREDICATE_TYPES["markerProvenance"]. No prior entry
+    # named this guard -- verification_predicate_ignored above used to, until its `old` text stopped
+    # matching here (see the note beside it) and it silently narrowed to evidence_set_problems()
+    # instead, leaving this guard with no witness of its own.
+    "marker_predicate_type_unpinned": (
+        'predicate = verification.get("predicateType")\n'
+        '    if predicate != PREDICATE_TYPES["markerProvenance"]:',
+        'predicate = verification.get("predicateType")\n    if False:'),
     "evidence_result_ignored": (
         'if entry.get("passed") is not True:', "if False:"),
     "installed_rank_unchecked": (

@@ -184,6 +184,30 @@ for key, expected_uri in EXPECTED_PREDICATES.items():
            disagreement("release-envelope.schema.json", declared(constants, "predicateTypes", key),
                         "this suite", expected_uri))
 
+# 3a commit 6 (spec section 9): a fourth source joins the three above.
+# release-manifest.schema.json pins its own predicateType consts per evidence
+# kind/image (Task 1); envelope.py's PREDICATE_TYPES (Task 1, same commit) is
+# meant to be the single Python-side source of truth those consts were copied
+# from. Compare both against release-envelope.schema.json's predicateTypes so
+# a drift in any one of the four sources is caught, not just a drift between
+# the two newest ones.
+manifest_schema = json.loads((contracts / "release-manifest.schema.json").read_text(encoding="utf-8"))
+manifest_tightening = manifest_schema.get("allOf", [MISSING, MISSING])[1]
+if manifest_tightening is MISSING:
+    report("release-manifest.schema.json has a tightening branch to read predicateTypes from",
+           ["release-manifest.schema.json's allOf has no second branch"])
+else:
+    for key in EXPECTED_PREDICATES:
+        if key == "markerProvenance":
+            continue
+        manifest_const = declared(manifest_tightening, "evidence", key, "monolith", "predicateType")
+        report(f"release-manifest.schema.json states evidence.{key}.monolith.predicateType exactly (fourth source)",
+               disagreement("release-envelope.schema.json", declared(constants, "predicateTypes", key),
+                            "release-manifest.schema.json", manifest_const))
+        report(f"envelope.py's PREDICATE_TYPES[{key!r}] matches release-manifest.schema.json (fourth source)",
+               disagreement("envelope.py", envelope.PREDICATE_TYPES.get(key, MISSING),
+                            "release-manifest.schema.json", manifest_const))
+
 
 
 def const_paths(node, path=()):
