@@ -209,6 +209,48 @@ không bao giờ ghi gì — đây là điều publish job phải tự suy luậ
   xác nhận rõ ràng dù phạm vi tự động đã được mở rộng, vì đây là loại hành động "khó đảo ngược, ảnh
   hưởng trạng thái chia sẻ" mà hướng dẫn đứng của tôi luôn liệt là đáng cân nhắc dừng.
 
+## 6a. Phát hiện 2026-08-11 (sau khi cả 5 collector đã xong): "slice 4 lắp ráp cục bộ" không tồn tại
+như một bước độc lập
+
+Sau khi cả 5 collector evidence (sbom/vulnerabilityScan/layerSecretScan/filesystemSecretScan/
+flywayInventory) đã xong, đọc lại `markerContent`'s 7 field bắt buộc (`observation.schema.json:200-226`)
+để lên plan cho §7's mục 4 ("ráp observation.json ... hoàn toàn local") thì thấy: **§4 của tài liệu này
+đã tự nói trước điều này rồi** ("collector chạy trên artifact, tạo observation nháp CHƯA có OCI phần
+push — chưa thể, chưa push", dòng 177) — chỉ là §7's cách viết ("hoàn toàn local") mâu thuẫn với chính
+nó.
+
+Bảy field của `markerContent`, chia theo nguồn thật:
+
+| Field | Nguồn | Có thể lắp cục bộ, không cần registry? |
+|---|---|---|
+| `commit` | git commit SHA thật (CI context) | Có |
+| `environment` | hằng số/config CI | Có |
+| `frontendConfigFingerprint` | `backend/infra/production/scripts/frontend-config.sh` đã có sẵn, chạy `frontend_config_fingerprint <repo_root>` | Có — chưa có collector nào wrap nó, việc còn thiếu duy nhất ở đây |
+| `images.{monolith,frontend}` | digest thật của image đã push — cùng pattern `local_registry_ref` + `crane digest` collect-flyway-inventory.py đã dùng | Có (đã có pattern), nhưng chỉ đúng nghĩa sau khi image THẬT đã push lên GHCR — trong lúc chỉ test cục bộ, đây là digest của một registry tạm, không phải digest thật production sẽ đọc lại |
+| `provenance.{monolith,frontend}` | Attestation SLSA thật của lượt build CI đó — cần `revision` (=commit) + `subjectDigest` (=images.*) | **Không** — cần ngữ cảnh CI thật (workflow run, ai build), không phải thứ một script cục bộ tự bịa ra có ý nghĩa |
+| `evidence.evidenceSetDigest.{monolith,frontend}` | Digest của chính evidence-set carrier — **carrier đó phải được ĐÓNG GÓI thành OCI manifest thật** (SBOM+3 scan gộp thành layer, theo `release-evidence-set.schema.json`) rồi băm | **Không** — đây chính là việc publish job làm ở bước 4 (`Push evidence set`), không phải việc collector làm trước |
+| `evidence.{sbom,vulnerabilityScan,layerSecretScan,filesystemSecretScan}` (nội dung, không phải evidenceSetDigest) | 4 collector đã xong | Có |
+| `flywayInventory` | Collector đã xong | Có |
+
+Kết luận: **"slice 4" không phải một bước lắp ráp độc lập, hoàn toàn cục bộ như §7 đã viết ban đầu.**
+Hai trong bảy field (`provenance`, `evidenceSetDigest`) chỉ có nghĩa thật sau khi ảnh đã thật sự lên
+GHCR — đúng là điều publish job (bước 3-6 ở §4) làm, không phải một bước riêng trước đó. Một "observation
+lắp cục bộ hoàn toàn" sẽ phải tự bịa `provenance`/`evidenceSetDigest`, tức là validate cấu trúc schema
+đúng nhưng không chứng minh được gì thật — đúng loại "xanh giả" mà kỷ luật của cả phiên làm việc này tồn
+tại để chặn.
+
+Việc còn lại **thật sự độc lập, cục bộ, đáng làm ngay** trước khi đụng tới GHCR: một collector nhỏ wrap
+`frontend-config.sh` cho `frontendConfigFingerprint` (chưa có), và một hàm assembly ráp 4 evidence +
+flywayInventory + frontendConfigFingerprint + commit/environment thành một object **thiếu 3 field**
+(`images`, `provenance`, `evidence.evidenceSetDigest`) kèm test xác nhận nó khớp `markerContent` MINUS
+đúng 3 field đó — không giả vờ đây là một `markerContent` đầy đủ.
+
+Phần còn lại — publish job thật (§4's bước 1-8: push candidate, push evidence-set thật, ghi prepared/
+final marker, gọi `publish-decision.sh` đọc lại registry thật) — là khối việc lớn kế tiếp, và là khối
+việc chạm vào GHCR thật lần đầu tiên trong toàn bộ dự án này. Tôi dừng lại ở đây để người dùng xem qua
+trước khi đi tiếp, theo đúng ranh giới tôi tự đặt suốt đêm cho những hành động chạm registry/production
+thật.
+
 ## 7. Việc để lại cho plan tiếp theo (`writing-plans`)
 
 Vì đây là kiến trúc lớn chưa từng có dòng code nào, thực thi theo đúng nhịp SDD đã dùng cho 3a/3b: chia
