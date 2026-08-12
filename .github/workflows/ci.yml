@@ -726,8 +726,22 @@ jobs:
     permissions:
       contents: read
       packages: write
+      # This is the only job that READS attestations back (attest-verify.py shells out to
+      # `gh attestation verify` for the marker, the two carriers and all eight reports). An explicit
+      # permissions block makes every unlisted scope `none`, so without this line the verify call is
+      # unauthorised no matter what token it is handed.
+      attestations: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # `gh attestation verify oci://...` resolves the reference against the registry before it can
+      # look up anything about that digest, and these packages are private -- so this job needs a
+      # real registry login too, exactly as publish-attest does, even though it only reads.
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Deliberately does not download publish-prepare's own artifacts or reuse anything it computed --
       # design doc section 4's own rule is that the decision must never trust a job's memory of what it
@@ -737,6 +751,12 @@ jobs:
         env:
           GHCR_USERNAME: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # gh refuses to run inside Actions without this, by design ("To use GitHub CLI in a GitHub
+          # Actions workflow, set the GH_TOKEN environment variable"). attest-verify.py shells out to
+          # gh, so the whole decision died on it -- and it dies the same way whether the token is
+          # missing or merely unset under a different name, which is why it is spelled out here
+          # rather than left to gh's own discovery.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 .github/scripts/publish-finalize.py \
             --monolith-ref ghcr.io/trhlow/tvu-event-ticket/monolith \
