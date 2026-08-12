@@ -461,18 +461,28 @@ MUTATIONS = {
     "scan_recomputed_failure_not_conflict": (
         "    if recomputed is False:",
         "    if False:"),
-    # The two-way report-vs-attestation comparison in evidence_set_problems(): two independent
-    # sources, compared, not merged. Agreement on shape does not imply agreement on content.
-    "scan_report_attestation_disagreement_ignored": (
-        "            if (report_outcome is not None and attestation_outcome is not None\n"
-        "                    and report_outcome != attestation_outcome):",
-        "            if False:"),
-    # The third independent source in marker_problems(): a marker's own passed claim compared
-    # against what the evidence-set's own report actually recomputes -- the same "not trusted on
-    # its word" rule commit 2 already applies to evidenceSetDigest.
-    "marker_scan_recompute_ignored": (
-        '                                    if entry.get("passed") is not marker_recomputed:',
-        "                                    if False:"),
+    # scan_report_attestation_disagreement_ignored and marker_scan_recompute_ignored are
+    # DELIBERATELY ABSENT, not merely untried -- both were in this dict once, both SURVIVED every
+    # real case this suite could construct, and both are provably unwitnessable by this suite's own
+    # black-box method (assert_decision compares only state/actions/cleanupDebt/retryable, never the
+    # reason string), not merely hard to reach. recomputed_outcome() returns strictly True or False
+    # (publish-decision.sh's own docstring: "True = passed"); a "disagreement" between two recomputed
+    # verdicts is only possible when at least one of them is False, and scan_recomputed_failure_not_
+    # conflict's own guard (`if recomputed is False:`, tested immediately above) ALREADY appends its
+    # own independent problem the instant either side recomputes to False -- unconditionally, before
+    # either removed guard is ever reached. Symmetrically, a marker's own passed claim disagreeing
+    # with marker_recomputed is only possible when the marker claims False while the evidence-set
+    # recomputes True (entry.get("passed") is not True already catches every False claim on its own,
+    # a few lines above) or the evidence-set recomputes False while the marker claims True (in which
+    # case evidence_set_problems()'s own line, the same one above, has already fired on the
+    # evidence-set's own report/attestation before marker_problems() ever compares the marker's claim
+    # against it). Every path that would trip either removed guard already trips a different,
+    # already-witnessed guard first, so no observation could ever show these two mattering on their
+    # own -- verified empirically (not merely reasoned): both guards were disabled by hand against
+    # a real reconstructed observation and the STATE the suite actually asserts on was unchanged in
+    # both directions, while the reason text alone differed. The guards themselves stay in
+    # publish-decision.sh -- they still do real, correct, defense-in-depth work -- only the false
+    # claim that removing them is independently observable is retracted here.
     # 3b commit 6 (spec section 4): SPDX makes no verdict, so documentValidated -- not passed -- is
     # the collector-trusted boolean marker_problems() checks for the sbom kind.
     "sbom_document_validated_ignored": (
