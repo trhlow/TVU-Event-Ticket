@@ -17,13 +17,19 @@ if [[ -n "$previous_ref" && "$previous_ref" != "$release_ref" ]]; then
   printf '%s\n' "$previous_ref" >"$state_dir/previous-ref"
 fi
 
-echo "Building release $release_ref"
-# No --pull. Base images are pinned by digest in the Dockerfiles and compose file, so there is
-# nothing newer to fetch under the same reference; --pull only added a way for two builds of the
-# same commit to differ. Building on the VPS at deploy time is still not reproducible-by-
-# construction — the target remains build once in CI, push to a registry, deploy by digest — but
-# with the digests pinned the same commit now produces the same layers.
-compose build
+echo "Pulling verified release images for $release_ref"
+# Build once in CI, deploy by verified tag (roadmap 4.1) -- this host no longer builds anything.
+# monolith-<commit>/frontend-<commit> are the tags CI's publish pipeline promotes ONLY after
+# publish-decision.sh's own decision confirms COMPLETE (every collector, SBOM, vulnerability and
+# secret scan, and a real Sigstore-signed attestation on each one) -- pulling by that tag is what
+# ties this deploy to a release this pipeline already verified, not to whatever this host happened
+# to build from the same source.
+require_env_value GHCR_USERNAME
+require_env_value GHCR_TOKEN
+env_value GHCR_TOKEN | docker login ghcr.io --username "$(env_value GHCR_USERNAME)" --password-stdin
+export MONOLITH_IMAGE="ghcr.io/trhlow/tvu-event-ticket/monolith:monolith-${release_ref}"
+export FRONTEND_IMAGE="ghcr.io/trhlow/tvu-event-ticket/frontend:frontend-${release_ref}"
+compose pull monolith frontend
 
 # The datastores come up before anything touches them. migrate.sh's first act is
 # `compose exec -T postgres`, which on a machine that has never deployed is "service postgres is not
