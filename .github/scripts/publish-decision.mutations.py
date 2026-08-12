@@ -13,7 +13,17 @@ run that dies halfway leaves nothing half-mutated behind; the previous version e
 had to be restored by hand, which is also why its results were only reproducible by whoever ran it.
 
 Usage:  python3 .github/scripts/publish-decision.mutations.py
-Exit:   0 if every mutation was caught, 1 otherwise.
+        MUTATION_SHARD=<i> MUTATION_SHARDS=<n> python3 .github/scripts/publish-decision.mutations.py
+Exit:   0 if every mutation IN THIS SHARD was caught, 1 otherwise.
+
+Sharding exists because each mutation costs a full suite run, so the whole sweep is inherently
+serial-slow (~42 minutes on a CI runner) and it gated everything downstream of it -- including the
+publish chain, which itself takes about three minutes. The mutations are independent by
+construction: each one is applied to its own pristine copy in its own temporary workspace, and no
+mutation can observe another, so splitting them across parallel jobs changes nothing about what is
+tested. Every shard re-runs the baseline check, so a red baseline still refuses to report results
+whichever shard notices it first. With no MUTATION_SHARDS set the runner behaves exactly as before
+and sweeps everything, which is what a local run still does.
 """
 import os
 import pathlib
@@ -44,6 +54,23 @@ ENVELOPE_LIB = "envelope.py"
 # letting the children fall back to a `python3` that may be a stub. An explicit PYTHON_BIN still
 # wins: the caller may be testing a different interpreter on purpose.
 CHILD_ENV = {**os.environ, "PYTHON_BIN": os.environ.get("PYTHON_BIN") or sys.executable}
+
+
+def shard_of(names):
+    """The subset of `names` this invocation is responsible for, and a label saying which.
+
+    Deliberately a stride (`names[i::n]`), not contiguous blocks: the dict is written in rough
+    subject order, so contiguous slices would group the slowest neighbours (every evidence-set
+    mutation, say) into one shard and leave that job the straggler every run. A stride interleaves
+    them instead. Unset/1 shard means "everything", which is what a local run does.
+    """
+    total = int(os.environ.get("MUTATION_SHARDS", "1"))
+    if total <= 1:
+        return list(names), "all"
+    index = int(os.environ.get("MUTATION_SHARD", "0"))
+    if not 0 <= index < total:
+        raise SystemExit(f"MUTATION_SHARD={index} is outside 0..{total - 1}")
+    return list(names)[index::total], f"{index + 1}/{total}"
 
 # Each entry removes exactly one guard. The key is what gets reported when a mutation survives.
 MUTATIONS = {
@@ -599,8 +626,12 @@ def main():
             return 1
         print("baseline: suite green")
 
+        selected, shard_label = shard_of(MUTATIONS)
+        print(f"shard {shard_label}: {len(selected)} of {len(MUTATIONS)} mutations")
+
         survivors = []
-        for name, (old, new) in MUTATIONS.items():
+        for name in selected:
+            old, new = MUTATIONS[name]
             if old not in pristine:
                 # A mutation that no longer applies is not a caught mutation: the guard it targets
                 # may have been renamed, or removed entirely, and either way nothing was tested.
@@ -625,9 +656,9 @@ def main():
 
         print()
         if survivors:
-            print(f"{len(survivors)} of {len(MUTATIONS)} mutations survived: " + ", ".join(survivors))
+            print(f"{len(survivors)} of {len(selected)} mutations survived: " + ", ".join(survivors))
             return 1
-        print(f"all {len(MUTATIONS)} mutations caught")
+        print(f"all {len(selected)} mutations in shard {shard_label} caught")
         return 0
 
 
