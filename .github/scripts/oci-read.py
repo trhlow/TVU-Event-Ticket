@@ -25,6 +25,14 @@ def _split_ref(registry_ref: str) -> tuple:
     return host, repo
 
 
+def _scheme_for(host: str) -> str:
+    # Real registries (GHCR included) are HTTPS-only -- matching oci-push.py's own fix for the same
+    # real bug (confirmed 2026-08-12 against real GHCR: a hardcoded http:// worked fine against every
+    # local registry:2 test container this session but is wrong for anything real).
+    bare_host = host.split(":", 1)[0]
+    return "http" if bare_host in ("localhost", "127.0.0.1") else "https"
+
+
 def _request(method: str, url: str, headers: dict = None,
               username: str = None, password: str = None):
     headers = dict(headers or {})
@@ -79,7 +87,7 @@ def _exchange_bearer_token(unauthorized_exc, username, password):
 def fetch_manifest(registry_ref: str, ref: str, size_cap: int,
                     username: str = None, password: str = None) -> dict:
     host, repo = _split_ref(registry_ref)
-    url = f"http://{host}/v2/{repo}/manifests/{ref}"
+    url = f"{_scheme_for(host)}://{host}/v2/{repo}/manifests/{ref}"
     headers = {"Accept": "application/vnd.oci.image.manifest.v1+json, "
                           "application/vnd.docker.distribution.manifest.v2+json"}
 
@@ -111,7 +119,7 @@ def fetch_manifest(registry_ref: str, ref: str, size_cap: int,
 def read_object_lookup(registry_ref: str, ref: str,
                         username: str = None, password: str = None) -> dict:
     host, repo = _split_ref(registry_ref)
-    url = f"http://{host}/v2/{repo}/manifests/{ref}"
+    url = f"{_scheme_for(host)}://{host}/v2/{repo}/manifests/{ref}"
     # OCI convention (matching this project's own real fixtures, e.g.
     # ghcr.io/owner/name/monolith@sha256:...): a digest reference is joined with "@", a tag with ":".
     # Both address the same /v2/<repo>/manifests/<reference> endpoint -- only queriedRef's own
@@ -158,7 +166,7 @@ def read_object_lookup(registry_ref: str, ref: str,
 def fetch_blob(registry_ref: str, digest: str, size_cap: int,
                 username: str = None, password: str = None) -> dict:
     host, repo = _split_ref(registry_ref)
-    url = f"http://{host}/v2/{repo}/blobs/{digest}"
+    url = f"{_scheme_for(host)}://{host}/v2/{repo}/blobs/{digest}"
 
     try:
         head_resp = _request("HEAD", url, username=username, password=password)

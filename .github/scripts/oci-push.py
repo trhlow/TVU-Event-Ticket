@@ -33,6 +33,17 @@ def _split_ref(registry_ref: str) -> tuple:
     return host, repo
 
 
+def _scheme_for(host: str) -> str:
+    # Real registries (GHCR included) are HTTPS-only -- confirmed for real 2026-08-12, first CI run
+    # against ghcr.io: a hardcoded http:// here (fine against the throwaway registry:2 containers
+    # every test in this session uses, which serve plain HTTP) got a real 405 UNSUPPORTED from GHCR.
+    # localhost/127.0.0.1 are the only hosts this module or its tests ever point at a plain-HTTP
+    # registry, so they are the only ones that stay on http -- matching how docker/crane themselves
+    # only treat local-looking hosts as insecure-by-default.
+    bare_host = host.split(":", 1)[0]
+    return "http" if bare_host in ("localhost", "127.0.0.1") else "https"
+
+
 def _request(method: str, url: str, data: bytes = None, headers: dict = None,
              username: str = None, password: str = None):
     headers = dict(headers or {})
@@ -82,22 +93,23 @@ def _exchange_bearer_token(unauthorized_exc, username, password):
 
 def push_blob(registry_ref: str, content: bytes, username: str = None, password: str = None) -> str:
     host, repo = _split_ref(registry_ref)
+    scheme = _scheme_for(host)
     digest = "sha256:" + hashlib.sha256(content).hexdigest()
 
-    head_url = f"http://{host}/v2/{repo}/blobs/{digest}"
+    head_url = f"{scheme}://{host}/v2/{repo}/blobs/{digest}"
     try:
         _request("HEAD", head_url, username=username, password=password)
         return digest  # already present -- idempotent, nothing more to do
     except PublishError:
         pass  # not found (or any other HEAD failure) -- fall through to upload
 
-    start_url = f"http://{host}/v2/{repo}/blobs/uploads/"
+    start_url = f"{scheme}://{host}/v2/{repo}/blobs/uploads/"
     start_resp = _request("POST", start_url, username=username, password=password)
     location = start_resp.headers.get("Location")
     if not location:
         raise PublishError(f"POST {start_url} did not return a Location header to upload to")
     if location.startswith("/"):
-        location = f"http://{host}{location}"
+        location = f"{scheme}://{host}{location}"
     separator = "&" if "?" in location else "?"
     upload_url = f"{location}{separator}digest={digest}"
 
@@ -113,10 +125,11 @@ def push_blob(registry_ref: str, content: bytes, username: str = None, password:
 def push_manifest(registry_ref: str, manifest_dict: dict, content_type: str, tag: str,
                    username: str = None, password: str = None) -> str:
     host, repo = _split_ref(registry_ref)
+    scheme = _scheme_for(host)
     manifest_bytes = canonical.canonical_bytes(manifest_dict)
     expected_digest = "sha256:" + hashlib.sha256(manifest_bytes).hexdigest()
 
-    url = f"http://{host}/v2/{repo}/manifests/{tag}"
+    url = f"{scheme}://{host}/v2/{repo}/manifests/{tag}"
     resp = _request("PUT", url, data=manifest_bytes, headers={"Content-Type": content_type},
                      username=username, password=password)
     reported_digest = resp.headers.get("Docker-Content-Digest")
