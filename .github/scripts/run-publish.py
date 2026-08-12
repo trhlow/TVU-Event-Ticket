@@ -134,17 +134,29 @@ def push_publish_artifacts(monolith_tarball_path: str, frontend_tarball_path: st
         }
         docs_for_envelope = {"sbom": sbom_result["document"], "vulnerabilityScan": vuln_document,
                               "layerSecretScan": layer_document, "filesystemSecretScan": fs_document}
-        for kind, document in docs_for_envelope.items():
-            subjects.append({
-                "name": f"{image}-{kind}-report", "subjectName": registry_refs[image],
-                "digest": per_kind_digest[image][kind],
-                "predicateType": _envelope.PREDICATE_TYPES[kind], "predicate": document, "kind": "generic",
-            })
-
         evidence_set_digest[image] = _evidence_set_envelope.publish_evidence_set(
             registry_refs[image], f"evidence-{image}-sha-{commit}", docs_for_envelope,
             digests[image], sizes[image], username=username, password=password,
         )
+
+        # Every report attestation's SUBJECT is the evidence-set CARRIER, not the report's own blob
+        # digest -- and this is not a workaround, it is what the reader already requires:
+        # evidence-set-attestation.py verifies each kind against `oci://{registry_ref}:{evidence_set_tag}`
+        # and distinguishes the four kinds purely by predicateType. It also has to be this way
+        # mechanically: a report is a LAYER BLOB inside the carrier manifest, not a manifest of its own,
+        # so push-to-registry cannot attach anything to it -- confirmed for real 2026-08-12, when the 8
+        # report jobs failed with "Error fetching .../manifests/<report-digest> - expected 200, received
+        # 404" while the 2 carriers and the marker (all real manifests) succeeded in the same run.
+        # The report's own canonical digest still travels as reportDigest inside the predicate content
+        # and the marker's evidence claims, which is what the decision cross-checks against the layer
+        # descriptor -- that binding is unaffected.
+        for kind, document in docs_for_envelope.items():
+            subjects.append({
+                "name": f"{image}-{kind}-report", "subjectName": registry_refs[image],
+                "digest": evidence_set_digest[image],
+                "predicateType": _envelope.PREDICATE_TYPES[kind], "predicate": document, "kind": "generic",
+            })
+
         # The evidence-set carrier's own attestation predicate is not schema-validated by content (only
         # its predicateType is checked, matching evidence-set-lookup.py's `verification` block) -- this
         # is a real, minimal, honest statement about what the carrier binds together, not a placeholder.

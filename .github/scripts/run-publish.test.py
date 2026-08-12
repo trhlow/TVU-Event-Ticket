@@ -172,6 +172,27 @@ try:
            all(s["subjectName"] in (monolith_ref, frontend_ref, release_ref) for s in subjects),
            f"subjectNames={[s['subjectName'] for s in subjects]!r}")
 
+    # Every attestation subject must be a real MANIFEST in the registry, never a layer blob: a report
+    # is a blob inside its evidence-set carrier, so attesting it at its own digest fails with a real
+    # 404 from the registry (confirmed 2026-08-12). Each of an image's 4 report subjects therefore
+    # shares that image's evidence-set carrier digest -- exactly what evidence-set-attestation.py
+    # already verifies against (oci://registry:evidence-set-tag, distinguished by predicateType).
+    for image, image_ref in (("monolith", monolith_ref), ("frontend", frontend_ref)):
+        carrier = next(s for s in subjects if s["name"] == f"{image}-evidence-set")
+        image_reports = [s for s in subjects if s["name"].startswith(f"{image}-")
+                         and s["name"].endswith("-report")]
+        report(f"all 4 {image} report subjects are attested against the evidence-set carrier's own "
+               f"manifest digest, not their (unattestable) layer-blob digests",
+               len(image_reports) == 4
+               and all(s["digest"] == carrier["digest"] for s in image_reports),
+               f"carrier={carrier['digest']!r} reports={[(s['name'], s['digest']) for s in image_reports]!r}")
+
+    report("the two evidence-set carriers have genuinely different digests (so the shared-digest "
+           "check above is not passing by coincidence)",
+           next(s for s in subjects if s["name"] == "monolith-evidence-set")["digest"]
+           != next(s for s in subjects if s["name"] == "frontend-evidence-set")["digest"],
+           "both carriers reported the same digest")
+
     lookups = result.get("observation", {}).get("lookups", {})
     report("both evidence-sets' subject correctly matches the candidate digest they were pushed "
            "against (assemble-observation.py's *Tag-vs-*Candidate binding fix)",

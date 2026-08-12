@@ -337,11 +337,12 @@ jobs:
     # anything reaches production. A run that skipped them because the filter saw no change is a run
     # that says nothing about them, and both checks are seconds.
     #
-    # Bounded, because this job carries the mutation runner: 63 mutations x a full suite each, about
-    # 25 minutes when healthy. The default job timeout is six hours, so a mutant that hangs would
-    # hold a runner for six hours and block every PR behind it. 60 turns that into a legible
-    # failure with room for a slow runner.
-    timeout-minutes: 60
+    # The mutation sweep used to live here and made this job ~42 minutes, which mattered far beyond
+    # this job: publish-prepare needs lint, so a three-minute publish chain waited three quarters of
+    # an hour behind a sweep that tests THIS SUITE's thoroughness rather than anything about the
+    # artifact being published. It now runs as its own sharded `mutations` job, in parallel. ci-gate
+    # requires both, so nothing became optional -- only the ordering changed.
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -377,11 +378,10 @@ jobs:
           # digest taken with sha256sum rather than with the function under test.
           bash .github/scripts/canonical.test.sh
           bash .github/scripts/envelope.test.sh
-          # A guard nobody can delete without a test going red is the only kind that is evidence.
-          python3 .github/scripts/publish-decision.mutations.py
-          # Both of these drive a copy of their subject over a fake tree, so they catch a subject
-          # that has grown a dependency its callers do not carry -- which is how canonical.py
-          # arriving was noticed.
+          # The mutation sweep itself runs in the `mutations` job below; this is its own test (the
+          # runner's refusal behaviour on a red baseline), which is seconds and belongs here. It
+          # drives a copy of its subject over a fake tree, so it catches a subject that has grown a
+          # dependency its callers do not carry -- which is how canonical.py arriving was noticed.
           bash .github/scripts/publish-decision.mutations.test.sh
 
       - name: Check the contract and the decision still agree
@@ -449,11 +449,43 @@ jobs:
           # Both are required: with only one of them this job reports SC2154 on working scripts.
           shellcheck --severity=warning -x --source-path=SCRIPTDIR "${scripts[@]}"
 
+  # Split out of `lint` and sharded, for one reason: every mutation costs a full suite run, so the
+  # sweep is inherently serial-slow (~42 minutes as one job) and it used to gate everything after
+  # `lint` -- including a publish chain that itself takes three minutes. The mutations are
+  # independent by construction (each is applied to its own pristine copy in its own temp
+  # workspace, and none can observe another), so running them in parallel changes nothing about
+  # what is tested. Every shard re-runs the baseline check, so a red baseline is still refused
+  # whichever shard notices first. Unset MUTATION_SHARDS and the runner sweeps everything, which is
+  # what a local run does.
+  mutations:
+    # Unconditional for the same reason `lint` is: a guard nobody can delete without a test going
+    # red is the only kind that is evidence, and a sweep skipped by a path filter is no evidence.
+    #
+    # Bounded well below the previous 60: a shard is ~1/8 of the work, so anything near 20 minutes
+    # means a mutant is hanging rather than merely running, and the default six-hour job timeout
+    # would hold a runner (times eight) and block every PR behind it.
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    strategy:
+      # fail-fast off: one surviving guard must not hide whether the other shards' guards also
+      # survived. The whole point of the sweep is the complete list, and a truncated one sends the
+      # next person to re-run it to find out what else is wrong.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Sweep this shard's mutations
+        env:
+          MUTATION_SHARD: ${{ matrix.shard }}
+          MUTATION_SHARDS: 8
+        run: python3 .github/scripts/publish-decision.mutations.py
+
   ci-gate:
     # Hand-maintained on purpose -- there is no wildcard for `needs` -- which means a job added
     # above and not added here passes this gate by not being in it. Anyone adding a job adds it to
     # both this list and the env block and the case statement below.
-    needs: [changes, backend, frontend, dependency-review, lint]
+    needs: [changes, backend, frontend, dependency-review, lint, mutations]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -465,6 +497,9 @@ jobs:
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
           LINT_RESULT: ${{ needs.lint.result }}
+          # One result for the whole 8-shard matrix: GitHub reports success only when every shard
+          # succeeded, so a single surviving guard in any shard still fails this gate.
+          MUTATIONS_RESULT: ${{ needs.mutations.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
         run: |
@@ -503,6 +538,11 @@ jobs:
           # lint has no path filter, so there is no legitimate reason for it to be skipped.
           [ "$LINT_RESULT" = success ]             || fail "lint: expected success, got '$LINT_RESULT'"
 
+          # Same rule, same reason: the mutation sweep moved out of lint into its own sharded job,
+          # and moving it must not have made it optional. Splitting a job changes when it runs, not
+          # whether its result is required.
+          [ "$MUTATIONS_RESULT" = success ]        || fail "mutations: expected success, got '$MUTATIONS_RESULT'"
+
           [ "$failed" -eq 0 ] || exit 1
           echo "All CI jobs accounted for."
 
@@ -521,6 +561,14 @@ jobs:
   # literally, not be derived from GitHub context expressions that could drift from that hardcoded set.
 
   publish-prepare:
+    # Deliberately NOT `mutations`. The sweep tests whether THIS REPOSITORY'S SUITE would notice a
+    # deleted guard in publish-decision.sh -- a statement about test thoroughness, not about the
+    # artifact being published or about whether the decision itself ran correctly on this run. Making
+    # a three-minute publish chain wait ~42 minutes behind it bought nothing: the sweep's verdict
+    # cannot change what the decision decides here. It still runs on every push, in parallel, and
+    # ci-gate still requires it, so a surviving guard still turns the run red -- it just no longer
+    # sits in front of the publish chain. lint proper (actionlint, shellcheck, the contract and
+    # decision suites) IS still required first: those can fail in ways that make publishing wrong.
     needs: [backend, frontend, lint]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
