@@ -9,9 +9,11 @@ on:
 # Least privilege at the file level, so a job that needs more has to say so and the saying is
 # reviewable. Without this the token takes the repository default, which is commonly write on
 # contents -- and this workflow runs `npm ci`, `mvn verify` and `docker build`, all of which
-# execute third-party code with that token in the environment.
+# execute third-party code with that token in the environment. The publish job that a later
+# commit adds needs `packages: write`; it gets it on that job, never here.
 permissions:
   contents: read
+
 
 jobs:
   # The backend is a single Maven module.  Keep frontend checks independent so
@@ -42,7 +44,13 @@ jobs:
 
   backend:
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    # The path filter alone would let a push to main that only touches frontend code skip this job --
+    # but publish-prepare always needs BOTH images freshly built for the commit it is releasing, path
+    # filter or not. A skipped dependency skips its downstream jobs by default, so publish-prepare
+    # would silently skip (or fail on a missing artifact) the first time a real release touched only
+    # one side. The path filter still applies on pull_request, where fast incremental feedback matters
+    # and no publish ever runs.
+    if: needs.changes.outputs.backend == 'true' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -142,16 +150,29 @@ jobs:
       - name: Fail if any test was skipped
         working-directory: backend
         run: |
-          reports=$(find monolith/target/surefire-reports -name 'TEST-*.xml' 2>/dev/null || true)
-          if [ -z "$reports" ]; then
+          # An array, not a word-split string: a path with a space in it would otherwise become two
+          # arguments and the count would be wrong in the direction that passes. This is the SC2086
+          # that M11 recorded and that the shellcheck job does not reach -- it lints the production
+          # scripts, not the `run:` blocks in this file. actionlint is what covers these.
+          #
+          # find's exit status is checked rather than discarded with `|| true`. Piping it into
+          # mapfile through a process substitution would report success whatever find did, so a
+          # find that failed halfway through would look exactly like a clean run with fewer files
+          # -- fewer files being the direction that passes this check.
+          if ! found=$(find monolith/target/surefire-reports -name 'TEST-*.xml' 2>&1); then
+            echo "Could not list surefire reports: $found"
+            exit 1
+          fi
+          if [ -z "$found" ]; then
             echo "No surefire reports found for monolith — the suite did not run."
             exit 1
           fi
-          skipped=$(grep -ho 'skipped="[0-9]*"' $reports | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
+          mapfile -t reports <<< "$found"
+          skipped=$(grep -ho 'skipped="[0-9]*"' "${reports[@]}" | grep -o '[0-9]*' | awk '{s+=$1} END {print s+0}')
           if [ "$skipped" -ne 0 ]; then
             echo "$skipped test(s) were skipped. Testcontainers tests skip silently without Docker —"
             echo "a skipped run is not a passing run. Failing the build."
-            grep -l 'skipped="[1-9]' $reports || true
+            grep -l 'skipped="[1-9]' "${reports[@]}" || true
             exit 1
           fi
           echo "No tests were skipped."
@@ -177,6 +198,23 @@ jobs:
         working-directory: backend
         run: docker build -t tvu/monolith:ci .
 
+      # Only on the run that can actually publish: an artifact upload on every PR run would be pure
+      # waste, and the byte that gets attested/pushed must be exactly the byte this job just tested --
+      # docker save right after the build that produced it, not a separate build in the publish job
+      # that could drift from what backend's own steps above just verified.
+      - name: Save the built monolith image for the publish job
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: backend
+        run: docker save tvu/monolith:ci | gzip > monolith-image.tar.gz
+
+      - name: Upload the monolith image artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: monolith-image
+          path: backend/monolith-image.tar.gz
+          retention-days: 1
+
   dependency-review:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -186,13 +224,15 @@ jobs:
 
   frontend:
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    # Same reasoning as backend's own if: condition above -- publish-prepare always needs both images
+    # freshly built for the commit it is releasing.
+    if: needs.changes.outputs.frontend == 'true' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
     runs-on: ubuntu-latest
     # No job-level VITE_* here, deliberately. Vite gives an actual environment variable precedence
     # over .env.production, so a value set at this level reached `npm run build:production` and the
     # bundle the evidence gate inspected was built with it -- while the image built two steps later
     # never saw it and baked the value from the tracked file instead. CI was verifying one bundle
-    # and shipping another, which is the specific thing a release gate exists to prevent.
+    # and shipping another, which is the specific thing H10 exists to prevent.
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -273,45 +313,119 @@ jobs:
         working-directory: frontend
         run: docker build -t tvu/frontend:ci .
 
+      # Same reasoning as backend's own "Save the built monolith image" step above.
+      - name: Save the built frontend image for the publish job
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        working-directory: frontend
+        run: docker save tvu/frontend:ci | gzip > frontend-image.tar.gz
+
+      - name: Upload the frontend image artifact
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-image
+          path: frontend/frontend-image.tar.gz
+          retention-days: 1
+
   # Aggregate gate. `backend` and `frontend` are skipped by their own `if:` when the
   # path filter does not match, and `dependency-review` does not exist at all on push
   # events -- requiring those contexts directly in branch protection would block every
   # PR that happens not to touch them. This job always runs, so it is the one safe
   # context to require on main.
-  shellcheck:
-    # Unconditional: these scripts are the deploy path. A run that skipped them because the filter
-    # saw no shell change is a run that says nothing about them, and they are cheap to check.
+  lint:
+    # Unconditional: these scripts are the deploy path and these workflows are what decide whether
+    # anything reaches production. A run that skipped them because the filter saw no change is a run
+    # that says nothing about them, and both checks are seconds.
+    #
+    # Bounded, because this job carries the mutation runner: 63 mutations x a full suite each, about
+    # 25 minutes when healthy. The default job timeout is six hours, so a mutant that hangs would
+    # hold a runner for six hours and block every PR behind it. 60 turns that into a legible
+    # failure with room for a slow runner.
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - name: Test the deploy-path helpers
-        # Linting a test file is not running it. The frontend config fingerprint is what a deploy
-        # uses to refuse an image built for a different environment, and its first version returned
-        # the hash of the empty string with exit 0 when python3 was unusable -- a check that could
-        # not fail. require-green-run.sh is what stops a deploy of a commit CI never verified.
-        # Both run here so a regression in either cannot merge.
+      - name: Lint workflows
+        # actionlint is what reads the `run:` blocks in these files. The shellcheck step below only
+        # sees backend/infra/production/scripts, which is how two SC2086 findings recorded under M11
+        # survived the commit that added it.
+        #
+        # Downloaded and checksummed rather than taken from an action, so the thing that inspects
+        # every workflow is itself pinned to bytes rather than to a tag someone else can move.
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          url="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${archive}"
+          curl --fail --silent --show-error --location --output "$archive" "$url"
+          echo "${ACTIONLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          tar -xzf "$archive" actionlint
+          # -shellcheck= wires shellcheck into the `run:` blocks; ubuntu-latest ships it.
+          ./actionlint -color -shellcheck=shellcheck
+
+      - name: Test the CI gate helpers
+        # These decide whether an artifact may be published and whether a deploy may proceed.
+        # Linting them is not running them.
+        run: |
+          bash .github/scripts/require-green-run.test.sh
+          bash .github/scripts/publish-decision.test.sh
+          bash .github/scripts/interpreter-override.test.sh
+          # The canonical form is what a checksum is computed over, so a change to it silently
+          # invalidates every checksum already written down. Pinned against golden bytes and a
+          # digest taken with sha256sum rather than with the function under test.
+          bash .github/scripts/canonical.test.sh
+          bash .github/scripts/envelope.test.sh
+          # A guard nobody can delete without a test going red is the only kind that is evidence.
+          python3 .github/scripts/publish-decision.mutations.py
+          # Both of these drive a copy of their subject over a fake tree, so they catch a subject
+          # that has grown a dependency its callers do not carry -- which is how canonical.py
+          # arriving was noticed.
+          bash .github/scripts/publish-decision.mutations.test.sh
+
+      - name: Check the contract and the decision still agree
+        # The schema and the decision function state the same rules in two languages, and they have
+        # already drifted apart once -- for two commits no observation could satisfy both. This runs
+        # every fixture through both halves. jsonschema is pinned and installed rather than assumed:
+        # the test refuses to run without it instead of reporting the green of a check that did
+        # nothing.
+        run: |
+          # referencing is pinned beside jsonschema rather than left to arrive with it. It is what
+          # resolves a $ref from one contract file into another, so an unpinned version is an
+          # unpinned answer to "which schema did this fixture actually get checked against" -- the
+          # one question this whole directory exists to make unambiguous.
+          python3 -m pip install --quiet --disable-pip-version-check \
+            jsonschema==4.26.0 referencing==0.37.0
+          bash .github/scripts/contract-agreement.test.sh
+          # How it reports a disagreement, which is the half that decides whether anyone can act on
+          # one. Runs here rather than beside the others because it needs the same jsonschema.
+          bash .github/scripts/contract-agreement.report.test.sh
+          # The envelope constants are stated three times -- in the schema, in envelope.py, and in
+          # the decision -- because a .json and a .py cannot reference each other and the decision
+          # must run without the contracts directory beside it. This is what holds the three
+          # together, and section 9 item 4's witnesses that schema validation is not the gate.
+          bash .github/scripts/manifest-agreement.test.sh
+          # The evidence-set carrier had no decision-side consumer until 3b commit 2 gave the
+          # decision evidenceSetLookup -- so unlike its siblings this suite asserts schema accept/
+          # reject only. It exists at all because release-envelope.schema.json shipped once with
+          # zero witnesses on its entire validated content and a whole-branch review had to find that.
+          bash .github/scripts/evidence-set-schema.test.sh
+          # Three standalone predicate schemas (spec section 7) freezing what a scanner attestation
+          # must contain and excluding the other kind's identity fields. Like evidence-set-schema.
+          # test.sh, no decision-side consumer exists yet -- 3b commit 4 gives report/attestation
+          # lookups their own real trust boundary -- so this suite asserts schema accept/reject only.
+          bash .github/scripts/predicates-schema.test.sh
+
+      - name: Test the frontend config canonicaliser
+        # Linting this file is not running it. The fingerprint it produces is what a deploy uses to
+        # refuse an image built for a different environment, and its first version returned the hash
+        # of the empty string with exit 0 when python3 was unusable -- a check that could not fail.
+        # Executed here so a regression cannot merge.
         run: |
           bash backend/infra/production/scripts/frontend-config.test.sh
-          bash .github/scripts/require-green-run.test.sh
 
-          # A helper used without being sourced is a runtime failure no linter reports and no test
-          # exercises: shellcheck treats it as an unknown command and says nothing, `bash -n` parses
-          # it fine, and the script dies at the moment it runs for real. That happened -- migrate.sh
-          # moved from `source .env` to common.sh's env_value and the source line did not come with
-          # it, so a production migration died on "env_value: command not found" AFTER the
-          # datastores were already up.
-          missing=0
-          for script in backend/infra/production/scripts/*.sh; do
-            case "$script" in */common.sh) continue ;; esac
-            if grep -qE '(env_value|require_env_value|current_release_ref) ' "$script" \
-               && ! grep -q 'source "$script_dir/common.sh"' "$script"; then
-              echo "::error::$script uses a common.sh helper without sourcing common.sh"
-              missing=1
-            fi
-          done
-          [ "$missing" -eq 0 ] || exit 1
-          echo "ok: every script using a common.sh helper sources it"
+          bash .github/scripts/common-sh-usage.test.sh
 
       - name: Lint deployment and operations scripts
         # These scripts run on the production host with set -euo pipefail and no one watching. The
@@ -336,7 +450,10 @@ jobs:
           shellcheck --severity=warning -x --source-path=SCRIPTDIR "${scripts[@]}"
 
   ci-gate:
-    needs: [changes, backend, frontend, dependency-review, shellcheck]
+    # Hand-maintained on purpose -- there is no wildcard for `needs` -- which means a job added
+    # above and not added here passes this gate by not being in it. Anyone adding a job adds it to
+    # both this list and the env block and the case statement below.
+    needs: [changes, backend, frontend, dependency-review, lint]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -347,7 +464,7 @@ jobs:
           BACKEND_RESULT: ${{ needs.backend.result }}
           FRONTEND_RESULT: ${{ needs.frontend.result }}
           DEPENDENCY_REVIEW_RESULT: ${{ needs['dependency-review'].result }}
-          SHELLCHECK_RESULT: ${{ needs.shellcheck.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
         run: |
@@ -383,8 +500,181 @@ jobs:
               || fail "dependency-review: expected success on pull_request, got '$DEPENDENCY_REVIEW_RESULT'"
           fi
 
-          # shellcheck has no path filter, so there is no legitimate reason for it to be skipped.
-          [ "$SHELLCHECK_RESULT" = success ]             || fail "shellcheck: expected success, got '$SHELLCHECK_RESULT'"
+          # lint has no path filter, so there is no legitimate reason for it to be skipped.
+          [ "$LINT_RESULT" = success ]             || fail "lint: expected success, got '$LINT_RESULT'"
 
           [ "$failed" -eq 0 ] || exit 1
           echo "All CI jobs accounted for."
+
+  # --- Publish: three jobs, because attestation creation cannot live inside a script a workflow
+  # merely invokes -- actions/attest-build-provenance and actions/attest each exchange the JOB's own
+  # OIDC token (id-token: write) for a Sigstore-signed attestation, which is only reachable from a
+  # discrete workflow step. See run-publish.py's own module docstring for the full reasoning.
+  #
+  # publish-decision.sh (already merged, CI-verified) hard-requires verification.attestationVerified:
+  # true for both the marker and every evidence report -- there is no path around it (design doc
+  # 2026-08-11-collector-publish-job-design.md section 7b).
+  #
+  # Registry paths are the real, hardcoded constants build-expected.py's own SOURCE_REPOSITORY/
+  # REGISTRY/REPOSITORIES already state (build-expected.test.py proves them) -- publish-decision.sh
+  # real-binds every queriedRef against exactly those values, so what gets pushed here must match them
+  # literally, not be derived from GitHub context expressions that could drift from that hardcoded set.
+
+  publish-prepare:
+    needs: [backend, frontend, lint]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      subjects: ${{ steps.push.outputs.subjects }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: monolith-image
+          path: publish-artifacts
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-image
+          path: publish-artifacts
+
+      - name: Decompress the built images
+        run: |
+          gunzip publish-artifacts/monolith-image.tar.gz
+          gunzip publish-artifacts/frontend-image.tar.gz
+
+      # Pinned to the exact versions this pipeline was built and real-TDD'd against tonight (design doc
+      # 2026-08-11-collector-publish-job-design.md's own record: syft 1.51.0, Trivy 0.73.0, crane
+      # 0.21.9 via scoop) -- a version drift here is exactly the kind of untested-behavior risk this
+      # whole pipeline exists to catch elsewhere, so it must not be introduced by "latest" here.
+      - name: Install crane, syft, trivy (pinned, checksummed)
+        env:
+          CRANE_VERSION: 0.21.9
+          CRANE_SHA256: 5c16d8ddb971cb1d5e6ed8b1e743da8224414eeba2c2762d8f1a61b2f095699e
+          SYFT_VERSION: 1.51.0
+          SYFT_SHA256: 2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
+          TRIVY_VERSION: 0.73.0
+          TRIVY_SHA256: 2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --output crane.tar.gz \
+            "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz"
+          echo "${CRANE_SHA256}  crane.tar.gz" | sha256sum --check --strict
+          tar -xzf crane.tar.gz crane
+          sudo install crane /usr/local/bin/crane
+
+          curl --fail --silent --show-error --location --output syft.tar.gz \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  syft.tar.gz" | sha256sum --check --strict
+          tar -xzf syft.tar.gz syft
+          sudo install syft /usr/local/bin/syft
+
+          curl --fail --silent --show-error --location --output trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum --check --strict
+          tar -xzf trivy.tar.gz trivy
+          sudo install trivy /usr/local/bin/trivy
+
+      - name: Log in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
+            --username "${{ github.actor }}" --password-stdin
+
+      - name: Push candidate images, evidence, and the prepared marker
+        id: push
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish-push.py \
+            --monolith-tarball publish-artifacts/monolith-image.tar \
+            --frontend-tarball publish-artifacts/frontend-image.tar \
+            --monolith-ref ghcr.io/trhlow/tvu-event-ticket/monolith \
+            --frontend-ref ghcr.io/trhlow/tvu-event-ticket/frontend \
+            --release-ref ghcr.io/trhlow/tvu-event-ticket/release \
+            --commit "${{ github.sha }}" --environment production \
+            --repo-root "$PWD" \
+            --ruleset .github/scripts/collector-fixtures/trivy-secret-ruleset.yaml \
+            --ignore-file .github/scripts/collector-fixtures/vulnerability-ignore.yaml \
+            --output-dir publish-artifacts/out
+          echo "subjects=$(cat publish-artifacts/out/subjects.json)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: publish-predicates
+          path: publish-artifacts/out/predicates
+          retention-days: 1
+
+  publish-attest:
+    needs: publish-prepare
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+    strategy:
+      # One real actions/attest or actions/attest-build-provenance step per subject -- this is a real
+      # workflow step, not a script loop, precisely because only a real step can exchange this job's
+      # OIDC token. fail-fast off: one unsigned subject must not hide whether the other ten would also
+      # have signed cleanly, since publish-finalize needs to know the real, complete picture either way.
+      matrix:
+        include: ${{ fromJson(needs.publish-prepare.outputs.subjects) }}
+      fail-fast: false
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        if: matrix.kind == 'generic'
+        with:
+          name: publish-predicates
+          path: predicates
+
+      # The one PREDICATE_TYPES entry (slsa.dev/provenance/v1) that actually matches what this action
+      # produces -- see run-publish.py's own module docstring. No predicate input: it builds its own
+      # real SLSA provenance statement from this job's GitHub Actions context.
+      - name: Attest build provenance
+        if: matrix.kind == 'provenance'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ matrix.name }}
+          subject-digest: ${{ matrix.digest }}
+          push-to-registry: true
+
+      # The 10 subjects (2 evidence-set carriers, 8 per-kind reports) carrying this project's own
+      # custom predicate types -- their predicate content is the exact document already pushed as that
+      # subject's OCI blob, downloaded above from publish-prepare's own artifact.
+      - name: Attest custom predicate
+        if: matrix.kind == 'generic'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ matrix.name }}
+          subject-digest: ${{ matrix.digest }}
+          predicate-type: ${{ matrix.predicateType }}
+          predicate-file: ${{ matrix.predicateFile }}
+          push-to-registry: true
+
+  publish-finalize:
+    needs: [publish-prepare, publish-attest]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Deliberately does not download publish-prepare's own artifacts or reuse anything it computed --
+      # design doc section 4's own rule is that the decision must never trust a job's memory of what it
+      # pushed. Everything here is re-read fresh from the registry, now carrying the real attestations
+      # publish-attest's matrix just created.
+      - name: Decide and finalize the release
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 .github/scripts/publish-finalize.py \
+            --monolith-ref ghcr.io/trhlow/tvu-event-ticket/monolith \
+            --frontend-ref ghcr.io/trhlow/tvu-event-ticket/frontend \
+            --release-ref ghcr.io/trhlow/tvu-event-ticket/release \
+            --commit "${{ github.sha }}" --environment production \
+            --repo-root "$PWD"

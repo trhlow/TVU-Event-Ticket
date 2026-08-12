@@ -239,11 +239,19 @@ SPRING_MAIL_PASSWORD=REPLACE_WITH_SMTP_CREDENTIAL
 MAIL_FROM_ADDRESS=no-reply@$domain
 MAIL_FROM_NAME=TVU Events
 
-MONOLITH_IMAGE=tvu-event-ticket-monolith:production
+
+# GHCR credentials for pulling verified release images (roadmap 4.1: deploy.sh no longer builds on
+# this host). A classic PAT with read:packages scope, scoped to this repository only.
+GHCR_USERNAME=REPLACE_WITH_A_GITHUB_USERNAME
+GHCR_TOKEN=REPLACE_WITH_A_READ_PACKAGES_PAT
+# Fallbacks only -- deploy.sh overrides both at runtime with the real per-commit GHCR tag.
+MONOLITH_IMAGE=ghcr.io/trhlow/tvu-event-ticket/monolith:local
+FRONTEND_IMAGE=ghcr.io/trhlow/tvu-event-ticket/frontend:local
 EOF
 chmod 600 "$env_file"
 
 echo "Created $env_file with mode 600."
 echo "Next:"
 echo "  1. Set SPRING_MAIL_* and MAIL_FROM_ADDRESS for the verified SMTP domain."
-echo "  2. Run: bash scripts/preflight.sh"
+echo "  2. Set GHCR_USERNAME and GHCR_TOKEN (a PAT with read:packages scope) to pull release images."
+echo "  3. Run: bash scripts/preflight.sh"

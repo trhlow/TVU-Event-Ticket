@@ -1,0 +1,175 @@
+{
+  "invalid-semantics/a-migration-failed.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/attestation-not-verified.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/duplicate-installed-rank.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/evidence-did-not-pass.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/evidence-vouches-for-another-image.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/inventory-checksum-copied.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/lookup-in-a-foreign-repository.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "UNKNOWN"
+  },
+  "invalid-semantics/marker-signed-by-another-workflow.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/policy-did-not-pass.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "CONFLICT"
+  },
+  "invalid-semantics/two-repositories-are-one.json": {
+    "actions": [],
+    "schema": "accepts",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/absent-without-a-404.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/envelope-restating-a-derived-field.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/envelope-unparsed-but-carrying-raw.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/envelope-verified-but-carrying-no-raw.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/evidence-missing-layer-secret-scan.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/evidence-set-extra-field.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/evidence-set-missing-subject-matches.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/evidence-set-pair-missing-attestation-lookup.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/evidence-set-reports-missing-a-kind.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/marker-carrying-a-digest.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/migration-without-installed-rank.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/raw-schema-version-is-a-string.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/sbom-evidence-entry-carries-passed.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/scan-evidence-entry-carries-documentValidated.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/scan-queried-tuple-missing-report-digest.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/sbom-queried-tuple-carries-report-digest.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "CONFLICT"
+  },
+  "invalid-structure/schema-version-is-boolean.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/skipped-carrying-a-reference.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/tag-carrying-marker-fields.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "invalid-structure/unexpected-lookup-key.json": {
+    "actions": [],
+    "schema": "rejects",
+    "state": "UNKNOWN"
+  },
+  "valid/nothing-published.json": {
+    "actions": [
+      "build_new"
+    ],
+    "schema": "accepts",
+    "state": "ABSENT"
+  },
+  "valid/prepared-only.json": {
+    "actions": [
+      "promote_monolith_tag",
+      "promote_frontend_tag",
+      "publish_final_marker"
+    ],
+    "schema": "accepts",
+    "state": "PARTIAL"
+  },
+  "valid/published.json": {
+    "actions": [
+      "verify_only"
+    ],
+    "schema": "accepts",
+    "state": "COMPLETE"
+  }
+}

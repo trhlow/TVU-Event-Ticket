@@ -32,6 +32,9 @@ required_keys=(
   MICROSOFT_CLIENT_ID MICROSOFT_TENANT_ID
   SPRING_MAIL_HOST SPRING_MAIL_PORT SPRING_MAIL_USERNAME SPRING_MAIL_PASSWORD
   MAIL_FROM_ADDRESS
+  # deploy.sh no longer builds on this host (roadmap 4.1) -- it pulls the commit-tagged image CI's
+  # publish pipeline already verified and promoted, which needs real GHCR read credentials.
+  GHCR_USERNAME GHCR_TOKEN
 )
 for key in "${required_keys[@]}"; do
   require_env_value "$key"

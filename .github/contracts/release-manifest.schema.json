@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/trhlow/TVU-Event-Ticket/.github/contracts/release-manifest.schema.json",
+  "description": "3a commit 6 (spec section 3): the payload the publish job will eventually be allowed to write. Every valid document here is provably a markerContent (the allOf's first branch), not merely tested to resemble one -- the second branch only tightens keys markerContent already has, never adds a new one, which is what makes the allOf compose safely under markerContent's own additionalProperties:false.",
+  "allOf": [
+    { "$ref": "./observation.schema.json#/$defs/markerContent" },
+    {
+      "type": "object",
+      "properties": {
+        "evidence": {
+          "type": "object",
+          "properties": {
+            "sbom": {
+              "type": "object",
+              "properties": {
+                "monolith": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://spdx.dev/Document/v2.3" },
+                    "documentValidated": { "const": true }
+                  }
+                },
+                "frontend": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://spdx.dev/Document/v2.3" },
+                    "documentValidated": { "const": true }
+                  }
+                }
+              }
+            },
+            "vulnerabilityScan": {
+              "type": "object",
+              "properties": {
+                "monolith": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://evts.id.vn/attestations/vulnerabilityScan/v1" },
+                    "passed": { "const": true }
+                  }
+                },
+                "frontend": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://evts.id.vn/attestations/vulnerabilityScan/v1" },
+                    "passed": { "const": true }
+                  }
+                }
+              }
+            },
+            "layerSecretScan": {
+              "type": "object",
+              "properties": {
+                "monolith": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://evts.id.vn/attestations/layerSecretScan/v1" },
+                    "passed": { "const": true }
+                  }
+                },
+                "frontend": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://evts.id.vn/attestations/layerSecretScan/v1" },
+                    "passed": { "const": true }
+                  }
+                }
+              }
+            },
+            "filesystemSecretScan": {
+              "type": "object",
+              "properties": {
+                "monolith": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://evts.id.vn/attestations/filesystemSecretScan/v1" },
+                    "passed": { "const": true }
+                  }
+                },
+                "frontend": {
+                  "type": "object",
+                  "properties": {
+                    "predicateType": { "const": "https://evts.id.vn/attestations/filesystemSecretScan/v1" },
+                    "passed": { "const": true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "flywayInventory": {
+          "type": "object",
+          "properties": {
+            "migrations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "success": { "const": true }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

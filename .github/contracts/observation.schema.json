@@ -1,0 +1,858 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/trhlow/TVU-Event-Ticket/.github/contracts/observation.schema.json",
+  "title": "Publish observation, version 1",
+  "description": "What a collector saw in the registry for one commit. The publish decision reads only this: it never queries anything itself, so every fact it acts on has to be stated here, and anything the collector could not determine has to be stated as such rather than omitted. additionalProperties is false throughout on purpose -- an unexpected key is a typo in a key the collector believed it was setting, and silently ignoring it is how an observation ends up describing something other than what was queried.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "commit", "environment", "expected", "lookups"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "Exactly the integer 1. A JSON true or 1.0 compares equal to 1 in some readers and must not be accepted here."
+    },
+    "commit": {
+      "$ref": "#/$defs/sha1",
+      "description": "The commit being published. Full 40 characters: a short SHA matches nothing in the registry or the API, so a lookup keyed on one reads as absence rather than as a bad argument."
+    },
+    "environment": { "type": "string", "minLength": 1 },
+    "expected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceRepository", "repositories", "frontendConfigFingerprint", "signerWorkflow", "registry"],
+      "properties": {
+        "sourceRepository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$",
+          "description": "owner/name on GitHub. The repository a marker's attestation must name as its signer, and nothing else. It is not where any image lives: comparing a queriedRef against it would be comparing a source repository with an OCI one, which is how one key came to mean two things."
+        },
+        "repositories": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["release", "monolith", "frontend"],
+          "description": "Where each kind of lookup must have been made. Three packages are three OCI repositories, and the decision additionally requires these three to differ -- a rule JSON Schema cannot state about named properties, and one without which pinning each lookup to its own repository excludes nothing.",
+          "properties": {
+            "release": { "$ref": "#/$defs/ociRepository", "description": "Home of both markers and of the release and prepared tags." },
+            "monolith": { "$ref": "#/$defs/ociRepository", "description": "Home of the monolith tag, its digest object and its candidate." },
+            "frontend": { "$ref": "#/$defs/ociRepository", "description": "Home of the frontend tag, its digest object and its candidate." }
+          }
+        },
+        "frontendConfigFingerprint": {
+          "$ref": "#/$defs/hex64",
+          "description": "From scripts/frontend-config.sh at this commit. A frontend image is only valid for the configuration it was built from, and this is how a marker built elsewhere is caught."
+        },
+        "signerWorkflow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Full path, e.g. .github/workflows/ci.yml. A marker signed by any other workflow in the same repository is not this pipeline's."
+        },
+        "registry": { "type": "string", "minLength": 1, "examples": ["ghcr.io"] }
+      }
+    },
+    "lookups": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Exactly ten, no more and no fewer. A missing one is a fact nobody established; an extra one is a misspelling of a key the collector meant to set, and both are unusable rather than partial.",
+      "required": [
+        "finalMarker", "preparedMarker",
+        "monolithTag", "frontendTag",
+        "monolithDigestObject", "frontendDigestObject",
+        "monolithCandidate", "frontendCandidate",
+        "monolithEvidenceSet", "frontendEvidenceSet"
+      ],
+      "properties": {
+        "finalMarker": { "$ref": "#/$defs/markerLookup" },
+        "preparedMarker": { "$ref": "#/$defs/markerLookup" },
+        "monolithTag": { "$ref": "#/$defs/objectLookup" },
+        "frontendTag": { "$ref": "#/$defs/objectLookup" },
+        "monolithDigestObject": { "$ref": "#/$defs/skippableObjectLookup" },
+        "frontendDigestObject": { "$ref": "#/$defs/skippableObjectLookup" },
+        "monolithCandidate": { "$ref": "#/$defs/objectLookup" },
+        "frontendCandidate": { "$ref": "#/$defs/objectLookup" },
+        "monolithEvidenceSet": { "$ref": "#/$defs/evidenceSetLookup" },
+        "frontendEvidenceSet": { "$ref": "#/$defs/evidenceSetLookup" }
+      }
+    }
+  },
+
+  "$defs": {
+    "sha1": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "hex64": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "ociRepository": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)+$",
+      "description": "Two or more path segments. GHCR accepts nested paths, so the contract must not forbid a layout the registry allows; nesting introduces no ambiguity because a scope match demands ':' or '@' immediately after it."
+    },
+
+    "absent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "observedCode", "queriedRef"],
+      "properties": {
+        "status": { "const": "absent" },
+        "observedCode": {
+          "const": 404,
+          "description": "Only a 404 says 'this is not there'. Any other code says 'I did not get an answer', which is an error, not an absence -- and the difference decides whether a publish is allowed to build."
+        },
+        "queriedRef": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "queriedRef"],
+      "properties": {
+        "status": { "const": "error" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "code": { "type": "integer" },
+        "timeout": { "type": "boolean" },
+        "detail": { "type": "string" }
+      }
+    },
+
+    "skipped": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason", "queriedRef"],
+      "description": "The question was never asked, which is different from asking and being told no. A digest object cannot be queried before a marker names a digest, and reporting absence there would assert an observation nobody made.",
+      "properties": {
+        "status": { "const": "skipped" },
+        "reason": { "enum": ["no_claimed_digest"] },
+        "queriedRef": { "type": "null", "description": "Null, because nothing was queried." }
+      }
+    },
+
+    "presentObject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "queriedRef", "digest"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+
+    "presentMarker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "queriedRef", "markerDigest", "verification", "ociEnvelope"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "markerDigest": { "$ref": "#/$defs/digest" },
+        "verification": { "$ref": "#/$defs/verification" },
+        "ociEnvelope": { "$ref": "release-envelope.schema.json#/$defs/observedEnvelope" },
+        "content": {
+          "$ref": "#/$defs/markerContent",
+          "description": "The payload, present exactly when the envelope identifies one. Kept in properties on both branches so additionalProperties:false still admits it where it belongs; the conditional below is what makes it required there and forbidden everywhere else."
+        }
+      },
+      "if": {
+        "properties": {
+          "ociEnvelope": {
+            "properties": {
+              "digestVerified": { "const": true },
+              "sizeVerified": { "const": true },
+              "raw": { "properties": { "layers": { "minItems": 1, "maxItems": 1 } },
+                       "required": ["layers"] }
+            },
+            "required": ["digestVerified", "sizeVerified", "raw"]
+          }
+        },
+        "required": ["ociEnvelope"]
+      },
+      "then": { "required": ["content"] },
+      "else": { "not": { "required": ["content"] } }
+    },
+
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the collector verified, not what the marker says about itself. A document asserting its own trustworthiness proves nothing; these fields are outcomes of an attestation check against the registry and must be filled in from it.",
+      "required": ["attestationVerified", "subjectDigest", "signerRepository", "signerWorkflow",
+                   "sourceRevision", "predicateType", "policyPassed"],
+      "properties": {
+        "attestationVerified": {
+          "type": "boolean",
+          "description": "The outcome of the check, not a claim that one happened. A completed verification that came back negative is a readable fact about the registry and reaches CONFLICT; const true made it a malformed observation instead, which reaches UNKNOWN and sends an operator to collect a broken marker again."
+        },
+        "subjectDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "The digest the attestation was verified against. Must equal the digest of the object it describes -- markerDigest for a marker's own verification, carrierDigest for presentEvidenceSet's -- or the verification describes a different object."
+        },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "policyPassed": {
+          "type": "boolean",
+          "description": "Same reason as attestationVerified: false is a verdict, not a defect in the observation."
+        }
+      }
+    },
+
+    "markerContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "environment", "frontendConfigFingerprint", "images", "provenance",
+                   "evidence", "flywayInventory"],
+      "properties": {
+        "commit": { "$ref": "#/$defs/sha1" },
+        "environment": { "type": "string", "minLength": 1 },
+        "frontendConfigFingerprint": { "$ref": "#/$defs/hex64" },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monolith", "frontend"],
+          "properties": {
+            "monolith": { "$ref": "#/$defs/digest" },
+            "frontend": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "provenance": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monolith", "frontend"],
+          "properties": {
+            "monolith": { "$ref": "#/$defs/provenanceEntry" },
+            "frontend": { "$ref": "#/$defs/provenanceEntry" }
+          }
+        },
+        "evidence": { "$ref": "#/$defs/evidence" },
+        "flywayInventory": { "$ref": "#/$defs/flywayInventory" }
+      }
+    },
+
+    "provenanceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "subjectDigest"],
+      "description": "Binds an image to the source it was built from. Without it a marker records which digests it chose, not that they came from the commit being released.",
+      "properties": {
+        "revision": { "$ref": "#/$defs/sha1" },
+        "subjectDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Four separate results, because they answer different questions. A single overall pass hides which of them was never run. evidenceSetDigest nests here rather than becoming an eighth top-level markerContent key (spec section 2) -- it is one more fact about evidence, not a new category of fact about the release.",
+      "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan", "evidenceSetDigest"],
+      "properties": {
+        "sbom": { "$ref": "#/$defs/sbomPerImageEvidence" },
+        "vulnerabilityScan": { "$ref": "#/$defs/scanPerImageEvidence" },
+        "layerSecretScan": { "$ref": "#/$defs/scanPerImageEvidence" },
+        "filesystemSecretScan": { "$ref": "#/$defs/scanPerImageEvidence" },
+        "evidenceSetDigest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["monolith", "frontend"],
+          "description": "3b commit 2: the digest of the evidence-set carrier the marker claims for each image. A marker no longer verifies evidence itself (section 3) -- this is a cross-check, not a source of truth: the decision resolves it against monolithEvidenceSet/frontendEvidenceSet's own already-established verification, and disagreement is CONFLICT, not a fact this field could assert on its own.",
+          "properties": {
+            "monolith": { "$ref": "#/$defs/digest" },
+            "frontend": { "$ref": "#/$defs/digest" }
+          }
+        }
+      }
+    },
+
+    "sbomPerImageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["monolith", "frontend"],
+      "properties": {
+        "monolith": { "$ref": "#/$defs/sbomEvidenceEntry" },
+        "frontend": { "$ref": "#/$defs/sbomEvidenceEntry" }
+      }
+    },
+
+    "scanPerImageEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["monolith", "frontend"],
+      "properties": {
+        "monolith": { "$ref": "#/$defs/scanEvidenceEntry" },
+        "frontend": { "$ref": "#/$defs/scanEvidenceEntry" }
+      }
+    },
+
+    "sbomEvidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 6 (spec section 4): SPDX is an inventory predicate, not a verdict -- it has no pass/fail, so this carries documentValidated (did the document validate against SPDX 2.3) instead of scanEvidenceEntry's passed. packageCount is the 'not empty' half of section 4's three-part invariant; the third half (subject = image being released) is subjectDigest below, already checked against the image it is filed under the same way every evidence entry is.",
+      "required": ["digest", "subjectDigest", "predicateType", "documentValidated", "packageCount"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "subjectDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "The image this evidence is about. Must equal the image it is filed under; otherwise a SBOM of one image vouches for another."
+        },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "documentValidated": {
+          "type": "boolean",
+          "description": "Whether the SBOM validated against SPDX 2.3 -- the collector's single computed answer, the same collector-trusted-boolean pattern as layersValid and schemaValid. Does not fold in emptiness or subject mismatch; those are packageCount and subjectDigest, checked separately."
+        },
+        "packageCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Package count as reported by the collector. Must be >= 1 for the document to count as non-empty (spec section 4); 0 is a valid integer here so the decision can say CONFLICT about it by name rather than the schema silently rejecting the shape."
+        }
+      }
+    },
+
+    "scanEvidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Existence, subject, predicate type and outcome. A digest alone proves a file was produced, not that it describes this image or that anything passed. Identical to the pre-commit-6 evidenceEntry this replaces for the three scan kinds -- only sbomEvidenceEntry's shape actually changed.",
+      "required": ["digest", "subjectDigest", "predicateType", "passed"],
+      "properties": {
+        "digest": { "$ref": "#/$defs/digest" },
+        "subjectDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "The image this evidence is about. Must equal the image it is filed under; otherwise a scan of one image vouches for another."
+        },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "passed": {
+          "type": "boolean",
+          "description": "Read out of the marker, so false is what the registry holds and needs a person. Pinning this to true belongs in a producer-side schema, which describes what may be written; this one describes what was read back."
+        }
+      }
+    },
+
+    "flywayInventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Read from flyway_schema_history in a throwaway Postgres after the candidate monolith image has run its migrations -- not from the image, which contains the scripts and no history table, and not from the source tree. The point is what the image will actually apply.",
+      "required": ["boundTo", "checksum", "migrations"],
+      "properties": {
+        "boundTo": {
+          "$ref": "#/$defs/digest",
+          "description": "The monolith digest this inventory was read from."
+        },
+        "checksum": {
+          "$ref": "#/$defs/hex64",
+          "description": "sha256 of the canonical migration list. Recomputed by the reader; a checksum nobody derives from the content is a field, and a field can be copied from another release."
+        },
+        "migrations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/migration" }
+        }
+      }
+    },
+
+    "migration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One row of flyway_schema_history. Ordered by installedRank in the canonical form, which is the order Flyway applied them.",
+      "required": ["installedRank", "version", "type", "script", "checksum", "success"],
+      "properties": {
+        "installedRank": { "type": "integer", "minimum": 1 },
+        "version": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "description": "Null for a repeatable migration, and several repeatables share that. Versioned migrations must be unique; repeatables are distinguished by script instead."
+        },
+        "type": { "type": "string", "minLength": 1, "examples": ["SQL"] },
+        "script": { "type": "string", "minLength": 1 },
+        "checksum": {
+          "type": ["integer", "null"],
+          "description": "Flyway's CRC32, an integer. Null where Flyway records none. A string here means the history was reformatted on the way through and would never compare equal to the database."
+        },
+        "success": {
+          "type": "boolean",
+          "description": "A failed migration must not be released -- but it must be describable, or the observation cannot state what it found. false is CONFLICT, not an unusable observation."
+        }
+      }
+    },
+
+    "markerLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentMarker" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "objectLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentObject" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "skippableObjectLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentObject" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" },
+        { "$ref": "#/$defs/skipped" }
+      ]
+    },
+
+    "evidenceSetLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentEvidenceSet" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "presentEvidenceSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 2 (spec section 3): what the collector must prove before the decision may adopt an existing evidence-set instead of asking for a fresh scan. verification reuses the same shape a marker's own attestation check uses -- provenance is provenance whichever carrier it is attesting to. subjectMatches and layersValid are outcomes the collector computed against release-evidence-set.schema.json's shape (section 2); the decision does not re-parse a raw manifest here, matching section 8.6. The four reports pairs are loosely typed placeholders -- commit 4 gives reportLookup and attestationLookup their own real trust-boundary split (section 5); here each is only present/absent/error, wide enough to prove all four exist, not yet rich enough to say what a real one contains.\n\nRe-resolve-before-write is stated here as a precondition, not as an enforced rule: whatever writes a marker's evidenceSetDigest claim against this lookup must re-resolve the evidence-set tag (or digest lookup) immediately before writing, so the carrierDigest it commits to is still the carrier this lookup observed and not one a concurrent evidence-set build already replaced underneath it. Nothing validates any of this yet, because no writer of this claim exists yet to keep it -- the same debt commit 1's lifecycle/cleanupDebt paragraph records for release-evidence-set.schema.json: a schema can state what must eventually be true without a fixture pretending the claim is already being kept.",
+      "required": ["status", "queriedRef", "carrierDigest", "verification", "subjectMatches", "layersValid", "reports"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "carrierDigest": { "$ref": "#/$defs/digest" },
+        "verification": { "$ref": "#/$defs/verification" },
+        "subjectMatches": {
+          "type": "boolean",
+          "description": "Whether the carrier's own subject descriptor names this image's digest. False, not absence: the collector asked and got an answer, and a false one is the exact case section 3 calls CONFLICT (subject/structure mismatch), not UNKNOWN."
+        },
+        "layersValid": {
+          "type": "boolean",
+          "description": "Whether the carrier has exactly four layers, the four required mediaTypes, no duplicates -- release-evidence-set.schema.json's own shape, already frozen in commit 1. The decision trusts this boolean rather than re-deriving it from raw bytes."
+        },
+        "reports": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
+          "properties": {
+            "sbom": { "$ref": "#/$defs/sbomReportAttestationPair" },
+            "vulnerabilityScan": { "$ref": "#/$defs/scanReportAttestationPair" },
+            "layerSecretScan": { "$ref": "#/$defs/scanReportAttestationPair" },
+            "filesystemSecretScan": { "$ref": "#/$defs/scanReportAttestationPair" }
+          }
+        }
+      }
+    },
+
+    "reportAttestationPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reportLookup", "attestationLookup"],
+      "properties": {
+        "reportLookup": { "$ref": "#/$defs/reportEvidenceLookup" },
+        "attestationLookup": { "$ref": "#/$defs/attestationEvidenceLookup" }
+      }
+    },
+
+    "reportEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentReport" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "presentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 4 (spec section 5): what a report lookup proves -- descriptor bytes/hash/schema, nothing about signer or source revision. That half is attestationEvidenceLookup's job.",
+      "required": ["status", "queriedRef", "descriptor", "digestVerified", "sizeVerified", "schemaValid", "normalizedReport"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "digestVerified": { "type": "boolean" },
+        "sizeVerified": { "type": "boolean" },
+        "schemaValid": { "type": "boolean" },
+        "normalizedReport": {
+          "type": "object",
+          "description": "Loosely typed here: this shape is shared by all four report kinds, and SBOM does not share the scan contract (spec section 4, 'SBOM khong dung chung contract voi scan') -- SBOM's own real shape is commit 6's job. The three scan kinds get real shape via scanPresentReport instead (spec section 6, commit 5), referenced from presentEvidenceSet.reports for those three kinds only."
+        }
+      }
+    },
+
+    "attestationEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/presentAttestation" },
+        { "$ref": "#/$defs/attestationAbsent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "presentAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 4 (spec section 5): what an attestation lookup proves -- signer, source revision, predicate type, verify-bundle outcome. Not policyPassed: whether a report's findings pass policy is recomputed by the decision in commit 5, not asserted by the collector at lookup time.",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "attestationVerified": { "type": "boolean" },
+        "normalizedPredicate": {
+          "type": "object",
+          "description": "Loosely typed here for the same reason presentReport.normalizedReport is: shared by all four kinds, and SBOM does not share the scan contract (section 4). The three scan kinds get real shape via scanPresentAttestation instead."
+        }
+      }
+    },
+
+    "scanReportAttestationPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 5 (spec section 6): the same pairing as reportAttestationPair, but for the three report kinds that share the scan contract -- normalizedReport/normalizedPredicate get real shape here (scanPresentReport/scanPresentAttestation) rather than the generic placeholder reportAttestationPair still uses for SBOM (section 4: SBOM does not share the scan contract; its own real shape is commit 6's job).",
+      "required": ["reportLookup", "attestationLookup"],
+      "properties": {
+        "reportLookup": { "$ref": "#/$defs/scanReportEvidenceLookup" },
+        "attestationLookup": { "$ref": "#/$defs/scanAttestationEvidenceLookup" }
+      }
+    },
+
+    "scanReportEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/scanPresentReport" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "scanPresentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentReport except normalizedReport has scanPresentReport's own real shape (normalizedScanContent) instead of the generic placeholder -- duplicated rather than composed via allOf, matching this schema's own established precedent (e.g. absent/error duplicated across every *Lookup union) that additionalProperties:false objects are not safely composable.",
+      "required": ["status", "queriedRef", "descriptor", "digestVerified", "sizeVerified", "schemaValid", "normalizedReport"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "digestVerified": { "type": "boolean" },
+        "sizeVerified": { "type": "boolean" },
+        "schemaValid": { "type": "boolean" },
+        "normalizedReport": { "$ref": "#/$defs/normalizedScanContent" }
+      }
+    },
+
+    "scanAttestationEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/scanPresentAttestation" },
+        { "$ref": "#/$defs/scanAttestationAbsent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "scanPresentAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentAttestation except normalizedPredicate has scanPresentAttestation's own real shape (normalizedScanContent) instead of the generic placeholder. 3b commit 7 (spec section 8): paginationComplete -- a selection made before pagination finished proves nothing about uniqueness -- and duplicates, every OTHER trustworthy statement that also matched the selection tuple (empty when this was the only match).",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate", "paginationComplete", "duplicates"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "attestationVerified": { "type": "boolean" },
+        "normalizedPredicate": { "$ref": "#/$defs/normalizedScanContent" },
+        "paginationComplete": { "type": "boolean" },
+        "duplicates": {
+          "type": "array",
+          "minItems": 0,
+          "items": { "$ref": "#/$defs/attestationStatementProjection" }
+        }
+      }
+    },
+
+    "sbomReportAttestationPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 6 (spec section 4): the same pairing as scanReportAttestationPair, but for SBOM, which does not share the scan contract -- normalizedReport/normalizedPredicate get sbomDocumentContent instead of normalizedScanContent. Re-points presentEvidenceSet.reports.sbom, replacing the loosely-typed reportAttestationPair placeholder commit 4 left it as.",
+      "required": ["reportLookup", "attestationLookup"],
+      "properties": {
+        "reportLookup": { "$ref": "#/$defs/sbomReportEvidenceLookup" },
+        "attestationLookup": { "$ref": "#/$defs/sbomAttestationEvidenceLookup" }
+      }
+    },
+
+    "sbomReportEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/sbomPresentReport" },
+        { "$ref": "#/$defs/absent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "sbomPresentReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentReport except normalizedReport has sbomPresentReport's own real shape (sbomDocumentContent) instead of the generic placeholder.",
+      "required": ["status", "queriedRef", "descriptor", "digestVerified", "sizeVerified", "schemaValid", "normalizedReport"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "descriptor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size"],
+          "properties": {
+            "mediaType": { "type": "string", "minLength": 1 },
+            "digest": { "$ref": "#/$defs/digest" },
+            "size": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "digestVerified": { "type": "boolean" },
+        "sizeVerified": { "type": "boolean" },
+        "schemaValid": { "type": "boolean" },
+        "normalizedReport": { "$ref": "#/$defs/sbomDocumentContent" }
+      }
+    },
+
+    "sbomAttestationEvidenceLookup": {
+      "oneOf": [
+        { "$ref": "#/$defs/sbomPresentAttestation" },
+        { "$ref": "#/$defs/sbomAttestationAbsent" },
+        { "$ref": "#/$defs/error" }
+      ]
+    },
+
+    "sbomPresentAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Identical to presentAttestation except normalizedPredicate has sbomPresentAttestation's own real shape (sbomDocumentContent) instead of the generic placeholder. Its canonicalDigest/canonicalSize are what the reverse-direction binding (spec section 4) compares against this same pair's reportLookup.descriptor. 3b commit 7 (spec section 8): paginationComplete and duplicates, same as scanPresentAttestation.",
+      "required": ["status", "queriedRef", "subjectDigest", "predicateType", "signerRepository", "signerWorkflow", "sourceRevision", "attestationVerified", "normalizedPredicate", "paginationComplete", "duplicates"],
+      "properties": {
+        "status": { "const": "present" },
+        "queriedRef": { "type": "string", "minLength": 1 },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "attestationVerified": { "type": "boolean" },
+        "normalizedPredicate": { "$ref": "#/$defs/sbomDocumentContent" },
+        "paginationComplete": { "type": "boolean" },
+        "duplicates": {
+          "type": "array",
+          "minItems": 0,
+          "items": { "$ref": "#/$defs/attestationStatementProjection" }
+        }
+      }
+    },
+
+    "sbomDocumentContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 6 (spec section 4): the collector's already-normalized view of a SBOM document or, independently, of the predicate an attestation vouches for -- shared by reportLookup.present.normalizedReport and attestationLookup.present.normalizedPredicate, the same symmetry normalizedScanContent (commit 5) already established for the three scan kinds. No policy, no findings, no counts, no declaredOutcome -- SPDX makes no verdict (section 4's whole point). canonicalDigest/canonicalSize are read only from the attestation side by the decision (section 4's reverse-direction binding: the signed predicate is canonicalized and compared against the SBOM layer's own descriptor) -- both sides carry them for shape symmetry, but only the attestation side's values are meaningful to that check.",
+      "required": ["spdxVersion", "documentValidated", "subjectDigest", "packageCount", "canonicalDigest", "canonicalSize"],
+      "properties": {
+        "spdxVersion": { "type": "string", "minLength": 1 },
+        "documentValidated": { "type": "boolean" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "packageCount": { "type": "integer", "minimum": 0 },
+        "canonicalDigest": { "$ref": "#/$defs/digest" },
+        "canonicalSize": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "normalizedScanContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 5 (spec section 6): the collector's already-normalized view of a scan report or, independently, of the predicate an attestation vouches for -- shared by reportLookup.present.normalizedReport and attestationLookup.present.normalizedPredicate so that the decision comparing them is comparing two documents of the same shape, not an accident. scanner here is intentionally minimal (name/version only) -- vulnerability-DB vs. ruleset identity is section 7's own predicate schema's concern (commit 3, still unwired into this comparison view), not re-validated here.",
+      "required": ["scanner", "target", "policy", "counts", "findings", "truncated", "declaredOutcome", "reportDigest"],
+      "properties": {
+        "scanner": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 }
+          }
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["imageDigest"],
+          "properties": {
+            "imageDigest": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "reportDigest": {
+          "$ref": "#/$defs/digest",
+          "description": "3b commit 7 (Plan Decision A, spec section 8/10): the report's own digest, as the attestation's signed predicate claims it directly (contrast SBOM's canonicalDigest, which the decision must canonicalize its way to). Only the attestation side's value is read by the decision's binding check (Task 2); the report side carries the same field for shape symmetry, matching sbomDocumentContent's own canonicalDigest/canonicalSize precedent."
+        },
+        "policy": { "$ref": "#/$defs/scanPolicy" },
+        "counts": {
+          "$ref": "#/$defs/scanCounts",
+          "description": "The complete aggregate by (severity, fixAvailable), computed by the collector over every finding after ignore rules are applied -- not just the ones the bounded findings list below can show. The decision recomputes its verdict from this, not from findings, so a truncated findings list cannot change the result (section 6)."
+        },
+        "findings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/finding" },
+          "description": "Bounded list of findings at or above policy.severityThreshold, for audit and duplicate-detection -- not the verdict's own input. May be a strict subset of what counts aggregates (findings below the threshold are never listed here even when truncated is false)."
+        },
+        "truncated": { "type": "boolean" },
+        "declaredOutcome": { "type": "boolean" }
+      },
+      "if": {
+        "properties": { "findings": { "minItems": 100 } },
+        "required": ["findings"]
+      },
+      "then": {
+        "properties": { "truncated": { "const": true } }
+      }
+    },
+
+    "scanCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"],
+      "description": "Section 6: aggregated by (severity, fixAvailable), not merely by severity -- a policy that fails on 'HIGH with a fix' cannot be recomputed from a severity-only count when the visible findings list is truncated.",
+      "properties": {
+        "CRITICAL": { "$ref": "#/$defs/severityCount" },
+        "HIGH": { "$ref": "#/$defs/severityCount" },
+        "MEDIUM": { "$ref": "#/$defs/severityCount" },
+        "LOW": { "$ref": "#/$defs/severityCount" },
+        "UNKNOWN": { "$ref": "#/$defs/severityCount" }
+      }
+    },
+
+    "severityCount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["withFix", "withoutFix"],
+      "properties": {
+        "withFix": { "type": "integer", "minimum": 0 },
+        "withoutFix": { "type": "integer", "minimum": 0 }
+      }
+    },
+
+    "scanPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["severityThreshold", "ignoreList", "ignoreFileDigest"],
+      "description": "Section 6: policy and ruleset must come from a file Git tracks, and the digest of that file lives here -- an ignore file that changes is a verdict basis that changes, and it must show up rather than move silently.",
+      "properties": {
+        "severityThreshold": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
+        "ignoreList": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "ignoreFileDigest": { "$ref": "#/$defs/hex64" }
+      }
+    },
+
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Section 6's own sort tuple names exactly these five fields: severity rank descending, fixAvailable (true first), packageName, vulnerabilityId, targetPath, all compared by code point.",
+      "required": ["severity", "fixAvailable", "packageName", "vulnerabilityId", "targetPath"],
+      "properties": {
+        "severity": { "type": "string", "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"] },
+        "fixAvailable": {
+          "type": "boolean",
+          "description": "Computed by the collector from Trivy's own FixedVersion being non-empty, not inferred from text (section 6). The schema can only require the boolean exist, not how it was derived."
+        },
+        "packageName": { "type": "string", "minLength": 1 },
+        "vulnerabilityId": { "type": "string", "minLength": 1 },
+        "targetPath": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "scanAttestationAbsent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): the GitHub Attestations API answers 'not found' with a 200 and an empty list after full pagination, not a 404. queried is now the FULL selection tuple, including reportDigest -- commit 4's loosely-typed placeholder is gone.",
+      "required": ["status", "reason", "paginationComplete", "queried"],
+      "properties": {
+        "status": { "const": "absent" },
+        "reason": { "const": "no_matching_attestation" },
+        "paginationComplete": { "const": true },
+        "queried": { "$ref": "#/$defs/scanAttestationSelectionTuple" }
+      }
+    },
+
+    "sbomAttestationAbsent": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): identical to scanAttestationAbsent except queried is sbomAttestationSelectionTuple -- no reportDigest, structurally, since SBOM does not carry one (section 4).",
+      "required": ["status", "reason", "paginationComplete", "queried"],
+      "properties": {
+        "status": { "const": "absent" },
+        "reason": { "const": "no_matching_attestation" },
+        "paginationComplete": { "const": true },
+        "queried": { "$ref": "#/$defs/sbomAttestationSelectionTuple" }
+      }
+    },
+
+    "scanAttestationSelectionTuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): the full tuple a collector must select an attestation by -- never 'the first result'. reportDigest is required here for the three scan kinds, which carry it directly on the predicate (contrast sbomAttestationSelectionTuple).",
+      "required": ["repository", "workflow", "sourceRevision", "subjectDigest", "predicateType", "reportDigest"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "reportDigest": { "$ref": "#/$defs/digest" }
+      }
+    },
+
+    "sbomAttestationSelectionTuple": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): identical to scanAttestationSelectionTuple minus reportDigest -- SPDX carries no report digest (section 4), and requiring one for every kind was the previous, self-contradictory rule section 8 replaces.",
+      "required": ["repository", "workflow", "sourceRevision", "subjectDigest", "predicateType"],
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "workflow": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "predicateType": { "type": "string", "minLength": 1 }
+      }
+    },
+
+    "attestationStatementProjection": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "3b commit 7 (spec section 8): what two TRUSTWORTHY statements matching the same selection tuple must agree on to be a semantic duplicate rather than a genuine conflict. Deliberately excludes run ID, run attempt, timestamp, bundle signature bytes, and cert serial -- two reruns of one workflow produce different values for all five, and none of them describe what was attested. reportDigest/policy/outcome are optional: SBOM statements have none of the three (no verdict, no policy, no report digest -- commit 6 section 4), so a SBOM entry in duplicates[] only ever carries the five identity/provenance fields.",
+      "required": ["subjectDigest", "sourceRevision", "signerRepository", "signerWorkflow", "predicateType"],
+      "properties": {
+        "subjectDigest": { "$ref": "#/$defs/digest" },
+        "sourceRevision": { "$ref": "#/$defs/sha1" },
+        "signerRepository": { "type": "string", "minLength": 1 },
+        "signerWorkflow": { "type": "string", "minLength": 1 },
+        "predicateType": { "type": "string", "minLength": 1 },
+        "reportDigest": { "$ref": "#/$defs/digest" },
+        "policy": { "$ref": "#/$defs/scanPolicy" },
+        "outcome": { "type": "boolean" }
+      }
+    }
+  }
+}
