@@ -136,7 +136,8 @@ def push_publish_artifacts(monolith_tarball_path: str, frontend_tarball_path: st
                               "layerSecretScan": layer_document, "filesystemSecretScan": fs_document}
         for kind, document in docs_for_envelope.items():
             subjects.append({
-                "name": f"{image}-{kind}-report", "digest": per_kind_digest[image][kind],
+                "name": f"{image}-{kind}-report", "subjectName": registry_refs[image],
+                "digest": per_kind_digest[image][kind],
                 "predicateType": _envelope.PREDICATE_TYPES[kind], "predicate": document, "kind": "generic",
             })
 
@@ -148,7 +149,8 @@ def push_publish_artifacts(monolith_tarball_path: str, frontend_tarball_path: st
         # its predicateType is checked, matching evidence-set-lookup.py's `verification` block) -- this
         # is a real, minimal, honest statement about what the carrier binds together, not a placeholder.
         subjects.append({
-            "name": f"{image}-evidence-set", "digest": evidence_set_digest[image],
+            "name": f"{image}-evidence-set", "subjectName": registry_refs[image],
+            "digest": evidence_set_digest[image],
             "predicateType": _envelope.PREDICATE_TYPES["evidenceSet"],
             "predicate": {"subjectDigest": digests[image], "kinds": list(docs_for_envelope.keys())},
             "kind": "generic",
@@ -202,7 +204,8 @@ def push_publish_artifacts(monolith_tarball_path: str, frontend_tarball_path: st
     # entry that actually matches what that action produces; the marker needs no predicate content here.
     marker_digest = _marker_envelope.publish_marker(release_registry_ref, f"prepared-{commit}",
                                                       marker_content, username=username, password=password)
-    subjects.append({"name": "release-marker", "digest": marker_digest, "predicateType": None,
+    subjects.append({"name": "release-marker", "subjectName": release_registry_ref,
+                      "digest": marker_digest, "predicateType": None,
                       "predicate": None, "kind": "provenance"})
 
     return {"expected": effective_expected, "markerContent": marker_content, "subjects": subjects}

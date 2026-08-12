@@ -37,10 +37,12 @@ def report(name, ok, detail=""):
 
 
 FAKE_SUBJECTS = [
-    {"name": "monolith-sbom-report", "digest": "sha256:" + "1" * 64,
+    {"name": "monolith-sbom-report", "subjectName": "ghcr.io/trhlow/tvu-event-ticket/monolith",
+     "digest": "sha256:" + "1" * 64,
      "predicateType": "https://spdx.dev/Document/v2.3", "predicate": {"a": 1, "b": [2, 3]},
      "kind": "generic"},
-    {"name": "release-marker", "digest": "sha256:" + "2" * 64, "predicateType": None,
+    {"name": "release-marker", "subjectName": "ghcr.io/trhlow/tvu-event-ticket/release",
+     "digest": "sha256:" + "2" * 64, "predicateType": None,
      "predicate": None, "kind": "provenance"},
 ]
 publish_push_mod._run_publish.push_publish_artifacts = \
@@ -75,6 +77,12 @@ with tempfile.TemporaryDirectory() as tmp:
 
     report("no raw predicate content leaks into subjects.json -- only the file pointer",
            "predicate" not in written[0] and "predicate" not in written[1],
+           f"written={written!r}")
+
+    report("subjectName (the real OCI image reference actions/attest needs, distinct from the "
+           "descriptive name used for predicate-file naming) passes through into subjects.json",
+           written[0]["subjectName"] == "ghcr.io/trhlow/tvu-event-ticket/monolith"
+           and written[1]["subjectName"] == "ghcr.io/trhlow/tvu-event-ticket/release",
            f"written={written!r}")
 
     predicate_path = output_dir / "predicates" / "monolith-sbom-report.json"
