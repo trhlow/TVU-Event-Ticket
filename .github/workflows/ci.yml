@@ -637,7 +637,7 @@ jobs:
         if: matrix.kind == 'provenance'
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-name: ${{ matrix.name }}
+          subject-name: ${{ matrix.subjectName }}
           subject-digest: ${{ matrix.digest }}
           push-to-registry: true
 
@@ -648,7 +648,7 @@ jobs:
         if: matrix.kind == 'generic'
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
-          subject-name: ${{ matrix.name }}
+          subject-name: ${{ matrix.subjectName }}
           subject-digest: ${{ matrix.digest }}
           predicate-type: ${{ matrix.predicateType }}
           predicate-file: ${{ matrix.predicateFile }}

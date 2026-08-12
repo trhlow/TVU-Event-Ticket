@@ -61,7 +61,8 @@ def main():
 
     subjects_for_matrix = []
     for subject in result["subjects"]:
-        entry = {"name": subject["name"], "digest": subject["digest"], "kind": subject["kind"],
+        entry = {"name": subject["name"], "subjectName": subject["subjectName"],
+                  "digest": subject["digest"], "kind": subject["kind"],
                   "predicateType": subject["predicateType"]}
         if subject["kind"] == "generic":
             predicate_path = predicates_dir / f"{subject['name']}.json"

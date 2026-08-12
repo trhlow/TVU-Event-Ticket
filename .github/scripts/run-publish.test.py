@@ -165,6 +165,12 @@ try:
            next(s for s in subjects if s["name"] == "monolith-sbom-report")["predicateType"]
            == "https://spdx.dev/Document/v2.3",
            f"sbom subject predicateType={next(s for s in subjects if s['name'] == 'monolith-sbom-report')['predicateType']!r}")
+    report("every subject's subjectName is a real registry/repo reference, not the descriptive name "
+           "(actions/attest's push-to-registry requires a valid OCI image reference -- a real CI run "
+           "against GHCR rejected a descriptive label like 'release-marker' with "
+           "'Invalid image name')",
+           all(s["subjectName"] in (monolith_ref, frontend_ref, release_ref) for s in subjects),
+           f"subjectNames={[s['subjectName'] for s in subjects]!r}")
 
     lookups = result.get("observation", {}).get("lookups", {})
     report("both evidence-sets' subject correctly matches the candidate digest they were pushed "
