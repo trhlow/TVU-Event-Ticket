@@ -153,17 +153,32 @@ Hai địa chỉ mail phải là hộp thư **bạn mở được**. Mỗi đị
 SUPER_ADMIN thật, và đăng nhập admin **chỉ có** đường mã OTP qua mail — một địa chỉ gõ sai là
 khoá cửa vĩnh viễn.
 
-## 6. Điền SMTP
+## 6. Điền SMTP và thông tin đăng nhập GHCR
 
-Mở `.env`, thay ba dòng còn `REPLACE_WITH_`:
+Mở `.env`, thay các dòng còn `REPLACE_WITH_`:
 
 ```
 SPRING_MAIL_HOST=smtp-relay.brevo.com
 SPRING_MAIL_USERNAME=<login Brevo>
 SPRING_MAIL_PASSWORD=<SMTP key Brevo>
+
+GHCR_USERNAME=<username GitHub của bạn>
+GHCR_TOKEN=<PAT classic, chỉ tick read:packages>
 ```
 
 **Đúng:** `grep -c REPLACE_WITH .env` trả về `0`.
+
+### PAT đọc GHCR lấy ở đâu
+
+VPS không còn build image nữa — nó **pull** image mà CI đã build, quét và ký. Package GHCR của repo
+này là private, nên cần một token chỉ-đọc:
+
+1. https://github.com/settings/tokens → **Generate new token (classic)**
+2. Tick **đúng một** scope: `read:packages`. Không tick `write:packages`, không tick `repo` —
+   VPS chỉ cần đọc, và một token bị lộ trên máy production không được phép đẩy gì lên.
+3. Đặt hạn dùng hữu hạn, ghi lịch nhắc gia hạn.
+
+Token này chỉ nằm trong `.env` (mode 600), không bao giờ commit.
 
 ## 7. Preflight
 
@@ -180,22 +195,30 @@ Lỗi hay gặp và nghĩa thật của nó:
 | `MICROSOFT_CLIENT_ID ... does not match VITE_...` | `.env` và bundle frontend nói về hai app registration khác nhau — sửa `frontend/.env.production` bằng PR |
 | `APP_DOMAIN is ..., but the frontend bundle was built for ...` | bundle build cho tên miền khác; Entra so redirect từng byte |
 | `... still contains a REPLACE_WITH placeholder` | còn dòng chưa điền ở bước 6 |
+| `GHCR_USERNAME is missing or empty` | chưa điền PAT ở bước 6 |
 
 ## 8. Deploy
 
 ```bash
 bash scripts/deploy.sh
 ```
-Lần đầu mất **15–30 phút** trên 2 vCPU.
+Mất khoảng **3–6 phút**: VPS không build gì nữa, chỉ kéo image CI đã dựng sẵn.
 
-Script chạy theo thứ tự: preflight → build → khởi động datastore → backup (bỏ qua nếu chưa có
-schema) → migration → dựng cả stack → smoke test → ghi `.state/current-ref`.
+Script chạy theo thứ tự: preflight → đăng nhập GHCR → **pull** `monolith-<sha>`/`frontend-<sha>` →
+khởi động datastore → backup (bỏ qua nếu chưa có schema) → migration → dựng cả stack → smoke test →
+ghi `.state/current-ref`.
 
 **Đúng:** `Production deployment completed for <sha>`
 
+> **Chỉ commit đã publish thành công mới deploy được.** Hai tag đó chỉ tồn tại sau khi job
+> `publish-finalize` của CI kết luận COMPLETE cho đúng commit ấy. Một commit CI xanh nhưng chưa
+> publish xong thì `docker pull` sẽ báo not found — đó là hàng rào cố ý, không phải lỗi: nó bảo đảm
+> thứ chạy trên production đúng là thứ đã qua SBOM, quét lỗ hổng, quét secret và attestation ký thật.
+
 | hỏng ở đâu | dấu hiệu | làm gì |
 |---|---|---|
-| build bị giết | `dmesg \| grep -i oom` có dòng mới | bước 2 chưa làm, hoặc làm chưa xong. Làm rồi chạy lại |
+| pull | `manifest unknown` / `not found` | commit này chưa publish xong. Kiểm tra job `publish-finalize` của đúng SHA đó trên Actions; chọn commit đã publish thành công |
+| pull | `denied` / `unauthorized` | PAT sai scope hoặc hết hạn — cần `read:packages` (bước 6) |
 | smoke test | `Deployment started but the public smoke test failed.` | gần như luôn là ACME. `docker compose --env-file .env -f compose.yaml logs caddy \| tail -50`. Chờ cấp chứng chỉ rồi **chạy lại `deploy.sh`** — an toàn, vì `.state/current-ref` chưa được ghi |
 | migration | Flyway báo lỗi | database đang ở trạng thái nửa chừng. Xem §"V7" trong `PRODUCTION_DEPLOYMENT_VI.md`. Lần đầu thì chưa có backup nào để restore — vì chưa có gì để mất |
 

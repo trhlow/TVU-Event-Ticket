@@ -32,6 +32,28 @@ def report(name, ok, detail=""):
         print(f"FAIL  {name}: {detail}")
 
 
+# gh documents --signer-workflow as `[host/]<owner>/<repo>/<path>/<to>/<workflow>` and matches it
+# against the signing certificate's SAN. observation.schema.json's expected.signerWorkflow is
+# deliberately the repo-relative path instead, so the two must be joined at this boundary -- passing
+# the bare path through cost a whole CI run, failing with only `Error: verifying with issuer
+# "sigstore.dev"` to show for it. These are pure-function checks, no gh needed.
+_signer_workflow_flag = _module._signer_workflow_flag
+report("the repo-relative path the schema stores is qualified with owner/repo for gh",
+       _signer_workflow_flag("trhlow/TVU-Event-Ticket", ".github/workflows/ci.yml")
+       == "trhlow/TVU-Event-Ticket/.github/workflows/ci.yml",
+       f"got {_signer_workflow_flag('trhlow/TVU-Event-Ticket', '.github/workflows/ci.yml')!r}")
+report("an already-qualified value is left alone, not doubled",
+       _signer_workflow_flag("trhlow/TVU-Event-Ticket",
+                              "trhlow/TVU-Event-Ticket/.github/workflows/ci.yml")
+       == "trhlow/TVU-Event-Ticket/.github/workflows/ci.yml",
+       f"got {_signer_workflow_flag('trhlow/TVU-Event-Ticket', 'trhlow/TVU-Event-Ticket/.github/workflows/ci.yml')!r}")
+report("the result always carries owner/repo and the workflow path, whichever form came in",
+       all(f.startswith("trhlow/TVU-Event-Ticket/") and f.endswith(".github/workflows/ci.yml")
+           for f in (_signer_workflow_flag("trhlow/TVU-Event-Ticket", ".github/workflows/ci.yml"),
+                     _signer_workflow_flag("trhlow/TVU-Event-Ticket",
+                                            "trhlow/TVU-Event-Ticket/.github/workflows/ci.yml"))),
+       "one of the two forms did not produce a fully-qualified flag value")
+
 unsigned_file = HERE / "collector-fixtures" / "definitely-unsigned.txt"
 unsigned_file.write_text("nobody has ever attested this file", encoding="utf-8")
 try:
