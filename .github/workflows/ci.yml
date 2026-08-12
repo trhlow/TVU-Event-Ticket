@@ -662,7 +662,14 @@ jobs:
           subject-name: ${{ matrix.subjectName }}
           subject-digest: ${{ matrix.digest }}
           predicate-type: ${{ matrix.predicateType }}
-          predicate-file: ${{ matrix.predicateFile }}
+          # predicate-path, NOT predicate-file: actions/attest's real input list is
+          # [subject-path, subject-digest, subject-name, subject-checksums, subject-version,
+          # sbom-path, predicate-type, predicate, predicate-path, push-to-registry,
+          # create-storage-record, show-summary, github-token]. An unknown input is only a WARNING in
+          # Actions, never an error, so the wrong name here failed at runtime ("One of predicate-path
+          # or predicate must be provided") rather than at parse time -- and actionlint cannot catch
+          # it either, since it does not validate third-party action input names.
+          predicate-path: ${{ matrix.predicateFile }}
           push-to-registry: true
 
   publish-finalize:
