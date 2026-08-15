@@ -63,6 +63,17 @@ function microsoftConfig() {
   return { clientId, tenantId, redirectUri };
 }
 
+/**
+ * Where the sign-in popup is allowed to land: a blank page served from the same origin, never the
+ * application root. See the note at the loginPopup call for what pointing it at the root cost.
+ *
+ * Exported for the test that pins this behaviour, since the failure it prevents is invisible until a
+ * real popup runs against a real Entra tenant.
+ */
+export function popupRedirectUri(configuredRedirectUri: string): string {
+  return new URL("auth-redirect.html", configuredRedirectUri).toString();
+}
+
 async function loginWithCredential(payload: LoginRequest): Promise<User> {
   // The third argument turns off retry-after-refresh. A failed sign-in must not trigger a session
   // refresh and a second attempt: there is no session to refresh yet, and retrying doubles every
@@ -106,6 +117,17 @@ export const authService = {
     const response = await msal.loginPopup({
       scopes: ["openid", "profile", "email"],
       prompt: "select_account",
+      // The popup lands on a blank page, never on the application root. Pointing it at the root made
+      // the popup load the whole React app, which does not initialise MSAL -- it imports the library
+      // only when this function runs -- so nothing in the popup ever claimed the code or answered the
+      // window that opened it, and this call died with MSAL's `timed_out` while the popup sat on the
+      // home page with the code still in its address bar. Confirmed against the deployed site with a
+      // guest and a member account, in Incognito and in a second browser.
+      //
+      // Per-request rather than on the instance: VITE_MICROSOFT_REDIRECT_URI stays the application
+      // root, which is what the frontend config fingerprint is computed over and what preflight
+      // compares against .env. Both URIs must be registered in Entra as Single-page application.
+      redirectUri: popupRedirectUri(config.redirectUri),
     });
 
     if (!response.idToken) {

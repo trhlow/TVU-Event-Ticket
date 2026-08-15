@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Đang hoàn tất đăng nhập…</title>
+<!--
+  The landing page for the Microsoft sign-in popup, and deliberately nothing more.
+
+  It used to be the application root. Microsoft returned the authorization code to
+  https://evts.id.vn/#code=..., which loaded the whole React app inside the popup -- and that app
+  never initialises MSAL (it imports the library only when the sign-in button is pressed), so nothing
+  in the popup ever claimed the code or answered the window that opened it. The parent tab polled
+  until it gave up with MSAL's `timed_out`, leaving a popup sitting on the home page with the code
+  still in its address bar. Reproduced with both a guest and a member account, in Incognito and in a
+  second browser: nothing about it was environment- or account-specific.
+
+  Keep this page empty. MSAL reads the fragment straight off this window and closes it; anything that
+  navigates, rewrites the URL, or takes time to boot can take the code away before it is read.
+-->
+<p style="font: 14px system-ui, sans-serif; margin: 2rem">Đang hoàn tất đăng nhập…</p>
