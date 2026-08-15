@@ -69,7 +69,22 @@ class PublishRunError(Exception):
 
 
 def _crane(*args):
-    proc = subprocess.run(["crane", *args], capture_output=True, text=True, timeout=120, check=False)
+    try:
+        proc = subprocess.run(["crane", *args], capture_output=True, text=True, timeout=120,
+                               check=False)
+    except FileNotFoundError as exc:
+        # A real GHCR run died here as a bare `FileNotFoundError: 'crane'`, which says nothing about
+        # what the pipeline was doing or that this is an environment fault rather than an answer from
+        # the registry. publish-finalize is where it bites: promotion re-tags with crane, and no run
+        # had ever reached the promote branch before -- publish-prepare has always installed crane,
+        # the finalize job did not. Same discipline as evidence-set-report.py's ImportError guard:
+        # a tool that cannot run must say so, loudly and by name.
+        raise PublishRunError(
+            f"crane is not installed on this machine, so `crane {' '.join(args)}` could not run at "
+            f"all -- this is an environment fault, not a registry answer. Every job that promotes or "
+            f"pushes needs the pinned crane install step (publish-prepare and publish-finalize both "
+            f"have one): {exc}"
+        ) from exc
     if proc.returncode != 0:
         raise PublishRunError(f"crane {' '.join(args)} exited {proc.returncode}: "
                                f"{proc.stderr.strip()[:1000]}")

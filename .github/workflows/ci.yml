@@ -754,6 +754,31 @@ jobs:
           python3 -m pip install --quiet --disable-pip-version-check \
             jsonschema==4.26.0 referencing==0.37.0
 
+      # Promotion re-tags an existing manifest with `crane tag`, so this job needs crane just as
+      # publish-prepare does -- same pinned version and checksum, deliberately not "latest".
+      # publish-prepare has had it all along; splitting finalize into its own job (roadmap 3.1) left
+      # the promote step behind without it, and no run ever reached the promote branch to notice
+      # until every earlier CONFLICT was cleared. syft and trivy are NOT installed here: nothing in
+      # the finalize path scans anything, it only re-reads the registry and re-tags.
+      - name: Install crane (pinned, checksummed) -- promotion re-tags with it
+        env:
+          CRANE_VERSION: 0.21.9
+          CRANE_SHA256: 5c16d8ddb971cb1d5e6ed8b1e743da8224414eeba2c2762d8f1a61b2f095699e
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --output crane.tar.gz \
+            "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz"
+          echo "${CRANE_SHA256}  crane.tar.gz" | sha256sum --check --strict
+          tar -xzf crane.tar.gz crane
+          sudo install crane /usr/local/bin/crane
+
+      # Explicit rather than relying on crane picking up docker/login-action's config: these packages
+      # are private, a re-tag is a WRITE, and publish-prepare authenticates crane exactly this way.
+      - name: Log crane in to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | crane auth login ghcr.io \
+            --username "${{ github.actor }}" --password-stdin
+
       # Deliberately does not download publish-prepare's own artifacts or reuse anything it computed --
       # design doc section 4's own rule is that the decision must never trust a job's memory of what it
       # pushed. Everything here is re-read fresh from the registry, now carrying the real attestations

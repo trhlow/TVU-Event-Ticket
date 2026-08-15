@@ -90,6 +90,29 @@ if failed:
     print(f"\npassed={passed} failed={failed}")
     sys.exit(1)
 
+# A missing crane surfaced on a real GHCR run as a bare `FileNotFoundError: [Errno 2] No such file or
+# directory: 'crane'` -- no mention of what the pipeline was doing, which step needed it, or that this
+# is an environment fault rather than a registry answer. publish-finalize is the job that hits it,
+# because promotion re-tags with crane and no run had ever reached the promote branch before. Same
+# lesson as the swallowed ImportError in evidence-set-report.py: an unusable tool must say so loudly.
+_saved_path = os.environ.get("PATH", "")
+try:
+    os.environ["PATH"] = str(HERE / "no-such-directory-for-crane")
+    try:
+        run_publish_mod._crane("tag", "example.invalid/repo:a", "b")
+        _crane_error = None
+    except Exception as exc:  # noqa: BLE001 -- the point is which type and what it says
+        _crane_error = exc
+finally:
+    os.environ["PATH"] = _saved_path
+
+report("a missing crane is reported as an environment fault naming the command, not as a bare "
+       "FileNotFoundError",
+       isinstance(_crane_error, run_publish_mod.PublishRunError)
+       and "crane" in str(_crane_error)
+       and "not installed" in str(_crane_error),
+       f"raised {type(_crane_error).__name__}: {_crane_error}")
+
 COMMIT = "fedcba9876543210fedcba9876543210fedcba98"
 ENVIRONMENT = "production"
 
