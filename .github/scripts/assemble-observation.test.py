@@ -234,6 +234,58 @@ try:
            and observation["lookups"]["preparedMarker"].get("content") == marker_content,
            f"preparedMarker status: {observation['lookups']['preparedMarker'].get('status')!r}")
 
+    # Everything above runs against a PROMOTED state -- monolith-<commit> was pushed, so the tag and
+    # the marker's claim agree and a digest-object lookup derived from either one looks identical.
+    # publish-finalize never runs in that state on a first publish: it decides whether promotion is
+    # safe, so the tag is legitimately absent and the only thing claiming a digest is the marker.
+    # .github/contracts/fixtures/valid/prepared-only.json states what must be observed there --
+    # monolithTag absent, monolithDigestObject PRESENT at the digest preparedMarker.content.images
+    # claims -- and nothing exercised it until a real GHCR run produced "the marker records monolith
+    # sha256:c8cd27f9... but its digest object lookup was skipped as having no claimed digest".
+    #
+    # A tag-derived lookup also cannot fail: re-resolving the digest a present tag just returned
+    # proves nothing about the marker's claim, which is the whole question the decision asks here
+    # ("a release whose bytes are gone is not complete just because a document says so").
+    PRE_PROMOTION_COMMIT = "1234567890abcdef1234567890abcdef12345678"
+    pre_promotion_content = {**marker_content, "commit": PRE_PROMOTION_COMMIT}
+    marker_envelope_mod.publish_marker(release_ref, f"prepared-{PRE_PROMOTION_COMMIT}",
+                                        pre_promotion_content)
+    pre_promotion = assemble_observation(
+        monolith_ref, frontend_ref, release_ref, PRE_PROMOTION_COMMIT, ENVIRONMENT, str(REPO_ROOT),
+        bash=BASH,
+    )
+
+    report("pre-promotion: the release tag really is absent (so this case is the real one, not a "
+           "repeat of the promoted case above)",
+           pre_promotion["lookups"]["monolithTag"].get("status") == "absent",
+           f"monolithTag={pre_promotion['lookups']['monolithTag']!r}")
+
+    report("pre-promotion: monolithDigestObject resolves the digest the MARKER claims, even though "
+           "no tag points at it yet",
+           pre_promotion["lookups"]["monolithDigestObject"].get("status") == "present"
+           and pre_promotion["lookups"]["monolithDigestObject"].get("digest") == monolith_digest,
+           f"monolithDigestObject={pre_promotion['lookups']['monolithDigestObject']!r}")
+
+    report("pre-promotion: frontendDigestObject likewise",
+           pre_promotion["lookups"]["frontendDigestObject"].get("status") == "present"
+           and pre_promotion["lookups"]["frontendDigestObject"].get("digest") == frontend_digest,
+           f"frontendDigestObject={pre_promotion['lookups']['frontendDigestObject']!r}")
+
+    # The opposite direction, so the fix above cannot be "always look something up". With no marker
+    # there is no claimed digest, and skipped is the honest answer -- the question was never asked.
+    # valid/nothing-published.json records exactly this pairing, and the decision relies on it to
+    # tell a clean slate from an unexplained object.
+    CLEAN_SLATE_COMMIT = "89abcdef0123456789abcdef0123456789abcdef"
+    clean_slate = assemble_observation(
+        monolith_ref, frontend_ref, release_ref, CLEAN_SLATE_COMMIT, ENVIRONMENT, str(REPO_ROOT),
+        bash=BASH,
+    )
+    report("clean slate: with no marker claiming anything, the digest-object lookup is skipped, not "
+           "invented",
+           clean_slate["lookups"]["monolithDigestObject"].get("status") == "skipped"
+           and clean_slate["lookups"]["monolithDigestObject"].get("queriedRef") is None,
+           f"monolithDigestObject={clean_slate['lookups']['monolithDigestObject']!r}")
+
     schema = json.loads((HERE.parent / "contracts" / "observation.schema.json").read_text(encoding="utf-8"))
     registry = build_registry()
     validator = jsonschema.Draft202012Validator(schema, registry=registry)

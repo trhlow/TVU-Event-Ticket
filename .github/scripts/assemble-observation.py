@@ -7,12 +7,12 @@ Tag naming matches this project's own real fixtures (.github/contracts/fixtures/
 a-migration-failed.json, read this session): monolith-<commit>/frontend-<commit> (Tag),
 candidate-monolith-<commit>/candidate-frontend-<commit> (Candidate), release-<commit> (finalMarker),
 prepared-<commit> (preparedMarker), evidence-monolith-sha-<commit>/evidence-frontend-sha-<commit>
-(EvidenceSet). DigestObject lookups are NOT by a separate tag -- they re-resolve the same digest the
-Tag lookup already found, at that exact digest, proving the digest object independently exists (the
-manifest spec's own two-step read discipline). A DigestObject lookup is `skipped`, not `absent` or
-`error`, when its own Tag lookup never resolved to a digest to check in the first place -- the
-question was never asked, matching skippableObjectLookup's own real distinction (spec: "the question
-was never asked, which is different from asking and being told no").
+(EvidenceSet). DigestObject lookups are NOT by a separate tag -- they resolve the digest a MARKER
+claims for that image, at that exact digest, proving the claim is backed by bytes that really exist
+(the manifest spec's own two-step read discipline). A DigestObject lookup is `skipped`, not `absent`
+or `error`, when no marker claims a digest for it at all -- the question was never asked, matching
+skippableObjectLookup's own real distinction (spec: "the question was never asked, which is
+different from asking and being told no").
 """
 import importlib.util
 import pathlib
@@ -42,12 +42,45 @@ build_expected = _build_expected.build_expected
 __all__ = ["assemble_observation"]
 
 
-def _digest_object_lookup(registry_ref: str, tag_lookup_result: dict,
-                           username: str = None, password: str = None) -> dict:
-    if tag_lookup_result.get("status") != "present":
+def _claimed_digest(final_marker: dict, prepared_marker: dict, image: str):
+    """The digest a marker claims for this image, or None when nothing claims one.
+
+    Final first, then prepared: that is the precedence publish-decision.sh itself uses -- when a
+    final marker is present it checks the digest objects against `final["content"]["images"]`, and
+    only falls back to the prepared marker's claim when there is no final one.
+    """
+    for marker in (final_marker, prepared_marker):
+        if marker.get("status") != "present":
+            continue
+        digest = (marker.get("content") or {}).get("images", {}).get(image)
+        if digest:
+            return digest
+    return None
+
+
+def _digest_object_lookup(registry_ref: str, claimed_digest, username: str = None,
+                           password: str = None) -> dict:
+    """Resolve the digest a MARKER claims, never the one a tag happens to hold.
+
+    Deriving this from the Tag lookup (as this did until 2026-08-15) is wrong twice over:
+
+    - It cannot fail. Re-resolving the digest a present tag just returned proves nothing, while the
+      question the decision actually asks here is whether the marker's claim is backed by bytes --
+      "a release whose bytes are gone is not complete just because a document says so".
+    - It makes the pre-promotion state impossible to observe correctly, which is the state
+      publish-finalize runs in on every first publish. The tag is legitimately absent until
+      promotion, so a tag-derived lookup reports `skipped`, and the decision then reads a marker
+      that DOES claim a digest beside a lookup that says nothing claims one, and correctly refuses
+      the whole observation as self-contradicting. A real GHCR run failed exactly that way.
+
+    valid/prepared-only.json has always stated the required pairing: monolithTag absent,
+    monolithDigestObject present at the digest preparedMarker claims. This is the fifth instance of
+    the same tag-versus-claim conflation in this pipeline -- see the evidence-set subject binding
+    below for the previous one.
+    """
+    if not claimed_digest:
         return {"status": "skipped", "reason": "no_claimed_digest", "queriedRef": None}
-    digest = tag_lookup_result["digest"]
-    return read_object_lookup(registry_ref, digest, username=username, password=password)
+    return read_object_lookup(registry_ref, claimed_digest, username=username, password=password)
 
 
 def assemble_observation(monolith_registry_ref: str, frontend_registry_ref: str,
@@ -66,11 +99,6 @@ def assemble_observation(monolith_registry_ref: str, frontend_registry_ref: str,
     frontend_tag = read_object_lookup(frontend_registry_ref, f"frontend-{commit}",
                                        username=username, password=password)
 
-    monolith_digest_object = _digest_object_lookup(monolith_registry_ref, monolith_tag,
-                                                     username=username, password=password)
-    frontend_digest_object = _digest_object_lookup(frontend_registry_ref, frontend_tag,
-                                                     username=username, password=password)
-
     monolith_candidate = read_object_lookup(monolith_registry_ref, f"candidate-monolith-{commit}",
                                              username=username, password=password)
     frontend_candidate = read_object_lookup(frontend_registry_ref, f"candidate-frontend-{commit}",
@@ -84,6 +112,15 @@ def assemble_observation(monolith_registry_ref: str, frontend_registry_ref: str,
                                           expected["sourceRepository"], expected["signerWorkflow"],
                                           source_revision=commit,
                                           username=username, password=password)
+
+    # Ordered after the marker reads on purpose: the digest object being checked is the one a marker
+    # CLAIMS, so there is nothing to look up until the markers have been read.
+    monolith_digest_object = _digest_object_lookup(
+        monolith_registry_ref, _claimed_digest(final_marker, prepared_marker, "monolith"),
+        username=username, password=password)
+    frontend_digest_object = _digest_object_lookup(
+        frontend_registry_ref, _claimed_digest(final_marker, prepared_marker, "frontend"),
+        username=username, password=password)
 
     # Evidence sets are pushed with subject_digest set to the CANDIDATE digest (design doc section 4
     # step 3 precedes step 4): the candidate tag is what exists at push time, pre-promotion, and stays
