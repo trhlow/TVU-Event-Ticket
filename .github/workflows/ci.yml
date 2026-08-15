@@ -425,6 +425,12 @@ jobs:
         run: |
           bash backend/infra/production/scripts/frontend-config.test.sh
 
+          # Same reason, for the two guards a real first deploy walked straight past on 2026-08-15:
+          # a `<placeholder>` that preflight accepted and that only failed later as an unrelated
+          # "denied: denied" from docker login, and preflight validating the compose file before
+          # deploy.sh had exported the image references it declares as required.
+          bash backend/infra/production/scripts/env-guards.test.sh
+
           bash .github/scripts/common-sh-usage.test.sh
 
       - name: Lint deployment and operations scripts
