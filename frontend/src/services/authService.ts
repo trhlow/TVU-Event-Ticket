@@ -106,6 +106,10 @@ export const authService = {
     const response = await msal.loginPopup({
       scopes: ["openid", "profile", "email"],
       prompt: "select_account",
+      // Overrides the app-level redirectUri for this popup only. Without this, the popup
+      // reloads at config.redirectUri (the app's own root) and renders the full SPA instead of
+      // closing itself, leaving the popup stuck open on the landing page.
+      redirectUri: `${window.location.origin}/auth/blank.html`,
     });
 
     if (!response.idToken) {
