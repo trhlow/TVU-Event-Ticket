@@ -743,6 +743,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Same pins as the lint job's, and required for the same reason: evidence-set-report.py checks
+      # every scan report against its real predicate schema, and those schemas $ref each other, so
+      # both libraries have to be here. Without them the check cannot run at all -- which on a real
+      # run reported every report as schemaValid=False and turned a clean release into a CONFLICT,
+      # because the ImportError was being swallowed. It is no longer swallowed, so a missing library
+      # now fails loudly instead; this step is what stops it from being missing.
+      - name: Install the schema validator the decision reads reports with
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check \
+            jsonschema==4.26.0 referencing==0.37.0
+
       # Deliberately does not download publish-prepare's own artifacts or reuse anything it computed --
       # design doc section 4's own rule is that the decision must never trust a job's memory of what it
       # pushed. Everything here is re-read fresh from the registry, now carrying the real attestations

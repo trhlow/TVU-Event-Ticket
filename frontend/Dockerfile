@@ -18,7 +18,15 @@ RUN npm run build:production
 # Unprivileged variant: the stock nginx image runs its master process as root, which Trivy flags
 # High. This one runs as uid 101 and writes its pid and caches under /tmp, so no root is needed at
 # any point. Consequence: it can only bind an unprivileged port, hence 8080 everywhere below.
-FROM nginxinc/nginx-unprivileged:1.29-alpine@sha256:0c79d56aee561a1d81c63f00eee5fb5fe29279560cdc55e91425133104c7fbe6 AS production
+# 1.29-alpine -> 1.31-alpine, 2026-08-12. A minor bump rather than a digest bump on purpose: the
+# 1.29-alpine digest this replaces WAS already upstream's newest for that tag, so re-pinning it
+# changed nothing -- upstream has not rebuilt 1.29-alpine against a patched Alpine base. Its Alpine
+# 3.23.4 layer carried 10 HIGH-with-fix findings (curl/libcurl, libcrypto3/libssl3, libexpat,
+# libxml2, c-ares) that the publish pipeline's own scan correctly refused to publish on. Verified
+# before committing: `trivy image --severity HIGH,CRITICAL` on this exact digest reports 0 findings
+# with a fix available. This stage only serves static files through the tracked nginx.conf, so the
+# nginx minor is not load-bearing here -- the Alpine base underneath it is what changed.
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:334d92979f15aaecd5dd50af5105e1230e2bb70765d45b1e2f964e7c5eda81c3 AS production
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html

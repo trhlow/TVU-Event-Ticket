@@ -151,10 +151,27 @@ def push_publish_artifacts(monolith_tarball_path: str, frontend_tarball_path: st
         # and the marker's evidence claims, which is what the decision cross-checks against the layer
         # descriptor -- that binding is unaffected.
         for kind, document in docs_for_envelope.items():
+            # The signed predicate's reportDigest must name the report layer AS STORED. The document's
+            # own reportDigest cannot: the collector computes it over the document WITHOUT that field
+            # (it has to -- a document containing its own digest is circular), so it equals
+            # digest(doc-without-reportDigest) while the layer descriptor equals digest(doc-as-stored).
+            # Those two are unequal by construction, which made publish-decision.sh's binding check
+            # ("the signed predicate does not name the report actually fetched") fail every single
+            # time -- confirmed against real data, not inferred.
+            #
+            # Spec section 8/10 is explicit that this value is "read only from the attestation side
+            # and compared against the report's own descriptor digest", so the attestation carries the
+            # stored-blob digest and the layer keeps its self-excluding one. per_kind_digest is
+            # already exactly digest(canonical_bytes(document)) -- the same bytes publish_evidence_set
+            # pushed -- so this is the descriptor digest, not a second, separately-derived hash.
+            predicate = document
+            if kind != "sbom":
+                predicate = {**document, "reportDigest": per_kind_digest[image][kind]}
             subjects.append({
                 "name": f"{image}-{kind}-report", "subjectName": registry_refs[image],
                 "digest": evidence_set_digest[image],
-                "predicateType": _envelope.PREDICATE_TYPES[kind], "predicate": document, "kind": "generic",
+                "predicateType": _envelope.PREDICATE_TYPES[kind], "predicate": predicate,
+                "kind": "generic",
             })
 
         # The evidence-set carrier's own attestation predicate is not schema-validated by content (only
