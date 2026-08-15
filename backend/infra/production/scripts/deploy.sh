@@ -5,8 +5,24 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "$script_dir/common.sh"
 
-bash "$script_dir/preflight.sh"
 release_ref="$(current_release_ref)"
+
+# Resolved and exported BEFORE preflight, not after. preflight.sh validates the compose file with
+# `docker compose config`, and compose.yaml declares MONOLITH_IMAGE/FRONTEND_IMAGE with `:?`, so with
+# them unset preflight dies on "required variable FRONTEND_IMAGE is missing a value: FRONTEND_IMAGE
+# must be set -- deploy.sh sets it automatically" -- an error whose own text says it cannot happen.
+# Ordering this way also means preflight validates the configuration this deploy will really use,
+# rather than the `:local` fallbacks generate-env.sh writes, which is what hid the fault on hosts
+# whose .env happened to carry them.
+#
+# monolith-<commit>/frontend-<commit> are the tags CI's publish pipeline promotes ONLY after
+# publish-decision.sh confirms COMPLETE (every collector, SBOM, vulnerability and secret scan, and a
+# real Sigstore-signed attestation on each one) -- pulling by that tag is what ties this deploy to a
+# release this pipeline already verified, not to whatever this host happened to build.
+export MONOLITH_IMAGE="ghcr.io/trhlow/tvu-event-ticket/monolith:monolith-${release_ref}"
+export FRONTEND_IMAGE="ghcr.io/trhlow/tvu-event-ticket/frontend:frontend-${release_ref}"
+
+bash "$script_dir/preflight.sh"
 previous_ref="${PREVIOUS_REF:-}"
 if [[ -z "$previous_ref" && -f "$state_dir/current-ref" ]]; then
   previous_ref="$(<"$state_dir/current-ref")"
@@ -19,16 +35,10 @@ fi
 
 echo "Pulling verified release images for $release_ref"
 # Build once in CI, deploy by verified tag (roadmap 4.1) -- this host no longer builds anything.
-# monolith-<commit>/frontend-<commit> are the tags CI's publish pipeline promotes ONLY after
-# publish-decision.sh's own decision confirms COMPLETE (every collector, SBOM, vulnerability and
-# secret scan, and a real Sigstore-signed attestation on each one) -- pulling by that tag is what
-# ties this deploy to a release this pipeline already verified, not to whatever this host happened
-# to build from the same source.
+# The image references themselves are exported above, before preflight; see the note there.
 require_env_value GHCR_USERNAME
 require_env_value GHCR_TOKEN
 env_value GHCR_TOKEN | docker login ghcr.io --username "$(env_value GHCR_USERNAME)" --password-stdin
-export MONOLITH_IMAGE="ghcr.io/trhlow/tvu-event-ticket/monolith:monolith-${release_ref}"
-export FRONTEND_IMAGE="ghcr.io/trhlow/tvu-event-ticket/frontend:frontend-${release_ref}"
 compose pull monolith frontend
 
 # The datastores come up before anything touches them. migrate.sh's first act is
@@ -61,6 +71,13 @@ echo "Applying database migrations as the schema owner"
 # runs with spring.flyway.enabled=false, so it cannot alter the schema itself. This also
 # re-applies the runtime grants, which matters after a migration adds a table.
 bash "$deployment_dir/scripts/migrate.sh"
+
+# migrate.sh ends by printing a full Spring banner and "Started MonolithApplication", then this
+# script goes quiet for a minute or two while containers are recreated and the smoke test waits for
+# HTTPS. That silence was read as completion on the real VPS -- twice -- and the deploy was
+# interrupted at exactly this point both times. Saying what happens next costs one line.
+echo "Migration complete. Recreating containers and running the public smoke test; this takes a"
+echo "minute or two of quiet. Deployment is finished only at 'Production deployment completed'."
 
 if ! compose up -d --wait --remove-orphans; then
   compose ps >&2 || true
