@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { CheckCircle, AlertCircle, Info, X } from 'lucide-react';
 
 interface ToastProps {
@@ -9,12 +9,20 @@ interface ToastProps {
 }
 
 export default function Toast({ message, type = 'success', onClose, duration = 3000 }: ToastProps) {
+  // Callers pass onClose inline (e.g. `onClose={() => dismiss(toast.id)}`), a fresh reference every
+  // render. Keeping it out of the timer effect's deps (read through a ref instead) stops an unrelated
+  // re-render -- e.g. a second toast being queued -- from restarting the auto-dismiss countdown.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onClose();
+      onCloseRef.current();
     }, duration);
     return () => clearTimeout(timer);
-  }, [onClose, duration]);
+  }, [duration]);
 
   const getStyle = () => {
     switch (type) {
