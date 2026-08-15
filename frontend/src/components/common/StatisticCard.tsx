@@ -34,15 +34,18 @@ export default function StatisticCard({ label, value, icon: Icon, subtext, trend
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-          <p className="mt-1.5 font-display text-3xl font-extrabold tracking-tight text-slate-950">
-            {isCountable ? (
+          {isCountable ? (
+            <p className="mt-1.5 font-display text-3xl font-extrabold tracking-tight text-slate-950">
               <span ref={counterRef} className="stat-value-pop">
                 {display.toLocaleString("vi-VN")}
               </span>
-            ) : (
-              value
-            )}
-          </p>
+            </p>
+          ) : (
+            // A non-numeric fallback (e.g. "Chưa có dữ liệu") at the same 3xl size used for counts
+            // wraps to two or three lines in a card this narrow, stretching every sibling card in the
+            // grid row up to match -- the numeric cards next to it end up with a lot of dead space.
+            <p className="mt-2 text-sm font-bold leading-snug text-slate-500">{value}</p>
+          )}
         </div>
         <div className={`stat-icon-depth grid h-11 w-11 shrink-0 place-items-center rounded-2xl border shadow-sm ${styles[color]}`}>
           <Icon className="h-5 w-5" />
