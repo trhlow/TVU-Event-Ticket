@@ -6,6 +6,8 @@
 [![Spring Boot 4](https://img.shields.io/badge/Spring%20Boot-4.0-6DB33F)](backend/pom.xml)
 [![React 19](https://img.shields.io/badge/React-19-61DAFB)](frontend/package.json)
 
+**Live: [evts.id.vn](https://evts.id.vn)** · [Tiếng Việt](README.vi.md)
+
 Event management and e-ticketing for the student clubs of Tra Vinh University. Clubs publish events,
 students register with their university account, organizers approve within a fixed capacity, and every
 approved seat becomes a cryptographically signed QR ticket that can be scanned exactly once at the door.
@@ -24,6 +26,7 @@ protect.
 - [Quick start](#quick-start)
 - [Configuration](#configuration)
 - [Testing](#testing)
+- [Release pipeline](#release-pipeline)
 - [Deployment](#deployment)
 - [Design decisions](#design-decisions)
 - [Repository layout](#repository-layout)
@@ -94,7 +97,7 @@ graph TB
         TICKET["ticket<br/>reservations, tickets<br/>check-in, outbox"]
         NOTIF["notification<br/>QR signing, email"]
     end
-    PG[("PostgreSQL<br/>Flyway, V1–V11")]
+    PG[("PostgreSQL<br/>Flyway, V1–V15")]
     RD[("Redis<br/>capacity counter")]
     MQ[["RabbitMQ<br/>reservation.approved"]]
 
@@ -192,12 +195,12 @@ instead of silently starting with a development value.
 ## Testing
 
 ```bash
-# Backend — 64 test classes, integration tests on Testcontainers
+# Backend — 76 test classes, integration tests on Testcontainers
 cd backend
 mvn clean verify
 mvn -pl monolith -am test -Dtest=TicketReservationServiceTest   # one class
 
-# Frontend
+# Frontend — 105 tests across 20 files
 cd frontend
 npm run lint && npm run typecheck && npm run test && npm run build
 ```
@@ -216,17 +219,67 @@ cd backend/load-test && ./run.sh
 It creates an event with 100 seats, submits 500 registrations, approves all 500 concurrently, and
 requires exactly 100 approved tickets, zero remaining capacity and no unexpected status code.
 
+## Release pipeline
+
+**Build once in CI, deploy by verified tag.** The production host no longer builds anything; it pulls
+images that CI has already scanned and signed. Nothing reaches a release tag on evidence that was not
+independently re-read from the registry.
+
+```mermaid
+graph LR
+    P["publish-prepare<br/>build both images<br/>push as candidate-*"]
+    C["4 collectors per image<br/>SBOM · vulnerabilities<br/>layer secrets · fs secrets"]
+    A["publish-attest<br/>11 Sigstore attestations"]
+    D["publish-finalize<br/>re-read everything<br/>publish-decision.sh"]
+    T["promote to<br/>monolith-sha / frontend-sha"]
+    X["stop — nothing promoted"]
+
+    P --> C --> A --> D
+    D -->|COMPLETE| T
+    D -->|CONFLICT / UNKNOWN| X
+```
+
+| Stage | What it produces |
+|---|---|
+| Collectors | Syft SBOM, Trivy vulnerability scan against a tracked ignore policy, Trivy secret scan per layer and over the flattened filesystem, and a real Flyway inventory obtained by running the migrations against a throwaway PostgreSQL |
+| Attestation | 11 Sigstore-signed attestations — 8 per-kind reports, 2 evidence-set carriers, 1 release marker — created through GitHub's OIDC identity and attached in the registry |
+| Decision | `publish-decision.sh` re-reads the registry from scratch, re-verifies every signature with `gh attestation verify`, **recomputes each scan verdict from its counts rather than trusting the declared outcome**, and returns `COMPLETE`, `PARTIAL`, `CONFLICT` or `UNKNOWN` |
+| Promotion | Only on `COMPLETE`. Promotion re-tags the existing manifest, so the final marker is byte-identical to the prepared one and inherits its attestation |
+
+Two rules run through the whole design:
+
+- **Absence must be observed, never inferred.** "I could not check" and "I checked and it failed" are
+  different answers and are never collapsed into one. A missing library raises; it does not quietly
+  report a document as invalid.
+- **The decision never trusts a job's memory of what it pushed.** Every fact is re-read from the
+  registry in a separate job with no shared state.
+
+`publish-decision.sh` is itself covered by mutation testing (8 parallel shards): each mutation is
+applied to a pristine copy and the suite must fail, so a check that cannot fail is caught as a bug.
+
 ## Deployment
 
-Production runs the same single container behind Caddy, which terminates TLS and is the only publicly
-exposed process. Deployment is scripted end to end — server preparation, secret generation, build,
-deploy, smoke test, backup and rollback — in
-[backend/docs/PRODUCTION_DEPLOYMENT_VI.md](backend/docs/PRODUCTION_DEPLOYMENT_VI.md) (Vietnamese).
+Production runs behind Caddy, which terminates TLS and is the only publicly exposed process.
+
+```bash
+git checkout --detach <sha-that-CI-published>
+cd backend/infra/production && bash scripts/deploy.sh
+```
+
+`deploy.sh` runs preflight, logs in to GHCR, pulls `monolith-<sha>` / `frontend-<sha>`, starts the
+datastores, **takes a verified PostgreSQL backup before the migration**, runs Flyway as the schema owner
+in a one-shot container, recreates the application containers, restarts Caddy and finishes with a smoke
+test over public HTTPS. It writes its state marker only after all of that passes, which is what
+`rollback.sh` relies on.
+
+The safety property is worth stating plainly: **a commit whose CI failed has no image tag**, so
+`compose pull` fails and there is nothing to deploy. The gate is not "CI was green" but "this exact
+commit produced a signed, verified release".
+
+First-time setup, secret generation, backup and rollback are in
+[backend/docs/FIRST_DEPLOY_RUNBOOK_VI.md](backend/docs/FIRST_DEPLOY_RUNBOOK_VI.md) (Vietnamese).
 Topology and cost guidance are in [backend/docs/DEPLOYMENT.md](backend/docs/DEPLOYMENT.md), day-two
 operations in [backend/docs/OPERATIONS.md](backend/docs/OPERATIONS.md).
-
-The `Deploy production` workflow pins the target host key and validates the deploy ref before it will
-touch the server.
 
 ## Design decisions
 
@@ -266,8 +319,10 @@ backend/
   docs/              Deployment, operations, security requirements, frontend contract
 frontend/
   src/               React application, design tokens in src/index.css
-docs/                Close-out notes and frontend implementation status
+docs/                Close-out notes, course report, frontend implementation status
 .github/workflows/   CI, CodeQL, production deploy
+.github/scripts/     Release pipeline — collectors, registry readers, publish-decision.sh
+.github/contracts/   JSON Schemas and fixtures the decision is validated against
 ```
 
 ## Documentation
@@ -281,6 +336,10 @@ docs/                Close-out notes and frontend implementation status
 | [Production deployment](backend/docs/PRODUCTION_DEPLOYMENT_VI.md) | Step-by-step release, backup and rollback |
 | [Operations](backend/docs/OPERATIONS.md) | Monitoring, restore and incident procedures |
 | [Project close-out](docs/PROJECT_CLOSEOUT.md) | Delivered scope, verification evidence, remaining risks |
+| [Course report](docs/BAO_CAO_KET_THUC_MON.md) | End-of-course report: scope, architecture, results, lessons (Vietnamese) |
+| [First deploy runbook](backend/docs/FIRST_DEPLOY_RUNBOOK_VI.md) | Server preparation through first release, step by step (Vietnamese) |
+| [Course report](docs/BAO_CAO_KET_THUC_MON.md) | End-of-course report: scope, architecture, results, lessons (Vietnamese) |
+| [First deploy runbook](backend/docs/FIRST_DEPLOY_RUNBOOK_VI.md) | Server preparation through first release, step by step (Vietnamese) |
 | [Original proposal](decuongTVUEventTicket.md) | The capstone brief this was built against (Vietnamese) |
 
 ---
