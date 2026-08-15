@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/trhlow/TVU-Event-Ticket/.github/contracts/release-envelope.schema.json",
+  "title": "The OCI manifest a release marker travels in",
+  "description": "Three descriptions of one artifact and the constants they share. rawEnvelope is what the registry holds, observedEnvelope is what a collector reports about it, markerEnvelope is what the publish job is allowed to push. They are deliberately not one schema: a schema that both describes bad bytes and constrains good ones says nothing precise about either.",
+  "$defs": {
+    "rawEnvelope": {
+      "type": "object",
+      "description": "An OCI image manifest as bytes, not as an interpretation. No const anywhere: this must be able to describe the bad artifact the decision has to refuse, including one carrying annotations or a subject. artifactType is not declared [\"string\",\"null\"] either -- a manifest without one simply lacks the key, and writing null would turn real bytes into a reading of them.",
+      "required": ["schemaVersion", "config", "layers"],
+      "properties": {
+        "schemaVersion": { "type": "integer" },
+        "mediaType": { "type": "string" },
+        "artifactType": { "type": "string" },
+        "config": { "type": "object" },
+        "layers": { "type": "array", "items": { "type": "object" } },
+        "subject": { "type": "object" },
+        "annotations": { "type": "object" }
+      }
+    },
+    "observedEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The carrier the marker travelled in, and the outcome of the checks made on it before anything inside was read. Three booleans plus the manifest itself. layerCount, payloadDescriptor and annotationsAbsent are deliberately absent: all three are derivable from raw, and a derived field stated separately is an opportunity for two halves of one fact to disagree.",
+      "required": ["digestVerified", "sizeVerified", "parsed"],
+      "properties": {
+        "digestVerified": {
+          "type": "boolean",
+          "description": "The downloaded bytes hashed to the digest the descriptor named."
+        },
+        "sizeVerified": {
+          "type": "boolean",
+          "description": "The declared size matched. Checked before the download, to bound it; a separate check at a separate moment, so it is declared separately and the decision demands both."
+        },
+        "parsed": {
+          "type": "boolean",
+          "description": "The verified bytes parsed as JSON. False is a verdict about the producer, not a defect in this observation."
+        },
+        "raw": {
+          "$ref": "#/$defs/rawEnvelope",
+          "description": "The manifest exactly as the registry holds it. Present only when all three booleans are true: parsing bytes whose descriptor has not matched is reading what the collector was forbidden to read."
+        }
+      },
+      "if": {
+        "properties": {
+          "digestVerified": { "const": true },
+          "sizeVerified": { "const": true },
+          "parsed": { "const": true }
+        },
+        "required": ["digestVerified", "sizeVerified", "parsed"]
+      },
+      "then": { "required": ["raw"] },
+      "else": { "not": { "required": ["raw"] } }
+    },
+    "constants": {
+      "description": "The single documentary source of every value section 2 pins. Not loaded at runtime: envelope.py states them in Python and publish-decision.sh imports them from there, because the decision must run without the contracts directory beside it and because the mutation runner copies only the scripts. manifest-agreement.test.sh is what holds the three statements together; see spec section 9.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifestMediaType", "artifactType", "emptyConfig", "predicateTypes"],
+      "properties": {
+        "manifestMediaType": { "const": "application/vnd.oci.image.manifest.v1+json" },
+        "artifactType": { "const": "application/vnd.tvu.release-manifest.v1+json" },
+        "emptyConfig": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mediaType", "digest", "size", "data"],
+          "properties": {
+            "mediaType": { "const": "application/vnd.oci.empty.v1+json" },
+            "digest": { "const": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a" },
+            "size": { "const": 2 },
+            "data": { "const": "e30=" }
+          }
+        },
+        "predicateTypes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["markerProvenance", "sbom", "vulnerabilityScan", "layerSecretScan", "filesystemSecretScan"],
+          "properties": {
+            "markerProvenance": { "const": "https://slsa.dev/provenance/v1" },
+            "sbom": { "const": "https://spdx.dev/Document/v2.3" },
+            "vulnerabilityScan": { "const": "https://evts.id.vn/attestations/vulnerabilityScan/v1" },
+            "layerSecretScan": { "const": "https://evts.id.vn/attestations/layerSecretScan/v1" },
+            "filesystemSecretScan": { "const": "https://evts.id.vn/attestations/filesystemSecretScan/v1" }
+          }
+        }
+      }
+    },
+    "markerEnvelope": {
+      "description": "What the publish job must build before it pushes. Nothing validates against this yet -- the producer does not exist, and inventing a consumer so the schema has work to do would measure the consumer. Its constant half is held by the drift check in manifest-agreement.test.sh; its structural half -- the exact field sets, the forbidden subject, the forbidden annotations -- is a debt the publish job's commit pays. Spec section 7.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "mediaType", "artifactType", "config", "layers"],
+      "properties": {
+        "schemaVersion": { "const": 2 },
+        "mediaType": { "$ref": "#/$defs/constants/properties/manifestMediaType" },
+        "artifactType": { "$ref": "#/$defs/constants/properties/artifactType" },
+        "config": { "$ref": "#/$defs/constants/properties/emptyConfig" },
+        "layers": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mediaType", "digest", "size"],
+            "properties": {
+              "mediaType": { "$ref": "#/$defs/constants/properties/artifactType" },
+              "digest": { "$ref": "./observation.schema.json#/$defs/digest" },
+              "size": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

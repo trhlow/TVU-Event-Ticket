@@ -60,6 +60,12 @@ echo "== Running migrations as the schema owner =="
 # value from its own environment instead, so it never appears on a command line.
 export SPRING_DATASOURCE_USERNAME="$POSTGRES_USER"
 export SPRING_DATASOURCE_PASSWORD="$POSTGRES_PASSWORD"
+# The `migration` profile is what keeps this process from doing background work: it switches off
+# SchedulingConfiguration, whose non-daemon scheduler thread was the SECOND thing found holding this
+# JVM open after Flyway had finished -- and, for 8.7 days on the real VPS, quietly running the outbox
+# relay and both reconcilers against the production database beside the real application. Add future
+# "not in the migration process" gates to that profile rather than to this command line.
+#
 # web-application-type=none stops the HTTP server; it does nothing about the RabbitMQ listeners
 # (NotificationDeadLetterListener, ReservationApprovedListener, ...), which run on non-daemon
 # threads and keep the JVM alive with no web server to ever ask it to stop. `compose run --rm`
@@ -72,7 +78,7 @@ compose run --rm --no-deps \
   -e SPRING_DATASOURCE_USERNAME \
   -e SPRING_DATASOURCE_PASSWORD \
   -e SPRING_MAIN_WEB_APPLICATION_TYPE=none \
-  -e SPRING_PROFILES_ACTIVE=prod,monolith \
+  -e SPRING_PROFILES_ACTIVE=prod,monolith,migration \
   monolith \
   java -cp app.jar -Dspring.flyway.enabled=true \
     org.springframework.boot.loader.launch.JarLauncher --spring.main.web-application-type=none \

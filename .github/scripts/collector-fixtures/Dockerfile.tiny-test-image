@@ -1,0 +1,7 @@
+# Deliberately not FROM scratch: syft and Trivy both need *some* package manager metadata to have
+# anything to report, and an empty SBOM would not exercise packageCount >= 1 or give Trivy a package
+# to have a known vulnerability against. alpine:3.18 is old enough to have at least one known CVE in
+# its base packages as of 2026, which is what makes this fixture actually exercise the findings path
+# instead of only the empty-findings path.
+FROM alpine:3.18
+RUN echo "tiny fixture image for collector tests" > /fixture-marker.txt

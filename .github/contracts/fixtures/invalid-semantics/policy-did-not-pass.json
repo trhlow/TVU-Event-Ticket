@@ -1,0 +1,959 @@
+{
+  "schemaVersion": 1,
+  "commit": "0123456789abcdef0123456789abcdef01234567",
+  "environment": "production",
+  "expected": {
+    "frontendConfigFingerprint": "fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477",
+    "signerWorkflow": ".github/workflows/ci.yml",
+    "registry": "ghcr.io",
+    "sourceRepository": "owner/name",
+    "repositories": {
+      "release": "owner/name/release",
+      "monolith": "owner/name/monolith",
+      "frontend": "owner/name/frontend"
+    }
+  },
+  "lookups": {
+    "finalMarker": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/release:release-0123456789abcdef0123456789abcdef01234567"
+    },
+    "preparedMarker": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/release:prepared-0123456789abcdef0123456789abcdef01234567",
+      "markerDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
+      "verification": {
+        "attestationVerified": true,
+        "subjectDigest": "sha256:3a9cbe3ccd065cbbe2f53b13f9b18e66423428ddd5f07418814e3deb0ecb48d7",
+        "signerRepository": "owner/name",
+        "signerWorkflow": ".github/workflows/ci.yml",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "predicateType": "https://slsa.dev/provenance/v1",
+        "policyPassed": false
+      },
+      "content": {
+        "commit": "0123456789abcdef0123456789abcdef01234567",
+        "environment": "production",
+        "frontendConfigFingerprint": "fea7afe794dacc6140c57ac4d8406f6ff97eb763c279c679f8fb89fcfa0f9477",
+        "images": {
+          "monolith": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "frontend": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "provenance": {
+          "monolith": {
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+          },
+          "frontend": {
+            "revision": "0123456789abcdef0123456789abcdef01234567",
+            "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+          }
+        },
+        "evidence": {
+          "sbom": {
+            "monolith": {
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://spdx.dev/Document/v2.3",
+              "documentValidated": true,
+              "packageCount": 5
+            },
+            "frontend": {
+              "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://spdx.dev/Document/v2.3",
+              "documentValidated": true,
+              "packageCount": 5
+            }
+          },
+          "vulnerabilityScan": {
+            "monolith": {
+              "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://evts.id.vn/attestations/vulnerabilityScan/v1",
+              "passed": true
+            },
+            "frontend": {
+              "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://evts.id.vn/attestations/vulnerabilityScan/v1",
+              "passed": true
+            }
+          },
+          "layerSecretScan": {
+            "monolith": {
+              "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://evts.id.vn/attestations/layerSecretScan/v1",
+              "passed": true
+            },
+            "frontend": {
+              "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://evts.id.vn/attestations/layerSecretScan/v1",
+              "passed": true
+            }
+          },
+          "filesystemSecretScan": {
+            "monolith": {
+              "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+              "subjectDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "predicateType": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
+              "passed": true
+            },
+            "frontend": {
+              "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+              "subjectDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+              "predicateType": "https://evts.id.vn/attestations/filesystemSecretScan/v1",
+              "passed": true
+            }
+          },
+          "evidenceSetDigest": {
+            "monolith": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "frontend": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+          }
+        },
+        "flywayInventory": {
+          "boundTo": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+          "checksum": "a5ecbdba7dba564cedd65cf048b7fb051356001df76859d0da74aec7c8ed179e",
+          "migrations": [
+            {
+              "installedRank": 1,
+              "version": "1",
+              "type": "SQL",
+              "script": "V1__baseline.sql",
+              "checksum": 111111111,
+              "success": true
+            },
+            {
+              "installedRank": 2,
+              "version": "9",
+              "type": "SQL",
+              "script": "V9__email_normalise.sql",
+              "checksum": 222222222,
+              "success": true
+            },
+            {
+              "installedRank": 3,
+              "version": null,
+              "type": "SQL",
+              "script": "R__reporting_views.sql",
+              "checksum": null,
+              "success": true
+            }
+          ]
+        }
+      },
+      "ociEnvelope": {
+        "digestVerified": true,
+        "sizeVerified": true,
+        "parsed": true,
+        "raw": {
+          "schemaVersion": 2,
+          "mediaType": "application/vnd.oci.image.manifest.v1+json",
+          "artifactType": "application/vnd.tvu.release-manifest.v1+json",
+          "config": {
+            "mediaType": "application/vnd.oci.empty.v1+json",
+            "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+            "size": 2,
+            "data": "e30="
+          },
+          "layers": [
+            {
+              "mediaType": "application/vnd.tvu.release-manifest.v1+json",
+              "digest": "sha256:1fb9fff4b2f185c9c466b9dbeef94750c2ba51ae28f6464d24372e8adb5a2cf6",
+              "size": 3687
+            }
+          ]
+        }
+      }
+    },
+    "monolithTag": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/monolith:monolith-0123456789abcdef0123456789abcdef01234567"
+    },
+    "frontendTag": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/frontend:frontend-0123456789abcdef0123456789abcdef01234567"
+    },
+    "monolithDigestObject": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/monolith@sha256:1111111111111111111111111111111111111111111111111111111111111111",
+      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "frontendDigestObject": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/frontend@sha256:2222222222222222222222222222222222222222222222222222222222222222",
+      "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "monolithCandidate": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/monolith:candidate-monolith-0123456789abcdef0123456789abcdef01234567"
+    },
+    "frontendCandidate": {
+      "status": "absent",
+      "observedCode": 404,
+      "queriedRef": "ghcr.io/owner/name/frontend:candidate-frontend-0123456789abcdef0123456789abcdef01234567"
+    },
+    "monolithEvidenceSet": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "carrierDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "verification": {
+        "attestationVerified": true,
+        "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "signerRepository": "owner/name",
+        "signerWorkflow": ".github/workflows/ci.yml",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "predicateType": "https://tvu.example/evidence-set",
+        "policyPassed": true
+      },
+      "subjectMatches": true,
+      "layersValid": true,
+      "reports": {
+        "sbom": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "spdxVersion": "SPDX-2.3",
+              "documentValidated": true,
+              "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "packageCount": 5,
+              "canonicalDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "canonicalSize": 1024
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "spdxVersion": "SPDX-2.3",
+              "documentValidated": true,
+              "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "packageCount": 5,
+              "canonicalDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "canonicalSize": 1024
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        },
+        "vulnerabilityScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        },
+        "layerSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        },
+        "filesystemSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/monolith@sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "subjectDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        }
+      }
+    },
+    "frontendEvidenceSet": {
+      "status": "present",
+      "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "carrierDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+      "verification": {
+        "attestationVerified": true,
+        "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "signerRepository": "owner/name",
+        "signerWorkflow": ".github/workflows/ci.yml",
+        "sourceRevision": "0123456789abcdef0123456789abcdef01234567",
+        "predicateType": "https://tvu.example/evidence-set",
+        "policyPassed": true
+      },
+      "subjectMatches": true,
+      "layersValid": true,
+      "reports": {
+        "sbom": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "spdxVersion": "SPDX-2.3",
+              "documentValidated": true,
+              "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "packageCount": 5,
+              "canonicalDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "canonicalSize": 1024
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "spdxVersion": "SPDX-2.3",
+              "documentValidated": true,
+              "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "packageCount": 5,
+              "canonicalDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "canonicalSize": 1024
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        },
+        "vulnerabilityScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        },
+        "layerSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        },
+        "filesystemSecretScan": {
+          "reportLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "descriptor": {
+              "mediaType": "application/vnd.evts.evidence.report.v1+json",
+              "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+              "size": 1024
+            },
+            "digestVerified": true,
+            "sizeVerified": true,
+            "schemaValid": true,
+            "normalizedReport": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            }
+          },
+          "attestationLookup": {
+            "status": "present",
+            "queriedRef": "ghcr.io/owner/name/frontend@sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "subjectDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+            "predicateType": "https://tvu.example/report-attestation",
+            "signerRepository": "owner/name",
+            "signerWorkflow": ".github/workflows/publish.yml",
+            "sourceRevision": "0000000000000000000000000000000000000000",
+            "attestationVerified": true,
+            "normalizedPredicate": {
+              "scanner": {
+                "name": "trivy",
+                "version": "0.55.0"
+              },
+              "target": {
+                "imageDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+              },
+              "policy": {
+                "severityThreshold": "HIGH",
+                "ignoreList": [],
+                "ignoreFileDigest": "0000000000000000000000000000000000000000000000000000000000000000"
+              },
+              "counts": {
+                "CRITICAL": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "HIGH": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "MEDIUM": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "LOW": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                },
+                "UNKNOWN": {
+                  "withFix": 0,
+                  "withoutFix": 0
+                }
+              },
+              "findings": [],
+              "truncated": false,
+              "declaredOutcome": true,
+              "reportDigest": "sha256:6666666666666666666666666666666666666666666666666666666666666666"
+            },
+            "paginationComplete": true,
+            "duplicates": []
+          }
+        }
+      }
+    }
+  }
+}
