@@ -40,6 +40,13 @@ require_env_value() {
   value="$(env_value "$key")"
   [[ -n "$value" ]] || die "$key is missing or empty in $env_file"
   [[ "$value" != *"REPLACE_WITH"* ]] || die "$key still contains a REPLACE_WITH placeholder"
+  # A whole value wrapped in angle brackets is a placeholder someone pasted verbatim. Only
+  # REPLACE_WITH was caught before, so `GHCR_TOKEN=<PAT read:packages>` passed preflight and failed
+  # much later at `docker login ghcr.io` with "denied: denied" -- a message about credentials that
+  # named neither the key nor the placeholder. Anchored, not a substring match: a real secret may
+  # legitimately contain < or > and must not be refused.
+  [[ "$value" != "<"*">" ]] \
+    || die "$key is still the placeholder $value in $env_file -- replace it with a real value"
 }
 
 current_release_ref() {
