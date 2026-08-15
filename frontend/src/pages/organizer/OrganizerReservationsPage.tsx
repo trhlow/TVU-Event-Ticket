@@ -66,7 +66,10 @@ export default function OrganizerReservationsPage() {
       accessor: (reservation: Reservation) => (
         <div>
           <p className="font-extrabold text-slate-950">{reservation.studentName || reservation.email}</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{reservation.email}</p>
+          {/* Backend doesn't return a student display name yet (see registrationService.ts), so
+              studentName is always "" and the line above already shows the email as a fallback.
+              Repeating it here would just duplicate the same text under every row. */}
+          {reservation.studentName && <p className="mt-1 text-xs font-semibold text-slate-500">{reservation.email}</p>}
         </div>
       ),
     },

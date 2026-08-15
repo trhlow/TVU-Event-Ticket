@@ -216,11 +216,18 @@ function localizeError(status: number, rawMessage?: string, retryAfterSeconds?: 
   if (status === 404) return "Không tìm thấy dữ liệu yêu cầu.";
   if (status === 409) {
     if (lower.includes("already exists") || lower.includes("duplicate")) return "Dữ liệu đã tồn tại, không thể tạo trùng.";
-    if (lower.includes("sold") || lower.includes("capacity") || lower.includes("ticket")) {
+    // Must come before the "sold out" branch below: TicketingService throws "Ticket cannot be
+    // checked in" for an already-used or otherwise invalid ticket, which contains neither "sold"
+    // nor "capacity" but does contain "ticket" -- a bare `includes("ticket")` check previously
+    // caught it and told the organizer at the door the event was sold out, when the real issue was
+    // a reused or invalid QR code.
+    if (lower.includes("expired")) return "Mã QR đã hết hạn.";
+    if (lower.includes("cannot be checked in")) return "Vé không hợp lệ hoặc đã được check-in trước đó.";
+    if (lower.includes("sold out") || lower.includes("capacity")) {
       return "Sự kiện đã hết vé hoặc không còn khả dụng.";
     }
     if (lower.includes("inactive") || lower.includes("locked")) return "Câu lạc bộ hoặc tài khoản liên quan đang bị khóa.";
-    if (lower.includes("no mssv")) return "Tài khoản chưa có MSSV để xác minh.";
+    if (lower.includes("must be completed")) return "Vui lòng hoàn tất hồ sơ (MSSV) trước khi tiếp tục.";
     return "Yêu cầu xung đột với dữ liệu hiện có. Vui lòng tải lại trang và thử lại.";
   }
   if (status === 400 || status === 422) {
