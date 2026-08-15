@@ -48,7 +48,7 @@ sequenceDiagram
     API->>DB: Reservation PENDING (chưa chiếm chỗ)
     O->>API: Duyệt đăng ký
     API->>R: Giảm sức chứa còn lại (atomic)
-    alt còn chỗ
+    alt vẫn còn chỗ trống
         API->>DB: Ticket VALID + dòng outbox (một transaction)
         API->>MQ: reservation.approved
         MQ->>M: Gửi vé QR đã ký qua email
