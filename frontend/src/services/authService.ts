@@ -64,8 +64,8 @@ function microsoftConfig() {
 }
 
 /**
- * Where the sign-in popup is allowed to land: a blank page served from the same origin, never the
- * application root. See the note at the loginPopup call for what pointing it at the root cost.
+ * Where the sign-in popup is allowed to land: a dedicated MSAL redirect-bridge page served from the
+ * same origin, never the application root. See the loginPopup note for what pointing it at the root cost.
  *
  * Exported for the test that pins this behaviour, since the failure it prevents is invisible until a
  * real popup runs against a real Entra tenant.
@@ -117,12 +117,10 @@ export const authService = {
     const response = await msal.loginPopup({
       scopes: ["openid", "profile", "email"],
       prompt: "select_account",
-      // The popup lands on a blank page, never on the application root. Pointing it at the root made
-      // the popup load the whole React app, which does not initialise MSAL -- it imports the library
-      // only when this function runs -- so nothing in the popup ever claimed the code or answered the
-      // window that opened it, and this call died with MSAL's `timed_out` while the popup sat on the
-      // home page with the code still in its address bar. Confirmed against the deployed site with a
-      // guest and a member account, in Incognito and in a second browser.
+      // The popup lands on a dedicated page that runs MSAL 5's redirect bridge, never on the
+      // application root. Pointing it at the root loaded React and routing in the popup instead of the
+      // bridge, so the authorization response never reached this tab and loginPopup died with
+      // `timed_out` while the popup sat on the home page with #code=... still in its address bar.
       //
       // Per-request rather than on the instance: VITE_MICROSOFT_REDIRECT_URI stays the application
       // root, which is what the frontend config fingerprint is computed over and what preflight
