@@ -6,6 +6,7 @@ section 4 loop, no mocks. Uses the real monolith-test-image.tar fixture (not the
 collect_flyway_inventory has real Flyway migrations to read; frontend reuses the tiny fixture, matching
 every other test this session that never needed a real frontend image to exercise the OCI plumbing.
 """
+import hashlib
 import importlib.util
 import os
 import pathlib
@@ -99,9 +100,23 @@ try:
         capture_output=True, text=True, timeout=60, check=False,
     )
     container_id = run_proc.stdout.strip()
+    if run_proc.returncode != 0 or not container_id:
+        # A stopped Docker daemon used to surface here as `IndexError: list index out of range` two
+        # lines down -- an unreadable way to say "this suite never ran". Say what actually happened.
+        raise SystemExit(
+            "the throwaway registry could not be started, so NOTHING in this suite ran (this is not a "
+            f"test failure -- no test was executed): docker exited {run_proc.returncode}: "
+            f"{run_proc.stderr.strip()[:500]}"
+        )
     port_proc = subprocess.run(["docker", "port", container_id, "5000/tcp"],
                                 capture_output=True, text=True, timeout=30, check=False)
-    host_port = port_proc.stdout.strip().splitlines()[0].rsplit(":", 1)[1]
+    port_lines = port_proc.stdout.strip().splitlines()
+    if not port_lines:
+        raise SystemExit(
+            f"registry container {container_id[:12]} published no host port for 5000/tcp, so nothing "
+            f"in this suite ran: {port_proc.stderr.strip()[:500]}"
+        )
+    host_port = port_lines[0].rsplit(":", 1)[1]
 
     deadline = time.monotonic() + 30
     while time.monotonic() < deadline:
@@ -160,11 +175,38 @@ try:
     report("the marker subject carries no predicate (actions/attest-build-provenance supplies its own)",
            next(s for s in subjects if s["name"] == "release-marker")["predicate"] is None,
            f"marker subject={next(s for s in subjects if s['name'] == 'release-marker')!r}")
-    report("each report subject's predicate is the exact document pushed as that report's OCI blob "
-           "(the decision cross-checks these two, so they must be identical bytes)",
+    report("the sbom subject's predicate is the SPDX document itself, unmodified",
            next(s for s in subjects if s["name"] == "monolith-sbom-report")["predicateType"]
            == "https://spdx.dev/Document/v2.3",
            f"sbom subject predicateType={next(s for s in subjects if s['name'] == 'monolith-sbom-report')['predicateType']!r}")
+
+    # A scan predicate is the report document with EXACTLY ONE field changed: reportDigest, which on
+    # the signed side must name the report layer as stored (spec section 8/10 -- "read only from the
+    # attestation side and compared against the report's own descriptor digest"). The document's own
+    # reportDigest is necessarily the digest of itself-without-that-field, so the two differ by
+    # construction, and publish-decision.sh's binding check failed on every real run until this
+    # distinction existed. Asserting "one field, that field, and nothing else" is what stops the fix
+    # from silently becoming "the predicate drifted from the report".
+    for image, kind in (("monolith", "vulnerabilityScan"), ("frontend", "layerSecretScan")):
+        subj = next(s for s in subjects if s["name"] == f"{image}-{kind}-report")
+        pred = subj["predicate"]
+        # The value the collector puts INSIDE the document: the digest of the document without its
+        # own reportDigest. If the signed predicate still carried this, the decision's binding check
+        # would fail exactly as it did on the real run -- so this is the value it must NOT be.
+        self_excluding = "sha256:" + hashlib.sha256(_canonical.canonical_bytes(
+            {k: v for k, v in pred.items() if k != "reportDigest"})).hexdigest()
+        # Putting that value back reconstructs the report EXACTLY as the evidence set stored it, so its
+        # canonical digest is the layer descriptor digest -- derived here, not copied from the producer.
+        # Equality therefore proves both halves at once: the predicate names the stored blob, and it
+        # differs from that blob in this one field only (any other drift changes these bytes too).
+        stored_document = {**pred, "reportDigest": self_excluding}
+        stored_digest = "sha256:" + hashlib.sha256(
+            _canonical.canonical_bytes(stored_document)).hexdigest()
+        report(f"{image}/{kind}: the signed predicate's reportDigest is the stored report blob's own "
+               f"descriptor digest, and that one field is the only difference between them",
+               pred.get("reportDigest") == stored_digest,
+               f"predicate reportDigest={pred.get('reportDigest')!r} "
+               f"stored blob digest={stored_digest!r} self_excluding={self_excluding!r}")
     report("every subject's subjectName is a real registry/repo reference, not the descriptive name "
            "(actions/attest's push-to-registry requires a valid OCI image reference -- a real CI run "
            "against GHCR rejected a descriptive label like 'release-marker' with "
