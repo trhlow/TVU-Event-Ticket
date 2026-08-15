@@ -40,7 +40,56 @@ cùng lúc trên hai máy khác nhau, khi chỉ còn một chỗ, phải có đ�
 
 ## 2. Phạm vi đã thực hiện
 
-### 2.1 Chức năng theo vai trò
+### 2.1 Sơ đồ use case
+
+```mermaid
+flowchart LR
+    SV(("Sinh viên"))
+    BTC(("Ban tổ chức"))
+    QT(("Super Admin"))
+
+    subgraph SYS["Hệ thống TVU Event & Ticketing"]
+        UC1(["Đăng nhập Microsoft"])
+        UC2(["Hoàn thiện hồ sơ (MSSV, lớp)"])
+        UC3(["Xem sự kiện"])
+        UC4(["Gửi đăng ký giữ chỗ"])
+        UC5(["Xem trạng thái đăng ký"])
+        UC6(["Tạo / sửa / xoá sự kiện"])
+        UC7(["Duyệt đăng ký"])
+        UC8(["Từ chối đăng ký"])
+        UC9(["Phát hành vé QR"])
+        UC10(["Quét QR điểm danh"])
+        UC11(["Dashboard CLB"])
+        UC12(["Xuất CSV tham dự"])
+        UC13(["Quản lý tài khoản BTC"])
+        UC14(["Quản lý danh mục CLB"])
+        UC15(["Audit log, thống kê toàn trường"])
+    end
+
+    SV --- UC1
+    SV --- UC2
+    SV --- UC3
+    SV --- UC4
+    SV --- UC5
+    BTC --- UC6
+    BTC --- UC7
+    BTC --- UC8
+    BTC --- UC10
+    BTC --- UC11
+    BTC --- UC12
+    QT --- UC13
+    QT --- UC14
+    QT --- UC15
+
+    UC4 -. "include" .-> UC1
+    UC7 -. "include" .-> UC9
+    UC2 -. "extend" .-> UC1
+```
+
+Quan hệ đáng chú ý: **duyệt đăng ký `include` phát hành vé** — không có đường nào phát vé mà không đi
+qua bước duyệt, và đó chính là chỗ ràng buộc sức chứa được áp.
+
+### 2.2 Chức năng theo vai trò
 
 | Chức năng | Sinh viên | Ban tổ chức | Super Admin |
 |---|:---:|:---:|:---:|
@@ -60,7 +109,7 @@ cùng lúc trên hai máy khác nhau, khi chỉ còn một chỗ, phải có đ�
 Super Admin **cố ý chỉ đọc** ở phạm vi CLB: quản trị tài khoản và xem số liệu tổng hợp, nhưng mọi route
 thuộc phạm vi CLB đều trả `403`. Quyết định này nhằm giới hạn thiệt hại nếu tài khoản quản trị bị chiếm.
 
-### 2.2 Quy mô mã nguồn
+### 2.3 Quy mô mã nguồn
 
 | Hạng mục | Số lượng |
 |---|---|
@@ -125,7 +174,76 @@ Bốn feature giao tiếp qua DTO và domain event, **không đụng repository 
 giữ bằng cấu trúc chứ không bằng thoả thuận: mỗi feature có `*FeatureConfiguration` riêng chỉ quét đúng
 package của nó, và `vn.edu.tvu.monolith` là nơi duy nhất được phép phụ thuộc hai feature cùng lúc.
 
-### 3.3 Công nghệ
+### 3.3 Mô hình dữ liệu
+
+```mermaid
+erDiagram
+    CLUB ||--o{ USER : "tổ chức bởi"
+    CLUB ||--o{ EVENT : "sở hữu"
+    USER ||--o{ RESERVATION : "gửi"
+    EVENT ||--o{ RESERVATION : "nhận"
+    RESERVATION ||--o| TICKET : "phát hành"
+    EVENT ||--|| TICKET_INVENTORY : "có kho vé"
+    EVENT ||--o{ TICKET : "cấp cho"
+    USER ||--o{ TICKET : "sở hữu"
+    USER ||--o{ AUDIT_LOG : "thực hiện"
+
+    CLUB {
+        uuid club_id PK
+        string name
+    }
+    USER {
+        uuid user_id PK
+        string email
+        string role
+        string mssv
+        uuid club_id FK
+        string mssv_status
+    }
+    EVENT {
+        uuid event_id PK
+        uuid club_id FK
+        string title
+        int capacity
+        string status
+    }
+    RESERVATION {
+        uuid reservation_id PK
+        uuid event_id FK
+        uuid student_id FK
+        string status
+        string idempotency_key
+    }
+    TICKET {
+        uuid ticket_id PK
+        uuid reservation_id FK
+        uuid event_id FK
+        uuid student_id FK
+        string status
+        datetime checked_in_at
+        bigint version
+    }
+    TICKET_INVENTORY {
+        uuid inventory_id PK
+        uuid event_id FK
+        int remaining
+    }
+    AUDIT_LOG {
+        uuid audit_id PK
+        uuid actor_id FK
+        string action
+    }
+```
+
+Ba chi tiết mang tính ràng buộc, không phải trang trí:
+
+- `RESERVATION.idempotency_key` cộng với constraint duy nhất trên `(event_id, student_id)` là thứ chặn
+  đăng ký trùng ở tầng database — không phụ thuộc vào việc tầng ứng dụng có kiểm hay không.
+- `TICKET.version` là cột optimistic locking, lớp bảo vệ thứ hai chống bán vượt.
+- Migration `V7` khai báo khoá ngoại **không có** `ON DELETE CASCADE`: xoá một dòng đang được tham chiếu
+  sẽ báo lỗi rõ ràng thay vì âm thầm xoá theo cả lịch sử vé.
+
+### 3.4 Công nghệ
 
 | Tầng | Công nghệ |
 |---|---|
@@ -298,6 +416,45 @@ sạch, và bộ test **bắt buộc phải fail**. Một phép kiểm tra khôn
 `deploy.sh` chạy tự động: preflight → đăng nhập GHCR → kéo image theo tag commit → khởi động datastore →
 **sao lưu PostgreSQL đã verify trước khi migrate** → chạy Flyway với quyền chủ schema → tạo lại container
 → restart Caddy → smoke test qua HTTPS công khai. Chỉ ghi mốc trạng thái khi tất cả đã qua.
+
+### 6.5 Sơ đồ triển khai
+
+```mermaid
+flowchart TB
+    NET[["Internet"]]
+    GHCR[["GHCR — image đã ký"]]
+
+    subgraph VM["VPS Ubuntu 24.04 · Docker Compose"]
+        subgraph PUB["mạng public"]
+            CADDY["Caddy 2.10 — HTTPS, reverse proxy"]
+            FE["Frontend — React (Nginx, uid 10001)"]
+        end
+        subgraph APP["mạng application (không ra Internet)"]
+            MONO["Monolith — Spring Boot 4 / Java 25"]
+            PG[("PostgreSQL 18")]
+            R[("Redis 7.4")]
+            MQ{{"RabbitMQ 4.2"}}
+        end
+    end
+
+    MS[["Microsoft Entra ID"]]
+    SMTP[["SMTP"]]
+
+    NET --> CADDY
+    CADDY --> FE
+    CADDY -- "/api" --> MONO
+    MONO --> PG
+    MONO --> R
+    MONO -- outbox --> MQ
+    MQ --> MONO
+    MONO -. "xác minh token OIDC" .-> MS
+    MONO -. "gửi email vé" .-> SMTP
+    GHCR -. "deploy.sh pull theo tag commit" .-> VM
+```
+
+**Chỉ Caddy lộ ra Internet.** PostgreSQL (5432), Redis (6379) và RabbitMQ (5672/15672) nằm trong mạng
+`application` và không publish cổng nào ra ngoài. Frontend và API dùng **cùng một origin**
+(`VITE_API_BASE_URL=/api`) nên cookie JWT `HttpOnly` hoạt động mà không cần cấu hình CORS liên miền.
 
 ---
 

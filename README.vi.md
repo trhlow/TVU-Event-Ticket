@@ -48,7 +48,7 @@ sequenceDiagram
     API->>DB: Reservation PENDING (chưa chiếm chỗ)
     O->>API: Duyệt đăng ký
     API->>R: Giảm sức chứa còn lại (atomic)
-    alt còn chỗ
+    alt vẫn còn chỗ trống
         API->>DB: Ticket VALID + dòng outbox (một transaction)
         API->>MQ: reservation.approved
         MQ->>M: Gửi vé QR đã ký qua email
@@ -336,6 +336,7 @@ docs/                Ghi chú tổng kết, báo cáo môn học, trạng thái 
 | [Vận hành](backend/docs/OPERATIONS.md) | Giám sát, khôi phục và quy trình sự cố |
 | [Tổng kết dự án](docs/PROJECT_CLOSEOUT.md) | Phạm vi đã giao, bằng chứng kiểm chứng, rủi ro còn lại |
 | [Báo cáo kết thúc môn](docs/BAO_CAO_KET_THUC_MON.md) | Báo cáo môn học: phạm vi, kiến trúc, kết quả, bài học |
+| [Sơ đồ UML & phân tích](SO_DO_UML_TVU_Event_Ticketing.md) | Use case, hoạt động, lớp, tuần tự, dòng dữ liệu, ERD và triển khai |
 | [Đề cương gốc](decuongTVUEventTicket.md) | Đề cương đồ án mà hệ thống này được xây theo |
 
 ---
