@@ -340,6 +340,7 @@ docs/                Close-out notes, course report, frontend implementation sta
 | [First deploy runbook](backend/docs/FIRST_DEPLOY_RUNBOOK_VI.md) | Server preparation through first release, step by step (Vietnamese) |
 | [Course report](docs/BAO_CAO_KET_THUC_MON.md) | End-of-course report: scope, architecture, results, lessons (Vietnamese) |
 | [First deploy runbook](backend/docs/FIRST_DEPLOY_RUNBOOK_VI.md) | Server preparation through first release, step by step (Vietnamese) |
+| [UML & system analysis](SO_DO_UML_TVU_Event_Ticketing.md) | Use case, activity, class, sequence, data-flow, ER and deployment diagrams (Vietnamese) |
 | [Original proposal](decuongTVUEventTicket.md) | The capstone brief this was built against (Vietnamese) |
 
 ---
