@@ -9,10 +9,21 @@ claimed value).
 import importlib.util
 import json
 import pathlib
+import sys
 
 import canonical
 
 _HERE = pathlib.Path(__file__).resolve().parent
+
+
+class ReportReadError(Exception):
+    """The report could not be CHECKED, as distinct from checked and found wanting.
+
+    Every other failure in this module is reported as data (status/schemaValid/...), because a
+    registry that says no is an answer. This one is raised instead: an environment that cannot run
+    the check at all has produced no answer, and returning False would state a fact about the
+    document that nobody established.
+    """
 
 
 def _load(name):
@@ -47,8 +58,17 @@ _PREDICATE_SCHEMA_FILES = {
 
 
 def _build_schema_registry():
-    import referencing
-    import referencing.jsonschema
+    # Same reasoning as _validate_predicate_schema's jsonschema guard: the scan schemas $ref each
+    # other by $id, so without `referencing` nothing can be resolved and no check happens at all.
+    # An unusable checker is an environment fault, reported as one -- never as an invalid document.
+    try:
+        import referencing
+        import referencing.jsonschema
+    except ImportError as exc:
+        raise ReportReadError(
+            "referencing is not installed, so the predicate schemas' cross-references could not be "
+            f"resolved and no schema could be checked at all -- an environment fault: {exc}"
+        ) from exc
 
     contracts_dir = _HERE.parent / "contracts"
     resources = {}
@@ -64,21 +84,42 @@ def _build_schema_registry():
 def _validate_predicate_schema(kind: str, document: dict) -> bool:
     if kind == "sbom":
         return document.get("spdxVersion") == "SPDX-2.3" and isinstance(document.get("packages"), list)
-    import jsonschema
+    # NOT wrapped in `except Exception: return False`, and that is the whole point. It was, and a
+    # missing jsonschema on the runner therefore raised ImportError, got swallowed, and was reported
+    # as schemaValid=False -- "I could not check" masquerading as "I checked and it is invalid",
+    # which is the exact conflation this contract refuses everywhere else ("absence must be observed,
+    # never inferred"). It cost a real CI run: publish-finalize does not pip install jsonschema the
+    # way lint does, so every scan report on a real run came back invalid while the very same
+    # documents validated cleanly on a workstation that happened to have the library.
+    #
+    # An unusable checker is an environment fault and must be loud. Only a document that really was
+    # checked and really failed returns False.
+    try:
+        import jsonschema
+    except ImportError as exc:
+        raise ReportReadError(
+            f"jsonschema is not installed, so {kind}'s predicate schema could not be checked at all "
+            f"-- this is an environment fault, not an invalid document, and must not be reported as "
+            f"one: {exc}"
+        ) from exc
+
     schema_path = _HERE.parent / "contracts" / "predicates" / _PREDICATE_SCHEMA_FILES[kind]
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     # The 3 scan predicate schemas $ref into observation.schema.json (digest/scanPolicy/scanCounts) via
     # relative $ids, so a plain, registry-less validator cannot resolve them and would report every real
     # document as invalid. Build the same $id-keyed registry the collector tests already build, so this
     # is a real, fully-resolved schema check, not a narrower approximation.
-    try:
-        registry = _build_schema_registry()
-        jsonschema.Draft202012Validator.check_schema(schema)
-        validator = jsonschema.Draft202012Validator(schema, registry=registry)
-        return not any(True for _ in validator.iter_errors(document))
-    except Exception:  # noqa: BLE001 -- a schema/registry problem here is not crash-worthy, it means
-                       # schemaValid cannot be determined as True
+    registry = _build_schema_registry()
+    jsonschema.Draft202012Validator.check_schema(schema)
+    validator = jsonschema.Draft202012Validator(schema, registry=registry)
+    errors = sorted(validator.iter_errors(document), key=str)
+    if errors:
+        # Printed, not discarded: a bare False sends the next person to guess which of a hundred
+        # fields was wrong, which is how the ImportError above hid for a whole run.
+        detail = "; ".join(f"{list(e.path)}: {e.message}" for e in errors[:5])
+        print(f"schemaValid=False for {kind}: {detail}", file=sys.stderr)
         return False
+    return True
 
 
 def read_evidence_set_report(registry_ref: str, evidence_set_tag: str, kind: str, subject_digest: str,
