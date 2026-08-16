@@ -9,6 +9,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import SectionCard from "../common/SectionCard";
 
 interface BarChartCardProps {
   title: string;
@@ -24,13 +25,7 @@ export default function BarChartCard({
   xAxisKey,
 }: BarChartCardProps) {
   return (
-    <div className="enterprise-card hover-lift flex flex-col justify-between p-5 text-left">
-      <div className="mb-4">
-        <h4 className="font-display text-base font-extrabold text-slate-950">
-          {title}
-        </h4>
-        <p className="mt-1 text-xs font-semibold text-slate-500">So sánh dữ liệu theo nhóm</p>
-      </div>
+    <SectionCard title={title} description="So sánh dữ liệu theo nhóm" className="hover-lift text-left">
       <div className="h-60 w-full text-[10px] font-medium">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
@@ -41,7 +36,9 @@ export default function BarChartCard({
               contentStyle={{
                 backgroundColor: "#ffffff",
                 border: "1px solid #bfdbfe",
-                borderRadius: "12px",
+                // Recharts tooltips are inline JS styles and cannot read the Tailwind
+                // token, so --radius-card's 16px is duplicated here by hand.
+                borderRadius: "16px",
                 boxShadow: "0 14px 30px rgba(15, 23, 42, 0.1)",
                 fontSize: "12px",
                 fontWeight: "600",
@@ -61,6 +58,6 @@ export default function BarChartCard({
           </BarChart>
         </ResponsiveContainer>
       </div>
-    </div>
+    </SectionCard>
   );
 }

@@ -1,6 +1,7 @@
 import React from "react";
 import { PieChart as PieChartIcon } from "lucide-react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import SectionCard from "../common/SectionCard";
 
 interface DonutChartCardProps {
   title: string;
@@ -19,13 +20,7 @@ export default function DonutChartCard({
   const hasData = data.some((entry) => entry.value > 0);
 
   return (
-    <div className="enterprise-card hover-lift flex flex-col justify-between p-5 text-left">
-      <div className="mb-4">
-        <h4 className="font-display text-base font-extrabold text-slate-950">
-          {title}
-        </h4>
-        <p className="mt-1 text-xs font-semibold text-slate-500">Tỷ trọng trạng thái hiện tại</p>
-      </div>
+    <SectionCard title={title} description="Tỷ trọng trạng thái hiện tại" className="hover-lift text-left">
       {hasData ? (
         <div className="relative flex h-60 w-full items-center justify-center text-[10px] font-medium">
           <ResponsiveContainer width="100%" height="100%">
@@ -50,7 +45,9 @@ export default function DonutChartCard({
                 contentStyle={{
                   backgroundColor: "#ffffff",
                   border: "1px solid #bfdbfe",
-                  borderRadius: "12px",
+                  // Recharts tooltips are inline JS styles and cannot read the Tailwind
+                  // token, so --radius-card's 16px is duplicated here by hand.
+                  borderRadius: "16px",
                   boxShadow: "0 14px 30px rgba(15, 23, 42, 0.1)",
                   fontSize: "12px",
                   fontWeight: "600",
@@ -67,6 +64,6 @@ export default function DonutChartCard({
           <p className="text-xs font-semibold text-slate-400">Chưa có dữ liệu để hiển thị</p>
         </div>
       )}
-    </div>
+    </SectionCard>
   );
 }
