@@ -6,6 +6,7 @@ import QRScannerPanel from "../../components/tickets/QRScannerPanel";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
+import SectionCard from "../../components/common/SectionCard";
 
 export default function OrganizerScanPage() {
   const { eventId } = useParams<{ eventId?: string }>();
@@ -94,12 +95,8 @@ export default function OrganizerScanPage() {
         </div>
       )}
       <QRScannerPanel onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
-      <section className="enterprise-card p-5">
-        <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
-          <h2 className="section-heading">Lịch sử check-in gần đây</h2>
-          <p className="text-sm font-semibold text-slate-500">Ghi nhận kết quả quét trong phiên hiện tại.</p>
-        </div>
-        <div className="mt-4 space-y-3">
+      <SectionCard title="Lịch sử check-in gần đây" description="Ghi nhận kết quả quét trong phiên hiện tại.">
+        <div className="space-y-3">
           {scanHistory.length > 0 ? (
             scanHistory.map((item, index) => (
               <div key={`${item.code}-${index}`} className="flex items-start gap-3 rounded-card border border-slate-100 bg-slate-50 p-3">
@@ -121,7 +118,7 @@ export default function OrganizerScanPage() {
             </div>
           )}
         </div>
-      </section>
+      </SectionCard>
     </div>
   );
 }

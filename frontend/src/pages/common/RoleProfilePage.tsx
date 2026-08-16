@@ -6,6 +6,7 @@ import { getRoleLabel } from "../../utils/roleHelpers";
 import { authService } from "../../services/authService";
 import { useToast } from "../../hooks/useToast";
 import { Input } from "../../components/ui/input";
+import SectionCard from "../../components/common/SectionCard";
 
 interface RoleProfilePageProps {
   scope: "organizer" | "admin";
@@ -49,13 +50,11 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
       />
 
       <div className={isAdmin ? "grid gap-6" : "grid gap-6 lg:grid-cols-[1fr_320px]"}>
-        <section className="enterprise-card p-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h2 className="section-heading">Thông tin định danh</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Các trường này được cấp và quản lý bởi hệ thống, chỉ để tra cứu.</p>
-          </div>
-
-          <form onSubmit={handleSaveName} className="mt-5 grid gap-4 sm:grid-cols-2">
+        <SectionCard
+          title="Thông tin định danh"
+          description="Các trường này được cấp và quản lý bởi hệ thống, chỉ để tra cứu."
+        >
+          <form onSubmit={handleSaveName} className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Họ và tên</span>
               <span className="relative flex items-center gap-2">
@@ -103,7 +102,7 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
               Bạn có thể chỉnh sửa họ và tên. Email, vai trò hệ thống và trạng thái tài khoản do hệ thống quản lý, chỉ để tra cứu.
             </p>
           </div>
-        </section>
+        </SectionCard>
 
         {!isAdmin && (
           <aside className="enterprise-card h-fit p-5">

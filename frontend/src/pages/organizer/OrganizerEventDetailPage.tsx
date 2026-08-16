@@ -17,6 +17,7 @@ import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";
+import SectionCard from "../../components/common/SectionCard";
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -171,19 +172,16 @@ export default function OrganizerEventDetailPage() {
             </div>
           </div>
 
-          <div className="enterprise-card space-y-3 p-5">
-            <h3 className="text-sm font-extrabold text-slate-900">Mô tả sự kiện</h3>
+          <SectionCard title="Mô tả sự kiện">
             <p className="text-xs font-semibold leading-relaxed text-slate-600">{event.description || "Chưa có mô tả."}</p>
-          </div>
+          </SectionCard>
         </div>
 
         <div className="space-y-4 lg:col-span-2">
-          <div className="enterprise-card space-y-4 p-5">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900">Đăng ký chờ duyệt</h3>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Vé đã duyệt và điểm danh xem tại danh sách attendee/vé của sự kiện.</p>
-            </div>
-
+          <SectionCard
+            title="Đăng ký chờ duyệt"
+            description="Vé đã duyệt và điểm danh xem tại danh sách attendee/vé của sự kiện."
+          >
             {reservations.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-semibold text-slate-600">
@@ -234,7 +232,7 @@ export default function OrganizerEventDetailPage() {
             ) : (
               <div className="py-12 text-center text-sm font-bold text-slate-400">Không có đăng ký chờ duyệt cho sự kiện này.</div>
             )}
-          </div>
+          </SectionCard>
         </div>
       </div>
 
