@@ -25,8 +25,8 @@ export default function BarChartCard({
   xAxisKey,
 }: BarChartCardProps) {
   return (
-    <SectionCard title={title} description="So sánh dữ liệu theo nhóm" className="hover-lift text-left">
-      <div className="h-60 w-full text-[10px] font-medium">
+    <SectionCard title={title} description="So sánh dữ liệu theo nhóm" className="h-full hover-lift text-left">
+      <div className="h-full min-h-60 w-full text-[10px] font-medium">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#dbeafe" />

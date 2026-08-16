@@ -139,7 +139,7 @@ export default function OrganizerDashboard() {
       )}
 
       <div className="grid gap-section lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="h-full lg:col-span-2">
           <LineChartCard
             title="Tổng hợp đăng ký và điểm danh"
             data={lineChartData}

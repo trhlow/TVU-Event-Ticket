@@ -129,7 +129,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       <div className="grid gap-section lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="h-full lg:col-span-2">
           {clubStatsError ? (
             <BackendPendingNotice
               title="Không thể tải thống kê theo CLB"

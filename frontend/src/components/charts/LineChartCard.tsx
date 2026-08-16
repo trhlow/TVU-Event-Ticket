@@ -19,9 +19,9 @@ export default function LineChartCard({
     <SectionCard
       title={title}
       description="Theo dõi xu hướng vận hành theo thời gian"
-      className="hover-lift text-left"
+      className="h-full hover-lift text-left"
     >
-      <div className="h-60 w-full text-[10px] font-medium">
+      <div className="h-full min-h-60 w-full text-[10px] font-medium">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#dbeafe" />
