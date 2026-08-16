@@ -65,7 +65,7 @@ export default function StudentProfileForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {errorMsg && (
-        <div id="profile-form-error" role="alert" className="flex gap-2 rounded-xl border border-danger-200 bg-danger-50 p-3.5 text-[11px] font-bold text-danger-700">
+        <div id="profile-form-error" role="alert" className="flex gap-2 rounded-card border border-danger-200 bg-danger-50 p-3.5 text-[11px] font-bold text-danger-700">
           <ShieldAlert className="h-4 w-4 shrink-0 text-danger-600" aria-hidden="true" />
           <span>{errorMsg}</span>
         </div>
@@ -86,7 +86,7 @@ export default function StudentProfileForm({
             Mã số sinh viên (MSSV) *
             {mssvStatus && (
               <span
-                className={`rounded-full px-2 py-0.5 text-[9px] font-black normal-case tracking-normal ${
+                className={`rounded-chip px-2 py-0.5 text-[9px] font-black normal-case tracking-normal ${
                   mssvStatus === "VERIFIED" ? "bg-success-50 text-success-700" : "bg-warning-50 text-amber-700"
                 }`}
               >
@@ -136,7 +136,7 @@ export default function StudentProfileForm({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="btn-press flex items-center gap-1.5 rounded-xl bg-brand-600 px-5 py-2 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700 disabled:opacity-60"
+          className="btn-press flex items-center gap-1.5 rounded-control bg-brand-600 px-5 py-2 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700 disabled:opacity-60"
         >
           <Save className="h-4 w-4" aria-hidden="true" /> {submitLabel}
         </button>

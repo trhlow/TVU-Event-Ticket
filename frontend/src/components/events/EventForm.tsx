@@ -116,7 +116,7 @@ export default function EventForm({
   };
 
   return (
-    <form onSubmit={handleFormSubmit} className="space-y-6 text-left max-w-3xl mx-auto bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+    <form onSubmit={handleFormSubmit} className="space-y-6 text-left max-w-3xl mx-auto bg-white p-6 rounded-card border border-gray-200 shadow-xs">
       <div className="flex justify-between items-center pb-4 border-b border-gray-100">
         <div>
           <h3 className="text-base font-bold text-gray-950 tracking-tight">
@@ -157,7 +157,7 @@ export default function EventForm({
               onChange={handleChange}
               rows={5}
               placeholder="Nêu rõ mục đích, nội dung chương trình, quyền lợi của sinh viên khi tham gia (ví dụ: điểm rèn luyện)..."
-              className={`w-full bg-gray-50/50 border rounded-xl px-4 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
+              className={`w-full bg-gray-50/50 border rounded-control px-4 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
                 errors.description ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
               }`}
               aria-invalid={!!errors.description}
@@ -297,7 +297,7 @@ export default function EventForm({
         </div>
       </section>
 
-      <div className="p-4 bg-brand-50/50 border border-brand-100 rounded-xl flex gap-3 mt-4 text-left">
+      <div className="p-4 bg-brand-50/50 border border-brand-100 rounded-card flex gap-3 mt-4 text-left">
         <Info className="w-5 h-5 text-brand-600 flex-shrink-0" />
         <div className="space-y-1">
           <p className="text-xs font-extrabold text-brand-900">Quy trình cấp phát vé</p>

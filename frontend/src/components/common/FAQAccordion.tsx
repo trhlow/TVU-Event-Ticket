@@ -24,7 +24,7 @@ export default function FAQAccordion({ items }: FAQAccordionProps) {
         return (
           <div
             key={item.question}
-            className={`faq-item overflow-hidden rounded-xl border bg-white shadow-sm shadow-slate-950/4 transition-colors ${
+            className={`faq-item overflow-hidden rounded-card border bg-white shadow-sm shadow-slate-950/4 transition-colors ${
               isOpen ? "border-blue-200" : "border-slate-200"
             }`}
           >

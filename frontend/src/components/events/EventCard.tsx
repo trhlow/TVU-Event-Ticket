@@ -63,7 +63,7 @@ export default function EventCard({
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/55 p-3">
+        <div className="mt-3 rounded-card border border-blue-100 bg-blue-50/55 p-3">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
             <span>Tỷ lệ đăng ký</span>
             <span className={isSoldOut ? "text-amber-700" : "text-brand-700"}>{fillRate}%</span>
@@ -84,7 +84,7 @@ export default function EventCard({
             {onViewDetails && (
               <button
                 onClick={() => onViewDetails(event.id)}
-                className="btn-press h-9 rounded-lg border border-blue-100 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                className="btn-press h-9 rounded-control border border-blue-100 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-blue-50"
               >
                 {actionText}
               </button>
@@ -92,7 +92,7 @@ export default function EventCard({
             {onRegister && event.status === "OPEN" && !isSoldOut && (
               <button
                 onClick={() => onRegister(event.id)}
-                className="btn-press inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+                className="btn-press inline-flex h-9 items-center gap-1.5 rounded-control bg-brand-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
               >
                 <Ticket className="h-4 w-4" />
                 Đăng ký

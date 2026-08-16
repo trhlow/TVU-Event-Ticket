@@ -156,7 +156,7 @@ export default function DataTable<T>({
               {renderMobileCard ? (
                 renderMobileCard(row)
               ) : (
-                <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="rounded-card border border-blue-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                   {columns.map((column) => (
                     <div key={column.header} className="border-b border-slate-100 py-2 last:border-0">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{column.header}</p>
@@ -168,7 +168,7 @@ export default function DataTable<T>({
             </React.Fragment>
           ))
         ) : (
-          <div className="rounded-xl border border-blue-100 bg-white p-5 text-center text-sm font-semibold text-slate-400">
+          <div className="rounded-card border border-blue-100 bg-white p-5 text-center text-sm font-semibold text-slate-400">
             Không tìm thấy kết quả phù hợp
           </div>
         )}
@@ -184,7 +184,7 @@ export default function DataTable<T>({
           <button
             onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
             disabled={currentPage === 1}
-            className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 hover:bg-blue-50 disabled:opacity-40"
+            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-blue-100 bg-white text-slate-700 hover:bg-blue-50 disabled:opacity-40"
             aria-label="Trang trước"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -195,7 +195,7 @@ export default function DataTable<T>({
           <button
             onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
             disabled={currentPage === totalPages}
-            className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-blue-100 bg-white text-slate-700 hover:bg-blue-50 disabled:opacity-40"
+            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-blue-100 bg-white text-slate-700 hover:bg-blue-50 disabled:opacity-40"
             aria-label="Trang sau"
           >
             <ChevronRight className="h-4 w-4" />

@@ -108,7 +108,7 @@ export default function SuperAdminStudentsPage() {
           {s.mssv && s.mssvStatus !== 'VERIFIED' && (
             <button
               onClick={() => setVerifyTarget(s)}
-              className="btn-press flex cursor-pointer items-center gap-1 rounded-lg border border-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
+              className="btn-press flex cursor-pointer items-center gap-1 rounded-control border border-emerald-100 px-2 py-1 text-[11px] font-bold text-emerald-700 transition-colors hover:border-emerald-300 hover:bg-emerald-50"
               title="Xác minh MSSV để sinh viên được phép đặt vé"
             >
               <ShieldCheck className="w-3.5 h-3.5" /> Xác minh MSSV
@@ -127,7 +127,7 @@ export default function SuperAdminStudentsPage() {
       />
 
       <div className="space-y-4">
-        <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm">
+        <div className="bg-white border border-gray-200 p-4 rounded-card shadow-sm">
           <div className="space-y-1">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">Tìm kiếm sinh viên</label>
             <div className="relative">
@@ -137,13 +137,13 @@ export default function SuperAdminStudentsPage() {
                 placeholder="Tên, email, MSSV, lớp..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full max-w-md pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-hidden focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
+                className="w-full max-w-md pl-9 pr-3 py-2 border border-gray-200 rounded-control text-xs font-semibold focus:outline-hidden focus:border-brand-500 focus:ring-1 focus:ring-brand-500"
               />
             </div>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden p-1">
+        <div className="bg-white border border-gray-200 rounded-card shadow-sm overflow-hidden p-1">
           <DataTable
             data={filteredStudents}
             columns={columns}

@@ -17,7 +17,7 @@ export default function EventFilter({
   searchValue,
 }: EventFilterProps) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm space-y-4 text-left">
+    <div className="bg-white rounded-card border border-gray-200 p-5 shadow-sm space-y-4 text-left">
       <div className="flex items-center justify-between pb-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-brand-600" />
@@ -42,7 +42,7 @@ export default function EventFilter({
               placeholder="Nhập tên sự kiện..."
               value={searchValue}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white"
+              className="w-full bg-gray-50 border border-gray-200 rounded-control pl-9 pr-3 py-2 text-xs font-bold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white"
             />
           </div>
         </div>
@@ -53,7 +53,7 @@ export default function EventFilter({
           <select
             value={selectedStatus}
             onChange={(e) => onStatusChange(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-500 focus:bg-white cursor-pointer"
+            className="w-full bg-gray-50 border border-gray-200 rounded-control px-3 py-2 text-xs font-bold text-gray-700 focus:outline-none focus:border-brand-500 focus:bg-white cursor-pointer"
           >
             <option value="ALL">Tất cả trạng thái</option>
             <option value="OPEN">Đang mở đăng ký</option>

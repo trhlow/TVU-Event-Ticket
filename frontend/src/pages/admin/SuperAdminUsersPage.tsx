@@ -48,7 +48,7 @@ export default function SuperAdminUsersPage() {
       header: "Vai Trò Hệ Thống",
       accessor: (user: User) => (
         <span
-          className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wide border ${
+          className={`px-2.5 py-1 rounded-chip text-[9px] font-black uppercase tracking-wide border ${
             user.role === "SUPER_ADMIN"
               ? "bg-rose-50 border-rose-200 text-rose-700"
               : user.role === "ORGANIZER"
@@ -86,7 +86,7 @@ export default function SuperAdminUsersPage() {
         }
       />
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+      <div className="bg-white rounded-card border border-gray-200 p-5 shadow-sm">
         <DataTable data={users} columns={columns} searchPlaceholder="Tìm kiếm tên, email, MSSV..." searchField="fullName" />
       </div>
 

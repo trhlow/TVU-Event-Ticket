@@ -103,9 +103,9 @@ export default function QRScannerPanel({
   }, [cameraPermission, onCheckIn]);
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm max-w-5xl mx-auto text-left space-y-6">
+    <div className="bg-white rounded-card border border-gray-200 p-6 shadow-sm max-w-5xl mx-auto text-left space-y-6">
       <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-        <div className="p-2 bg-brand-50 text-brand-600 rounded-xl">
+        <div className="p-2 bg-brand-50 text-brand-600 rounded-control">
           <QrCode className="w-6 h-6 animate-pulse" />
         </div>
         <div>
@@ -121,7 +121,7 @@ export default function QRScannerPanel({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scanner panel */}
         <>
-          <div className="bg-gray-950 rounded-2xl p-4 flex flex-col items-center justify-center text-center relative border border-gray-800 h-60 overflow-hidden">
+          <div className="bg-gray-950 rounded-card p-4 flex flex-col items-center justify-center text-center relative border border-gray-800 h-60 overflow-hidden">
             {cameraPermission === "idle" && (
               <div className="relative z-10 flex flex-col items-center gap-3 px-6">
                 <RefreshCw className="w-12 h-12 text-brand-300 animate-spin" />
@@ -163,7 +163,7 @@ export default function QRScannerPanel({
             )}
           </div>
 
-          <div className="bg-brand-50/60 border border-brand-100 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="bg-brand-50/60 border border-brand-100 rounded-card p-5 shadow-sm space-y-4">
             <div className="space-y-1">
               <label className="text-[11px] font-black text-brand-800 uppercase tracking-wider block">
                 Dán nội dung QR
@@ -179,12 +179,12 @@ export default function QRScannerPanel({
                 value={ticketCode}
                 onChange={(e) => setTicketCode(e.target.value)}
                 disabled={isManualSubmitting}
-                className="min-h-12 flex-1 bg-white border border-brand-200 rounded-xl px-4 py-3 text-sm font-mono font-black text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-12 flex-1 bg-white border border-brand-200 rounded-control px-4 py-3 text-sm font-mono font-black text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-60"
               />
               <button
                 onClick={() => handleScanSubmit("")}
                 disabled={isManualSubmitting}
-                className="min-h-12 px-5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-extrabold shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="min-h-12 px-5 bg-brand-600 hover:bg-brand-700 text-white rounded-control text-sm font-extrabold shadow-sm cursor-pointer flex items-center justify-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Search className="w-4 h-4" /> {isManualSubmitting ? "Đang xử lý..." : "Check-in"}
               </button>
@@ -197,7 +197,7 @@ export default function QRScannerPanel({
       {/* Result feedback message */}
       {scanResult && (
         <div
-          className={`p-4 rounded-xl border flex items-start gap-3 animate-fade-in ${
+          className={`p-4 rounded-card border flex items-start gap-3 animate-fade-in ${
             scanResult.success
               ? "bg-emerald-50 border-emerald-200 text-emerald-900"
               : "bg-rose-50 border-rose-200 text-rose-900"

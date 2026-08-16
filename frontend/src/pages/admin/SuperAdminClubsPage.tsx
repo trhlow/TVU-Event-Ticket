@@ -110,7 +110,7 @@ export default function SuperAdminClubsPage() {
     {
       header: "Trạng thái",
       accessor: (club: Club) => (
-        <span className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${club.status === "ACTIVE" ? "border-success-200 bg-success-50 text-success-700" : "border-danger-200 bg-danger-50 text-danger-700"}`}>
+        <span className={`rounded-chip border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${club.status === "ACTIVE" ? "border-success-200 bg-success-50 text-success-700" : "border-danger-200 bg-danger-50 text-danger-700"}`}>
           {club.status}
         </span>
       ),
@@ -121,19 +121,19 @@ export default function SuperAdminClubsPage() {
         <div className="flex justify-end gap-1.5">
           <button
             onClick={() => openEdit(club)}
-            className="btn-press flex cursor-pointer items-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-700 transition-colors hover:bg-slate-50"
+            className="btn-press flex cursor-pointer items-center gap-1 rounded-control border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-black text-slate-700 transition-colors hover:bg-slate-50"
           >
             <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Sửa
           </button>
           {club.status === "ACTIVE" ? (
-            <button onClick={() => setTargetClub(club)} className="btn-press flex cursor-pointer items-center gap-1 rounded-xl border border-danger-200/60 bg-danger-50 px-2.5 py-1.5 text-[10px] font-black text-danger-700 transition-colors hover:bg-danger-100">
+            <button onClick={() => setTargetClub(club)} className="btn-press flex cursor-pointer items-center gap-1 rounded-control border border-danger-200/60 bg-danger-50 px-2.5 py-1.5 text-[10px] font-black text-danger-700 transition-colors hover:bg-danger-100">
               <Lock className="h-3.5 w-3.5" aria-hidden="true" /> Khóa CLB
             </button>
           ) : (
             <button
               onClick={() => handleReactivate(club)}
               disabled={reactivatingId === club.id}
-              className="btn-press flex cursor-pointer items-center gap-1 rounded-xl border border-success-200/60 bg-success-50 px-2.5 py-1.5 text-[10px] font-black text-success-700 transition-colors hover:bg-success-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-press flex cursor-pointer items-center gap-1 rounded-control border border-success-200/60 bg-success-50 px-2.5 py-1.5 text-[10px] font-black text-success-700 transition-colors hover:bg-success-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <LockOpen className="h-3.5 w-3.5" aria-hidden="true" /> {reactivatingId === club.id ? "Đang mở..." : "Mở khóa"}
             </button>
@@ -149,7 +149,7 @@ export default function SuperAdminClubsPage() {
         title="Danh sách câu lạc bộ"
         description="Quản lý danh sách câu lạc bộ trực thuộc trường."
         actions={
-          <button onClick={() => setCreateOpen(true)} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">
+          <button onClick={() => setCreateOpen(true)} className="btn-press inline-flex min-h-11 items-center justify-center gap-2 rounded-control bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800">
             <Plus className="h-4 w-4" aria-hidden="true" /> Thêm CLB
           </button>
         }
@@ -166,8 +166,8 @@ export default function SuperAdminClubsPage() {
         maxWidth="max-w-lg"
         footer={
           <>
-            <button type="button" disabled={isCreating} className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setCreateOpen(false)}>Hủy</button>
-            <button type="submit" form="create-club-form" disabled={isCreating} className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "Đang tạo..." : "Tạo CLB"}</button>
+            <button type="button" disabled={isCreating} className="btn-press min-h-10 rounded-control border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setCreateOpen(false)}>Hủy</button>
+            <button type="submit" form="create-club-form" disabled={isCreating} className="btn-press min-h-10 rounded-control bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isCreating ? "Đang tạo..." : "Tạo CLB"}</button>
           </>
         }
       >
@@ -184,8 +184,8 @@ export default function SuperAdminClubsPage() {
         maxWidth="max-w-lg"
         footer={
           <>
-            <button type="button" disabled={isEditing} className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingClub(null)}>Hủy</button>
-            <button type="submit" form="edit-club-form" disabled={isEditing} className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isEditing ? "Đang lưu..." : "Lưu thay đổi"}</button>
+            <button type="button" disabled={isEditing} className="btn-press min-h-10 rounded-control border border-slate-200 px-4 text-sm font-bold text-slate-600 disabled:cursor-not-allowed disabled:opacity-50" onClick={() => setEditingClub(null)}>Hủy</button>
+            <button type="submit" form="edit-club-form" disabled={isEditing} className="btn-press min-h-10 rounded-control bg-brand-700 px-4 text-sm font-extrabold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">{isEditing ? "Đang lưu..." : "Lưu thay đổi"}</button>
           </>
         }
       >

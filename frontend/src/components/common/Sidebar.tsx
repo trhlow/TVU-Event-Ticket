@@ -77,7 +77,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
           <img
             src="/logo-tvu.webp?v=20260729"
             alt="TVU Logo"
-            className="h-9 w-9 shrink-0 rounded-xl bg-white object-contain p-1.5 shadow-sm shadow-blue-950/[0.04] ring-1 ring-blue-100"
+            className="h-9 w-9 shrink-0 rounded-control bg-white object-contain p-1.5 shadow-sm shadow-blue-950/[0.04] ring-1 ring-blue-100"
           />
           <div className={`min-w-0 transition-all duration-200 ${collapsed ? "w-0 overflow-hidden opacity-0" : "opacity-100"}`}>
             <p className="truncate font-display text-lg font-extrabold leading-none text-brand-800">TVU Event</p>
@@ -92,7 +92,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             to="/organizer/events/create"
             onClick={onClose}
             title="Tạo sự kiện"
-            className={`btn-press flex h-10 items-center justify-center rounded-xl bg-brand-600 text-sm font-bold text-white transition hover:bg-brand-700 ${
+            className={`btn-press flex h-10 items-center justify-center rounded-control bg-brand-600 text-sm font-bold text-white transition hover:bg-brand-700 ${
               collapsed ? "w-10 px-0" : "w-full gap-2.5 px-3"
             }`}
           >
@@ -118,7 +118,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
                   title={collapsed ? link.label : undefined}
                   className={({ isActive }) =>
                     [
-                      "group relative flex h-11 items-center rounded-xl text-sm font-semibold transition-all duration-200",
+                      "group relative flex h-11 items-center rounded-control text-sm font-semibold transition-all duration-200",
                       collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3",
                       isActive
                         ? "bg-blue-50 text-brand-800 ring-1 ring-blue-100 shadow-sm shadow-blue-950/[0.03]"
@@ -140,7 +140,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
           to={settingsPath}
           onClick={onClose}
           title={collapsed ? "Cài đặt" : undefined}
-          className={`btn-press flex h-11 items-center rounded-xl text-sm font-semibold text-slate-600 hover:bg-blue-50 hover:text-brand-800 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
+          className={`btn-press flex h-11 items-center rounded-control text-sm font-semibold text-slate-600 hover:bg-blue-50 hover:text-brand-800 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
         >
           <Settings className="h-5 w-5 shrink-0" />
           {!collapsed && <span className="truncate text-sm font-semibold leading-none">Cài đặt</span>}
@@ -151,7 +151,7 @@ export default function Sidebar({ onClose, collapsed = false }: SidebarProps) {
             navigate("/login", { replace: true });
           }}
           title={collapsed ? "Đăng xuất" : undefined}
-          className={`btn-press mt-1.5 flex h-11 w-full items-center rounded-xl text-left text-sm font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
+          className={`btn-press mt-1.5 flex h-11 w-full items-center rounded-control text-left text-sm font-semibold text-slate-600 hover:bg-rose-50 hover:text-rose-700 ${collapsed ? "mx-auto w-11 justify-center px-0" : "gap-2.5 px-3"}`}
         >
           <LogOut className="h-5 w-5 shrink-0" />
           {!collapsed && <span className="truncate text-sm font-semibold leading-none">Đăng xuất</span>}

@@ -48,7 +48,7 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
   const style = getStyle();
 
   return (
-    <div role="status" aria-live="polite" className={`toast-enter fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg max-w-sm ${style.bg}`}>
+    <div role="status" aria-live="polite" className={`toast-enter fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-card border px-4 py-3 shadow-lg max-w-sm ${style.bg}`}>
       {style.icon}
       <span className="text-xs font-bold leading-tight">{message}</span>
       <button 

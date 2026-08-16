@@ -47,14 +47,14 @@ export default function ConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="btn-press h-10 rounded-xl border border-slate-200 px-4 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="btn-press h-10 rounded-control border border-slate-200 px-4 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className={`btn-press h-10 rounded-xl px-4 text-sm font-medium text-white shadow-sm ${buttonClass}`}
+            className={`btn-press h-10 rounded-control px-4 text-sm font-medium text-white shadow-sm ${buttonClass}`}
           >
             {confirmText}
           </button>
@@ -62,7 +62,7 @@ export default function ConfirmModal({
       }
     >
       <div className="flex gap-4">
-        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl border ${iconClass}`}>
+        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-control border ${iconClass}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div>

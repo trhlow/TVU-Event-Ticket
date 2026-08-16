@@ -209,7 +209,7 @@ export default function SuperAdminClubDetailPage() {
             </div>
           ) : (
             organizers.map((user) => (
-              <div key={user.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <div key={user.id} className="rounded-card border border-gray-200 bg-white p-5 shadow-sm">
                 <p className="text-base font-black text-gray-950">{user.fullName}</p>
                 <p className="mt-1 text-sm font-semibold text-gray-500">{user.email}</p>
                 <div className="mt-3"><StatusBadge type="user" status={user.status} /></div>
@@ -230,7 +230,7 @@ export default function SuperAdminClubDetailPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {clubEvents.map((event) => (
-                <div key={event.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div key={event.id} className="rounded-card border border-gray-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between gap-2">
                     <StatusBadge type="event" status={event.status} />
                     <span className="text-xs font-bold text-slate-500">Còn {event.remainingTickets}/{event.capacity} vé</span>

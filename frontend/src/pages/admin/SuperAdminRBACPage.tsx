@@ -46,7 +46,7 @@ export default function SuperAdminRBACPage() {
       header: "Chi tiết",
       accessor: (permission: PermissionRow) => (
         <div className="flex justify-end">
-          <button onClick={() => setSelectedPermission(permission)} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50">
+          <button onClick={() => setSelectedPermission(permission)} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-control border border-slate-200 px-3 text-xs font-extrabold text-slate-700 hover:bg-slate-50">
             <Eye className="h-4 w-4" aria-hidden="true" />
             Xem
           </button>
@@ -78,7 +78,7 @@ export default function SuperAdminRBACPage() {
         ))}
       </div>
 
-      <div className="rounded-2xl border border-info-100 bg-info-50 p-4">
+      <div className="rounded-card border border-info-100 bg-info-50 p-4">
         <div className="flex gap-3">
           <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" aria-hidden="true" />
           <p className="text-sm font-semibold leading-6 text-brand-900">
@@ -94,7 +94,7 @@ export default function SuperAdminRBACPage() {
         onClose={() => setSelectedPermission(null)}
         title={selectedPermission?.group}
         footer={
-          <button onClick={() => setSelectedPermission(null)} className="btn-press min-h-11 w-full rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
+          <button onClick={() => setSelectedPermission(null)} className="btn-press min-h-11 w-full rounded-control bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
             Đóng
           </button>
         }
@@ -108,9 +108,9 @@ export default function SuperAdminRBACPage() {
                 ["ORGANIZER", selectedPermission.organizer],
                 ["SUPER_ADMIN", selectedPermission.admin],
               ].map(([role, enabled]) => (
-                <div key={role as string} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <div key={role as string} className="flex items-center justify-between rounded-card border border-slate-100 bg-slate-50 p-3">
                   <span className="text-sm font-extrabold text-slate-700">{role as string}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${enabled ? "bg-success-50 text-success-700" : "bg-slate-200 text-slate-600"}`}>
+                  <span className={`rounded-chip px-2.5 py-1 text-xs font-extrabold ${enabled ? "bg-success-50 text-success-700" : "bg-slate-200 text-slate-600"}`}>
                     {enabled ? "Được phép" : "Không"}
                   </span>
                 </div>

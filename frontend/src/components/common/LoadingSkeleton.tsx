@@ -14,7 +14,7 @@ export default function LoadingSkeleton({ type = 'card', count = 3 }: LoadingSke
           <div key={i} className="enterprise-card animate-pulse space-y-4 p-5">
             <div className="flex justify-between items-start">
               <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-              <div className="w-8 h-8 bg-gray-200 rounded-lg"></div>
+              <div className="w-8 h-8 bg-gray-200 rounded-control"></div>
             </div>
             <div className="h-8 bg-gray-200 rounded w-2/3"></div>
             <div className="pt-3 border-t border-gray-50 flex justify-between">
@@ -36,7 +36,7 @@ export default function LoadingSkeleton({ type = 'card', count = 3 }: LoadingSke
       } else {
         items.push(
           <div key={i} className="enterprise-card flex animate-pulse items-center gap-4 p-4">
-            <div className="w-12 h-12 bg-gray-200 rounded-2xl"></div>
+            <div className="w-12 h-12 bg-gray-200 rounded-control"></div>
             <div className="flex-1 space-y-2">
               <div className="h-4 bg-gray-200 rounded w-1/2"></div>
               <div className="h-3 bg-gray-200 rounded w-1/4"></div>
