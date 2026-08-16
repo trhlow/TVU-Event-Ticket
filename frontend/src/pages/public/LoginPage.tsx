@@ -221,6 +221,9 @@ export default function LoginPage() {
                 onClick={() => {
                   setOtpSent(false);
                   setOtpCode("");
+                  // Without this the "mã không đúng" banner from the verify step follows the
+                  // user back to the email step, reporting a failure they just abandoned.
+                  setErrorMsg("");
                 }}
                 className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-700"
               >
