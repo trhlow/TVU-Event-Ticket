@@ -187,7 +187,7 @@ export default function PublicLayout() {
           <div className="hidden items-center justify-end gap-3 md:flex">
             <Link
               to="/login"
-              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-brand-600"
+              className="btn-press inline-flex h-10 items-center justify-center rounded-control bg-brand-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-brand-600"
             >
               Đăng nhập
             </Link>
@@ -196,7 +196,7 @@ export default function PublicLayout() {
           <button
             type="button"
             onClick={() => setMobileOpen((value) => !value)}
-            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-xl border border-blue-100 bg-white text-brand-800 shadow-sm md:hidden"
+            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-control border border-blue-100 bg-white text-brand-800 shadow-sm md:hidden"
             aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
             aria-expanded={mobileOpen}
             aria-controls="public-mobile-menu"
@@ -214,7 +214,7 @@ export default function PublicLayout() {
                   type="button"
                   onClick={() => handleNavClick(item.id)}
                   className={[
-                    "rounded-xl px-3 py-2.5 text-left text-sm font-bold",
+                    "rounded-control px-3 py-2.5 text-left text-sm font-bold",
                     isLanding && activeSection === item.id
                       ? "bg-blue-50 text-brand-800"
                       : "text-slate-700 hover:bg-blue-50 hover:text-brand-800",
@@ -226,7 +226,7 @@ export default function PublicLayout() {
               <Link
                 to="/login"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-xl bg-brand-700 px-4 py-2.5 text-center text-sm font-bold text-white"
+                className="rounded-control bg-brand-700 px-4 py-2.5 text-center text-sm font-bold text-white"
               >
                 Đăng nhập
               </Link>

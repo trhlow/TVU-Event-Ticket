@@ -188,7 +188,7 @@ export default function LandingPage() {
 
         <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center justify-center px-5 pb-28 pt-20 text-center md:px-8 md:pb-36">
           <div className="flex max-w-4xl flex-col items-center">
-            <p className="landing-fade-up inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-100 shadow-sm backdrop-blur-md">
+            <p className="landing-fade-up inline-flex items-center gap-2 rounded-chip border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-100 shadow-sm backdrop-blur-md">
               <Sparkles className="h-4 w-4" /> Nền tảng vé sự kiện chính thức
             </p>
             <h1 className="landing-fade-up mt-7 max-w-4xl font-display text-4xl font-extrabold leading-[1.08] tracking-[-0.025em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
@@ -200,13 +200,13 @@ export default function LandingPage() {
             <div className="landing-fade-up mt-9 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
               <Link
                 to="/login"
-                className="btn-press group inline-flex h-13 flex-1 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-extrabold text-blue-900 shadow-xl shadow-slate-950/25 hover:bg-blue-50"
+                className="btn-press group inline-flex h-13 flex-1 items-center justify-center gap-2 rounded-chip bg-white px-7 text-sm font-extrabold text-blue-900 shadow-xl shadow-slate-950/25 hover:bg-blue-50"
               >
                 Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/#guide"
-                className="btn-press inline-flex h-13 flex-1 items-center justify-center rounded-full border border-white/30 bg-white/10 px-7 text-sm font-bold text-white shadow-sm backdrop-blur-md hover:bg-white/20"
+                className="btn-press inline-flex h-13 flex-1 items-center justify-center rounded-chip border border-white/30 bg-white/10 px-7 text-sm font-bold text-white shadow-sm backdrop-blur-md hover:bg-white/20"
               >
                 Xem hướng dẫn
               </Link>
@@ -240,7 +240,7 @@ export default function LandingPage() {
             <h2 className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Sự kiện nổi bật</h2>
             <Link
               to="/login"
-              className="group inline-flex w-fit items-center gap-2 rounded-full border border-blue-200 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
+              className="group inline-flex w-fit items-center gap-2 rounded-chip border border-blue-200 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
             >
               Khám phá sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
@@ -285,9 +285,9 @@ export default function LandingPage() {
                 const Icon = item.icon;
                 return (
                   <RevealOnScroll key={item.title} delay={index * 90}>
-                    <article className="landing-guide-card h-full rounded-2xl border border-white/70 bg-white/95 p-6 shadow-xl shadow-slate-950/15 backdrop-blur">
+                    <article className="landing-guide-card h-full rounded-card border border-white/70 bg-white/95 p-6 shadow-xl shadow-slate-950/15 backdrop-blur">
                       <div className="flex items-start gap-4">
-                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-800">
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-control bg-blue-50 text-blue-800">
                           <Icon className="h-6 w-6" aria-hidden="true" />
                         </div>
                         <div>
@@ -298,7 +298,7 @@ export default function LandingPage() {
 
                       <ol className="mt-6 space-y-3">
                         {item.steps.map((step, stepIndex) => (
-                          <li key={step} className="landing-guide-step flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5">
+                          <li key={step} className="landing-guide-step flex items-center gap-3 rounded-control border border-slate-100 bg-slate-50 px-3 py-2.5">
                             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-blue-800 shadow-sm ring-1 ring-blue-100">
                               {stepIndex + 1}
                             </span>
@@ -324,7 +324,7 @@ export default function LandingPage() {
             </div>
             <Link
               to="/login"
-              className="btn-press group inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-white px-7 text-sm font-extrabold text-blue-900 shadow-lg shadow-slate-950/20 hover:bg-blue-50"
+              className="btn-press group inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-chip bg-white px-7 text-sm font-extrabold text-blue-900 shadow-lg shadow-slate-950/20 hover:bg-blue-50"
             >
               Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
@@ -344,8 +344,8 @@ function FeatureCard({ feature }: { feature: FeatureItem }) {
   const Icon = feature.icon;
 
   return (
-    <article className="landing-feature-card group h-full rounded-2xl border border-slate-200/80 bg-white p-6">
-      <div className={`grid h-12 w-12 place-items-center rounded-2xl transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 ${feature.tone}`}>
+    <article className="landing-feature-card group h-full rounded-card border border-slate-200/80 bg-white p-6">
+      <div className={`grid h-12 w-12 place-items-center rounded-control transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 ${feature.tone}`}>
         <Icon className="h-5 w-5" aria-hidden="true" />
       </div>
       <h3 className="mt-5 font-display text-lg font-extrabold text-slate-900">{feature.title}</h3>
@@ -373,7 +373,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
   const isAvailable = event.status === "OPEN" && event.remainingTickets > 0;
 
   return (
-    <article className="landing-event-card group overflow-hidden rounded-2xl border border-slate-200/80 bg-white">
+    <article className="landing-event-card group overflow-hidden rounded-card border border-slate-200/80 bg-white">
       <div className="relative aspect-[16/10] overflow-hidden bg-blue-950">
         {isSafeImageUrl(event.bannerUrl) ? (
           <img
@@ -389,7 +389,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/58 via-slate-950/4 to-transparent" aria-hidden="true" />
-        <span className={`absolute right-3 top-3 rounded-full border px-3 py-1 text-xs font-bold shadow-sm backdrop-blur ${eventStatusClass(event.status)}`}>
+        <span className={`absolute right-3 top-3 rounded-chip border px-3 py-1 text-xs font-bold shadow-sm backdrop-blur ${eventStatusClass(event.status)}`}>
           {eventStatusLabel(event.status)}
         </span>
       </div>
@@ -410,7 +410,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
           type="button"
           onClick={() => onOpen(event.id)}
           className={[
-            "btn-press group/btn mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-bold",
+            "btn-press group/btn mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-control px-4 text-sm font-bold",
             isAvailable
               ? "bg-blue-800 text-white hover:bg-blue-700"
               : "border border-blue-200 bg-white text-blue-800 hover:bg-blue-50",
