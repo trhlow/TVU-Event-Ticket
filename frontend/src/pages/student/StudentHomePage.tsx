@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AlertTriangle, ArrowRight, Award, Calendar, Sparkles, Ticket } from "lucide-react";
 import EventCard from "../../components/events/EventCard";
+import SectionCard from "../../components/common/SectionCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import { useToast } from "../../hooks/useToast";
@@ -63,7 +64,7 @@ export default function StudentHomePage() {
   }
 
   return (
-    <div className="space-y-7 text-left">
+    <div className="space-y-section text-left">
       <section className="page-hero p-5 text-white md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
@@ -111,7 +112,7 @@ export default function StudentHomePage() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-section md:grid-cols-3">
         <StatisticCard label="Sự kiện đã đăng ký" value={reservations.length} icon={Calendar} subtext="Tính tất cả trạng thái" />
         <StatisticCard label="Vé QR đã cấp" value={tickets.length} icon={Ticket} subtext="Vé điện tử cá nhân" color="success" />
         <StatisticCard label="Đơn chờ duyệt" value={pendingReservationsCount} icon={Award} subtext="Ban tổ chức đang xem xét" color="warning" />
@@ -128,7 +129,7 @@ export default function StudentHomePage() {
           </Link>
         </div>
         {events.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-section md:grid-cols-3">
             {events.map((event) => (
               <EventCard
                 key={event.id}
@@ -145,10 +146,9 @@ export default function StudentHomePage() {
         )}
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-2">
-        <div className="enterprise-card p-5">
-          <h3 className="section-heading">Trạng thái đăng ký gần đây</h3>
-          <div className="mt-4 divide-y divide-slate-100">
+      <section className="grid gap-section lg:grid-cols-2">
+        <SectionCard title="Trạng thái đăng ký gần đây">
+          <div className="divide-y divide-slate-100">
             {reservations.slice(0, 4).map((reservation) => (
               <div key={reservation.id} className="flex items-center justify-between gap-4 py-3">
                 <div className="min-w-0">
@@ -160,11 +160,10 @@ export default function StudentHomePage() {
             ))}
             {reservations.length === 0 && <p className="py-6 text-center text-xs font-bold text-slate-400">Bạn chưa gửi đăng ký nào.</p>}
           </div>
-        </div>
+        </SectionCard>
 
-        <div className="enterprise-card p-5">
-          <h3 className="section-heading">Vé điện tử của tôi</h3>
-          <div className="mt-4 space-y-3">
+        <SectionCard title="Vé điện tử của tôi">
+          <div className="space-y-3">
             {tickets.slice(0, 3).map((ticket) => (
               <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-card border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
                 <div className="min-w-0">
@@ -178,7 +177,7 @@ export default function StudentHomePage() {
             ))}
             {tickets.length === 0 && <p className="py-6 text-center text-xs font-bold text-slate-400">Chưa có vé được cấp.</p>}
           </div>
-        </div>
+        </SectionCard>
       </section>
     </div>
   );

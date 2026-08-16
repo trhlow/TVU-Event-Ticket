@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Activity, Calendar, Gauge, Layers, ShieldCheck, Ticket, Users } from "lucide-react";
 import BarChartCard from "../../components/charts/BarChartCard";
 import DonutChartCard from "../../components/charts/DonutChartCard";
+import SectionCard from "../../components/common/SectionCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
@@ -105,7 +106,7 @@ export default function SuperAdminDashboard() {
   ];
 
   return (
-    <div className="space-y-7 text-left">
+    <div className="space-y-section text-left">
       <PageHeader
         eyebrow="Trung tâm điều hành hệ thống"
         icon={Activity}
@@ -113,10 +114,7 @@ export default function SuperAdminDashboard() {
         description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in theo thời gian thực."
       />
 
-      <div className="flex justify-end">
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-section sm:grid-cols-2 lg:grid-cols-3">
         <StatisticCard label="Tổng CLB" value={overview.admin.totalClubs} icon={Layers} />
         <StatisticCard label="Tổng người dùng" value={overview.admin.totalUsers} icon={Users} />
         <StatisticCard label="Tổng sự kiện" value={overview.events.totalEvents} icon={Calendar} color="warning" />
@@ -130,7 +128,7 @@ export default function SuperAdminDashboard() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-section lg:grid-cols-3">
         <div className="lg:col-span-2">
           {clubStatsError ? (
             <BackendPendingNotice
@@ -150,7 +148,7 @@ export default function SuperAdminDashboard() {
             />
           )}
         </div>
-        <div className="space-y-6">
+        <div className="space-y-section">
           <DonutChartCard
             title="Tỷ lệ check-in"
             data={[
@@ -170,11 +168,7 @@ export default function SuperAdminDashboard() {
         </div>
       </div>
 
-      <section className="space-y-3">
-        <div>
-          <h2 className="section-heading">Hoạt động gần đây</h2>
-          <p className="mt-1 text-sm font-semibold text-slate-500">Audit log mới nhất của hệ thống</p>
-        </div>
+      <SectionCard title="Hoạt động gần đây" description="Audit log mới nhất của hệ thống">
         {auditLogError ? (
           <BackendPendingNotice
             title="Không thể tải audit log"
@@ -189,7 +183,7 @@ export default function SuperAdminDashboard() {
             pageSize={5}
           />
         )}
-      </section>
+      </SectionCard>
     </div>
   );
 }
