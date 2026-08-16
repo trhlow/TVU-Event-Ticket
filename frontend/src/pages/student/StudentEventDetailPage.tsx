@@ -189,7 +189,7 @@ export default function StudentEventDetailPage() {
             <div className="pt-2">
               {existingReservation ? (
                 <div className="space-y-3 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="flex flex-col items-center justify-center gap-2 rounded-card border border-slate-100 bg-slate-50 p-4">
                     <StatusBadge type="reservation" status={existingReservation.status} />
                     <p className="mt-1 text-[11px] font-bold text-slate-500">
                       {existingReservation.status === "PENDING"
@@ -202,14 +202,14 @@ export default function StudentEventDetailPage() {
                   {existingReservation.status === "APPROVED" && (
                     <Link
                       to="/student/tickets"
-                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
+                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-control bg-brand-600 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
                     >
                       <Ticket className="h-4 w-4" aria-hidden="true" /> Đi tới ví vé QR
                     </Link>
                   )}
                 </div>
               ) : reservationHistoryFailed ? (
-                <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
                   <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                   <span>Không thể xác định bạn đã đăng ký sự kiện này hay chưa (lỗi tải dữ liệu). Vui lòng tải lại trang trước khi đăng ký để tránh gửi trùng.</span>
                 </div>
@@ -218,12 +218,12 @@ export default function StudentEventDetailPage() {
                   {canRegister ? (
                     <button
                       onClick={handleRegisterClick}
-                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-3 text-xs font-black text-white shadow-sm hover:bg-brand-700"
+                      className="btn-press flex w-full cursor-pointer items-center justify-center gap-1.5 rounded-control bg-brand-600 py-3 text-xs font-black text-white shadow-sm hover:bg-brand-700"
                     >
                       <Ticket className="h-4 w-4" aria-hidden="true" /> Đăng ký vé tham dự
                     </button>
                   ) : (
-                    <button disabled className="w-full cursor-not-allowed rounded-xl bg-slate-100 py-3 text-xs font-black text-slate-400">
+                    <button disabled className="w-full cursor-not-allowed rounded-control bg-slate-100 py-3 text-xs font-black text-slate-400">
                       {isSoldOut
                         ? "Hết vé tham dự"
                         : event.status !== "OPEN"
@@ -235,14 +235,14 @@ export default function StudentEventDetailPage() {
                   )}
 
                   {!currentUser.profileComplete && (
-                    <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                    <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                       <span>Bạn chưa hoàn tất MSSV và lớp. Hệ thống yêu cầu cập nhật hồ sơ trước khi đăng ký vé.</span>
                     </div>
                   )}
 
                   {currentUser.profileComplete && !isMssvVerified && (
-                    <div className="flex gap-2 rounded-xl border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                    <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                       <span>MSSV của bạn đang chờ xác minh. Bạn chỉ có thể đăng ký vé sau khi được xác minh.</span>
                     </div>
@@ -252,7 +252,7 @@ export default function StudentEventDetailPage() {
             </div>
           </div>
 
-          <div className="space-y-2 rounded-2xl border border-info-100 bg-info-50/50 p-4 text-[11px] font-semibold text-brand-900">
+          <div className="space-y-2 rounded-card border border-info-100 bg-info-50/50 p-4 text-[11px] font-semibold text-brand-900">
             <p className="flex items-center gap-1 font-extrabold">
               <Info className="h-4 w-4 text-brand-600" aria-hidden="true" /> Lưu ý quan trọng khi nhận vé:
             </p>

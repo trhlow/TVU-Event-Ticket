@@ -42,13 +42,13 @@ export default function CompleteProfilePage() {
             <button
               type="button"
               onClick={() => navigate("/student")}
-              className="btn-press rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+              className="btn-press rounded-control border border-slate-200 px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
             >
               Quay lại
             </button>
           }
           beforeActions={
-            <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
+            <div className="flex gap-3 rounded-card border border-info-100 bg-info-50/60 p-4 text-left">
               <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
               <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
                 Hệ thống sẽ làm mới phiên đăng nhập sau khi hồ sơ được lưu, để MSSV có hiệu lực ngay khi đăng ký sự kiện.

@@ -67,7 +67,7 @@ export default function StudentHomePage() {
       <section className="page-hero p-5 text-white md:p-6">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
+            <p className="inline-flex items-center gap-2 rounded-chip bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
               <Sparkles className="h-4 w-4" /> Cổng sinh viên
             </p>
             <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-3xl">Tổng quan sự kiện cá nhân</h1>
@@ -75,7 +75,7 @@ export default function StudentHomePage() {
               Khám phá sự kiện CLB, gửi đăng ký tham gia và quản lý vé QR điện tử của bạn tại Trường Đại học Trà Vinh.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/20 bg-white/12 px-5 py-4 backdrop-blur">
+          <div className="rounded-card border border-white/20 bg-white/12 px-5 py-4 backdrop-blur">
             <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">MSSV</p>
             <p className="mt-1 font-mono text-xl font-semibold text-white">{currentUser.mssv || "Chưa cập nhật"}</p>
           </div>
@@ -83,7 +83,7 @@ export default function StudentHomePage() {
       </section>
 
       {!currentUser.profileComplete && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
             <div>
@@ -93,14 +93,14 @@ export default function StudentHomePage() {
               </p>
             </div>
           </div>
-          <Link to="/student/profile/complete" className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-warning-600 px-4 text-sm font-medium text-white">
+          <Link to="/student/profile/complete" className="btn-press inline-flex h-10 items-center justify-center gap-2 rounded-control bg-warning-600 px-4 text-sm font-medium text-white">
             Cập nhật ngay <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}
 
       {currentUser.profileComplete && currentUser.mssvStatus !== "VERIFIED" && (
-        <div className="flex flex-col gap-3 rounded-2xl border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
           <div>
             <h2 className="text-sm font-semibold text-amber-950">MSSV đang chờ xác minh</h2>
@@ -139,7 +139,7 @@ export default function StudentHomePage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center text-sm font-bold text-slate-400">
+          <div className="rounded-card border border-slate-100 bg-white p-8 text-center text-sm font-bold text-slate-400">
             Chưa có sự kiện công khai đang mở đăng ký.
           </div>
         )}
@@ -166,12 +166,12 @@ export default function StudentHomePage() {
           <h3 className="section-heading">Vé điện tử của tôi</h3>
           <div className="mt-4 space-y-3">
             {tickets.slice(0, 3).map((ticket) => (
-              <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
+              <div key={ticket.id} className="flex items-center justify-between gap-4 rounded-card border border-slate-100 bg-slate-50/80 p-3 transition hover:bg-brand-50/60">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-slate-950">{eventTitleForTicket(ticket.eventId)}</p>
                   <p className="mt-1 font-mono text-xs font-bold text-slate-500">Mã vé: {ticket.ticketCode}</p>
                 </div>
-                <Link to={`/student/tickets/${ticket.id}`} className="btn-press inline-flex h-9 items-center rounded-lg bg-brand-600 px-3 text-xs font-medium text-white">
+                <Link to={`/student/tickets/${ticket.id}`} className="btn-press inline-flex h-9 items-center rounded-control bg-brand-600 px-3 text-xs font-medium text-white">
                   Mở vé
                 </Link>
               </div>

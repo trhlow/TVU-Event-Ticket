@@ -130,7 +130,7 @@ export default function TicketQRPage() {
               [MapPin, "Địa điểm", event.location],
               [Calendar, "Ngày cấp vé", formatDateTime(ticket.issuedAt)],
             ].map(([Icon, label, value]) => (
-              <div key={label as string} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div key={label as string} className="rounded-card border border-slate-100 bg-slate-50 p-4">
                 {React.createElement(Icon as typeof UserRound, { className: "h-4 w-4 text-brand-700" })}
                 <p className="mt-3 text-[11px] font-extrabold uppercase tracking-wider text-slate-400">{label as string}</p>
                 <p className="mt-1 text-sm font-extrabold leading-6 text-slate-900">{value as string}</p>
@@ -139,10 +139,10 @@ export default function TicketQRPage() {
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link to="/student/registrations" className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
+            <Link to="/student/registrations" className="btn-press inline-flex min-h-11 items-center justify-center rounded-control border border-slate-200 px-4 text-sm font-extrabold text-slate-700 hover:bg-slate-50">
               Quay lại đăng ký của tôi
             </Link>
-            <Link to="/student/tickets" className="btn-press inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
+            <Link to="/student/tickets" className="btn-press inline-flex min-h-11 items-center justify-center rounded-control bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700">
               Xem tất cả vé
             </Link>
           </div>
