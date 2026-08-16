@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { Award, Calendar, CheckCircle2, ChevronLeft, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
+import { Award, Calendar, CheckCircle2, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
+import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { useToast } from "../../hooks/useToast";
@@ -121,18 +122,12 @@ export default function OrganizerEventDetailPage() {
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div className="flex items-center gap-2">
-          <Link to="/organizer/events" className="btn-press rounded-lg p-1.5 text-slate-500 transition-all hover:bg-slate-100">
-            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          <div className="space-y-0.5">
-            <h2 className="text-xl font-black tracking-tight text-slate-950">{event.title}</h2>
-            <p className="text-xs font-semibold text-slate-500">{currentUser.clubName || "CLB"}</p>
-          </div>
-        </div>
-        <StatusBadge type="event" status={event.status} />
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Sự kiện", path: "/organizer/events" }, { label: event.title }]}
+        title={event.title}
+        description={currentUser.clubName || "CLB"}
+        actions={<StatusBadge type="event" status={event.status} />}
+      />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatisticCard label="Tổng hiển thị" value={stats.total} icon={ListChecks} />
@@ -218,14 +213,14 @@ export default function OrganizerEventDetailPage() {
                             <button
                               disabled={actionId === reservation.id}
                               onClick={() => handleApprove(reservation.id)}
-                              className="btn-press cursor-pointer rounded-lg bg-success-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-success-600 disabled:cursor-wait disabled:opacity-60"
+                              className="btn-press cursor-pointer rounded-control bg-success-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-success-600 disabled:cursor-wait disabled:opacity-60"
                             >
                               <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Duyệt
                             </button>
                             <button
                               disabled={actionId === reservation.id}
                               onClick={() => setRejectTargetId(reservation.id)}
-                              className="btn-press cursor-pointer rounded-lg bg-danger-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-danger-600 disabled:cursor-wait disabled:opacity-60"
+                              className="btn-press cursor-pointer rounded-control bg-danger-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-danger-600 disabled:cursor-wait disabled:opacity-60"
                             >
                               <XCircle className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Từ chối
                             </button>

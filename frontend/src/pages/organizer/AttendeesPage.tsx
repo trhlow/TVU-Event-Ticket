@@ -267,7 +267,7 @@ export default function AttendeesPage() {
             <button
               onClick={() => setPage((current) => Math.max(current - 1, 0))}
               disabled={page === 0}
-              className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="btn-press grid h-9 w-9 place-items-center rounded-control border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
               aria-label="Trang trước"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -275,7 +275,7 @@ export default function AttendeesPage() {
             <button
               onClick={() => setPage((current) => Math.min(current + 1, totalPages - 1))}
               disabled={page >= totalPages - 1}
-              className="btn-press grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
+              className="btn-press grid h-9 w-9 place-items-center rounded-control border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 disabled:opacity-40"
               aria-label="Trang sau"
             >
               <ChevronRight className="h-4 w-4" />
