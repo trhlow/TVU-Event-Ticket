@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { AlertCircle, ArrowLeft, FlaskConical } from "lucide-react";
+import { AlertCircle, ArrowLeft, FlaskConical, Mail } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -155,16 +155,23 @@ export default function LoginPage() {
         <div className="mt-6 rounded-card border border-slate-200 bg-slate-50/70 p-4 text-left">
           {!otpSent ? (
             <form onSubmit={handleRequestOtp} className="space-y-3">
-              <div className="space-y-1.5">
-                <label htmlFor="login-email" className="block text-xs font-bold text-slate-700">
+              <div className="relative">
+                {/* Label is visually replaced by the icon inside the field, but stays in the
+                    accessibility tree -- an input whose only cue is a decorative glyph has no
+                    accessible name at all for a screen reader. */}
+                <label htmlFor="login-email" className="sr-only">
                   Email
                 </label>
+                <Mail
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
                 <input
                   id="login-email"
                   type="email"
                   value={adminEmail}
                   onChange={(event) => setAdminEmail(event.target.value)}
-                  className="tvu-input min-h-11 rounded-control text-sm font-medium"
+                  className="tvu-input min-h-11 rounded-control pl-10 text-sm font-medium"
                   autoComplete="username"
                 />
               </div>
