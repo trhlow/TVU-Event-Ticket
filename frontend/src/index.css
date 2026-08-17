@@ -448,11 +448,14 @@
   .auth-scene {
     position: relative;
     isolation: isolate;
+    /* Was a navy gradient, the last full-screen dark surface left after the landing went light.
+       Same three blooms in the same places and the same hues -- cyan, indigo, brand blue -- just
+       laid over the slate canvas the rest of the app uses instead of under a dark ground. */
     background:
-      radial-gradient(900px 480px at 82% -12%, rgba(34, 211, 238, 0.16), transparent 62%),
-      radial-gradient(760px 460px at -8% 30%, rgba(99, 102, 241, 0.2), transparent 58%),
-      radial-gradient(640px 420px at 50% 118%, rgba(37, 99, 235, 0.26), transparent 64%),
-      linear-gradient(160deg, #0b1533 0%, #16255c 48%, #1b3a8f 100%);
+      radial-gradient(900px 480px at 82% -12%, rgba(34, 211, 238, 0.14), transparent 62%),
+      radial-gradient(760px 460px at -8% 30%, rgba(99, 102, 241, 0.13), transparent 58%),
+      radial-gradient(640px 420px at 50% 118%, rgba(37, 99, 235, 0.16), transparent 64%),
+      #f8fafc;
   }
 
   .auth-scene::before {
@@ -461,8 +464,8 @@
     inset: 0;
     z-index: -1;
     background:
-      linear-gradient(90deg, rgba(148, 189, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(148, 189, 255, 0.05) 1px, transparent 1px);
+      linear-gradient(90deg, rgba(30, 58, 138, 0.045) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(30, 58, 138, 0.045) 1px, transparent 1px);
     background-size: 42px 42px;
     mask-image: radial-gradient(closest-side at 50% 42%, #000 40%, transparent 100%);
   }
@@ -472,20 +475,17 @@
     z-index: -1;
     border-radius: 999px;
     filter: blur(60px);
-    opacity: 0.55;
+    opacity: 0.22;
     animation: authOrbDrift 14s ease-in-out infinite;
     pointer-events: none;
   }
 
   .auth-card {
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.9),
-      0 1px 2px rgba(8, 15, 40, 0.18),
-      0 24px 70px rgba(8, 15, 40, 0.4);
+    box-shadow: var(--shadow-card);
   }
 
   .auth-back-link {
@@ -494,7 +494,8 @@
 
   .auth-back-link:hover {
     transform: translateY(-1px);
-    color: #fff;
+    /* Was #fff, which vanished the moment this scene stopped being navy. */
+    color: #172554;
   }
 
   .auth-back-link:hover svg {

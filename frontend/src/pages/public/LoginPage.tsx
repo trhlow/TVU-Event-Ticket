@@ -127,7 +127,7 @@ export default function LoginPage() {
 
       <Link
         to="/"
-        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-white/85 sm:left-6 sm:top-6"
+        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-brand-700 sm:left-6 sm:top-6"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Về trang chủ
