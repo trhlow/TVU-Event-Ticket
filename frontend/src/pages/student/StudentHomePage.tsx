@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { AlertTriangle, ArrowRight, Award, Calendar, Sparkles, Ticket } from "lucide-react";
 import EventCard from "../../components/events/EventCard";
+import PageHeader from "../../components/common/PageHeader";
 import SectionCard from "../../components/common/SectionCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
@@ -65,23 +66,18 @@ export default function StudentHomePage() {
 
   return (
     <div className="space-y-section text-left">
-      <section className="page-hero p-5 text-white md:p-6">
-        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-chip bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.16em] text-white/80">
-              <Sparkles className="h-4 w-4" /> Cổng sinh viên
-            </p>
-            <h1 className="mt-3 font-display text-2xl font-semibold tracking-tight md:text-3xl">Tổng quan sự kiện cá nhân</h1>
-            <p className="mt-3 max-w-3xl text-sm font-normal leading-6 text-white/82">
-              Khám phá sự kiện CLB, gửi đăng ký tham gia và quản lý vé QR điện tử của bạn tại Trường Đại học Trà Vinh.
-            </p>
+      <PageHeader
+        eyebrow="Cổng sinh viên"
+        icon={Sparkles}
+        title="Tổng quan sự kiện cá nhân"
+        description="Khám phá sự kiện CLB, gửi đăng ký tham gia và quản lý vé QR điện tử của bạn tại Trường Đại học Trà Vinh."
+        actions={
+          <div className="rounded-card border border-info-100 bg-info-50 px-5 py-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-brand-600">MSSV</p>
+            <p className="mt-1 font-mono text-xl font-semibold text-brand-900">{currentUser.mssv || "Chưa cập nhật"}</p>
           </div>
-          <div className="rounded-card border border-white/20 bg-white/12 px-5 py-4 backdrop-blur">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">MSSV</p>
-            <p className="mt-1 font-mono text-xl font-semibold text-white">{currentUser.mssv || "Chưa cập nhật"}</p>
-          </div>
-        </div>
-      </section>
+        }
+      />
 
       {!currentUser.profileComplete && (
         <div className="flex flex-col gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
@@ -112,13 +108,13 @@ export default function StudentHomePage() {
         </div>
       )}
 
-      <div className="grid gap-section md:grid-cols-3">
+      <div className="grid gap-section sm:grid-cols-2 lg:grid-cols-3">
         <StatisticCard label="Sự kiện đã đăng ký" value={reservations.length} icon={Calendar} subtext="Tính tất cả trạng thái" />
         <StatisticCard label="Vé QR đã cấp" value={tickets.length} icon={Ticket} subtext="Vé điện tử cá nhân" color="success" />
         <StatisticCard label="Đơn chờ duyệt" value={pendingReservationsCount} icon={Award} subtext="Ban tổ chức đang xem xét" color="warning" />
       </div>
 
-      <section className="space-y-4">
+      <section className="space-y-section">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-700">Đề xuất cho bạn</p>
@@ -129,7 +125,7 @@ export default function StudentHomePage() {
           </Link>
         </div>
         {events.length > 0 ? (
-          <div className="grid gap-section md:grid-cols-3">
+          <div className="grid gap-section sm:grid-cols-2 lg:grid-cols-3">
             {events.map((event) => (
               <EventCard
                 key={event.id}

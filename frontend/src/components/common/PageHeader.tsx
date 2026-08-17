@@ -21,7 +21,7 @@ interface PageHeaderProps {
  * Standard page-level heading used across Student/Organizer/Super Admin routes:
  * breadcrumb → eyebrow → title + description → primary actions, with an optional slot
  * (`children`) for filters/summary chips directly beneath. Kept deliberately unopinionated
- * about background (no card wrapper) so it composes into `page-hero` or a plain surface.
+ * about background (no card wrapper) so it sits on any surface.
  */
 export default function PageHeader({ breadcrumb, eyebrow, icon: Icon, title, description, actions, children }: PageHeaderProps) {
   return (

@@ -7,7 +7,7 @@ export default function SuperAdminLayout() {
       scrollRegionId="admin-scroll-region"
       headerTitle="Tổng quan toàn trường"
       showWorkspaceTitle={false}
-      contentMaxWidth="1280px"
+      contentMaxWidth="1240px"
     />
   );
 }
