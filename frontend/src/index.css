@@ -548,23 +548,31 @@
     );
   }
 
-  /* One wave of letters every 30s. The whole cycle is 30s long but the hop occupies only its
-     first ~3%, so each letter sits still for roughly 29 seconds between jumps -- an animation
-     that runs constantly would make the sentence unreadable. */
-  .landing-jump-char {
-    display: inline-block;
-    animation: charJump 30s ease-in-out infinite;
+  /* The line springs straight up once every 30s. An earlier version staggered each letter by
+     28ms, which read as a wave travelling across the sentence rather than a jump. With every
+     glyph moving together there is nothing to split, so this animates the paragraph itself --
+     no per-character spans, and no chance of the whitespace between them collapsing.
+
+     The cycle is 30s but the motion occupies its first ~4%: up fast, a small overshoot on the
+     way back, then still for roughly 29 seconds. */
+  .landing-jump-line {
+    animation: lineJump 30s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
     will-change: transform;
   }
 
-  @keyframes charJump {
-    0%,
-    3%,
-    100% {
+  @keyframes lineJump {
+    0% {
       transform: translateY(0);
     }
-    1.5% {
-      transform: translateY(-0.42em);
+    2% {
+      transform: translateY(-0.85em);
+    }
+    3.4% {
+      transform: translateY(0.12em);
+    }
+    4.6%,
+    100% {
+      transform: translateY(0);
     }
   }
 
@@ -908,8 +916,8 @@
     display: none;
   }
 
-  /* The global rule leaves one 0.001ms pass of charJump, enough to nudge a letter. Pin it flat. */
-  .landing-jump-char {
+  /* The global rule leaves one 0.001ms pass, enough to nudge the line. Pin it flat. */
+  .landing-jump-line {
     animation: none !important;
     transform: none !important;
   }

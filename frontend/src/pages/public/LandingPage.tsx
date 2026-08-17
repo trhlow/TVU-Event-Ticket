@@ -125,31 +125,6 @@ function HeroStat({ label, value, tone }: { label: string; value: number; tone: 
   );
 }
 
-/** Split into words, then characters, so each letter can be offset in turn. Words stay
- *  inline-block to keep Vietnamese from breaking mid-word, and the spaces between them remain
- *  real text nodes so the line still wraps and still copies as plain prose. */
-function JumpingText({ text }: { text: string }) {
-  let charIndex = 0;
-  return (
-    <>
-      {text.split(" ").map((word, wordIndex, words) => (
-        <span key={`${word}-${wordIndex}`} className="inline-block">
-          {[...word].map((char, i) => (
-            <span
-              key={i}
-              className="landing-jump-char"
-              style={{ animationDelay: `${charIndex++ * 28}ms` }}
-            >
-              {char}
-            </span>
-          ))}
-          {wordIndex < words.length - 1 ? " " : null}
-        </span>
-      ))}
-    </>
-  );
-}
-
 function sortFeatured(events: Event[]) {
   const rank: Record<Event["status"], number> = { OPEN: 0, CLOSED: 1, DRAFT: 2 };
   return [...events]
@@ -259,8 +234,8 @@ export default function LandingPage() {
             <h1 className="landing-fade-up font-display text-4xl font-semibold leading-[1.12] tracking-[-0.02em] text-slate-950 sm:text-5xl lg:text-6xl">
               Quản lý vé sự kiện <span className="text-brand-600">đơn giản, minh bạch</span> và an toàn
             </h1>
-            <p className="landing-fade-up mt-6 max-w-2xl text-base font-medium leading-7 text-slate-600 md:text-lg">
-              <JumpingText text="Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh." />
+            <p className="landing-fade-up landing-jump-line mt-6 max-w-2xl text-base font-medium leading-7 text-slate-600 md:text-lg">
+              Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
             </p>
             <div className="landing-fade-up mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
