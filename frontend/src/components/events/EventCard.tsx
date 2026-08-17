@@ -63,20 +63,20 @@ export default function EventCard({
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/55 p-3">
+        <div className="mt-3 rounded-card border border-info-100 bg-info-50/55 p-3">
           <div className="flex items-center justify-between text-[11px] font-bold text-slate-500">
             <span>Tỷ lệ đăng ký</span>
-            <span className={isSoldOut ? "text-amber-700" : "text-brand-700"}>{fillRate}%</span>
+            <span className={isSoldOut ? "text-warning-700" : "text-brand-700"}>{fillRate}%</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
-            <div className={`h-full rounded-full ${isSoldOut ? "bg-amber-500" : "bg-brand-600"}`} style={{ width: `${fillRate}%` }} />
+            <div className={`h-full rounded-full ${isSoldOut ? "bg-warning-500" : "bg-brand-600"}`} style={{ width: `${fillRate}%` }} />
           </div>
         </div>
 
-        <div className="mt-auto flex items-center justify-between gap-3 border-t border-blue-50 pt-3">
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-info-50 pt-3">
           <div>
             <p className="text-[10px] font-bold uppercase text-slate-400">Trạng thái vé</p>
-            <p className={`mt-1 text-sm font-bold ${isSoldOut ? "text-amber-700" : "text-emerald-600"}`}>
+            <p className={`mt-1 text-sm font-bold ${isSoldOut ? "text-warning-700" : "text-success-600"}`}>
               {event.availabilityUnknown ? "Không xác định" : isSoldOut ? "Hết vé" : `${event.remainingTickets} vé còn lại`}
             </p>
           </div>
@@ -84,7 +84,7 @@ export default function EventCard({
             {onViewDetails && (
               <button
                 onClick={() => onViewDetails(event.id)}
-                className="btn-press h-9 rounded-lg border border-blue-100 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-blue-50"
+                className="btn-press h-9 rounded-control border border-info-100 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-info-50"
               >
                 {actionText}
               </button>
@@ -92,7 +92,7 @@ export default function EventCard({
             {onRegister && event.status === "OPEN" && !isSoldOut && (
               <button
                 onClick={() => onRegister(event.id)}
-                className="btn-press inline-flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
+                className="btn-press inline-flex h-9 items-center gap-1.5 rounded-control bg-brand-600 px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-700"
               >
                 <Ticket className="h-4 w-4" />
                 Đăng ký

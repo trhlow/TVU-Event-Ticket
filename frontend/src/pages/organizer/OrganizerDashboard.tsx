@@ -4,6 +4,7 @@ import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, ShieldCheck, S
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
 import PageHeader from "../../components/common/PageHeader";
+import SectionCard from "../../components/common/SectionCard";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
 import DataTable from "../../components/common/DataTable";
@@ -104,7 +105,7 @@ export default function OrganizerDashboard() {
   ];
 
   return (
-    <div className="space-y-7 text-left">
+    <div className="space-y-section text-left">
       <PageHeader
         eyebrow="Không gian Ban tổ chức"
         icon={Sparkles}
@@ -122,7 +123,7 @@ export default function OrganizerDashboard() {
       {isLoading ? (
         <LoadingSkeleton type="card" count={6} />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-section sm:grid-cols-2 lg:grid-cols-3">
           <StatisticCard label="Tổng sự kiện" value={events.length} icon={Calendar} />
           <StatisticCard label="Sự kiện đang mở" value={activeEventsCount} icon={CheckCircle} color="success" />
           <StatisticCard label="Đăng ký chờ duyệt" value={pendingCount} icon={ClipboardList} color="warning" />
@@ -137,8 +138,8 @@ export default function OrganizerDashboard() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-section lg:grid-cols-3">
+        <div className="h-full lg:col-span-2">
           <LineChartCard
             title="Tổng hợp đăng ký và điểm danh"
             data={lineChartData}
@@ -151,26 +152,23 @@ export default function OrganizerDashboard() {
         <DonutChartCard title="Trạng thái ticketing" data={statusData} colors={["#f59e0b", "#10b981", "#2563eb"]} />
       </div>
 
-      <section className="enterprise-card p-5">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
-          <div>
-            <h2 className="section-heading">Sự kiện gần đây</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Danh sách sự kiện mới nhất của CLB</p>
-          </div>
+      <SectionCard
+        title="Sự kiện gần đây"
+        description="Danh sách sự kiện mới nhất của CLB"
+        action={
           <Link to="/organizer/events" className="inline-flex items-center gap-1 text-sm font-extrabold text-brand-700">
             Xem tất cả <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
-        </div>
-        <div className="pt-4">
-          {isLoading ? (
-            <LoadingSkeleton type="table" count={5} />
-          ) : events.length === 0 ? (
-            <EmptyState title="Chưa có sự kiện nào" description="Tạo sự kiện đầu tiên cho CLB để bắt đầu quản lý đăng ký và vé." />
-          ) : (
-            <DataTable data={events.slice(0, 5)} columns={recentEventColumns} searchPlaceholder="Tìm kiếm sự kiện..." searchField="title" pageSize={5} />
-          )}
-        </div>
-      </section>
+        }
+      >
+        {isLoading ? (
+          <LoadingSkeleton type="table" count={5} />
+        ) : events.length === 0 ? (
+          <EmptyState title="Chưa có sự kiện nào" description="Tạo sự kiện đầu tiên cho CLB để bắt đầu quản lý đăng ký và vé." />
+        ) : (
+          <DataTable data={events.slice(0, 5)} columns={recentEventColumns} searchPlaceholder="Tìm kiếm sự kiện..." searchField="title" pageSize={5} />
+        )}
+      </SectionCard>
     </div>
   );
 }

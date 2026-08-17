@@ -16,6 +16,8 @@
   --color-brand-900: #172554;
 
   /* Accent — cyan, used sparingly for highlights/gradients */
+  --color-accent-50: #ecfeff;
+  --color-accent-200: #a5f3fc;
   --color-accent-400: #22d3ee;
   --color-accent-500: #06b6d4;
   --color-accent-600: #0891b2;
@@ -31,30 +33,45 @@
 
   /* Semantic status tokens — one name per meaning, so components never hard-code a raw palette
      color for status; the underlying hue can change here without touching component code. */
+  /* The 300/400/800/900 steps exist because components genuinely needed them and, with no token
+     to reach for, reached for raw emerald/amber/rose/blue instead. Filling the gaps is what
+     stops that happening again. */
   --color-success-50: #ecfdf5;
   --color-success-100: #d1fae5;
   --color-success-200: #a7f3d0;
+  --color-success-300: #6ee7b7;
   --color-success-500: #10b981;
   --color-success-600: #059669;
   --color-success-700: #047857;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
 
   --color-warning-50: #fffbeb;
   --color-warning-100: #fef3c7;
   --color-warning-200: #fde68a;
+  --color-warning-400: #fbbf24;
   --color-warning-500: #f59e0b;
   --color-warning-600: #d97706;
   --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+  --color-warning-950: #451a03;
 
   --color-danger-50: #fff1f2;
   --color-danger-100: #ffe4e6;
   --color-danger-200: #fecdd3;
+  --color-danger-400: #fb7185;
   --color-danger-500: #f43f5e;
   --color-danger-600: #e11d48;
   --color-danger-700: #be123c;
+  --color-danger-800: #9f1239;
+  --color-danger-900: #881337;
 
   --color-info-50: #eff6ff;
   --color-info-100: #dbeafe;
   --color-info-200: #bfdbfe;
+  --color-info-300: #93c5fd;
+  --color-info-400: #60a5fa;
   --color-info-500: #3b82f6;
   --color-info-600: #2563eb;
   --color-info-700: #1d4ed8;
@@ -68,6 +85,20 @@
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-muted: #94a3b8;
+
+  /* Radius scale — one value per surface role. Before this existed, pages picked
+     rounded-lg/xl/2xl/3xl by feel and 181 declarations drifted apart. */
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --radius-chip: 9999px;
+
+  /* Elevation — two-layer soft shadow: a hairline contact shadow plus a wide
+     diffuse one, so cards lift off the slate canvas without a hard edge. */
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(15, 23, 42, 0.08);
+  --shadow-card-hover: 0 1px 2px rgba(15, 23, 42, 0.05), 0 16px 32px -14px rgba(15, 23, 42, 0.14);
+
+  /* Vertical rhythm between dashboard blocks. */
+  --spacing-section: 20px;
 }
 
 :root {
@@ -126,10 +157,10 @@
 
   .enterprise-card {
     position: relative;
-    border: 1px solid rgba(226, 232, 240, 0.95);
+    border: 1px solid rgba(226, 232, 240, 0.7);
     background: #ffffff;
-    border-radius: 12px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
     transition:
       transform 0.18s ease,
       box-shadow 0.18s ease,
@@ -138,15 +169,15 @@
   }
 
   .enterprise-panel {
-    border: 1px solid rgba(226, 232, 240, 0.95);
+    border: 1px solid rgba(226, 232, 240, 0.7);
     background: rgba(248, 250, 252, 0.7);
-    border-radius: 12px;
+    border-radius: var(--radius-card);
   }
 
   .tvu-input {
     min-height: 42px;
     width: 100%;
-    border-radius: 12px;
+    border-radius: var(--radius-control);
     border: 1px solid #cbd5e1;
     background: rgba(255, 255, 255, 0.96);
     padding: 0.55rem 0.75rem;
@@ -171,12 +202,19 @@
     letter-spacing: 0;
   }
 
+  /* fill-mode is `backwards`, not `both`, and the difference matters well beyond this animation.
+     `both` keeps the final keyframe applied forever; that keyframe ends on transform:
+     translateY(0), an identity matrix but still not `none`. Any transform other than `none`
+     makes the element a containing block, so every position:fixed descendant -- the drawer, the
+     modals, the toasts -- anchored to this wrapper instead of the viewport and could not cover
+     the sidebar. `backwards` only holds the opening frame before the animation starts, and the
+     closing frame is the element's natural position anyway, so nothing changes visually. */
   .page-enter {
-    animation: fadeIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: fadeIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   .page-enter > * {
-    animation: contentRise 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: contentRise 0.44s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   .page-enter > *:nth-child(2) {
@@ -214,7 +252,9 @@
 
   .reveal-visible {
     opacity: 1;
-    transform: translateY(0);
+    /* `none`, not translateY(0): the two look identical but only `none` stops this element
+       being a containing block for any position:fixed content revealed inside it. */
+    transform: none;
   }
 
   .card-hover-lift {
@@ -223,7 +263,7 @@
 
   .card-hover-lift:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+    box-shadow: var(--shadow-card-hover);
     border-color: rgba(37, 99, 235, 0.22);
   }
 
@@ -429,47 +469,19 @@
     color: #0f172a;
   }
 
-  .page-hero {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid rgba(30, 58, 138, 0.35);
-    background:
-      radial-gradient(720px 300px at 88% -20%, rgba(34, 211, 238, 0.22), transparent 60%),
-      radial-gradient(560px 280px at 8% 120%, rgba(99, 102, 241, 0.28), transparent 62%),
-      linear-gradient(130deg, #172554 0%, #1e3a8a 46%, #1d4ed8 100%);
-    border-radius: 14px;
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.09),
-      0 14px 34px rgba(23, 37, 84, 0.22);
-  }
-
-  .page-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
-    background-size: 44px 44px;
-    mask-image: radial-gradient(closest-side at 70% 40%, #000, transparent 130%);
-  }
-
-  .page-hero > * {
-    position: relative;
-    z-index: 1;
-  }
-
   /* Auth (login) scene — deep-blue aurora over a faint grid. Card stays light with dark text so
      copy never sinks into the backdrop; the drama lives behind the glass, not under the words. */
   .auth-scene {
     position: relative;
     isolation: isolate;
+    /* Was a navy gradient, the last full-screen dark surface left after the landing went light.
+       Same three blooms in the same places and the same hues -- cyan, indigo, brand blue -- just
+       laid over the slate canvas the rest of the app uses instead of under a dark ground. */
     background:
-      radial-gradient(900px 480px at 82% -12%, rgba(34, 211, 238, 0.16), transparent 62%),
-      radial-gradient(760px 460px at -8% 30%, rgba(99, 102, 241, 0.2), transparent 58%),
-      radial-gradient(640px 420px at 50% 118%, rgba(37, 99, 235, 0.26), transparent 64%),
-      linear-gradient(160deg, #0b1533 0%, #16255c 48%, #1b3a8f 100%);
+      radial-gradient(900px 480px at 82% -12%, rgba(34, 211, 238, 0.14), transparent 62%),
+      radial-gradient(760px 460px at -8% 30%, rgba(99, 102, 241, 0.13), transparent 58%),
+      radial-gradient(640px 420px at 50% 118%, rgba(37, 99, 235, 0.16), transparent 64%),
+      #f8fafc;
   }
 
   .auth-scene::before {
@@ -478,8 +490,8 @@
     inset: 0;
     z-index: -1;
     background:
-      linear-gradient(90deg, rgba(148, 189, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(148, 189, 255, 0.05) 1px, transparent 1px);
+      linear-gradient(90deg, rgba(30, 58, 138, 0.045) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(30, 58, 138, 0.045) 1px, transparent 1px);
     background-size: 42px 42px;
     mask-image: radial-gradient(closest-side at 50% 42%, #000 40%, transparent 100%);
   }
@@ -489,20 +501,17 @@
     z-index: -1;
     border-radius: 999px;
     filter: blur(60px);
-    opacity: 0.55;
+    opacity: 0.22;
     animation: authOrbDrift 14s ease-in-out infinite;
     pointer-events: none;
   }
 
   .auth-card {
-    border: 1px solid rgba(255, 255, 255, 0.55);
-    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.9),
-      0 1px 2px rgba(8, 15, 40, 0.18),
-      0 24px 70px rgba(8, 15, 40, 0.4);
+    box-shadow: var(--shadow-card);
   }
 
   .auth-back-link {
@@ -511,7 +520,8 @@
 
   .auth-back-link:hover {
     transform: translateY(-1px);
-    color: #fff;
+    /* Was #fff, which vanished the moment this scene stopped being navy. */
+    color: #172554;
   }
 
   .auth-back-link:hover svg {
@@ -544,19 +554,136 @@
     box-shadow: 0 -18px 60px rgba(8, 15, 40, 0.16);
   }
 
-  .landing-hero-bg {
-    transform: scale(1.035);
+  /* The campus photo sits behind the whole hero. Scaled up so the blur radius does not pull
+     transparent edges into frame. */
+  .landing-hero-photo {
+    filter: blur(5px) saturate(1.08);
+    transform: scale(1.06);
   }
 
-  .landing-hero-pattern {
+  /* Near-opaque white over the photo. Dark headline text needs real contrast, and a blurred
+     bright sky is still bright -- the blur softens detail, this provides the contrast. Fades to
+     solid white at the bottom so the next section starts on clean ground. */
+  .landing-hero-scrim {
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(255, 255, 255, 0.68) 40%,
+      rgba(255, 255, 255, 0.88) 78%,
+      #ffffff 100%
+    );
+  }
+
+  /* Hero headline painted with a gradient: brand navy through brand blue into the cyan accent,
+     the same three hues the hero aura already uses. The fill runs across the whole heading box,
+     so a headline that wraps to two lines continues the ramp rather than restarting it.
+
+     `color` is declared before the clip so anything that ignores background-clip still renders
+     solid navy text instead of nothing. */
+  .landing-hero-title {
+    color: #172554;
+    background-image: linear-gradient(100deg, #172554 0%, #1d4ed8 42%, #0891b2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Windows high-contrast mode drops background images entirely. Without this the headline is
+     transparent text over nothing -- it disappears. */
+  @media (forced-colors: active) {
+    .landing-hero-title {
+      background-image: none;
+      -webkit-text-fill-color: CanvasText;
+      color: CanvasText;
+    }
+  }
+
+  /* The line springs straight up once every 30s. An earlier version staggered each letter by
+     28ms, which read as a wave travelling across the sentence rather than a jump. With every
+     glyph moving together there is nothing to split, so this animates the paragraph itself --
+     no per-character spans, and no chance of the whitespace between them collapsing.
+
+     The cycle is 30s but the motion occupies its first ~4%: up fast, a small overshoot on the
+     way back, then still for roughly 29 seconds. */
+  .landing-jump-line {
+    animation: lineJump 30s cubic-bezier(0.34, 1.56, 0.64, 1) infinite;
+    will-change: transform;
+  }
+
+  @keyframes lineJump {
+    0% {
+      transform: translateY(0);
+    }
+    2% {
+      transform: translateY(-0.85em);
+    }
+    3.4% {
+      transform: translateY(0.12em);
+    }
+    4.6%,
+    100% {
+      transform: translateY(0);
+    }
+  }
+
+  /* Continuously scrolling figures under the hero. */
+  .landing-stat-marquee {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Items fade out at both edges instead of being sliced flat by the border. */
+  .landing-stat-marquee::before,
+  .landing-stat-marquee::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4rem;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .landing-stat-marquee::before {
+    left: 0;
+    background: linear-gradient(90deg, #ffffff, transparent);
+  }
+
+  .landing-stat-marquee::after {
+    right: 0;
+    background: linear-gradient(270deg, #ffffff, transparent);
+  }
+
+  .landing-stat-track {
+    display: flex;
+    width: max-content;
+    animation: statMarquee 30s linear infinite;
+  }
+
+  /* WCAG 2.2.2 wants a way to stop motion that runs longer than five seconds. Hovering covers
+     pointer users; focus-within covers keyboard users tabbing past. */
+  .landing-stat-marquee:hover .landing-stat-track,
+  .landing-stat-marquee:focus-within .landing-stat-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes statMarquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  /* Brand blooms layered over the scrim so the hero keeps a hint of colour. */
+  .landing-hero-aura {
     pointer-events: none;
     background:
-      radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.12), transparent 28%),
-      radial-gradient(circle at 78% 24%, rgba(99, 102, 241, 0.15), transparent 26%),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-    background-size: auto, auto, 56px 56px, 56px 56px;
-    mask-image: linear-gradient(to bottom, #000 20%, rgba(0, 0, 0, 0.85) 62%, transparent 100%);
+      radial-gradient(620px 320px at 18% 8%, rgba(37, 99, 235, 0.1), transparent 62%),
+      radial-gradient(560px 300px at 82% 4%, rgba(34, 211, 238, 0.09), transparent 60%);
+    mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
   }
 
   .landing-soft-section {
@@ -586,10 +713,14 @@
       0 22px 46px rgba(30, 64, 175, 0.12);
   }
 
+  /* Was a navy gradient band. Once the hero went light this was one of two dark blocks left,
+     and the page read as two documents stitched together. Now a tinted light panel, one step
+     cooler than .landing-soft-section so consecutive sections still separate. */
   .landing-guide-section {
     background:
-      linear-gradient(135deg, rgba(15, 23, 42, 0.08), transparent 44%),
-      linear-gradient(135deg, #0f1f4d 0%, #173b8f 52%, #1556b8 100%);
+      radial-gradient(680px 300px at 12% 0%, rgba(37, 99, 235, 0.07), transparent 60%),
+      radial-gradient(600px 280px at 88% 100%, rgba(34, 211, 238, 0.06), transparent 58%),
+      #eef4ff;
   }
 
   .landing-guide-section::after {
@@ -597,9 +728,10 @@
     position: absolute;
     inset: 0;
     z-index: -1;
+    /* White grid lines were invisible once this section stopped being dark; drawn in slate now. */
     background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(90deg, rgba(30, 58, 138, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(30, 58, 138, 0.05) 1px, transparent 1px);
     background-size: 52px 52px;
     mask-image: radial-gradient(closest-side at 50% 50%, #000, transparent 120%);
   }
@@ -610,7 +742,7 @@
     height: 24rem;
     border-radius: 999px;
     filter: blur(70px);
-    opacity: 0.22;
+    opacity: 0.13;
     pointer-events: none;
   }
 
@@ -633,7 +765,7 @@
     background:
       radial-gradient(560px 240px at 90% -30%, rgba(34, 211, 238, 0.3), transparent 60%),
       radial-gradient(440px 220px at 5% 130%, rgba(129, 140, 248, 0.32), transparent 62%),
-      linear-gradient(125deg, #172554 0%, #1e3a8a 48%, #1d4ed8 100%);
+      linear-gradient(125deg, #1e40af 0%, #1d4ed8 45%, #2563eb 100%);
     box-shadow: 0 22px 54px rgba(30, 58, 138, 0.2);
   }
 
@@ -647,6 +779,64 @@
       linear-gradient(180deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
     background-size: 42px 42px;
     mask-image: linear-gradient(90deg, transparent, #000 45%, #000);
+  }
+
+  /* Baseline: an ordinary grid. This is what phones, tablets and any browser without a fine
+     pointer get, because the fan below can only be opened by hovering -- on a touch screen the
+     stacked version would hide the entire how-it-works guide behind a gesture that does not
+     exist there. */
+  .landing-guide-deck {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 1024px) {
+    .landing-guide-deck {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* Deck + fan, only where a real pointer can open it and there is room to spread. */
+  @media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
+    .landing-guide-deck {
+      position: relative;
+      display: block;
+      height: 30rem;
+    }
+
+    .landing-guide-slot {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 23rem;
+      margin-left: -11.5rem;
+      /* Pivot below the cards so they swing like a hand of cards rather than spinning in place. */
+      transform-origin: 50% 125%;
+      transform: rotate(calc((var(--i) - 1) * 2.5deg)) translateY(calc(var(--i) * 6px));
+      /* Slow enough to read as a fan opening rather than a snap. The outer cards start a beat
+         after the middle one, which is what gives the spread its sweep. Written as nth-child
+         rather than calc(abs(...)) so it does not depend on a recent CSS maths function. */
+      transition: transform 0.9s var(--ease-out-soft);
+      z-index: calc(3 - var(--i));
+    }
+
+    .landing-guide-slot:nth-child(1),
+    .landing-guide-slot:nth-child(3) {
+      transition-delay: 70ms;
+    }
+
+    /* focus-within matters as much as hover here: without it the deck never opens for anyone
+       tabbing through, and the steps inside stay stacked under one another. */
+    .landing-guide-deck:hover .landing-guide-slot,
+    .landing-guide-deck:focus-within .landing-guide-slot {
+      transform: rotate(calc((var(--i) - 1) * 9deg)) translateX(calc((var(--i) - 1) * 24rem))
+        translateY(calc(var(--i) * 6px));
+    }
+
+    .landing-guide-deck:hover .landing-guide-slot:hover,
+    .landing-guide-deck .landing-guide-slot:focus-within {
+      z-index: 4;
+    }
   }
 
   .landing-guide-card {
@@ -797,7 +987,6 @@
 }
 
 @media (hover: none), (pointer: coarse) {
-  .landing-hero-bg,
   .magnetic-button-content,
   .tilt-card,
   .tilt-card:hover {
@@ -824,7 +1013,24 @@
     transform: none !important;
   }
 
-  .landing-hero-bg,
+  /* The global rule above already halts the marquee. Left alone it would freeze mid-track with
+     items clipped by the container, so the row collapses to a single static, centred copy. */
+  .landing-stat-track {
+    width: 100% !important;
+    justify-content: center;
+    animation: none !important;
+  }
+
+  .landing-stat-track > dl[aria-hidden="true"] {
+    display: none;
+  }
+
+  /* The global rule leaves one 0.001ms pass, enough to nudge the line. Pin it flat. */
+  .landing-jump-line {
+    animation: none !important;
+    transform: none !important;
+  }
+
   .magnetic-button-content,
   .icon-float,
   .public-mobile-menu,

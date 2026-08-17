@@ -52,7 +52,7 @@ export default function StudentHistoryPage() {
 
       {isLoading ? null : pastReservations.length > 0 ? (
         <>
-          <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
+          <div className="flex gap-3 rounded-card border border-info-100 bg-info-50/60 p-4 text-left">
             <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
             <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
               Trang này chưa hiển thị được trạng thái điểm danh (đã check-in hay chưa) cho từng lượt tham gia — tính năng này sẽ bổ

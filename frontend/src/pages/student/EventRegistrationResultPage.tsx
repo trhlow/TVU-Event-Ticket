@@ -49,10 +49,10 @@ export default function EventRegistrationResultPage() {
             Đơn đăng ký của bạn đã được gửi tới ban tổ chức và đang chờ duyệt. Bạn có thể theo dõi trạng thái trong mục đăng ký của tôi.
           </p>
           <div className="flex flex-col justify-center gap-2 pt-2 sm:flex-row">
-            <Link to="/student/registrations" className="btn-press rounded-xl bg-brand-600 px-4 py-2.5 text-xs font-extrabold text-white hover:bg-brand-700">
+            <Link to="/student/registrations" className="btn-press rounded-control bg-brand-600 px-4 py-2.5 text-xs font-extrabold text-white hover:bg-brand-700">
               Xem đăng ký của tôi
             </Link>
-            <Link to="/student/events" className="btn-press rounded-xl border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
+            <Link to="/student/events" className="btn-press rounded-control border border-slate-200 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50">
               Tiếp tục xem sự kiện
             </Link>
           </div>
@@ -99,7 +99,7 @@ export default function EventRegistrationResultPage() {
           Đơn của bạn đã được ghi nhận và chuyển đến ban tổ chức để kiểm duyệt hồ sơ.
         </p>
 
-        <div className="w-full space-y-3.5 rounded-2xl border border-slate-200/60 bg-slate-50 p-5 text-left">
+        <div className="w-full space-y-3.5 rounded-card border border-slate-200/60 bg-slate-50 p-5 text-left">
           <span className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Phiếu đăng ký số: #{reservation.id}</span>
           <div className="space-y-1.5">
             <h4 className="text-sm font-black leading-snug text-slate-900">{reservation.eventTitle || "Sự kiện đang cập nhật thông tin"}</h4>
@@ -128,13 +128,13 @@ export default function EventRegistrationResultPage() {
         <div className="flex w-full flex-col gap-2 pt-2 sm:flex-row">
           <Link
             to="/student/registrations"
-            className="btn-press flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-brand-600 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
+            className="btn-press flex flex-1 items-center justify-center gap-1.5 rounded-control bg-brand-600 py-2.5 text-xs font-extrabold text-white shadow-sm hover:bg-brand-700"
           >
             <ListChecks className="h-4 w-4" aria-hidden="true" /> Xem lịch sử đăng ký
           </Link>
           <Link
             to="/student/home"
-            className="btn-press flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+            className="btn-press flex flex-1 items-center justify-center gap-1.5 rounded-control border border-slate-200 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
             Quay lại trang chủ
           </Link>

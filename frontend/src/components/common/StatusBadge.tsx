@@ -26,27 +26,27 @@ export default function StatusBadge({ type, status, checkInStatus }: StatusBadge
 
   const styles = (() => {
     if (type === "event") {
-      if (status === "OPEN") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      if (status === "UPCOMING") return "bg-blue-50 text-brand-700 border-blue-200";
-      if (status === "FULL") return "bg-amber-50 text-amber-700 border-amber-200";
+      if (status === "OPEN") return "bg-success-50 text-success-700 border-success-200";
+      if (status === "UPCOMING") return "bg-info-50 text-brand-700 border-info-200";
+      if (status === "FULL") return "bg-warning-50 text-warning-700 border-warning-200";
       if (status === "ENDED") return "bg-slate-100 text-slate-600 border-slate-200";
       return "bg-slate-50 text-slate-600 border-slate-200";
     }
 
     if (type === "reservation") {
-      if (status === "PENDING") return "bg-amber-50 text-amber-700 border-amber-200";
-      if (status === "APPROVED") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      if (status === "REJECTED") return "bg-rose-50 text-rose-700 border-rose-200";
+      if (status === "PENDING") return "bg-warning-50 text-warning-700 border-warning-200";
+      if (status === "APPROVED") return "bg-success-50 text-success-700 border-success-200";
+      if (status === "REJECTED") return "bg-danger-50 text-danger-700 border-danger-200";
     }
 
     if (type === "ticket") {
-      if (checkInStatus === "CHECKED_IN") return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      if (status === "VALID") return "bg-blue-50 text-brand-700 border-blue-200";
-      if (status === "EXPIRED") return "bg-amber-50 text-amber-700 border-amber-200";
-      return "bg-rose-50 text-rose-700 border-rose-200";
+      if (checkInStatus === "CHECKED_IN") return "bg-success-50 text-success-700 border-success-200";
+      if (status === "VALID") return "bg-info-50 text-brand-700 border-info-200";
+      if (status === "EXPIRED") return "bg-warning-50 text-warning-700 border-warning-200";
+      return "bg-danger-50 text-danger-700 border-danger-200";
     }
 
-    if (type === "user" && status === "ACTIVE") return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (type === "user" && status === "ACTIVE") return "bg-success-50 text-success-700 border-success-200";
     return "bg-slate-50 text-slate-600 border-slate-200";
   })();
 

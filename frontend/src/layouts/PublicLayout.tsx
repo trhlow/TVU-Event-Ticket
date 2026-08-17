@@ -116,7 +116,7 @@ export default function PublicLayout() {
         className={[
           "fixed inset-x-0 top-0 z-50 border-b px-4 transition-all duration-300 sm:px-5 lg:px-8",
           isScrolled
-            ? "border-blue-100/80 bg-white/94 shadow-sm backdrop-blur-xl"
+            ? "border-info-100/80 bg-white/94 shadow-sm backdrop-blur-xl"
             : "border-white/70 bg-white/82 backdrop-blur-md",
         ].join(" ")}
       >
@@ -125,7 +125,7 @@ export default function PublicLayout() {
             <img
               src="/logo-tvu.webp?v=20260729"
               alt="Logo Trường Đại học Trà Vinh"
-              className="h-9 w-9 shrink-0 rounded-full bg-white object-contain p-1 shadow-sm ring-1 ring-blue-100"
+              className="h-9 w-9 shrink-0 rounded-full bg-white object-contain p-1 shadow-sm ring-1 ring-info-100"
             />
             <span className="min-w-0">
               <span className="block truncate font-display text-lg font-extrabold leading-5 text-brand-800">TVU Ticket</span>
@@ -187,7 +187,7 @@ export default function PublicLayout() {
           <div className="hidden items-center justify-end gap-3 md:flex">
             <Link
               to="/login"
-              className="btn-press inline-flex h-10 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-brand-600"
+              className="btn-press inline-flex h-10 items-center justify-center rounded-control bg-brand-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-brand-600"
             >
               Đăng nhập
             </Link>
@@ -196,7 +196,7 @@ export default function PublicLayout() {
           <button
             type="button"
             onClick={() => setMobileOpen((value) => !value)}
-            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-xl border border-blue-100 bg-white text-brand-800 shadow-sm md:hidden"
+            className="btn-press grid h-10 w-10 place-items-center justify-self-end rounded-control border border-info-100 bg-white text-brand-800 shadow-sm md:hidden"
             aria-label={mobileOpen ? "Đóng menu" : "Mở menu"}
             aria-expanded={mobileOpen}
             aria-controls="public-mobile-menu"
@@ -206,7 +206,7 @@ export default function PublicLayout() {
         </div>
 
         {mobileOpen && (
-          <div id="public-mobile-menu" className="public-mobile-menu mx-auto max-w-[1180px] border-t border-blue-50 py-3 md:hidden">
+          <div id="public-mobile-menu" className="public-mobile-menu mx-auto max-w-[1180px] border-t border-info-50 py-3 md:hidden">
             <div className="grid gap-2">
               {navItems.map((item) => (
                 <button
@@ -214,10 +214,10 @@ export default function PublicLayout() {
                   type="button"
                   onClick={() => handleNavClick(item.id)}
                   className={[
-                    "rounded-xl px-3 py-2.5 text-left text-sm font-bold",
+                    "rounded-control px-3 py-2.5 text-left text-sm font-bold",
                     isLanding && activeSection === item.id
-                      ? "bg-blue-50 text-brand-800"
-                      : "text-slate-700 hover:bg-blue-50 hover:text-brand-800",
+                      ? "bg-info-50 text-brand-800"
+                      : "text-slate-700 hover:bg-info-50 hover:text-brand-800",
                   ].join(" ")}
                 >
                   {item.label}
@@ -226,7 +226,7 @@ export default function PublicLayout() {
               <Link
                 to="/login"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-xl bg-brand-700 px-4 py-2.5 text-center text-sm font-bold text-white"
+                className="rounded-control bg-brand-700 px-4 py-2.5 text-center text-sm font-bold text-white"
               >
                 Đăng nhập
               </Link>
@@ -240,11 +240,11 @@ export default function PublicLayout() {
       </section>
 
       {!isLanding && (
-        <footer className="border-t border-blue-100 bg-white px-6 py-8 text-sm text-slate-600">
+        <footer className="border-t border-info-100 bg-white px-6 py-8 text-sm text-slate-600">
           <div className="mx-auto grid max-w-[1180px] gap-6 md:grid-cols-[1.3fr_1fr_1fr]">
             <div>
               <div className="flex items-center gap-3">
-                <img src="/logo-tvu.webp?v=20260729" alt="Logo TVU" className="h-9 w-9 rounded-full object-contain ring-1 ring-blue-100" />
+                <img src="/logo-tvu.webp?v=20260729" alt="Logo TVU" className="h-9 w-9 rounded-full object-contain ring-1 ring-info-100" />
                 <p className="font-display text-lg font-extrabold text-brand-800">TVU Ticket</p>
               </div>
               <p className="mt-3 max-w-xl leading-6">

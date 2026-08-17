@@ -81,13 +81,13 @@ export default function OrganizerRegistrationQRPage() {
       ) : event ? (
         <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
           <section className="enterprise-card p-6 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-chip bg-brand-50 px-3 py-1 text-xs font-extrabold text-brand-700">
               <QrCode className="h-4 w-4" /> Liên kết đăng ký
             </div>
-            <div className="mx-auto grid h-64 w-64 place-items-center rounded-3xl border border-slate-200 bg-white p-6">
+            <div className="mx-auto grid h-64 w-64 place-items-center rounded-card border border-slate-200 bg-white p-6">
               <QRCodeSVG value={registrationLink} size={208} level="M" includeMargin={false} />
             </div>
-            <p className="mt-4 break-all rounded-2xl border border-slate-100 bg-slate-50 p-3 text-xs font-semibold leading-5 text-slate-600">
+            <p className="mt-4 break-all rounded-card border border-slate-100 bg-slate-50 p-3 text-xs font-semibold leading-5 text-slate-600">
               {registrationLink}
             </p>
           </section>
@@ -96,7 +96,7 @@ export default function OrganizerRegistrationQRPage() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <StatusBadge type="event" status={event.status} />
-                <span className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-500">
+                <span className="rounded-chip border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-500">
                   Còn {event.remainingTickets}/{event.capacity} vé
                 </span>
               </div>
@@ -105,19 +105,19 @@ export default function OrganizerRegistrationQRPage() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="rounded-card border border-slate-100 bg-slate-50 p-4">
                 <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Thời gian tổ chức</p>
                 <p className="mt-1 text-sm font-bold text-slate-900">{formatDateTime(event.startAt)}</p>
               </div>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="rounded-card border border-slate-100 bg-slate-50 p-4">
                 <p className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Đóng đăng ký</p>
                 <p className="mt-1 text-sm font-bold text-slate-900">{formatDateTime(event.registrationCloseAt)}</p>
               </div>
             </div>
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-sm font-semibold text-warning-900">
               <p className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" />
                 <span>Liên kết này chỉ dùng để mở trang đăng ký sự kiện. Đây không phải là vé tham gia sự kiện.</span>
               </p>
             </div>

@@ -132,7 +132,7 @@ export default function SuperAdminOrganizersPage() {
           {user.status === "ACTIVE" && (
             <button
               onClick={() => setLockTarget(user)}
-              className="rounded-lg border border-gray-100 p-1.5 text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+              className="rounded-control border border-gray-100 p-1.5 text-danger-600 hover:border-danger-200 hover:bg-danger-50"
               title="Khóa tài khoản"
             >
               <Lock className="h-3.5 w-3.5" />
@@ -140,7 +140,7 @@ export default function SuperAdminOrganizersPage() {
           )}
           <button
             onClick={() => setDeleteTarget(user)}
-            className="rounded-lg border border-gray-100 p-1.5 text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+            className="rounded-control border border-gray-100 p-1.5 text-danger-600 hover:border-danger-200 hover:bg-danger-50"
             title="Xóa tài khoản"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -158,19 +158,19 @@ export default function SuperAdminOrganizersPage() {
         actions={
           <button
             onClick={() => setCreateOpen(true)}
-            className="btn-press flex items-center gap-1.5 rounded-xl bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700"
+            className="btn-press flex items-center gap-1.5 rounded-control bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700"
           >
             <Plus className="h-4 w-4" aria-hidden="true" /> Cấp tài khoản mới
           </button>
         }
       />
 
-      <div className="flex gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-900">
-        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+      <div className="flex gap-2 rounded-card border border-success-200 bg-success-50 p-4 text-sm font-semibold leading-6 text-success-900">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
         Tài khoản Ban tổ chức không dùng mật khẩu. Mã đăng nhập một lần được gửi tới email đã đăng ký.
       </div>
 
-      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="rounded-card border border-gray-200 bg-white p-4 shadow-sm">
         <label className="space-y-1">
           <span className="block text-[10px] font-black uppercase tracking-wider text-gray-400">Tìm kiếm</span>
           <div className="relative">
@@ -178,14 +178,14 @@ export default function SuperAdminOrganizersPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="w-full max-w-md rounded-xl border border-gray-200 py-2 pl-9 pr-3 text-xs font-semibold"
+              className="w-full max-w-md rounded-control border border-gray-200 py-2 pl-9 pr-3 text-xs font-semibold"
               placeholder="Tên, email hoặc câu lạc bộ"
             />
           </div>
         </label>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
+      <div className="overflow-hidden rounded-card border border-gray-200 bg-white p-1 shadow-sm">
         <DataTable
           data={filteredUsers}
           columns={columns}
@@ -203,7 +203,7 @@ export default function SuperAdminOrganizersPage() {
           <>
             <button
               type="button"
-              className="btn-press min-h-10 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600"
+              className="btn-press min-h-10 rounded-control border border-slate-200 px-4 text-sm font-bold text-slate-600"
               onClick={() => setCreateOpen(false)}
             >
               Hủy
@@ -212,19 +212,19 @@ export default function SuperAdminOrganizersPage() {
               type="submit"
               form="create-organizer-form"
               disabled={isSaving || activeClubs.length === 0}
-              className="btn-press min-h-10 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white disabled:opacity-50"
+              className="btn-press min-h-10 rounded-control bg-brand-700 px-4 text-sm font-extrabold text-white disabled:opacity-50"
             >
               {isSaving ? "Đang cấp..." : "Cấp tài khoản"}
             </button>
           </>
         }
       >
-        <div className="flex gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-semibold leading-6 text-emerald-900">
-          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+        <div className="flex gap-2 rounded-card border border-success-200 bg-success-50 px-3 py-3 text-sm font-semibold leading-6 text-success-900">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
           Người dùng sẽ nhận mã OTP qua email khi đăng nhập, không cần mật khẩu tạm thời.
         </div>
         {activeClubs.length === 0 && (
-          <div className="mt-3 rounded-xl border border-danger-200 bg-danger-50 px-3 py-3 text-sm font-semibold leading-6 text-danger-700">
+          <div className="mt-3 rounded-card border border-danger-200 bg-danger-50 px-3 py-3 text-sm font-semibold leading-6 text-danger-700">
             Không còn CLB nào đang hoạt động. Hãy mở khóa hoặc tạo CLB mới trước khi cấp tài khoản Ban tổ chức.
           </div>
         )}

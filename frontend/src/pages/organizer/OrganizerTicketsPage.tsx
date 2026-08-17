@@ -155,7 +155,7 @@ export default function OrganizerTicketsPage() {
       </div>
 
       {partialLoadFailed && (
-        <div className="rounded-xl border border-warning-200 bg-warning-50 p-4 text-xs font-semibold text-amber-800">
+        <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-xs font-semibold text-warning-800">
           Một số sự kiện không tải được danh sách vé — số liệu bên dưới có thể thiếu. Vui lòng tải lại trang.
         </div>
       )}

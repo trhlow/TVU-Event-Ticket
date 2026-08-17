@@ -79,10 +79,10 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   if (connectionError) {
     return (
       <div className="grid min-h-[260px] place-items-center p-6">
-        <div className="max-w-md rounded-2xl border border-rose-200 bg-rose-50 px-6 py-5 text-center shadow-sm">
-          <WifiOff className="mx-auto h-8 w-8 text-rose-500" aria-hidden="true" />
-          <p className="mt-3 text-sm font-extrabold text-rose-800">Không thể kết nối máy chủ</p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-rose-700">
+        <div className="max-w-md rounded-2xl border border-danger-200 bg-danger-50 px-6 py-5 text-center shadow-sm">
+          <WifiOff className="mx-auto h-8 w-8 text-danger-500" aria-hidden="true" />
+          <p className="mt-3 text-sm font-extrabold text-danger-800">Không thể kết nối máy chủ</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-danger-700">
             Không thể xác minh phiên đăng nhập vì máy chủ không phản hồi. Đây không phải lỗi đăng nhập — vui lòng kiểm tra kết nối
             mạng rồi thử lại.
           </p>
@@ -93,7 +93,7 @@ export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
               setSessionChecked(false);
               setRetryToken((value) => value + 1);
             }}
-            className="btn-press mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-rose-600 px-4 text-xs font-extrabold text-white hover:bg-rose-700"
+            className="btn-press mt-4 inline-flex min-h-10 items-center justify-center rounded-lg bg-danger-600 px-4 text-xs font-extrabold text-white hover:bg-danger-700"
           >
             Thử lại
           </button>

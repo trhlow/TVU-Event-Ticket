@@ -6,6 +6,7 @@ import QRScannerPanel from "../../components/tickets/QRScannerPanel";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
+import SectionCard from "../../components/common/SectionCard";
 
 export default function OrganizerScanPage() {
   const { eventId } = useParams<{ eventId?: string }>();
@@ -85,7 +86,7 @@ export default function OrganizerScanPage() {
         description="Quét hoặc nhập mã QR đã gửi cho sinh viên qua email. Hệ thống luôn là nơi xác minh mã hợp lệ hay không."
       />
       {eventId && (
-        <div className="flex gap-3 rounded-2xl border border-warning-200 bg-warning-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+        <div className="flex gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 text-sm font-semibold leading-6 text-warning-900">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
           <span>
             Máy chủ chưa hỗ trợ giới hạn check-in theo từng sự kiện — một vé hợp lệ của sự kiện khác cùng CLB vẫn có
@@ -94,15 +95,11 @@ export default function OrganizerScanPage() {
         </div>
       )}
       <QRScannerPanel onCheckIn={handleCheckIn} cameraPermission={cameraPermission} />
-      <section className="enterprise-card p-5">
-        <div className="flex flex-col gap-1 border-b border-slate-100 pb-4">
-          <h2 className="section-heading">Lịch sử check-in gần đây</h2>
-          <p className="text-sm font-semibold text-slate-500">Ghi nhận kết quả quét trong phiên hiện tại.</p>
-        </div>
-        <div className="mt-4 space-y-3">
+      <SectionCard title="Lịch sử check-in gần đây" description="Ghi nhận kết quả quét trong phiên hiện tại.">
+        <div className="space-y-3">
           {scanHistory.length > 0 ? (
             scanHistory.map((item, index) => (
-              <div key={`${item.code}-${index}`} className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+              <div key={`${item.code}-${index}`} className="flex items-start gap-3 rounded-card border border-slate-100 bg-slate-50 p-3">
                 {item.success ? (
                   <CheckCircle2 className="mt-0.5 h-5 w-5 text-success-600" aria-hidden="true" />
                 ) : (
@@ -116,12 +113,12 @@ export default function OrganizerScanPage() {
               </div>
             ))
           ) : (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">
+            <div className="rounded-card border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-semibold text-slate-500">
               Chưa có lượt quét nào.
             </div>
           )}
         </div>
-      </section>
+      </SectionCard>
     </div>
   );
 }

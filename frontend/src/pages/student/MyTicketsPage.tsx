@@ -95,7 +95,7 @@ export default function MyTicketsPage() {
         <EmptyState icon={TicketIcon} title="Ví vé của bạn đang trống" description="Chưa có đăng ký được duyệt kèm mã vé." />
       )}
 
-      <div className="flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4 text-left">
+      <div className="flex gap-3 rounded-card border border-info-100 bg-info-50/60 p-4 text-left">
         <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
         <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
           Mã QR hiện chỉ được gửi qua email ngay khi Ban tổ chức duyệt đăng ký — trang này chưa hỗ trợ

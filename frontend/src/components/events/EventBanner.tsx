@@ -48,7 +48,7 @@ export default function EventBanner({
       {hasError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-brand-700 text-white">
           <div className="relative flex flex-col items-center gap-3 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow-lg">
+            <div className="w-14 h-14 rounded-control bg-white/15 border border-white/20 flex items-center justify-center shadow-lg">
               <ImageIcon className="w-7 h-7 text-accent-500" />
             </div>
             <span className="line-clamp-2 text-xs font-black uppercase tracking-widest">{alt}</span>

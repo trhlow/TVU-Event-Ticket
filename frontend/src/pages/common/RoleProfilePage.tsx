@@ -6,6 +6,7 @@ import { getRoleLabel } from "../../utils/roleHelpers";
 import { authService } from "../../services/authService";
 import { useToast } from "../../hooks/useToast";
 import { Input } from "../../components/ui/input";
+import SectionCard from "../../components/common/SectionCard";
 
 interface RoleProfilePageProps {
   scope: "organizer" | "admin";
@@ -42,20 +43,18 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
         title="Hồ sơ tài khoản"
         description="Thông tin định danh và phạm vi phụ trách được đồng bộ từ tài khoản nội bộ TVU."
         actions={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+          <span className="inline-flex items-center gap-1.5 rounded-chip border border-success-200 bg-success-50 px-3 py-1.5 text-xs font-bold text-success-700">
             Đang hoạt động
           </span>
         }
       />
 
       <div className={isAdmin ? "grid gap-6" : "grid gap-6 lg:grid-cols-[1fr_320px]"}>
-        <section className="enterprise-card p-6">
-          <div className="border-b border-slate-100 pb-4">
-            <h2 className="section-heading">Thông tin định danh</h2>
-            <p className="mt-1 text-sm font-semibold text-slate-500">Các trường này được cấp và quản lý bởi hệ thống, chỉ để tra cứu.</p>
-          </div>
-
-          <form onSubmit={handleSaveName} className="mt-5 grid gap-4 sm:grid-cols-2">
+        <SectionCard
+          title="Thông tin định danh"
+          description="Các trường này được cấp và quản lý bởi hệ thống, chỉ để tra cứu."
+        >
+          <form onSubmit={handleSaveName} className="grid gap-4 sm:grid-cols-2">
             <label className="space-y-1.5">
               <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Họ và tên</span>
               <span className="relative flex items-center gap-2">
@@ -71,7 +70,7 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
                 <button
                   type="submit"
                   disabled={isSaving || !fullName.trim() || fullName.trim() === user.fullName}
-                  className="btn-press inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl bg-brand-600 px-3 text-xs font-extrabold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="btn-press inline-flex h-10 shrink-0 items-center gap-1.5 rounded-control bg-brand-600 px-3 text-xs font-extrabold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Save className="h-3.5 w-3.5" aria-hidden="true" /> Lưu
                 </button>
@@ -97,24 +96,24 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
             </label>
           </form>
 
-          <div className="mt-6 flex gap-3 rounded-xl border border-info-100 bg-info-50/60 p-4">
+          <div className="mt-6 flex gap-3 rounded-card border border-info-100 bg-info-50/60 p-4">
             <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
             <p className="text-xs font-semibold leading-relaxed text-brand-800">
               Bạn có thể chỉnh sửa họ và tên. Email, vai trò hệ thống và trạng thái tài khoản do hệ thống quản lý, chỉ để tra cứu.
             </p>
           </div>
-        </section>
+        </SectionCard>
 
         {!isAdmin && (
           <aside className="enterprise-card h-fit p-5">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-info-50 text-brand-700">
+            <div className="grid h-10 w-10 place-items-center rounded-control bg-info-50 text-brand-700">
               <Building2 className="h-6 w-6" aria-hidden="true" />
             </div>
             <h2 className="mt-4 font-display text-base font-semibold text-slate-950">Câu lạc bộ phụ trách</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
               {`${user.clubName || "CLB được phân công"}: chỉ thao tác với sự kiện, đăng ký, vé QR và check-in thuộc phạm vi CLB của mình.`}
             </p>
-            <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+            <div className="mt-4 rounded-card border border-slate-100 bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Bảo mật</p>
               <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
                 Hệ thống dùng phiên đăng nhập từ máy chủ. Không lưu JWT trong localStorage hoặc sessionStorage ở frontend.

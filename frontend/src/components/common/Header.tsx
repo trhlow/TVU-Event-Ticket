@@ -22,13 +22,13 @@ export default function Header({
   if (!currentUser) return null;
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-blue-100/70 bg-white/86 px-4 shadow-sm backdrop-blur-xl sm:px-5 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-info-100/70 bg-white/86 px-4 shadow-sm backdrop-blur-xl sm:px-5 lg:px-6">
       <div className="flex min-w-0 items-center gap-3">
         {onToggleSidebar && (
           <button
             type="button"
             onClick={onToggleSidebar}
-            className="btn-press grid h-10 w-10 place-items-center rounded-xl border border-transparent text-slate-700 transition hover:border-blue-100 hover:bg-blue-50 hover:text-brand-700 lg:hidden"
+            className="btn-press grid h-10 w-10 place-items-center rounded-control border border-transparent text-slate-700 transition hover:border-info-100 hover:bg-info-50 hover:text-brand-700 lg:hidden"
             aria-label="Mở menu"
           >
             <Menu className="h-5 w-5" />
@@ -40,14 +40,14 @@ export default function Header({
             onClick={onToggleCollapse}
             aria-label={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
             title={collapsed ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
-            className="btn-press hidden h-10 w-10 place-items-center rounded-xl border border-transparent text-slate-700 transition hover:border-blue-100 hover:bg-blue-50 hover:text-brand-700 active:bg-blue-100 lg:grid"
+            className="btn-press hidden h-10 w-10 place-items-center rounded-control border border-transparent text-slate-700 transition hover:border-info-100 hover:bg-info-50 hover:text-brand-700 active:bg-info-100 lg:grid"
           >
             <Menu className="h-5 w-5" />
           </button>
         )}
         {showWorkspaceTitle && (
           <div className="min-w-0">
-            <p className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-blue-500/80 sm:block">
+            <p className="hidden text-[10px] font-bold uppercase tracking-[0.18em] text-info-500/80 sm:block">
               Khu vực làm việc
             </p>
             <h2 className="truncate font-display text-lg font-extrabold text-slate-950 sm:text-xl">
@@ -58,11 +58,11 @@ export default function Header({
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
-        <div className="hidden items-center gap-2 rounded-xl border border-blue-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
+        <div className="hidden items-center gap-2 rounded-control border border-info-100 bg-white/92 py-1 pl-1.5 pr-2.5 shadow-sm sm:flex">
           <img
             src="/logo-tvu.webp?v=20260729"
             alt=""
-            className="h-8 w-8 rounded-lg border border-blue-50 bg-white object-cover"
+            className="h-8 w-8 rounded-control border border-info-50 bg-white object-cover"
           />
           <div className="max-w-40">
             <p className="truncate text-xs font-bold text-slate-950">{currentUser.fullName}</p>

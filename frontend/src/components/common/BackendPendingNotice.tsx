@@ -11,7 +11,7 @@ export default function BackendPendingNotice({
   description,
 }: BackendPendingNoticeProps) {
   return (
-    <div className="rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+    <div className="rounded-card border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
       <div className="icon-float mx-auto grid h-14 w-14 place-items-center rounded-full bg-slate-200 text-slate-500">
         <Construction className="h-7 w-7" aria-hidden="true" />
       </div>

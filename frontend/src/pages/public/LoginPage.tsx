@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
-import { AlertCircle, ArrowLeft, FlaskConical } from "lucide-react";
+import { AlertCircle, ArrowLeft, FlaskConical, Mail } from "lucide-react";
 import Toast from "../../components/common/Toast";
 import { authService } from "../../services/authService";
 import { User } from "../../types/user";
@@ -121,13 +121,13 @@ export default function LoginPage() {
 
   return (
     <main className="auth-scene grid min-h-screen place-items-center overflow-hidden px-4 pb-10 pt-20 text-slate-950 sm:py-10">
-      <div className="auth-orb h-[380px] w-[380px] bg-cyan-400/60" style={{ top: "-120px", right: "-80px" }} aria-hidden="true" />
-      <div className="auth-orb h-[420px] w-[420px] bg-indigo-500/60" style={{ bottom: "-140px", left: "-120px", animationDelay: "-5s" }} aria-hidden="true" />
-      <div className="auth-orb h-[260px] w-[260px] bg-blue-400/50" style={{ top: "38%", left: "58%", animationDelay: "-9s" }} aria-hidden="true" />
+      <div className="auth-orb h-[380px] w-[380px] bg-accent-400/60" style={{ top: "-120px", right: "-80px" }} aria-hidden="true" />
+      <div className="auth-orb h-[420px] w-[420px] bg-secondary-500/60" style={{ bottom: "-140px", left: "-120px", animationDelay: "-5s" }} aria-hidden="true" />
+      <div className="auth-orb h-[260px] w-[260px] bg-info-400/50" style={{ top: "38%", left: "58%", animationDelay: "-9s" }} aria-hidden="true" />
 
       <Link
         to="/"
-        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-white/85 sm:left-6 sm:top-6"
+        className="auth-back-link fixed left-4 top-4 z-20 inline-flex min-h-10 items-center gap-2 text-sm font-bold text-brand-700 sm:left-6 sm:top-6"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Về trang chủ
@@ -138,7 +138,7 @@ export default function LoginPage() {
           <img
             src="/logo-tvu.webp?v=20260729"
             alt="Logo Trường Đại học Trà Vinh"
-            className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-blue-900/20"
+            className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-brand-800/20"
           />
         </div>
 
@@ -146,32 +146,39 @@ export default function LoginPage() {
         <p className="mt-2 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
 
         {errorMsg && (
-          <div className="mt-6 flex gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-left text-xs font-semibold leading-5 text-rose-800">
+          <div className="mt-6 flex gap-2 rounded-card border border-danger-200 bg-danger-50 px-3 py-3 text-left text-xs font-semibold leading-5 text-danger-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>{errorMsg}</span>
           </div>
         )}
 
-        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/70 p-4 text-left">
+        <div className="mt-6 rounded-card border border-slate-200 bg-slate-50/70 p-4 text-left">
           {!otpSent ? (
             <form onSubmit={handleRequestOtp} className="space-y-3">
-              <div className="space-y-1.5">
-                <label htmlFor="login-email" className="block text-xs font-bold text-slate-700">
+              <div className="relative">
+                {/* Label is visually replaced by the icon inside the field, but stays in the
+                    accessibility tree -- an input whose only cue is a decorative glyph has no
+                    accessible name at all for a screen reader. */}
+                <label htmlFor="login-email" className="sr-only">
                   Email
                 </label>
+                <Mail
+                  className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400"
+                  aria-hidden="true"
+                />
                 <input
                   id="login-email"
                   type="email"
                   value={adminEmail}
                   onChange={(event) => setAdminEmail(event.target.value)}
-                  className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                  className="tvu-input min-h-11 rounded-control pl-11 text-sm font-medium"
                   autoComplete="username"
                 />
               </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-control bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang gửi..." : "Gửi mã đăng nhập"}
               </button>
@@ -190,7 +197,7 @@ export default function LoginPage() {
                 value={otpCode}
                 onChange={(event) => setOtpCode(event.target.value.replace(/\D/g, ""))}
                 placeholder="123456"
-                className="tvu-input min-h-11 rounded-lg text-center text-lg font-bold tracking-[0.3em]"
+                className="tvu-input min-h-11 rounded-control text-center text-lg font-bold tracking-[0.3em]"
                 autoComplete="one-time-code"
               />
               <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
@@ -205,7 +212,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-xl bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-control bg-gradient-to-r from-brand-700 to-brand-500 px-4 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:from-brand-800 hover:to-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang xác minh..." : "Xác minh và đăng nhập"}
               </button>
@@ -214,6 +221,9 @@ export default function LoginPage() {
                 onClick={() => {
                   setOtpSent(false);
                   setOtpCode("");
+                  // Without this the "mã không đúng" banner from the verify step follows the
+                  // user back to the email step, reporting a failure they just abandoned.
+                  setErrorMsg("");
                 }}
                 className="w-full text-center text-xs font-semibold text-slate-500 hover:text-slate-700"
               >
@@ -234,7 +244,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleMicrosoftLogin}
               disabled={isSubmitting}
-              className="btn-press flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-[#2848b8] px-4 text-sm font-bold text-white shadow-lg shadow-[#2848b8]/30 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
+              className="btn-press flex min-h-12 w-full items-center justify-center gap-3 rounded-control bg-[#2848b8] px-4 text-sm font-bold text-white shadow-lg shadow-[#2848b8]/30 hover:bg-[#1f3fa8] disabled:cursor-not-allowed disabled:opacity-70"
             >
               <span className="grid h-5 w-5 shrink-0 grid-cols-2 gap-0.5" aria-hidden="true">
                 <span className="bg-[#f25022]" />
@@ -251,12 +261,12 @@ export default function LoginPage() {
             entire branch from a `vite build` production bundle, so it cannot ship even if
             VITE_AUTH_PROVIDER is misconfigured at runtime. */}
         {import.meta.env.DEV && isDevStubProvider && (
-          <div className="mt-8 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 p-4 text-left">
-            <div className="flex items-center gap-2 text-amber-800">
+          <div className="mt-8 rounded-card border-2 border-dashed border-warning-400 bg-warning-50 p-4 text-left">
+            <div className="flex items-center gap-2 text-warning-800">
               <FlaskConical className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="text-[11px] font-black uppercase tracking-[0.14em]">DEV ONLY · Đăng nhập thử nghiệm</span>
             </div>
-            <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">
+            <p className="mt-2 text-xs font-semibold leading-5 text-warning-900">
               Đây là đăng nhập thử nghiệm dành riêng cho môi trường phát triển cục bộ, không phải cơ chế xác thực production. Backend
               chấp nhận bất kỳ email hợp lệ nào, không kiểm tra mật khẩu. Vai trò trả về sau khi đăng nhập là vai trò backend đã gán
               sẵn cho email đó — form này không cho bạn tự chọn vai trò.
@@ -267,7 +277,7 @@ export default function LoginPage() {
                 value={devCredential}
                 onChange={(event) => setDevCredential(event.target.value)}
                 placeholder="ten@vidu.dev"
-                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                className="tvu-input min-h-11 rounded-control text-sm font-medium"
                 autoComplete="off"
               />
               <input
@@ -275,13 +285,13 @@ export default function LoginPage() {
                 value={devDisplayName}
                 onChange={(event) => setDevDisplayName(event.target.value)}
                 placeholder="Tên hiển thị (tuỳ chọn)"
-                className="tvu-input min-h-11 rounded-lg text-sm font-medium"
+                className="tvu-input min-h-11 rounded-control text-sm font-medium"
                 autoComplete="off"
               />
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-lg bg-amber-600 px-4 text-sm font-extrabold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-control bg-warning-600 px-4 text-sm font-extrabold text-white hover:bg-warning-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập thử nghiệm (DEV ONLY)"}
               </button>

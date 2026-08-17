@@ -103,17 +103,17 @@ export default function OrganizerEventsPage() {
       header: "Hành động",
       accessor: (event: Event) => (
         <div className="flex flex-wrap justify-end gap-1">
-          <Link to={`/organizer/events/${event.id}`} className="rounded-lg border border-slate-100 p-1.5 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50" title="Xem chi tiết">
+          <Link to={`/organizer/events/${event.id}`} className="rounded-control border border-slate-100 p-1.5 text-slate-600 transition-colors hover:border-slate-200 hover:bg-slate-50" title="Xem chi tiết">
             <Eye className="h-3.5 w-3.5" />
           </Link>
-          <Link to={`/organizer/events/${event.id}/edit`} className="rounded-lg border border-slate-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chỉnh sửa">
+          <Link to={`/organizer/events/${event.id}/edit`} className="rounded-control border border-slate-100 p-1.5 text-brand-600 transition-colors hover:border-brand-200 hover:bg-brand-50" title="Chỉnh sửa">
             <Edit2 className="h-3.5 w-3.5" />
           </Link>
           {event.status === "DRAFT" && (
             <button
               onClick={() => void handleOpenRegistration(event.id)}
               disabled={statusChangingId === event.id}
-              className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50 disabled:cursor-wait disabled:opacity-60"
+              className="cursor-pointer rounded-control border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50 disabled:cursor-wait disabled:opacity-60"
               title="Mở đăng ký"
             >
               <Unlock className="h-3.5 w-3.5" />
@@ -123,23 +123,23 @@ export default function OrganizerEventsPage() {
             <button
               onClick={() => void handleCloseRegistration(event.id)}
               disabled={statusChangingId === event.id}
-              className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-warning-700 transition-colors hover:border-warning-200 hover:bg-warning-50 disabled:cursor-wait disabled:opacity-60"
+              className="cursor-pointer rounded-control border border-slate-100 p-1.5 text-warning-700 transition-colors hover:border-warning-200 hover:bg-warning-50 disabled:cursor-wait disabled:opacity-60"
               title="Đóng đăng ký"
             >
               <Lock className="h-3.5 w-3.5" />
             </button>
           )}
-          <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-lg border border-slate-100 p-1.5 text-sky-700 transition-colors hover:border-sky-200 hover:bg-sky-50" title="Liên kết đăng ký">
+          <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-control border border-slate-100 p-1.5 text-accent-600 transition-colors hover:border-accent-200 hover:bg-accent-50" title="Liên kết đăng ký">
             <QrCode className="h-3.5 w-3.5" />
           </Link>
-          <Link to={`/organizer/events/${event.id}/registrations`} className="rounded-lg border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50" title="Duyệt đăng ký">
+          <Link to={`/organizer/events/${event.id}/registrations`} className="rounded-control border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50" title="Duyệt đăng ký">
             <CheckSquare className="h-3.5 w-3.5" />
           </Link>
-          <Link to={`/organizer/events/${event.id}/statistics`} className="rounded-lg border border-slate-100 p-1.5 text-secondary-700 transition-colors hover:border-secondary-200 hover:bg-secondary-50" title="Thống kê">
+          <Link to={`/organizer/events/${event.id}/statistics`} className="rounded-control border border-slate-100 p-1.5 text-secondary-700 transition-colors hover:border-secondary-200 hover:bg-secondary-50" title="Thống kê">
             <BarChart3 className="h-3.5 w-3.5" />
           </Link>
           {event.status === "DRAFT" && (
-            <button onClick={() => setDeletingEventId(event.id)} className="cursor-pointer rounded-lg border border-slate-100 p-1.5 text-danger-600 transition-colors hover:border-danger-200 hover:bg-danger-50" title="Xóa sự kiện">
+            <button onClick={() => setDeletingEventId(event.id)} className="cursor-pointer rounded-control border border-slate-100 p-1.5 text-danger-600 transition-colors hover:border-danger-200 hover:bg-danger-50" title="Xóa sự kiện">
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}

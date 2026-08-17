@@ -79,7 +79,7 @@ export default function MyRegistrationsPage() {
                   MSSV: <span className="font-mono text-brand-600">{reservation.mssv || "Chưa cập nhật"}</span>
                 </p>
                 {reservation.rejectReason && (
-                  <div className="mt-2 max-w-lg rounded-xl border border-danger-100 bg-danger-50 p-2.5 text-[10px] font-semibold text-danger-700">
+                  <div className="mt-2 max-w-lg rounded-card border border-danger-100 bg-danger-50 p-2.5 text-[10px] font-semibold text-danger-700">
                     {reservation.rejectReason}
                   </div>
                 )}

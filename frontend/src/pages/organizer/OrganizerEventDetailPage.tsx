@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router";
-import { Award, Calendar, CheckCircle2, ChevronLeft, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
+import { Award, Calendar, CheckCircle2, Clock, ListChecks, MapPin, Ticket, XCircle } from "lucide-react";
 import StatisticCard from "../../components/common/StatisticCard";
 import StatusBadge from "../../components/common/StatusBadge";
+import PageHeader from "../../components/common/PageHeader";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { useToast } from "../../hooks/useToast";
@@ -16,6 +17,7 @@ import { requireCurrentUser } from "../../state/authSession";
 import { Event } from "../../types/event";
 import { Reservation } from "../../types/reservation";
 import { Ticket as IssuedTicket } from "../../types/ticket";
+import SectionCard from "../../components/common/SectionCard";
 
 export default function OrganizerEventDetailPage() {
   const { eventId } = useParams<{ eventId: string }>();
@@ -121,18 +123,12 @@ export default function OrganizerEventDetailPage() {
 
   return (
     <div className="space-y-6 text-left animate-fade-in">
-      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-        <div className="flex items-center gap-2">
-          <Link to="/organizer/events" className="btn-press rounded-lg p-1.5 text-slate-500 transition-all hover:bg-slate-100">
-            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-          </Link>
-          <div className="space-y-0.5">
-            <h2 className="text-xl font-black tracking-tight text-slate-950">{event.title}</h2>
-            <p className="text-xs font-semibold text-slate-500">{currentUser.clubName || "CLB"}</p>
-          </div>
-        </div>
-        <StatusBadge type="event" status={event.status} />
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: "Sự kiện", path: "/organizer/events" }, { label: event.title }]}
+        title={event.title}
+        description={currentUser.clubName || "CLB"}
+        actions={<StatusBadge type="event" status={event.status} />}
+      />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatisticCard label="Tổng hiển thị" value={stats.total} icon={ListChecks} />
@@ -176,19 +172,16 @@ export default function OrganizerEventDetailPage() {
             </div>
           </div>
 
-          <div className="enterprise-card space-y-3 p-5">
-            <h3 className="text-sm font-extrabold text-slate-900">Mô tả sự kiện</h3>
+          <SectionCard title="Mô tả sự kiện">
             <p className="text-xs font-semibold leading-relaxed text-slate-600">{event.description || "Chưa có mô tả."}</p>
-          </div>
+          </SectionCard>
         </div>
 
         <div className="space-y-4 lg:col-span-2">
-          <div className="enterprise-card space-y-4 p-5">
-            <div>
-              <h3 className="text-sm font-extrabold text-slate-900">Đăng ký chờ duyệt</h3>
-              <p className="mt-1 text-xs font-semibold text-slate-500">Vé đã duyệt và điểm danh xem tại danh sách attendee/vé của sự kiện.</p>
-            </div>
-
+          <SectionCard
+            title="Đăng ký chờ duyệt"
+            description="Vé đã duyệt và điểm danh xem tại danh sách attendee/vé của sự kiện."
+          >
             {reservations.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs font-semibold text-slate-600">
@@ -218,14 +211,14 @@ export default function OrganizerEventDetailPage() {
                             <button
                               disabled={actionId === reservation.id}
                               onClick={() => handleApprove(reservation.id)}
-                              className="btn-press cursor-pointer rounded-lg bg-success-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-success-600 disabled:cursor-wait disabled:opacity-60"
+                              className="btn-press cursor-pointer rounded-control bg-success-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-success-600 disabled:cursor-wait disabled:opacity-60"
                             >
                               <CheckCircle2 className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Duyệt
                             </button>
                             <button
                               disabled={actionId === reservation.id}
                               onClick={() => setRejectTargetId(reservation.id)}
-                              className="btn-press cursor-pointer rounded-lg bg-danger-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-danger-600 disabled:cursor-wait disabled:opacity-60"
+                              className="btn-press cursor-pointer rounded-control bg-danger-500 px-2 py-1 text-[10px] font-bold tracking-tight text-white hover:bg-danger-600 disabled:cursor-wait disabled:opacity-60"
                             >
                               <XCircle className="mr-1 inline h-3.5 w-3.5" aria-hidden="true" /> Từ chối
                             </button>
@@ -239,7 +232,7 @@ export default function OrganizerEventDetailPage() {
             ) : (
               <div className="py-12 text-center text-sm font-bold text-slate-400">Không có đăng ký chờ duyệt cho sự kiện này.</div>
             )}
-          </div>
+          </SectionCard>
         </div>
       </div>
 

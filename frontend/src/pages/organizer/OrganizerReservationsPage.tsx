@@ -66,7 +66,10 @@ export default function OrganizerReservationsPage() {
       accessor: (reservation: Reservation) => (
         <div>
           <p className="font-extrabold text-slate-950">{reservation.studentName || reservation.email}</p>
-          <p className="mt-1 text-xs font-semibold text-slate-500">{reservation.email}</p>
+          {/* Backend doesn't return a student display name yet (see registrationService.ts), so
+              studentName is always "" and the line above already shows the email as a fallback.
+              Repeating it here would just duplicate the same text under every row. */}
+          {reservation.studentName && <p className="mt-1 text-xs font-semibold text-slate-500">{reservation.email}</p>}
         </div>
       ),
     },
@@ -91,17 +94,17 @@ export default function OrganizerReservationsPage() {
         <div className="flex justify-end gap-2">
           <button
             onClick={() => setSelectedReservation(reservation)}
-            className="btn-press grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-slate-200 text-slate-600 hover:bg-slate-50"
             title="Xem chi tiết"
           >
             <Eye className="h-4 w-4" />
           </button>
           {reservation.status === "PENDING" && (
             <>
-              <button onClick={() => setPendingAction({ id: reservation.id, type: "APPROVE" })} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-success-200 bg-success-50 px-3 text-xs font-extrabold text-success-700">
+              <button onClick={() => setPendingAction({ id: reservation.id, type: "APPROVE" })} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-control border border-success-200 bg-success-50 px-3 text-xs font-extrabold text-success-700">
                 <ShieldCheck className="h-4 w-4" /> Duyệt
               </button>
-              <button onClick={() => setPendingAction({ id: reservation.id, type: "REJECT" })} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-danger-200 bg-danger-50 px-3 text-xs font-extrabold text-danger-700">
+              <button onClick={() => setPendingAction({ id: reservation.id, type: "REJECT" })} className="btn-press inline-flex min-h-9 items-center gap-1.5 rounded-control border border-danger-200 bg-danger-50 px-3 text-xs font-extrabold text-danger-700">
                 <XCircle className="h-4 w-4" /> Từ chối
               </button>
             </>
@@ -140,7 +143,7 @@ export default function OrganizerReservationsPage() {
         footer={
           <button
             onClick={() => setSelectedReservation(null)}
-            className="btn-press min-h-11 w-full rounded-xl bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700"
+            className="btn-press min-h-11 w-full rounded-control bg-brand-600 px-4 text-sm font-extrabold text-white hover:bg-brand-700"
           >
             Đóng
           </button>
@@ -177,7 +180,7 @@ export default function OrganizerReservationsPage() {
               <StatusBadge type="reservation" status={selectedReservation.status} />
             </div>
             {selectedReservation.rejectReason && (
-              <div className="rounded-xl border border-danger-100 bg-danger-50 p-3 text-danger-700">
+              <div className="rounded-card border border-danger-100 bg-danger-50 p-3 text-danger-700">
                 Lý do từ chối: {selectedReservation.rejectReason}
               </div>
             )}
