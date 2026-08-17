@@ -12,7 +12,7 @@ import {
   QrCode,
   ScanLine,
   ShieldCheck,
-  Share2,
+  Share2,
   Ticket,
   Users,
   UserCheck,
@@ -23,7 +23,6 @@ import { useGSAP } from "@gsap/react";
 import EmptyState from "../../components/common/EmptyState";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
-import StatisticCard from "../../components/common/StatisticCard";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
@@ -110,6 +109,20 @@ function eventStatusClass(status: Event["status"]) {
   if (status === "OPEN") return "border-success-200 bg-success-50 text-success-700";
   if (status === "CLOSED") return "border-slate-200 bg-slate-100 text-slate-600";
   return "border-slate-200 bg-white text-slate-600";
+}
+
+/** One figure on the hero rail. Rendered as dt/dd so the number keeps its label programmatically,
+ *  which a bare pair of divs would not. The divider is drawn on the element rather than with a
+ *  wrapper so the row can wrap on narrow screens without leaving a dangling rule. */
+function HeroStat({ label, value, last }: { label: string; value: number; last?: boolean }) {
+  return (
+    <div className={`flex-1 px-4 text-center sm:px-6 ${last ? "" : "sm:border-r sm:border-info-100"}`}>
+      <dd className="font-display text-3xl font-extrabold tracking-tight text-brand-800 sm:text-4xl">
+        {value.toLocaleString("vi-VN")}
+      </dd>
+      <dt className="mt-1 whitespace-nowrap text-xs font-bold text-slate-600">{label}</dt>
+    </div>
+  );
 }
 
 function sortFeatured(events: Event[]) {
@@ -240,14 +253,16 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Headline figures sit directly under the CTA, the way the reference layout does it:
-              the first thing a visitor sees after the promise is evidence for it. */}
-          <div className="landing-fade-up mt-14 grid gap-section text-left sm:grid-cols-2 lg:grid-cols-4">
-            <StatisticCard label="Sự kiện đang mở" value={heroStats.openEvents} icon={CalendarDays} subtext="Đang nhận đăng ký" />
-            <StatisticCard label="Câu lạc bộ tổ chức" value={heroStats.clubs} icon={Users} color="success" subtext="Trực thuộc TVU" />
-            <StatisticCard label="Lượt đã đăng ký" value={heroStats.registered} icon={UserCheck} color="warning" subtext="Trên các sự kiện đang mở" />
-            <StatisticCard label="Chỗ còn trống" value={heroStats.seatsLeft} icon={Ticket} subtext="Có thể đăng ký ngay" />
-          </div>
+          {/* Deliberately not cards. These four figures used to be StatisticCard tiles sitting
+              directly above the four feature cards -- same grid, same breakpoints, so the page
+              repeated itself, and the louder tinted tiles outweighed the value proposition they
+              were meant to support. A quiet divided rail states the evidence without competing. */}
+          <dl className="landing-fade-up mx-auto mt-14 flex max-w-4xl flex-wrap items-center justify-center gap-y-6 rounded-card border border-info-100 bg-white/70 px-6 py-5 backdrop-blur-sm">
+            <HeroStat label="Sự kiện đang mở" value={heroStats.openEvents} />
+            <HeroStat label="Câu lạc bộ tổ chức" value={heroStats.clubs} />
+            <HeroStat label="Lượt đã đăng ký" value={heroStats.registered} />
+            <HeroStat label="Chỗ còn trống" value={heroStats.seatsLeft} last />
+          </dl>
         </div>
       </section>
 
@@ -261,12 +276,23 @@ export default function LandingPage() {
               </p>
             </div>
 
+            {/* Bento rather than a fourth identical 4-across row: the lead feature takes a
+                double-height tile, the second a wide one, the last two sit small beneath. Four
+                equal cards gave every feature the same weight and made this section a visual
+                repeat of the block above it. */}
             <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-              {features.map((feature, index) => (
-                <RevealOnScroll key={feature.title} delay={index * 80}>
-                  <FeatureCard feature={feature} />
-                </RevealOnScroll>
-              ))}
+              <RevealOnScroll className="sm:col-span-2 lg:col-span-2 lg:row-span-2">
+                <FeatureCard feature={features[0]} featured />
+              </RevealOnScroll>
+              <RevealOnScroll delay={80} className="sm:col-span-2 lg:col-span-2">
+                <FeatureCard feature={features[1]} />
+              </RevealOnScroll>
+              <RevealOnScroll delay={160}>
+                <FeatureCard feature={features[2]} />
+              </RevealOnScroll>
+              <RevealOnScroll delay={240}>
+                <FeatureCard feature={features[3]} />
+              </RevealOnScroll>
             </div>
           </div>
         </RevealOnScroll>
@@ -376,16 +402,30 @@ export default function LandingPage() {
 
 type FeatureItem = (typeof features)[number];
 
-function FeatureCard({ feature }: { feature: FeatureItem }) {
+/** `featured` is the bento's lead tile: it occupies twice the height of its neighbours, so its
+ *  icon and heading scale up to fill that space rather than leaving it empty. */
+function FeatureCard({ feature, featured = false }: { feature: FeatureItem; featured?: boolean }) {
   const Icon = feature.icon;
 
   return (
-    <article className="landing-feature-card group h-full rounded-card border border-slate-200/80 bg-white p-6">
-      <div className={`grid h-12 w-12 place-items-center rounded-control transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 ${feature.tone}`}>
-        <Icon className="h-5 w-5" aria-hidden="true" />
+    <article
+      className={`landing-feature-card group flex h-full flex-col rounded-card border border-slate-200/80 bg-white ${featured ? "justify-center p-8" : "p-6"}`}
+    >
+      <div
+        className={`grid shrink-0 place-items-center rounded-control transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-105 ${feature.tone} ${featured ? "h-16 w-16" : "h-12 w-12"}`}
+      >
+        <Icon className={featured ? "h-7 w-7" : "h-5 w-5"} aria-hidden="true" />
       </div>
-      <h3 className="mt-5 font-display text-lg font-extrabold text-slate-900">{feature.title}</h3>
-      <p className="mt-3 text-sm font-medium leading-6 text-slate-600">{feature.description}</p>
+      <h3
+        className={`font-display font-extrabold text-slate-900 ${featured ? "mt-6 text-2xl" : "mt-5 text-lg"}`}
+      >
+        {feature.title}
+      </h3>
+      <p
+        className={`font-medium leading-6 text-slate-600 ${featured ? "mt-4 max-w-md text-base leading-7" : "mt-3 text-sm"}`}
+      >
+        {feature.description}
+      </p>
     </article>
   );
 }
