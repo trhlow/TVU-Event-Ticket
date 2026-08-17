@@ -530,8 +530,8 @@
   /* The campus photo sits behind the whole hero. Scaled up so the blur radius does not pull
      transparent edges into frame. */
   .landing-hero-photo {
-    filter: blur(16px) saturate(1.05);
-    transform: scale(1.12);
+    filter: blur(5px) saturate(1.08);
+    transform: scale(1.06);
   }
 
   /* Near-opaque white over the photo. Dark headline text needs real contrast, and a blurred
@@ -541,9 +541,9 @@
     pointer-events: none;
     background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.86) 0%,
-      rgba(255, 255, 255, 0.9) 48%,
-      rgba(255, 255, 255, 0.97) 82%,
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(255, 255, 255, 0.68) 40%,
+      rgba(255, 255, 255, 0.88) 78%,
       #ffffff 100%
     );
   }
