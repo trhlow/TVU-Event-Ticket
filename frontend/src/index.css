@@ -548,6 +548,56 @@
     );
   }
 
+  /* Continuously scrolling figures under the hero. */
+  .landing-stat-marquee {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Items fade out at both edges instead of being sliced flat by the border. */
+  .landing-stat-marquee::before,
+  .landing-stat-marquee::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 4rem;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .landing-stat-marquee::before {
+    left: 0;
+    background: linear-gradient(90deg, #ffffff, transparent);
+  }
+
+  .landing-stat-marquee::after {
+    right: 0;
+    background: linear-gradient(270deg, #ffffff, transparent);
+  }
+
+  .landing-stat-track {
+    display: flex;
+    width: max-content;
+    animation: statMarquee 30s linear infinite;
+  }
+
+  /* WCAG 2.2.2 wants a way to stop motion that runs longer than five seconds. Hovering covers
+     pointer users; focus-within covers keyboard users tabbing past. */
+  .landing-stat-marquee:hover .landing-stat-track,
+  .landing-stat-marquee:focus-within .landing-stat-track {
+    animation-play-state: paused;
+  }
+
+  @keyframes statMarquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
   /* Brand blooms layered over the scrim so the hero keeps a hint of colour. */
   .landing-hero-aura {
     pointer-events: none;
@@ -824,6 +874,18 @@
   .reveal-on-scroll {
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  /* The global rule above already halts the marquee. Left alone it would freeze mid-track with
+     items clipped by the container, so the row collapses to a single static, centred copy. */
+  .landing-stat-track {
+    width: 100% !important;
+    justify-content: center;
+    animation: none !important;
+  }
+
+  .landing-stat-track > dl[aria-hidden="true"] {
+    display: none;
   }
 
   .magnetic-button-content,

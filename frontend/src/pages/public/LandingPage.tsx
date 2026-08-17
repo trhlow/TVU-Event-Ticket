@@ -114,9 +114,9 @@ function eventStatusClass(status: Event["status"]) {
 /** One figure on the hero rail. Rendered as dt/dd so the number keeps its label programmatically,
  *  which a bare pair of divs would not. The divider is drawn on the element rather than with a
  *  wrapper so the row can wrap on narrow screens without leaving a dangling rule. */
-function HeroStat({ label, value, last }: { label: string; value: number; last?: boolean }) {
+function HeroStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className={`flex-1 px-4 text-center sm:px-6 ${last ? "" : "sm:border-r sm:border-info-100"}`}>
+    <div className="w-[15rem] shrink-0 border-r border-info-100 px-6 text-center">
       <dd className="font-display text-3xl font-extrabold tracking-tight text-brand-800 sm:text-4xl">
         {value.toLocaleString("vi-VN")}
       </dd>
@@ -257,12 +257,22 @@ export default function LandingPage() {
               directly above the four feature cards -- same grid, same breakpoints, so the page
               repeated itself, and the louder tinted tiles outweighed the value proposition they
               were meant to support. A quiet divided rail states the evidence without competing. */}
-          <dl className="landing-fade-up mx-auto mt-14 flex max-w-4xl flex-wrap items-center justify-center gap-y-6 rounded-card border border-info-100 bg-white/70 px-6 py-5 backdrop-blur-sm">
-            <HeroStat label="Sự kiện đang mở" value={heroStats.openEvents} />
-            <HeroStat label="Câu lạc bộ tổ chức" value={heroStats.clubs} />
-            <HeroStat label="Lượt đã đăng ký" value={heroStats.registered} />
-            <HeroStat label="Chỗ còn trống" value={heroStats.seatsLeft} last />
-          </dl>
+          <div className="landing-fade-up landing-stat-marquee mx-auto mt-14 max-w-4xl rounded-card border border-info-100 bg-white/70 py-5 backdrop-blur-sm">
+            <div className="landing-stat-track">
+              {/* The track holds the four figures twice. The animation travels exactly half the
+                  track width, so the second copy lands where the first began and the loop has no
+                  visible seam. The duplicate is hidden from assistive tech, which would otherwise
+                  announce every figure twice. */}
+              {[0, 1].map((copy) => (
+                <dl key={copy} className="flex shrink-0 items-center" aria-hidden={copy === 1 || undefined}>
+                  <HeroStat label="Sự kiện đang mở" value={heroStats.openEvents} />
+                  <HeroStat label="Câu lạc bộ tổ chức" value={heroStats.clubs} />
+                  <HeroStat label="Lượt đã đăng ký" value={heroStats.registered} />
+                  <HeroStat label="Chỗ còn trống" value={heroStats.seatsLeft} />
+                </dl>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
