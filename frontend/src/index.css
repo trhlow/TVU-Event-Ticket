@@ -754,6 +754,64 @@
     mask-image: linear-gradient(90deg, transparent, #000 45%, #000);
   }
 
+  /* Baseline: an ordinary grid. This is what phones, tablets and any browser without a fine
+     pointer get, because the fan below can only be opened by hovering -- on a touch screen the
+     stacked version would hide the entire how-it-works guide behind a gesture that does not
+     exist there. */
+  .landing-guide-deck {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 1024px) {
+    .landing-guide-deck {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  /* Deck + fan, only where a real pointer can open it and there is room to spread. */
+  @media (hover: hover) and (pointer: fine) and (min-width: 1024px) {
+    .landing-guide-deck {
+      position: relative;
+      display: block;
+      height: 30rem;
+    }
+
+    .landing-guide-slot {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      width: 23rem;
+      margin-left: -11.5rem;
+      /* Pivot below the cards so they swing like a hand of cards rather than spinning in place. */
+      transform-origin: 50% 125%;
+      transform: rotate(calc((var(--i) - 1) * 2.5deg)) translateY(calc(var(--i) * 6px));
+      /* Slow enough to read as a fan opening rather than a snap. The outer cards start a beat
+         after the middle one, which is what gives the spread its sweep. Written as nth-child
+         rather than calc(abs(...)) so it does not depend on a recent CSS maths function. */
+      transition: transform 0.9s var(--ease-out-soft);
+      z-index: calc(3 - var(--i));
+    }
+
+    .landing-guide-slot:nth-child(1),
+    .landing-guide-slot:nth-child(3) {
+      transition-delay: 70ms;
+    }
+
+    /* focus-within matters as much as hover here: without it the deck never opens for anyone
+       tabbing through, and the steps inside stay stacked under one another. */
+    .landing-guide-deck:hover .landing-guide-slot,
+    .landing-guide-deck:focus-within .landing-guide-slot {
+      transform: rotate(calc((var(--i) - 1) * 9deg)) translateX(calc((var(--i) - 1) * 24rem))
+        translateY(calc(var(--i) * 6px));
+    }
+
+    .landing-guide-deck:hover .landing-guide-slot:hover,
+    .landing-guide-deck .landing-guide-slot:focus-within {
+      z-index: 4;
+    }
+  }
+
   .landing-guide-card {
     transition:
       transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),

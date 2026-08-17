@@ -352,11 +352,18 @@ export default function LandingPage() {
               </p>
             </div>
 
-            <div className="mt-12 grid gap-5 lg:grid-cols-3">
+            {/* A deck on pointer devices, a plain grid everywhere else -- see .landing-guide-deck.
+                The per-card RevealOnScroll wrapper is gone: it animates transform, which is the
+                same property the fan uses, so the two fought over the element. */}
+            <div className="landing-guide-deck mt-12">
               {guideSteps.map((item, index) => {
                 const Icon = item.icon;
                 return (
-                  <RevealOnScroll key={item.title} delay={index * 90}>
+                  <div
+                    key={item.title}
+                    className="landing-guide-slot"
+                    style={{ "--i": index } as React.CSSProperties}
+                  >
                     <article className="landing-guide-card enterprise-card h-full p-6">
                       <div className="flex items-start gap-4">
                         <div className="grid h-12 w-12 shrink-0 place-items-center rounded-control bg-info-50 text-brand-700">
@@ -379,7 +386,7 @@ export default function LandingPage() {
                         ))}
                       </ol>
                     </article>
-                  </RevealOnScroll>
+                  </div>
                 );
               })}
             </div>
