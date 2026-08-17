@@ -527,8 +527,28 @@
     box-shadow: 0 -18px 60px rgba(8, 15, 40, 0.16);
   }
 
-  /* Light replacement for the old dark hero wash: two soft brand-tinted blooms over white,
-     faded out before the fold so the section below starts on clean white. */
+  /* The campus photo sits behind the whole hero. Scaled up so the blur radius does not pull
+     transparent edges into frame. */
+  .landing-hero-photo {
+    filter: blur(16px) saturate(1.05);
+    transform: scale(1.12);
+  }
+
+  /* Near-opaque white over the photo. Dark headline text needs real contrast, and a blurred
+     bright sky is still bright -- the blur softens detail, this provides the contrast. Fades to
+     solid white at the bottom so the next section starts on clean ground. */
+  .landing-hero-scrim {
+    pointer-events: none;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.86) 0%,
+      rgba(255, 255, 255, 0.9) 48%,
+      rgba(255, 255, 255, 0.97) 82%,
+      #ffffff 100%
+    );
+  }
+
+  /* Brand blooms layered over the scrim so the hero keeps a hint of colour. */
   .landing-hero-aura {
     pointer-events: none;
     background:

@@ -12,8 +12,7 @@ import {
   QrCode,
   ScanLine,
   ShieldCheck,
-  Share2,
-  Sparkles,
+  Share2,
   Ticket,
   Users,
   UserCheck,
@@ -202,24 +201,24 @@ export default function LandingPage() {
         ref={heroRef}
         className="landing-hero relative isolate scroll-mt-16 overflow-hidden bg-white"
       >
+        {/* Purely decorative here: the campus is the mood, not information the copy depends on,
+            so it carries an empty alt rather than repeating the headline to a screen reader. */}
+        <img
+          src="/DJI_0431.jpg"
+          alt=""
+          aria-hidden="true"
+          className="landing-hero-photo absolute inset-0 h-full w-full object-cover"
+          fetchPriority="high"
+        />
+        {/* Blur alone does not create contrast -- a bright sky behind dark text is still bright.
+            The white scrim is what makes the headline readable; the blur just stops the building
+            edges from reading as noise behind the letterforms. */}
+        <div className="landing-hero-scrim absolute inset-0" aria-hidden="true" />
         <div className="landing-hero-aura absolute inset-0" aria-hidden="true" />
 
         <div className="landing-hero-copy relative z-10 mx-auto w-full max-w-[1180px] px-5 pb-16 pt-24 text-center md:px-8 md:pb-20 md:pt-28">
-          {/* The campus photo used to be a full-bleed background needing a heavy dark overlay to
-              keep the headline readable. As a framed band above the copy it carries the same
-              identity without fighting the text for contrast. */}
-          <img
-            src="/DJI_0431.jpg"
-            alt="Khuôn viên Trường Đại học Trà Vinh nhìn từ trên cao"
-            className="landing-fade-up mx-auto h-40 w-full max-w-3xl rounded-card object-cover shadow-card md:h-52"
-            fetchPriority="high"
-          />
-
-          <div className="mx-auto mt-10 flex max-w-3xl flex-col items-center">
-            <p className="landing-fade-up inline-flex items-center gap-2 rounded-chip border border-info-100 bg-info-50 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-brand-700">
-              <Sparkles className="h-4 w-4" /> Nền tảng vé sự kiện chính thức
-            </p>
-            <h1 className="landing-fade-up mt-7 font-display text-4xl font-semibold leading-[1.12] tracking-[-0.02em] text-slate-950 sm:text-5xl lg:text-6xl">
+          <div className="mx-auto flex max-w-3xl flex-col items-center">
+            <h1 className="landing-fade-up font-display text-4xl font-semibold leading-[1.12] tracking-[-0.02em] text-slate-950 sm:text-5xl lg:text-6xl">
               Quản lý vé sự kiện <span className="text-brand-600">đơn giản, minh bạch</span> và an toàn
             </h1>
             <p className="landing-fade-up mt-6 max-w-2xl text-base font-medium leading-7 text-slate-600 md:text-lg">
@@ -463,7 +462,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
 
 function LandingFooter() {
   return (
-    <footer className="bg-slate-950 px-5 py-14 text-slate-300 md:px-8">
+    <footer className="bg-brand-900 px-5 py-14 text-slate-300 md:px-8">
       <div className="mx-auto grid max-w-[1180px] gap-10 md:grid-cols-3">
         <div>
           <div className="flex items-center gap-3">
