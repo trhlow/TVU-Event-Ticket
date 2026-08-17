@@ -202,12 +202,19 @@
     letter-spacing: 0;
   }
 
+  /* fill-mode is `backwards`, not `both`, and the difference matters well beyond this animation.
+     `both` keeps the final keyframe applied forever; that keyframe ends on transform:
+     translateY(0), an identity matrix but still not `none`. Any transform other than `none`
+     makes the element a containing block, so every position:fixed descendant -- the drawer, the
+     modals, the toasts -- anchored to this wrapper instead of the viewport and could not cover
+     the sidebar. `backwards` only holds the opening frame before the animation starts, and the
+     closing frame is the element's natural position anyway, so nothing changes visually. */
   .page-enter {
-    animation: fadeIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: fadeIn 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   .page-enter > * {
-    animation: contentRise 0.44s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: contentRise 0.44s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   }
 
   .page-enter > *:nth-child(2) {
@@ -245,7 +252,9 @@
 
   .reveal-visible {
     opacity: 1;
-    transform: translateY(0);
+    /* `none`, not translateY(0): the two look identical but only `none` stops this element
+       being a containing block for any position:fixed content revealed inside it. */
+    transform: none;
   }
 
   .card-hover-lift {
