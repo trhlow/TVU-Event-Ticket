@@ -65,11 +65,26 @@ echo "Restore check: $restored_tables tables came back"
 # have not changed since, which is not what "verified" should mean.
 sha256sum "$backup_file" | awk '{print $1}' > "${backup_file}.sha256"
 
-# Encryption is NOT done here on purpose, because doing it badly is worse than not doing it: a key
-# stored next to the backup protects nothing. Encrypt during the off-site copy, with a key held
-# somewhere the production host cannot read. Until that exists, treat these dumps as containing
-# every student's name, address and ticket history — because they do.
-#   Suggested: age -r <recipient> "$backup_file" > "$backup_file.age" && rm "$backup_file"
+# From here the dump is a verified artifact and must survive whatever happens next.
+#
+# The ERR trap above deletes it, and it stayed armed through the off-site copy below -- so an
+# rclone that could not reach the remote took the freshly verified local backup down with it,
+# leaving the host with one fewer backup precisely in the situation the off-site copy exists to
+# survive. Disarmed here rather than widened, because every remaining step is either optional
+# (off-site) or self-limiting (retention), and none of them can invalidate the file on disk.
+trap - ERR
+
+# Encryption is deliberately NOT applied to the local dump, and that is not the same as not
+# encrypting. A key the production host can read protects nothing from anyone who reaches the
+# production host, and a key it cannot read would make the local dump undecryptable -- which is
+# the copy rollback.sh and restore-postgres-into-new-stack.sh actually restore from, on this host,
+# usually while something is already broken. The local dump therefore sits inside the same trust
+# boundary as postgres_data itself, which is also plaintext on the same disk.
+#
+# What leaves the host is a different matter, and is encrypted below: a third party's storage is
+# outside that boundary, and these dumps carry every student's name, email, MSSV and ticket
+# history. age -r takes a PUBLIC key, so BACKUP_AGE_RECIPIENT is all this host ever holds; the
+# private key must live somewhere it cannot read, or the encryption is decoration.
 
 meta_file="${backup_file}.meta"
 printf 'BACKUP_STARTED_AT=%s\n' "$timestamp" > "$meta_file"
@@ -86,18 +101,63 @@ if [[ -n "${BACKUP_REMOTE:-}" ]]; then
     echo "BACKUP_REMOTE is set but rclone is unavailable" >&2
     exit 1
   }
-  rclone copy "$backup_file" "$BACKUP_REMOTE"
+  # Refused, not downgraded to a warning. Uploading these dumps in the clear is the one failure
+  # here that cannot be undone afterwards: once every student's name, email and MSSV has been
+  # handed to someone else's storage, deleting the object does not take it back. A backup that did
+  # not happen is recoverable by running this again; a disclosure is not.
+  [[ -n "${BACKUP_AGE_RECIPIENT:-}" ]] || {
+    echo "BACKUP_REMOTE is set but BACKUP_AGE_RECIPIENT is not." >&2
+    echo "Refusing to copy an unencrypted database dump off this host: it contains every" >&2
+    echo "student's name, email, MSSV and ticket history. Generate a key pair somewhere this" >&2
+    echo "host cannot read (age-keygen), then set BACKUP_AGE_RECIPIENT to the PUBLIC key." >&2
+    exit 1
+  }
+  command -v age > /dev/null || {
+    echo "BACKUP_AGE_RECIPIENT is set but age is unavailable, so the dump cannot be encrypted" >&2
+    echo "and will not be copied off this host. Install age (apt install age)." >&2
+    exit 1
+  }
+
+  encrypted_file="${backup_file}.age"
+  rm -f -- "$encrypted_file" "${encrypted_file}.sha256"
+  age -r "$BACKUP_AGE_RECIPIENT" -o "$encrypted_file" "$backup_file"
+
+  # That age exited 0 is not evidence the file is encrypted -- the same reasoning the restore check
+  # above exists for. An age file begins with its format banner, so a truncated, empty or
+  # accidentally-plaintext artifact is caught here rather than discovered by whoever needs it.
+  read -r age_header < "$encrypted_file" || age_header=""
+  [[ "$age_header" == "age-encryption.org/v1" ]] || {
+    echo "$encrypted_file does not begin with the age format banner, so it is not an encrypted" >&2
+    echo "age file whatever age reported. Nothing has been copied off this host." >&2
+    rm -f -- "$encrypted_file"
+    exit 1
+  }
+
+  # Checksum of the ENCRYPTED artifact: this is the file the remote holds and the file a restore
+  # downloads, so it is the one whose integrity the remote copy can be checked against. The
+  # plaintext .sha256 written earlier stays local, for the local restore path.
+  sha256sum "$encrypted_file" | awk '{print $1}' > "${encrypted_file}.sha256"
+
+  rclone copy "$encrypted_file" "$BACKUP_REMOTE"
+  rclone copy "${encrypted_file}.sha256" "$BACKUP_REMOTE"
+  # The meta carries only the snapshot timestamp -- no personal data -- and the restore path needs
+  # it to anchor its notification watermark, so it goes as-is.
   rclone copy "$meta_file" "$BACKUP_REMOTE"
-  rclone copy "${backup_file}.sha256" "$BACKUP_REMOTE"
-  remote_size="$(rclone size --json "$BACKUP_REMOTE/$(basename "$backup_file")" 2>/dev/null \
+
+  remote_size="$(rclone size --json "$BACKUP_REMOTE/$(basename "$encrypted_file")" 2>/dev/null \
     | "${PYTHON_BIN:-python3}" -c 'import json,sys; print(json.load(sys.stdin)["bytes"])' 2>/dev/null || echo 0)"
-  local_size="$(stat -c '%s' "$backup_file")"
+  local_size="$(stat -c '%s' "$encrypted_file")"
   [[ "$remote_size" == "$local_size" ]] || {
-    echo "The off-site copy is $remote_size bytes; the local dump is $local_size." >&2
+    echo "The off-site copy is $remote_size bytes; the encrypted dump is $local_size." >&2
     echo "Not deleting anything locally: the remote copy cannot be relied on." >&2
     exit 1
   }
-  echo "Off-site copy verified: $local_size bytes at $BACKUP_REMOTE"
+  echo "Off-site copy verified: $local_size encrypted bytes at $BACKUP_REMOTE"
+
+  # Removed once the remote holds it: this host cannot decrypt it, so keeping it here costs disk
+  # and protects nothing. The plaintext dump it was made from stays, and is what a local restore
+  # uses.
+  rm -f -- "$encrypted_file" "${encrypted_file}.sha256"
 fi
 
 # Retention is intentionally constrained to the deployment backup directory.
