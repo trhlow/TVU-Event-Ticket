@@ -133,7 +133,7 @@ export default function QRScannerPanel({
 
             {cameraPermission === "denied" && (
               <div className="relative z-10 flex flex-col items-center gap-3 px-6">
-                <AlertCircle className="w-12 h-12 text-amber-400" />
+                <AlertCircle className="w-12 h-12 text-warning-400" />
                 <p className="text-xs text-gray-100 font-bold leading-relaxed max-w-sm">
                   Không thể truy cập camera. Vui lòng nhập mã vé thủ công bên dưới
                   hoặc cấp quyền camera trong cài đặt trình duyệt.
@@ -199,14 +199,14 @@ export default function QRScannerPanel({
         <div
           className={`p-4 rounded-card border flex items-start gap-3 animate-fade-in ${
             scanResult.success
-              ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-              : "bg-rose-50 border-rose-200 text-rose-900"
+              ? "bg-success-50 border-success-200 text-success-900"
+              : "bg-danger-50 border-danger-200 text-danger-900"
           }`}
         >
           {scanResult.success ? (
-            <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-success-600 flex-shrink-0 mt-0.5" />
           ) : (
-            <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-danger-600 flex-shrink-0 mt-0.5" />
           )}
           <div className="text-left space-y-1">
             <h5 className="text-xs font-black uppercase tracking-wider">

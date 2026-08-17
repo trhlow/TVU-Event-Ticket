@@ -87,7 +87,7 @@ export default function StudentProfileForm({
             {mssvStatus && (
               <span
                 className={`rounded-chip px-2 py-0.5 text-[9px] font-black normal-case tracking-normal ${
-                  mssvStatus === "VERIFIED" ? "bg-success-50 text-success-700" : "bg-warning-50 text-amber-700"
+                  mssvStatus === "VERIFIED" ? "bg-success-50 text-success-700" : "bg-warning-50 text-warning-700"
                 }`}
               >
                 {mssvStatus === "VERIFIED" ? "Đã xác minh" : "Chờ xác minh"}

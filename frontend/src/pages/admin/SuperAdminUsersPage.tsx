@@ -50,9 +50,9 @@ export default function SuperAdminUsersPage() {
         <span
           className={`px-2.5 py-1 rounded-chip text-[9px] font-black uppercase tracking-wide border ${
             user.role === "SUPER_ADMIN"
-              ? "bg-rose-50 border-rose-200 text-rose-700"
+              ? "bg-danger-50 border-danger-200 text-danger-700"
               : user.role === "ORGANIZER"
-                ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                ? "bg-secondary-50 border-secondary-200 text-secondary-700"
                 : "bg-brand-50 border-brand-200 text-brand-700"
           }`}
         >
@@ -66,7 +66,7 @@ export default function SuperAdminUsersPage() {
         if (user.role !== "SINH_VIEN") return <span className="text-[10px] font-bold text-gray-300">—</span>;
         if (!user.mssv) return <span className="text-[10px] font-bold text-gray-400">Chưa có MSSV</span>;
         return (
-          <span className={`text-[10px] font-bold ${user.mssvStatus === "VERIFIED" ? "text-emerald-600" : "text-amber-600"}`}>
+          <span className={`text-[10px] font-bold ${user.mssvStatus === "VERIFIED" ? "text-success-600" : "text-warning-600"}`}>
             {user.mssvStatus === "VERIFIED" ? "Đã duyệt" : "Chờ duyệt"}
           </span>
         );

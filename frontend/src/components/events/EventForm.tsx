@@ -25,7 +25,7 @@ function toDatetimeLocalValue(iso?: string): string {
 
 function FieldError({ id, message }: { id?: string; message?: string }) {
   if (!message) return null;
-  return <p id={id} className="text-[10px] text-rose-600 font-bold">{message}</p>;
+  return <p id={id} className="text-[10px] text-danger-600 font-bold">{message}</p>;
 }
 
 function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
@@ -141,7 +141,7 @@ export default function EventForm({
               value={formData.title}
               onChange={handleChange}
               placeholder="Ví dụ: Hội thảo công nghệ phần mềm CLB Tin học..."
-              className={errors.title ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.title ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.title}
               aria-describedby={errors.title ? 'event-title-error' : undefined}
             />
@@ -158,7 +158,7 @@ export default function EventForm({
               rows={5}
               placeholder="Nêu rõ mục đích, nội dung chương trình, quyền lợi của sinh viên khi tham gia (ví dụ: điểm rèn luyện)..."
               className={`w-full bg-gray-50/50 border rounded-control px-4 py-3 text-xs font-semibold text-gray-900 focus:outline-none focus:border-brand-500 focus:bg-white ${
-                errors.description ? 'border-rose-400 focus:border-rose-500' : 'border-gray-200'
+                errors.description ? 'border-danger-400 focus:border-danger-500' : 'border-gray-200'
               }`}
               aria-invalid={!!errors.description}
               aria-describedby={errors.description ? 'event-description-error' : undefined}
@@ -181,7 +181,7 @@ export default function EventForm({
               value={formData.location}
               onChange={handleChange}
               placeholder="Ví dụ: Hội trường E24, Đại học Trà Vinh..."
-              className={errors.location ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.location ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.location}
               aria-describedby={errors.location ? 'event-location-error' : undefined}
             />
@@ -213,7 +213,7 @@ export default function EventForm({
               name="startAt"
               value={formData.startAt}
               onChange={handleChange}
-              className={errors.startAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.startAt ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.startAt}
               aria-describedby={errors.startAt ? 'event-startAt-error' : undefined}
             />
@@ -228,7 +228,7 @@ export default function EventForm({
               name="endAt"
               value={formData.endAt}
               onChange={handleChange}
-              className={errors.endAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.endAt ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.endAt}
               aria-describedby={errors.endAt ? 'event-endAt-error' : undefined}
             />
@@ -243,7 +243,7 @@ export default function EventForm({
               name="registrationOpenAt"
               value={formData.registrationOpenAt}
               onChange={handleChange}
-              className={errors.registrationOpenAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.registrationOpenAt ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.registrationOpenAt}
               aria-describedby={errors.registrationOpenAt ? 'event-registrationOpenAt-error' : undefined}
             />
@@ -258,7 +258,7 @@ export default function EventForm({
               name="registrationCloseAt"
               value={formData.registrationCloseAt}
               onChange={handleChange}
-              className={errors.registrationCloseAt ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.registrationCloseAt ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.registrationCloseAt}
               aria-describedby={errors.registrationCloseAt ? 'event-registrationCloseAt-error' : undefined}
             />
@@ -283,7 +283,7 @@ export default function EventForm({
               onChange={handleChange}
               min={1}
               disabled={!isDraft}
-              className={errors.capacity ? 'border-rose-400 focus-visible:border-rose-500' : ''}
+              className={errors.capacity ? 'border-danger-400 focus-visible:border-danger-500' : ''}
               aria-invalid={!!errors.capacity}
               aria-describedby={errors.capacity ? 'event-capacity-error' : 'event-capacity-hint'}
             />

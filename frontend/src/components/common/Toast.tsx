@@ -28,13 +28,13 @@ export default function Toast({ message, type = 'success', onClose, duration = 3
     switch (type) {
       case 'success':
         return {
-          bg: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-          icon: <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />,
+          bg: 'bg-success-50 border-success-200 text-success-800',
+          icon: <CheckCircle className="w-5 h-5 text-success-600 flex-shrink-0" />,
         };
       case 'error':
         return {
-          bg: 'bg-rose-50 border-rose-200 text-rose-800',
-          icon: <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />,
+          bg: 'bg-danger-50 border-danger-200 text-danger-800',
+          icon: <AlertCircle className="w-5 h-5 text-danger-600 flex-shrink-0" />,
         };
       case 'info':
       default:

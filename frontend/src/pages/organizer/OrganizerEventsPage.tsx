@@ -129,7 +129,7 @@ export default function OrganizerEventsPage() {
               <Lock className="h-3.5 w-3.5" />
             </button>
           )}
-          <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-control border border-slate-100 p-1.5 text-sky-700 transition-colors hover:border-sky-200 hover:bg-sky-50" title="Liên kết đăng ký">
+          <Link to={`/organizer/events/${event.id}/registration-qr`} className="rounded-control border border-slate-100 p-1.5 text-accent-600 transition-colors hover:border-accent-200 hover:bg-accent-50" title="Liên kết đăng ký">
             <QrCode className="h-3.5 w-3.5" />
           </Link>
           <Link to={`/organizer/events/${event.id}/registrations`} className="rounded-control border border-slate-100 p-1.5 text-success-700 transition-colors hover:border-success-200 hover:bg-success-50" title="Duyệt đăng ký">

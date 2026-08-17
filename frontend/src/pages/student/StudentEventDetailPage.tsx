@@ -209,7 +209,7 @@ export default function StudentEventDetailPage() {
                   )}
                 </div>
               ) : reservationHistoryFailed ? (
-                <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-warning-800">
                   <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                   <span>Không thể xác định bạn đã đăng ký sự kiện này hay chưa (lỗi tải dữ liệu). Vui lòng tải lại trang trước khi đăng ký để tránh gửi trùng.</span>
                 </div>
@@ -235,14 +235,14 @@ export default function StudentEventDetailPage() {
                   )}
 
                   {!currentUser.profileComplete && (
-                    <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                    <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-warning-800">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                       <span>Bạn chưa hoàn tất MSSV và lớp. Hệ thống yêu cầu cập nhật hồ sơ trước khi đăng ký vé.</span>
                     </div>
                   )}
 
                   {currentUser.profileComplete && !isMssvVerified && (
-                    <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-amber-800">
+                    <div className="flex gap-2 rounded-card border border-warning-200 bg-warning-50 p-3 text-[10px] font-semibold text-warning-800">
                       <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-warning-600" aria-hidden="true" />
                       <span>MSSV của bạn đang chờ xác minh. Bạn chỉ có thể đăng ký vé sau khi được xác minh.</span>
                     </div>

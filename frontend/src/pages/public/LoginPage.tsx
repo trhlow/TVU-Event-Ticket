@@ -121,9 +121,9 @@ export default function LoginPage() {
 
   return (
     <main className="auth-scene grid min-h-screen place-items-center overflow-hidden px-4 pb-10 pt-20 text-slate-950 sm:py-10">
-      <div className="auth-orb h-[380px] w-[380px] bg-cyan-400/60" style={{ top: "-120px", right: "-80px" }} aria-hidden="true" />
-      <div className="auth-orb h-[420px] w-[420px] bg-indigo-500/60" style={{ bottom: "-140px", left: "-120px", animationDelay: "-5s" }} aria-hidden="true" />
-      <div className="auth-orb h-[260px] w-[260px] bg-blue-400/50" style={{ top: "38%", left: "58%", animationDelay: "-9s" }} aria-hidden="true" />
+      <div className="auth-orb h-[380px] w-[380px] bg-accent-400/60" style={{ top: "-120px", right: "-80px" }} aria-hidden="true" />
+      <div className="auth-orb h-[420px] w-[420px] bg-secondary-500/60" style={{ bottom: "-140px", left: "-120px", animationDelay: "-5s" }} aria-hidden="true" />
+      <div className="auth-orb h-[260px] w-[260px] bg-info-400/50" style={{ top: "38%", left: "58%", animationDelay: "-9s" }} aria-hidden="true" />
 
       <Link
         to="/"
@@ -138,7 +138,7 @@ export default function LoginPage() {
           <img
             src="/logo-tvu.webp?v=20260729"
             alt="Logo Trường Đại học Trà Vinh"
-            className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-blue-900/20"
+            className="icon-float mx-auto h-[76px] w-[76px] rounded-full border-2 border-white bg-white object-contain p-1.5 shadow-lg shadow-brand-800/20"
           />
         </div>
 
@@ -146,7 +146,7 @@ export default function LoginPage() {
         <p className="mt-2 text-xl font-extrabold leading-tight text-slate-900">Đăng nhập hệ thống</p>
 
         {errorMsg && (
-          <div className="mt-6 flex gap-2 rounded-card border border-rose-200 bg-rose-50 px-3 py-3 text-left text-xs font-semibold leading-5 text-rose-800">
+          <div className="mt-6 flex gap-2 rounded-card border border-danger-200 bg-danger-50 px-3 py-3 text-left text-xs font-semibold leading-5 text-danger-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>{errorMsg}</span>
           </div>
@@ -261,12 +261,12 @@ export default function LoginPage() {
             entire branch from a `vite build` production bundle, so it cannot ship even if
             VITE_AUTH_PROVIDER is misconfigured at runtime. */}
         {import.meta.env.DEV && isDevStubProvider && (
-          <div className="mt-8 rounded-card border-2 border-dashed border-amber-400 bg-amber-50 p-4 text-left">
-            <div className="flex items-center gap-2 text-amber-800">
+          <div className="mt-8 rounded-card border-2 border-dashed border-warning-400 bg-warning-50 p-4 text-left">
+            <div className="flex items-center gap-2 text-warning-800">
               <FlaskConical className="h-4 w-4 shrink-0" aria-hidden="true" />
               <span className="text-[11px] font-black uppercase tracking-[0.14em]">DEV ONLY · Đăng nhập thử nghiệm</span>
             </div>
-            <p className="mt-2 text-xs font-semibold leading-5 text-amber-900">
+            <p className="mt-2 text-xs font-semibold leading-5 text-warning-900">
               Đây là đăng nhập thử nghiệm dành riêng cho môi trường phát triển cục bộ, không phải cơ chế xác thực production. Backend
               chấp nhận bất kỳ email hợp lệ nào, không kiểm tra mật khẩu. Vai trò trả về sau khi đăng nhập là vai trò backend đã gán
               sẵn cho email đó — form này không cho bạn tự chọn vai trò.
@@ -291,7 +291,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="btn-press flex min-h-11 w-full items-center justify-center rounded-control bg-amber-600 px-4 text-sm font-extrabold text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-70"
+                className="btn-press flex min-h-11 w-full items-center justify-center rounded-control bg-warning-600 px-4 text-sm font-extrabold text-white hover:bg-warning-700 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập thử nghiệm (DEV ONLY)"}
               </button>

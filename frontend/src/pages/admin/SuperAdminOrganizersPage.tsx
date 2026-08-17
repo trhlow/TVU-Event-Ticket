@@ -132,7 +132,7 @@ export default function SuperAdminOrganizersPage() {
           {user.status === "ACTIVE" && (
             <button
               onClick={() => setLockTarget(user)}
-              className="rounded-control border border-gray-100 p-1.5 text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+              className="rounded-control border border-gray-100 p-1.5 text-danger-600 hover:border-danger-200 hover:bg-danger-50"
               title="Khóa tài khoản"
             >
               <Lock className="h-3.5 w-3.5" />
@@ -140,7 +140,7 @@ export default function SuperAdminOrganizersPage() {
           )}
           <button
             onClick={() => setDeleteTarget(user)}
-            className="rounded-control border border-gray-100 p-1.5 text-rose-600 hover:border-rose-200 hover:bg-rose-50"
+            className="rounded-control border border-gray-100 p-1.5 text-danger-600 hover:border-danger-200 hover:bg-danger-50"
             title="Xóa tài khoản"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -165,8 +165,8 @@ export default function SuperAdminOrganizersPage() {
         }
       />
 
-      <div className="flex gap-2 rounded-card border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold leading-6 text-emerald-900">
-        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+      <div className="flex gap-2 rounded-card border border-success-200 bg-success-50 p-4 text-sm font-semibold leading-6 text-success-900">
+        <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
         Tài khoản Ban tổ chức không dùng mật khẩu. Mã đăng nhập một lần được gửi tới email đã đăng ký.
       </div>
 
@@ -219,8 +219,8 @@ export default function SuperAdminOrganizersPage() {
           </>
         }
       >
-        <div className="flex gap-2 rounded-card border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-semibold leading-6 text-emerald-900">
-          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+        <div className="flex gap-2 rounded-card border border-success-200 bg-success-50 px-3 py-3 text-sm font-semibold leading-6 text-success-900">
+          <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-success-600" />
           Người dùng sẽ nhận mã OTP qua email khi đăng nhập, không cần mật khẩu tạm thời.
         </div>
         {activeClubs.length === 0 && (

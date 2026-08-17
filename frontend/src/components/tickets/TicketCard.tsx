@@ -23,7 +23,7 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
       <div className="tilt-card-sheen" aria-hidden="true" />
       <div className="absolute bottom-0 left-44 top-0 hidden w-px border-l border-dashed border-slate-200 md:block" />
       <div className="flex w-full shrink-0 flex-col items-center justify-center border-b border-dashed border-slate-200 bg-brand-50 p-5 text-center md:w-44 md:border-b-0 md:border-r">
-        <div className={`mb-3 grid h-11 w-11 place-items-center rounded-control border shadow-sm ${isCheckedIn ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-brand-100 bg-white text-brand-700"}`}>
+        <div className={`mb-3 grid h-11 w-11 place-items-center rounded-control border shadow-sm ${isCheckedIn ? "border-success-100 bg-success-50 text-success-600" : "border-brand-100 bg-white text-brand-700"}`}>
           <QrCode className="h-7 w-7" />
         </div>
         <span className="block text-[10px] font-semibold uppercase tracking-widest text-slate-400">Mã vé</span>
@@ -63,7 +63,7 @@ export default function TicketCard({ ticket, event, onViewQR }: TicketCardProps)
           </div>
 
           {isCheckedIn ? (
-            <span className="flex items-center gap-1 text-sm font-semibold text-emerald-600">
+            <span className="flex items-center gap-1 text-sm font-semibold text-success-600">
               <ClipboardCheck className="h-4 w-4" /> Đã điểm danh
             </span>
           ) : canShowQR ? (

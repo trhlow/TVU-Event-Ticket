@@ -86,7 +86,7 @@ export default function OrganizerScanPage() {
         description="Quét hoặc nhập mã QR đã gửi cho sinh viên qua email. Hệ thống luôn là nơi xác minh mã hợp lệ hay không."
       />
       {eventId && (
-        <div className="flex gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 text-sm font-semibold leading-6 text-amber-900">
+        <div className="flex gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 text-sm font-semibold leading-6 text-warning-900">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
           <span>
             Máy chủ chưa hỗ trợ giới hạn check-in theo từng sự kiện — một vé hợp lệ của sự kiện khác cùng CLB vẫn có

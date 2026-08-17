@@ -8,13 +8,13 @@ interface EnvConfigErrorScreenProps {
 export default function EnvConfigErrorScreen({ errors }: EnvConfigErrorScreenProps) {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 px-4 py-10 text-white">
-      <section className="w-full max-w-xl rounded-card border border-rose-500/40 bg-slate-900 p-8 shadow-2xl">
+      <section className="w-full max-w-xl rounded-card border border-danger-500/40 bg-slate-900 p-8 shadow-2xl">
         <div className="flex items-center gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-rose-500/15 text-rose-400">
+          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-danger-500/15 text-danger-400">
             <AlertOctagon className="h-6 w-6" aria-hidden="true" />
           </div>
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-rose-400">Lỗi cấu hình môi trường</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-danger-400">Lỗi cấu hình môi trường</p>
             <h1 className="text-xl font-extrabold text-white">Ứng dụng không thể khởi động</h1>
           </div>
         </div>
@@ -26,7 +26,7 @@ export default function EnvConfigErrorScreen({ errors }: EnvConfigErrorScreenPro
 
         <ul className="mt-5 space-y-3">
           {errors.map((error, index) => (
-            <li key={index} className="rounded-card border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold leading-6 text-rose-100">
+            <li key={index} className="rounded-card border border-danger-500/30 bg-danger-500/10 px-4 py-3 text-sm font-semibold leading-6 text-danger-100">
               {error}
             </li>
           ))}

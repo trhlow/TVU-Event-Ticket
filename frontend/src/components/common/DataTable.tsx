@@ -79,9 +79,9 @@ export default function DataTable<T>({
 
   return (
     <div className="enterprise-card overflow-hidden text-left" id={id}>
-      <div className="flex flex-col gap-3 border-b border-blue-100 bg-slate-50/70 p-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 border-b border-info-100 bg-slate-50/70 p-4 md:flex-row md:items-center md:justify-between">
         <div className="relative w-full md:max-w-sm">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-500" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-info-500" />
           <Input
             type="text"
             placeholder={searchPlaceholder}
@@ -94,7 +94,7 @@ export default function DataTable<T>({
 
         {filterConfig && (
           <div className="flex flex-wrap items-center gap-2">
-            <Filter className="h-4 w-4 text-blue-500" />
+            <Filter className="h-4 w-4 text-info-500" />
             <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{filterConfig.label}</span>
             <select
               value={filterValue}
@@ -116,7 +116,7 @@ export default function DataTable<T>({
       <div className="hidden overflow-x-auto md:block">
         <Table>
           <TableHeader>
-            <TableRow className="border-b border-blue-100 bg-slate-50/90 hover:bg-slate-50/90">
+            <TableRow className="border-b border-info-100 bg-slate-50/90 hover:bg-slate-50/90">
               {columns.map((column) => (
                 <TableHead
                   key={column.header}
@@ -156,7 +156,7 @@ export default function DataTable<T>({
               {renderMobileCard ? (
                 renderMobileCard(row)
               ) : (
-                <div className="rounded-card border border-blue-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                <div className="rounded-card border border-info-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
                   {columns.map((column) => (
                     <div key={column.header} className="border-b border-slate-100 py-2 last:border-0">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{column.header}</p>
@@ -168,13 +168,13 @@ export default function DataTable<T>({
             </React.Fragment>
           ))
         ) : (
-          <div className="rounded-card border border-blue-100 bg-white p-5 text-center text-sm font-semibold text-slate-400">
+          <div className="rounded-card border border-info-100 bg-white p-5 text-center text-sm font-semibold text-slate-400">
             Không tìm thấy kết quả phù hợp
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-3 border-t border-blue-100 bg-white/92 p-4 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t border-info-100 bg-white/92 p-4 text-xs font-semibold text-slate-500 sm:flex-row sm:items-center sm:justify-between">
         <span>
           Hiển thị {filteredData.length > 0 ? (currentPage - 1) * pageSize + 1 : 0} đến{" "}
           {Math.min(currentPage * pageSize, filteredData.length)} trong tổng số{" "}
@@ -184,7 +184,7 @@ export default function DataTable<T>({
           <button
             onClick={() => setCurrentPage((page) => Math.max(page - 1, 1))}
             disabled={currentPage === 1}
-            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-blue-100 bg-white text-slate-700 hover:bg-blue-50 disabled:opacity-40"
+            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-info-100 bg-white text-slate-700 hover:bg-info-50 disabled:opacity-40"
             aria-label="Trang trước"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -195,7 +195,7 @@ export default function DataTable<T>({
           <button
             onClick={() => setCurrentPage((page) => Math.min(page + 1, totalPages))}
             disabled={currentPage === totalPages}
-            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-blue-100 bg-white text-slate-700 hover:bg-blue-50 disabled:opacity-40"
+            className="btn-press grid h-9 w-9 place-items-center rounded-control border border-info-100 bg-white text-slate-700 hover:bg-info-50 disabled:opacity-40"
             aria-label="Trang sau"
           >
             <ChevronRight className="h-4 w-4" />

@@ -54,8 +54,8 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
             <span>{event.location}</span>
           </div>
         </div>
-        <div className="mt-4 rounded-card border border-amber-200 bg-amber-50 p-3 text-left">
-          <p className="flex items-start gap-2 text-xs font-medium leading-5 text-amber-900">
+        <div className="mt-4 rounded-card border border-warning-200 bg-warning-50 p-3 text-left">
+          <p className="flex items-start gap-2 text-xs font-medium leading-5 text-warning-900">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
             Không chia sẻ mã QR cho người khác. Mỗi mã QR chỉ được điểm danh một lần.
           </p>

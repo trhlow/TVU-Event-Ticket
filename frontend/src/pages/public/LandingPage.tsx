@@ -477,7 +477,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-900 via-blue-700 to-sky-500 text-white">
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-800 via-brand-600 to-accent-500 text-white">
             <Ticket className="h-12 w-12" aria-hidden="true" />
           </div>
         )}

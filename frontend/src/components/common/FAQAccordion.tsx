@@ -25,7 +25,7 @@ export default function FAQAccordion({ items }: FAQAccordionProps) {
           <div
             key={item.question}
             className={`faq-item overflow-hidden rounded-card border bg-white shadow-sm shadow-slate-950/4 transition-colors ${
-              isOpen ? "border-blue-200" : "border-slate-200"
+              isOpen ? "border-info-200" : "border-slate-200"
             }`}
           >
             <h3>
@@ -35,11 +35,11 @@ export default function FAQAccordion({ items }: FAQAccordionProps) {
                 aria-expanded={isOpen}
                 aria-controls={panelId}
                 onClick={() => setOpenIndex(isOpen ? null : index)}
-                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 md:text-base"
+                className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-extrabold text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 md:text-base"
               >
                 <span>{item.question}</span>
                 <ChevronDown
-                  className={`h-5 w-5 shrink-0 text-blue-700 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
+                  className={`h-5 w-5 shrink-0 text-brand-600 transition-transform duration-300 ${isOpen ? "rotate-180" : ""}`}
                   aria-hidden="true"
                 />
               </button>

@@ -84,8 +84,8 @@ export default function StudentHomePage() {
           <div className="flex gap-3">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
             <div>
-              <h2 className="text-sm font-semibold text-amber-950">Yêu cầu hoàn tất hồ sơ</h2>
-              <p className="mt-1 text-sm font-semibold leading-6 text-amber-800">
+              <h2 className="text-sm font-semibold text-warning-950">Yêu cầu hoàn tất hồ sơ</h2>
+              <p className="mt-1 text-sm font-semibold leading-6 text-warning-800">
                 Cập nhật MSSV và lớp học để đủ điều kiện đăng ký tham gia sự kiện.
               </p>
             </div>
@@ -100,8 +100,8 @@ export default function StudentHomePage() {
         <div className="flex flex-col gap-3 rounded-card border border-warning-200 bg-warning-50 p-4 shadow-sm sm:flex-row sm:items-center">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" aria-hidden="true" />
           <div>
-            <h2 className="text-sm font-semibold text-amber-950">MSSV đang chờ xác minh</h2>
-            <p className="mt-1 text-sm font-semibold leading-6 text-amber-800">
+            <h2 className="text-sm font-semibold text-warning-950">MSSV đang chờ xác minh</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-warning-800">
               Bạn chưa thể gửi đăng ký sự kiện cho đến khi Ban quản trị xác minh MSSV.
             </p>
           </div>

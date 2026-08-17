@@ -43,7 +43,7 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
         title="Hồ sơ tài khoản"
         description="Thông tin định danh và phạm vi phụ trách được đồng bộ từ tài khoản nội bộ TVU."
         actions={
-          <span className="inline-flex items-center gap-1.5 rounded-chip border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+          <span className="inline-flex items-center gap-1.5 rounded-chip border border-success-200 bg-success-50 px-3 py-1.5 text-xs font-bold text-success-700">
             Đang hoạt động
           </span>
         }

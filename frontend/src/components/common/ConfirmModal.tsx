@@ -28,14 +28,14 @@ export default function ConfirmModal({
   const dangerous = type === "danger";
   const Icon = positive ? CheckCircle : AlertTriangle;
   const iconClass = positive
-    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+    ? "bg-success-50 text-success-700 border-success-100"
     : dangerous
-      ? "bg-rose-50 text-rose-700 border-rose-100"
-      : "bg-amber-50 text-amber-700 border-amber-100";
+      ? "bg-danger-50 text-danger-700 border-danger-100"
+      : "bg-warning-50 text-warning-700 border-warning-100";
   const buttonClass = positive
-    ? "bg-emerald-600 hover:bg-emerald-700"
+    ? "bg-success-600 hover:bg-success-700"
     : dangerous
-      ? "bg-rose-600 hover:bg-rose-700"
+      ? "bg-danger-600 hover:bg-danger-700"
       : "bg-brand-600 hover:bg-brand-700";
 
   return (

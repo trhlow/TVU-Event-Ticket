@@ -115,9 +115,9 @@ export default function OrganizerRegistrationQRPage() {
               </div>
             </div>
 
-            <div className="rounded-card border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            <div className="rounded-card border border-warning-200 bg-warning-50 p-4 text-sm font-semibold text-warning-900">
               <p className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-600" />
                 <span>Liên kết này chỉ dùng để mở trang đăng ký sự kiện. Đây không phải là vé tham gia sự kiện.</span>
               </p>
             </div>

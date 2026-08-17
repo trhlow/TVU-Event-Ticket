@@ -61,7 +61,7 @@ export default function ScrollToTopButton({ scrollContainerId, showAfterElementI
       tabIndex={visible ? 0 : -1}
       aria-hidden={!visible}
       className={[
-        "btn-press fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-control bg-brand-700 text-white shadow-md transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-blue-300 sm:bottom-8 sm:right-8 sm:h-12 sm:w-12",
+        "btn-press fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center rounded-control bg-brand-700 text-white shadow-md transition-all duration-300 ease-out hover:-translate-y-0.5 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-info-300 sm:bottom-8 sm:right-8 sm:h-12 sm:w-12",
         visible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-3 opacity-0",
       ].join(" ")}
     >
