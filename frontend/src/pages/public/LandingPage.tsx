@@ -36,25 +36,27 @@ const features = [
     icon: Zap,
     title: "Đăng ký nhanh chóng",
     description: "Giao diện tối giản giúp sinh viên tìm kiếm và đặt vé sự kiện chỉ trong vài cú nhấp chuột.",
-    tone: "text-blue-700 bg-blue-50",
+    tone: "text-brand-700 bg-info-50",
   },
   {
     icon: QrCode,
     title: "Vé QR Code",
     description: "Mỗi vé phát hành đi kèm một mã QR duy nhất, đảm bảo tính bảo mật và dễ dàng truy xuất từ điện thoại.",
-    tone: "text-indigo-700 bg-indigo-50",
+    tone: "text-secondary-700 bg-secondary-50",
   },
   {
     icon: ScanLine,
     title: "Check-in tiện lợi",
     description: "Ban tổ chức dễ dàng quét mã QR tại cổng sự kiện để xác nhận tham gia nhanh chóng và chính xác.",
-    tone: "text-sky-700 bg-sky-50",
+    tone: "text-accent-600 bg-info-50",
   },
   {
     icon: ShieldCheck,
     title: "Chống vé ảo",
     description: "Hệ thống đồng bộ dữ liệu sinh viên trực tiếp, ngăn chặn tình trạng đầu cơ hoặc đăng ký ảo.",
-    tone: "text-rose-700 bg-rose-50",
+    // Was rose-700, which is this system's danger colour -- a protective feature was wearing
+    // the palette's error hue. Green reads as "safe", which is what the feature actually is.
+    tone: "text-success-700 bg-success-50",
   },
 ];
 
@@ -106,7 +108,7 @@ function eventStatusLabel(status: Event["status"]) {
 }
 
 function eventStatusClass(status: Event["status"]) {
-  if (status === "OPEN") return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (status === "OPEN") return "border-success-200 bg-success-50 text-success-700";
   if (status === "CLOSED") return "border-slate-200 bg-slate-100 text-slate-600";
   return "border-slate-200 bg-white text-slate-600";
 }
@@ -254,7 +256,7 @@ export default function LandingPage() {
         <RevealOnScroll as="section" id="features" className="scroll-mt-20 px-5 py-20 md:px-8 md:py-24">
           <div className="mx-auto max-w-[1180px]">
             <div className="landing-section-heading mx-auto max-w-2xl text-center">
-              <h2 id="features-title" className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
+              <h2 id="features-title" className="font-display text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">Tại sao chọn TVU Ticket?</h2>
               <p className="mt-4 text-sm font-medium leading-7 text-slate-600 md:text-base">
                 Một nền tảng thống nhất cho toàn bộ hành trình sự kiện — từ đăng ký, xét duyệt đến check-in tại cổng.
               </p>
@@ -272,10 +274,10 @@ export default function LandingPage() {
 
         <section id="events" className="landing-soft-section relative scroll-mt-20 px-0 py-20 md:py-24">
           <div className="mx-auto flex max-w-[1180px] flex-col items-center gap-6 px-5 text-center md:px-8">
-            <h2 className="font-display text-3xl font-extrabold tracking-tight text-blue-950 md:text-4xl">Sự kiện nổi bật</h2>
+            <h2 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">Sự kiện nổi bật</h2>
             <Link
               to="/login"
-              className="group inline-flex w-fit items-center gap-2 rounded-chip border border-blue-200 bg-white px-5 py-2.5 text-sm font-bold text-blue-800 shadow-sm transition hover:border-blue-300 hover:bg-blue-50"
+              className="group inline-flex w-fit items-center gap-2 rounded-chip border border-info-200 bg-white px-5 py-2.5 text-sm font-bold text-brand-800 shadow-sm transition hover:border-brand-300 hover:bg-info-50"
             >
               Khám phá sự kiện <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
@@ -309,8 +311,8 @@ export default function LandingPage() {
           <div className="landing-guide-glow landing-guide-glow-right" aria-hidden="true" />
           <div className="relative z-10 mx-auto max-w-[1180px]">
             <div className="mx-auto max-w-2xl text-center">
-              <h2 className="font-display text-3xl font-extrabold tracking-tight text-white md:text-4xl">Bắt đầu thật đơn giản</h2>
-              <p className="mt-4 text-sm font-medium leading-7 text-blue-100/80 md:text-base">
+              <h2 className="font-display text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">Bắt đầu thật đơn giản</h2>
+              <p className="mt-4 text-sm font-medium leading-7 text-slate-600 md:text-base">
                 Quy trình rõ ràng cho sinh viên, Ban tổ chức và đội ngũ check-in.
               </p>
             </div>
@@ -320,9 +322,9 @@ export default function LandingPage() {
                 const Icon = item.icon;
                 return (
                   <RevealOnScroll key={item.title} delay={index * 90}>
-                    <article className="landing-guide-card h-full rounded-card border border-white/70 bg-white/95 p-6 shadow-xl shadow-slate-950/15 backdrop-blur">
+                    <article className="landing-guide-card enterprise-card h-full p-6">
                       <div className="flex items-start gap-4">
-                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-control bg-blue-50 text-blue-800">
+                        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-control bg-info-50 text-brand-700">
                           <Icon className="h-6 w-6" aria-hidden="true" />
                         </div>
                         <div>
@@ -334,7 +336,7 @@ export default function LandingPage() {
                       <ol className="mt-6 space-y-3">
                         {item.steps.map((step, stepIndex) => (
                           <li key={step} className="landing-guide-step flex items-center gap-3 rounded-control border border-slate-100 bg-slate-50 px-3 py-2.5">
-                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-blue-800 shadow-sm ring-1 ring-blue-100">
+                            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-brand-700 shadow-sm ring-1 ring-info-100">
                               {stepIndex + 1}
                             </span>
                             <span className="text-sm font-semibold text-slate-700">{step}</span>
@@ -353,13 +355,13 @@ export default function LandingPage() {
           <div className="landing-cta mx-auto flex max-w-[1180px] flex-col items-center justify-between gap-8 rounded-[2rem] px-7 py-10 text-center text-white md:flex-row md:px-12 md:py-12 md:text-left">
             <div>
               <h2 className="font-display text-2xl font-extrabold tracking-tight md:text-3xl">Sẵn sàng cho sự kiện tiếp theo?</h2>
-              <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-blue-100/85 md:text-base">
+              <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-info-100/85 md:text-base">
                 Đăng nhập bằng tài khoản Microsoft của trường để đăng ký sự kiện và nhận vé QR ngay khi được duyệt.
               </p>
             </div>
             <Link
               to="/login"
-              className="btn-press group inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-chip bg-white px-7 text-sm font-extrabold text-blue-900 shadow-lg shadow-slate-950/20 hover:bg-blue-50"
+              className="btn-press group inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-chip bg-white px-7 text-sm font-extrabold text-brand-800 shadow-lg shadow-slate-950/20 hover:bg-info-50"
             >
               Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
             </Link>
@@ -409,7 +411,7 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
 
   return (
     <article className="landing-event-card group overflow-hidden rounded-card border border-slate-200/80 bg-white">
-      <div className="relative aspect-[16/10] overflow-hidden bg-blue-950">
+      <div className="relative aspect-[16/10] overflow-hidden bg-brand-900">
         {isSafeImageUrl(event.bannerUrl) ? (
           <img
             src={event.bannerUrl}
@@ -430,13 +432,13 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
       </div>
 
       <div className="flex min-h-[242px] flex-col p-6">
-        {event.clubName && <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-blue-700">{event.clubName}</p>}
+        {event.clubName && <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-brand-600">{event.clubName}</p>}
         <h3 className="mt-2 line-clamp-2 font-display text-lg font-extrabold leading-snug text-slate-900">{event.title}</h3>
         <div className="mt-4 space-y-2 text-sm font-medium text-slate-600">
-          <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-blue-700" /> {formatDateTime(event.startAt)}</p>
-          <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-blue-700" /> <span className="line-clamp-1">{event.location}</span></p>
+          <p className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-brand-600" /> {formatDateTime(event.startAt)}</p>
+          <p className="flex items-center gap-2"><MapPin className="h-4 w-4 text-brand-600" /> <span className="line-clamp-1">{event.location}</span></p>
           <p className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-blue-700" />
+            <CheckCircle2 className="h-4 w-4 text-brand-600" />
             {event.remainingTickets > 0 ? `Còn ${event.remainingTickets}/${event.capacity} vé` : "Không còn vé khả dụng"}
           </p>
         </div>
@@ -447,8 +449,8 @@ function LandingEventCard({ event, onOpen }: LandingEventCardProps) {
           className={[
             "btn-press group/btn mt-auto inline-flex h-11 items-center justify-center gap-2 rounded-control px-4 text-sm font-bold",
             isAvailable
-              ? "bg-blue-800 text-white hover:bg-blue-700"
-              : "border border-blue-200 bg-white text-blue-800 hover:bg-blue-50",
+              ? "bg-brand-800 text-white hover:bg-brand-600"
+              : "border border-info-200 bg-white text-brand-800 hover:bg-info-50",
           ].join(" ")}
         >
           Đăng nhập để đăng ký
@@ -471,7 +473,7 @@ function LandingFooter() {
           <p className="mt-4 max-w-sm text-sm font-medium leading-6 text-slate-400">
             Hệ thống quản lý và phân phối vé sự kiện chính thức dành cho sinh viên và các Câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
           </p>
-          <div className="mt-5 flex gap-3 text-blue-300" aria-hidden="true">
+          <div className="mt-5 flex gap-3 text-brand-300" aria-hidden="true">
             <Share2 className="h-4 w-4" />
             <Users className="h-4 w-4" />
           </div>
@@ -487,12 +489,12 @@ function LandingFooter() {
         <div>
           <h2 className="text-sm font-extrabold text-white">Liên hệ</h2>
           <div className="mt-4 space-y-3 text-sm font-medium text-slate-400">
-            <p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
+            <p className="flex gap-2"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" /> 126 Nguyễn Thiện Thành, Trà Vinh</p>
             <a href="mailto:support@tvu.edu.vn" className="flex gap-2 hover:text-white hover:underline">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" /> support@tvu.edu.vn
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" /> support@tvu.edu.vn
             </a>
             <a href="tel:+842943855246" className="flex gap-2 hover:text-white hover:underline">
-              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" /> 0294 3855 246
+              <Phone className="mt-0.5 h-4 w-4 shrink-0 text-brand-300" /> 0294 3855 246
             </a>
           </div>
         </div>

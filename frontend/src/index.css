@@ -564,10 +564,14 @@
       0 22px 46px rgba(30, 64, 175, 0.12);
   }
 
+  /* Was a navy gradient band. Once the hero went light this was one of two dark blocks left,
+     and the page read as two documents stitched together. Now a tinted light panel, one step
+     cooler than .landing-soft-section so consecutive sections still separate. */
   .landing-guide-section {
     background:
-      linear-gradient(135deg, rgba(15, 23, 42, 0.08), transparent 44%),
-      linear-gradient(135deg, #0f1f4d 0%, #173b8f 52%, #1556b8 100%);
+      radial-gradient(680px 300px at 12% 0%, rgba(37, 99, 235, 0.07), transparent 60%),
+      radial-gradient(600px 280px at 88% 100%, rgba(34, 211, 238, 0.06), transparent 58%),
+      #eef4ff;
   }
 
   .landing-guide-section::after {
@@ -575,9 +579,10 @@
     position: absolute;
     inset: 0;
     z-index: -1;
+    /* White grid lines were invisible once this section stopped being dark; drawn in slate now. */
     background:
-      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+      linear-gradient(90deg, rgba(30, 58, 138, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(30, 58, 138, 0.05) 1px, transparent 1px);
     background-size: 52px 52px;
     mask-image: radial-gradient(closest-side at 50% 50%, #000, transparent 120%);
   }
@@ -588,7 +593,7 @@
     height: 24rem;
     border-radius: 999px;
     filter: blur(70px);
-    opacity: 0.22;
+    opacity: 0.13;
     pointer-events: none;
   }
 
@@ -611,7 +616,7 @@
     background:
       radial-gradient(560px 240px at 90% -30%, rgba(34, 211, 238, 0.3), transparent 60%),
       radial-gradient(440px 220px at 5% 130%, rgba(129, 140, 248, 0.32), transparent 62%),
-      linear-gradient(125deg, #172554 0%, #1e3a8a 48%, #1d4ed8 100%);
+      linear-gradient(125deg, #1e40af 0%, #1d4ed8 45%, #2563eb 100%);
     box-shadow: 0 22px 54px rgba(30, 58, 138, 0.2);
   }
 
