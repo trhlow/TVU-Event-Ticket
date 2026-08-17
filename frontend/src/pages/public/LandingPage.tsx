@@ -24,6 +24,7 @@ import { useGSAP } from "@gsap/react";
 import EmptyState from "../../components/common/EmptyState";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import RevealOnScroll from "../../components/common/RevealOnScroll";
+import StatisticCard from "../../components/common/StatisticCard";
 import ScrollToTopButton from "../../components/common/ScrollToTopButton";
 import { eventService } from "../../services/eventService";
 import { Event } from "../../types/event";
@@ -128,6 +129,26 @@ export default function LandingPage() {
   const reducedMotion = useReducedMotion();
   const visibleEvents = useMemo(() => sortFeatured(events), [events]);
 
+  // Headline figures for the hero strip. The school-wide /admin/stats, /events/stats and
+  // /ticketing/stats endpoints all require a session, so a public page cannot read them —
+  // everything here is derived from the public event list instead.
+  const heroStats = useMemo(() => {
+    const open = events.filter((event) => event.status === "OPEN");
+    // remainingTickets is a fallback value when availabilityUnknown is set, so those events are
+    // left out of the seat sums. A confident-looking total built partly on guesses is worse than
+    // a smaller honest one.
+    const withKnownSeats = open.filter((event) => !event.availabilityUnknown);
+    return {
+      openEvents: open.length,
+      clubs: new Set(open.map((event) => event.clubId)).size,
+      registered: withKnownSeats.reduce(
+        (total, event) => total + Math.max(event.capacity - event.remainingTickets, 0),
+        0,
+      ),
+      seatsLeft: withKnownSeats.reduce((total, event) => total + Math.max(event.remainingTickets, 0), 0),
+    };
+  }, [events]);
+
   useEffect(() => {
     document.title = "TVU Ticket | Hệ thống quản lý vé sự kiện";
   }, []);
@@ -139,7 +160,9 @@ export default function LandingPage() {
       setIsLoading(true);
       setError("");
       try {
-        const data = await eventService.getFeaturedEvents(8);
+        // The whole public list, not just the featured slice: the hero stat strip sums across
+        // every open event, and slicing first would understate every figure.
+        const data = await eventService.getPublicEvents();
         if (mounted) setEvents(data);
       } catch {
         if (mounted) setError("Không thể tải danh sách sự kiện nổi bật. Vui lòng thử lại sau.");
@@ -175,42 +198,54 @@ export default function LandingPage() {
       <section
         id="home"
         ref={heroRef}
-        className="landing-hero relative isolate min-h-[calc(100vh-4rem)] scroll-mt-16 overflow-hidden bg-slate-950"
+        className="landing-hero relative isolate scroll-mt-16 overflow-hidden bg-white"
       >
-        <img
-          src="/DJI_0431.jpg"
-          alt="Khuôn viên Trường Đại học Trà Vinh nhìn từ trên cao"
-          className="landing-hero-bg absolute inset-0 h-[112%] w-full object-cover"
-          fetchPriority="high"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/72 via-blue-950/62 to-slate-950/88" aria-hidden="true" />
-        <div className="landing-hero-pattern absolute inset-0" aria-hidden="true" />
+        <div className="landing-hero-aura absolute inset-0" aria-hidden="true" />
 
-        <div className="landing-hero-copy relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[1180px] items-center justify-center px-5 pb-28 pt-20 text-center md:px-8 md:pb-36">
-          <div className="flex max-w-4xl flex-col items-center">
-            <p className="landing-fade-up inline-flex items-center gap-2 rounded-chip border border-white/20 bg-white/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-blue-100 shadow-sm backdrop-blur-md">
+        <div className="landing-hero-copy relative z-10 mx-auto w-full max-w-[1180px] px-5 pb-16 pt-24 text-center md:px-8 md:pb-20 md:pt-28">
+          {/* The campus photo used to be a full-bleed background needing a heavy dark overlay to
+              keep the headline readable. As a framed band above the copy it carries the same
+              identity without fighting the text for contrast. */}
+          <img
+            src="/DJI_0431.jpg"
+            alt="Khuôn viên Trường Đại học Trà Vinh nhìn từ trên cao"
+            className="landing-fade-up mx-auto h-40 w-full max-w-3xl rounded-card object-cover shadow-card md:h-52"
+            fetchPriority="high"
+          />
+
+          <div className="mx-auto mt-10 flex max-w-3xl flex-col items-center">
+            <p className="landing-fade-up inline-flex items-center gap-2 rounded-chip border border-info-100 bg-info-50 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.14em] text-brand-700">
               <Sparkles className="h-4 w-4" /> Nền tảng vé sự kiện chính thức
             </p>
-            <h1 className="landing-fade-up mt-7 max-w-4xl font-display text-4xl font-extrabold leading-[1.08] tracking-[-0.025em] text-white drop-shadow-lg sm:text-5xl lg:text-7xl">
-              Quản lý vé sự kiện đơn giản, minh bạch và an toàn
+            <h1 className="landing-fade-up mt-7 font-display text-4xl font-semibold leading-[1.12] tracking-[-0.02em] text-slate-950 sm:text-5xl lg:text-6xl">
+              Quản lý vé sự kiện <span className="text-brand-600">đơn giản, minh bạch</span> và an toàn
             </h1>
-            <p className="landing-fade-up mt-6 max-w-2xl text-base font-medium leading-7 text-blue-50/90 drop-shadow md:text-lg">
+            <p className="landing-fade-up mt-6 max-w-2xl text-base font-medium leading-7 text-slate-600 md:text-lg">
               Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
             </p>
-            <div className="landing-fade-up mt-9 flex w-full max-w-md flex-col justify-center gap-3 sm:flex-row">
+            <div className="landing-fade-up mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 to="/login"
-                className="btn-press group inline-flex h-13 flex-1 items-center justify-center gap-2 rounded-chip bg-white px-7 text-sm font-extrabold text-blue-900 shadow-xl shadow-slate-950/25 hover:bg-blue-50"
+                className="btn-press group inline-flex h-13 items-center justify-center gap-2 rounded-chip bg-brand-600 px-8 text-sm font-extrabold text-white shadow-lg shadow-brand-700/25 hover:bg-brand-700"
               >
                 Đăng nhập ngay <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
               </Link>
               <Link
                 to="/#guide"
-                className="btn-press inline-flex h-13 flex-1 items-center justify-center rounded-chip border border-white/30 bg-white/10 px-7 text-sm font-bold text-white shadow-sm backdrop-blur-md hover:bg-white/20"
+                className="btn-press inline-flex h-13 items-center justify-center gap-1.5 rounded-chip px-6 text-sm font-bold text-brand-700 hover:bg-info-50"
               >
-                Xem hướng dẫn
+                Xem hướng dẫn <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
+          </div>
+
+          {/* Headline figures sit directly under the CTA, the way the reference layout does it:
+              the first thing a visitor sees after the promise is evidence for it. */}
+          <div className="landing-fade-up mt-14 grid gap-section text-left sm:grid-cols-2 lg:grid-cols-4">
+            <StatisticCard label="Sự kiện đang mở" value={heroStats.openEvents} icon={CalendarDays} subtext="Đang nhận đăng ký" />
+            <StatisticCard label="Câu lạc bộ tổ chức" value={heroStats.clubs} icon={Users} color="success" subtext="Trực thuộc TVU" />
+            <StatisticCard label="Lượt đã đăng ký" value={heroStats.registered} icon={UserCheck} color="warning" subtext="Trên các sự kiện đang mở" />
+            <StatisticCard label="Chỗ còn trống" value={heroStats.seatsLeft} icon={Ticket} subtext="Có thể đăng ký ngay" />
           </div>
         </div>
       </section>

@@ -527,19 +527,14 @@
     box-shadow: 0 -18px 60px rgba(8, 15, 40, 0.16);
   }
 
-  .landing-hero-bg {
-    transform: scale(1.035);
-  }
-
-  .landing-hero-pattern {
+  /* Light replacement for the old dark hero wash: two soft brand-tinted blooms over white,
+     faded out before the fold so the section below starts on clean white. */
+  .landing-hero-aura {
     pointer-events: none;
     background:
-      radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.12), transparent 28%),
-      radial-gradient(circle at 78% 24%, rgba(99, 102, 241, 0.15), transparent 26%),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-    background-size: auto, auto, 56px 56px, 56px 56px;
-    mask-image: linear-gradient(to bottom, #000 20%, rgba(0, 0, 0, 0.85) 62%, transparent 100%);
+      radial-gradient(620px 320px at 18% 8%, rgba(37, 99, 235, 0.1), transparent 62%),
+      radial-gradient(560px 300px at 82% 4%, rgba(34, 211, 238, 0.09), transparent 60%);
+    mask-image: linear-gradient(to bottom, #000 45%, transparent 100%);
   }
 
   .landing-soft-section {
@@ -780,7 +775,6 @@
 }
 
 @media (hover: none), (pointer: coarse) {
-  .landing-hero-bg,
   .magnetic-button-content,
   .tilt-card,
   .tilt-card:hover {
@@ -807,7 +801,6 @@
     transform: none !important;
   }
 
-  .landing-hero-bg,
   .magnetic-button-content,
   .icon-float,
   .public-mobile-menu,
