@@ -114,14 +114,39 @@ function eventStatusClass(status: Event["status"]) {
 /** One figure on the hero rail. Rendered as dt/dd so the number keeps its label programmatically,
  *  which a bare pair of divs would not. The divider is drawn on the element rather than with a
  *  wrapper so the row can wrap on narrow screens without leaving a dangling rule. */
-function HeroStat({ label, value }: { label: string; value: number }) {
+function HeroStat({ label, value, tone }: { label: string; value: number; tone: string }) {
   return (
     <div className="w-[15rem] shrink-0 border-r border-info-100 px-6 text-center">
-      <dd className="font-display text-3xl font-extrabold tracking-tight text-brand-800 sm:text-4xl">
+      <dd className={`font-display text-3xl font-extrabold tracking-tight sm:text-4xl ${tone}`}>
         {value.toLocaleString("vi-VN")}
       </dd>
       <dt className="mt-1 whitespace-nowrap text-xs font-bold text-slate-600">{label}</dt>
     </div>
+  );
+}
+
+/** Split into words, then characters, so each letter can be offset in turn. Words stay
+ *  inline-block to keep Vietnamese from breaking mid-word, and the spaces between them remain
+ *  real text nodes so the line still wraps and still copies as plain prose. */
+function JumpingText({ text }: { text: string }) {
+  let charIndex = 0;
+  return (
+    <>
+      {text.split(" ").map((word, wordIndex, words) => (
+        <span key={`${word}-${wordIndex}`} className="inline-block">
+          {[...word].map((char, i) => (
+            <span
+              key={i}
+              className="landing-jump-char"
+              style={{ animationDelay: `${charIndex++ * 28}ms` }}
+            >
+              {char}
+            </span>
+          ))}
+          {wordIndex < words.length - 1 ? " " : null}
+        </span>
+      ))}
+    </>
   );
 }
 
@@ -235,7 +260,7 @@ export default function LandingPage() {
               Quản lý vé sự kiện <span className="text-brand-600">đơn giản, minh bạch</span> và an toàn
             </h1>
             <p className="landing-fade-up mt-6 max-w-2xl text-base font-medium leading-7 text-slate-600 md:text-lg">
-              Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
+              <JumpingText text="Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh." />
             </p>
             <div className="landing-fade-up mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
@@ -265,10 +290,10 @@ export default function LandingPage() {
                   announce every figure twice. */}
               {[0, 1].map((copy) => (
                 <dl key={copy} className="flex shrink-0 items-center" aria-hidden={copy === 1 || undefined}>
-                  <HeroStat label="Sự kiện đang mở" value={heroStats.openEvents} />
-                  <HeroStat label="Câu lạc bộ tổ chức" value={heroStats.clubs} />
-                  <HeroStat label="Lượt đã đăng ký" value={heroStats.registered} />
-                  <HeroStat label="Chỗ còn trống" value={heroStats.seatsLeft} />
+                  <HeroStat label="Sự kiện đang mở" value={heroStats.openEvents} tone="text-brand-600" />
+                  <HeroStat label="Câu lạc bộ tổ chức" value={heroStats.clubs} tone="text-success-600" />
+                  <HeroStat label="Lượt đã đăng ký" value={heroStats.registered} tone="text-warning-600" />
+                  <HeroStat label="Chỗ còn trống" value={heroStats.seatsLeft} tone="text-secondary-600" />
                 </dl>
               ))}
             </div>

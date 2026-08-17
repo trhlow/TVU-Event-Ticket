@@ -548,6 +548,26 @@
     );
   }
 
+  /* One wave of letters every 30s. The whole cycle is 30s long but the hop occupies only its
+     first ~3%, so each letter sits still for roughly 29 seconds between jumps -- an animation
+     that runs constantly would make the sentence unreadable. */
+  .landing-jump-char {
+    display: inline-block;
+    animation: charJump 30s ease-in-out infinite;
+    will-change: transform;
+  }
+
+  @keyframes charJump {
+    0%,
+    3%,
+    100% {
+      transform: translateY(0);
+    }
+    1.5% {
+      transform: translateY(-0.42em);
+    }
+  }
+
   /* Continuously scrolling figures under the hero. */
   .landing-stat-marquee {
     position: relative;
@@ -886,6 +906,12 @@
 
   .landing-stat-track > dl[aria-hidden="true"] {
     display: none;
+  }
+
+  /* The global rule leaves one 0.001ms pass of charJump, enough to nudge a letter. Pin it flat. */
+  .landing-jump-char {
+    animation: none !important;
+    transform: none !important;
   }
 
   .magnetic-button-content,
