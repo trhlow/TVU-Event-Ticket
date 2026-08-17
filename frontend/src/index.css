@@ -548,6 +548,30 @@
     );
   }
 
+  /* Hero headline painted with a gradient: brand navy through brand blue into the cyan accent,
+     the same three hues the hero aura already uses. The fill runs across the whole heading box,
+     so a headline that wraps to two lines continues the ramp rather than restarting it.
+
+     `color` is declared before the clip so anything that ignores background-clip still renders
+     solid navy text instead of nothing. */
+  .landing-hero-title {
+    color: #172554;
+    background-image: linear-gradient(100deg, #172554 0%, #1d4ed8 42%, #0891b2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Windows high-contrast mode drops background images entirely. Without this the headline is
+     transparent text over nothing -- it disappears. */
+  @media (forced-colors: active) {
+    .landing-hero-title {
+      background-image: none;
+      -webkit-text-fill-color: CanvasText;
+      color: CanvasText;
+    }
+  }
+
   /* The line springs straight up once every 30s. An earlier version staggered each letter by
      28ms, which read as a wave travelling across the sentence rather than a jump. With every
      glyph moving together there is nothing to split, so this animates the paragraph itself --

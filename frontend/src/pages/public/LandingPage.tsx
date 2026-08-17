@@ -231,8 +231,8 @@ export default function LandingPage() {
 
         <div className="landing-hero-copy relative z-10 mx-auto w-full max-w-[1180px] px-5 pb-16 pt-24 text-center md:px-8 md:pb-20 md:pt-28">
           <div className="mx-auto flex max-w-3xl flex-col items-center">
-            <h1 className="landing-fade-up font-display text-4xl font-semibold leading-[1.12] tracking-[-0.02em] text-slate-950 sm:text-5xl lg:text-6xl">
-              Quản lý vé sự kiện <span className="text-brand-600">đơn giản, minh bạch</span> và an toàn
+            <h1 className="landing-fade-up landing-hero-title font-display text-4xl font-semibold leading-[1.12] tracking-[-0.02em] sm:text-5xl lg:text-6xl">
+              Quản lý vé sự kiện đơn giản, minh bạch và an toàn
             </h1>
             <p className="landing-fade-up landing-jump-line mt-6 max-w-2xl text-base font-medium leading-7 text-slate-600 md:text-lg">
               Đăng ký, duyệt và check-in sự kiện bằng vé QR điện tử — dành cho sinh viên và các câu lạc bộ trực thuộc Trường Đại học Trà Vinh.
