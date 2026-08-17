@@ -9,7 +9,7 @@
 set -uo pipefail
 
 here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-subject="$here/run-python-suites.sh"
+subject="$here/run-py-suites.sh"
 passed=0
 failed=0
 
@@ -33,7 +33,12 @@ trap 'rm -rf -- "$workspace"' EXIT
 new_tree() {
   local dir="$workspace/$1"
   mkdir -p "$dir/nodocker" "$dir/collector-fixtures"
-  cp "$subject" "$dir/run-python-suites.sh"
+  cp "$subject" "$dir/run-py-suites.sh"
+  # The runner sources this for "$PYTHON" -- the repository's one answer to which interpreter runs,
+  # probed rather than assumed. The real file, not a stub: a stub would let the copy under test
+  # diverge from the convention interpreter-override.test.sh enforces, which is what put the first
+  # version of the runner on a red CI.
+  cp "$here/python-bin.sh" "$dir/python-bin.sh"
   # The runner refuses to start without the tiny fixture, so every tree gets one. Its contents are
   # never read here -- no fake suite opens it -- only its existence is.
   : > "$dir/collector-fixtures/tiny-test-image.tar"
@@ -51,7 +56,7 @@ STUB
 }
 run_tree() {
   local dir="$1"; shift
-  ( cd "$dir" && PATH="$dir/nodocker:$PATH" env "$@" bash "$dir/run-python-suites.sh" 2>&1 )
+  ( cd "$dir" && PATH="$dir/nodocker:$PATH" env "$@" bash "$dir/run-py-suites.sh" 2>&1 )
 }
 
 make_suite() {  # dir, name, exit code, summary line

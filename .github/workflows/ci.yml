@@ -387,7 +387,7 @@ jobs:
           # get wrong is not crashing but passing -- over a suite that asserted nothing, over a
           # glob that matched nothing, over a shard split that dropped a file. Drives a copy of
           # itself over a fake tree, so it needs no Docker and none of the real suites.
-          bash .github/scripts/run-python-suites.test.sh
+          bash .github/scripts/run-py-suites.test.sh
 
       - name: Check the contract and the decision still agree
         # The schema and the decision function state the same rules in two languages, and they have
@@ -513,6 +513,12 @@ jobs:
     # is a run that says nothing about it.
     timeout-minutes: 30
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # attest-verify.py and the two lookup readers shell out to `gh attestation verify`, which
+      # queries the attestations API. Granted here rather than at the file level, where it would
+      # apply to jobs that run third-party code.
+      attestations: read
     strategy:
       # One failing suite must not hide the state of the others. The useful output is the complete
       # list, not the first thing to go red.
@@ -580,7 +586,12 @@ jobs:
         env:
           PYTHON_SUITE_SHARD: ${{ matrix.shard }}
           PYTHON_SUITE_SHARDS: 4
-        run: bash .github/scripts/run-python-suites.sh
+          # Without this, `gh` refuses to run at all inside Actions and every suite that reaches it
+          # dies on "set the GH_TOKEN environment variable" -- an environment fault wearing the
+          # costume of an assertion failure. It cost three of four shards on this job's first real
+          # run, and did not reproduce locally because a developer's gh is already logged in.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/run-py-suites.sh
 
   ci-gate:
     # Hand-maintained on purpose -- there is no wildcard for `needs` -- which means a job added

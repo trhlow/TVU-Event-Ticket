@@ -48,12 +48,13 @@ else
   echo "Running all ${#selected[@]} suite(s)"
 fi
 
-python_bin="${PYTHON_BIN:-python3}"
-command -v "$python_bin" >/dev/null || {
-  echo "$python_bin is not available, so no suite can run. This is an environment fault, not a" >&2
-  echo "result: reporting green here would mean 'we could not check' reads as 'we checked'." >&2
-  exit 1
-}
+# One file decides which Python runs, and it probes the interpreter rather than trusting the name:
+# on a Windows workstation `python3` is the WindowsApps stub, which exits without running the
+# program it was handed. interpreter-override.test.sh scans every .sh here for a named interpreter
+# and refuses one -- it caught the first version of this file on CI, which had reached for
+# `${PYTHON_BIN:-python3}` directly.
+# shellcheck source=python-bin.sh
+source "$here/python-bin.sh"
 
 # Two image fixtures, and they are NOT the same kind of dependency.
 #
@@ -115,7 +116,7 @@ for suite in "${runnable[@]}"; do
   if command -v docker >/dev/null 2>&1; then
     before="$(docker ps --filter ancestor=registry:2 --format '{{.ID}}' 2>/dev/null | sort)"
   fi
-  output="$("$python_bin" "$suite" 2>&1)"
+  output="$("$PYTHON" "$suite" 2>&1)"
   status=$?
   echo "$output"
   echo "--- $name finished in $((SECONDS - started))s (exit $status)"
