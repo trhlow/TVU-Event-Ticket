@@ -51,14 +51,32 @@ docker run -d --name "$container" \
 
 psql_in() { docker exec -i "$container" psql -U ledger_owner -d ledger_test -v ON_ERROR_STOP=1 "$@"; }
 
+# Two-stage wait, because pg_isready is the wrong question. The postgres image runs a TEMPORARY
+# server on the unix socket while initdb creates the database; pg_isready answers "yes" to that one,
+# and psql then connects to a server that is about to be shut down and restarted. Locally, with the
+# image cached, the window is small enough to miss. On CI it was not: the first migration died on
+# `database "ledger_test" does not exist`.
+#
+# So: wait for the entrypoint to say init is finished, THEN prove the target database answers a real
+# statement. "A server accepted a connection" is not the same claim as "the database I need is
+# there", and only the second one is worth waiting for.
+init_done=""
+for _ in $(seq 1 90); do
+  if docker logs "$container" 2>&1 | grep -q "PostgreSQL init process complete"; then
+    init_done=yes; break
+  fi
+  sleep 1
+done
+[[ -n "$init_done" ]] || { echo "FAIL  postgres never finished initialising" >&2; exit 1; }
+
 ready=""
 for _ in $(seq 1 60); do
-  if docker exec "$container" pg_isready -U ledger_owner -d ledger_test >/dev/null 2>&1; then
+  if docker exec "$container" psql -U ledger_owner -d ledger_test -qtAX -c 'SELECT 1' >/dev/null 2>&1; then
     ready=yes; break
   fi
   sleep 1
 done
-[[ -n "$ready" ]] || { echo "FAIL  postgres never became ready" >&2; exit 1; }
+[[ -n "$ready" ]] || { echo "FAIL  ledger_test never accepted a query" >&2; exit 1; }
 
 # Version-sorted, not lexicographically: V10 sorts before V2 as a string, and applying the
 # migrations in that order fails on a table that does not exist yet.
