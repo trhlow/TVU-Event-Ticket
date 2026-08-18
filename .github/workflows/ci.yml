@@ -456,6 +456,13 @@ jobs:
           # here; docker, preflight and deploy are stubs.
           bash backend/infra/production/scripts/rollback-drill.test.sh
 
+          # The delivery-ledger report, run against a real PostgreSQL carrying the real migrations
+          # rather than a stub. A report fails by returning nothing -- a join condition that stopped
+          # matching, a column a later migration renamed -- and every one of those reads as "all
+          # clear" to whoever runs it. Each section is given a row it must find and a row it must
+          # not, so silence has to be earned.
+          bash backend/infra/production/scripts/delivery-ledger-report.test.sh
+
           bash .github/scripts/common-sh-usage.test.sh
 
       - name: Lint deployment and operations scripts
