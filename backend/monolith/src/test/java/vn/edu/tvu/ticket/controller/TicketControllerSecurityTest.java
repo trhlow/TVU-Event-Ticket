@@ -4,6 +4,7 @@ import vn.edu.tvu.auth.security.CookieCsrfFilter;
 import vn.edu.tvu.auth.security.SecurityConfig;
 import vn.edu.tvu.testsupport.AuthSecurityTestConfiguration;
 import vn.edu.tvu.ticket.service.DashboardService;
+import vn.edu.tvu.ticket.service.TicketQrService;
 import vn.edu.tvu.ticket.service.TicketReservationService;
 import vn.edu.tvu.ticket.service.TicketingService;
 
@@ -37,7 +38,48 @@ class TicketControllerSecurityTest {
     @MockitoBean TicketReservationService reservationService;
     @MockitoBean TicketingService ticketingService;
     @MockitoBean DashboardService dashboardService;
+    @MockitoBean TicketQrService ticketQrService;
     @MockitoBean JwtDecoder jwtDecoder;
+
+    /**
+     * The QR fallback is the only student-facing route under {@code /api/tickets}, and SecurityConfig
+     * claims that whole prefix for ORGANIZER. Without a rule stated ahead of it, every student asking
+     * for their own check-in code gets 403 — on the page they open precisely because their email never
+     * arrived. The ordering is invisible in the service test, which never goes through the filter chain.
+     */
+    @Test
+    void aStudentCanReachTheirOwnQrCodeDespiteTheOrganizerOnlyTicketsPrefix() throws Exception {
+        var ticketId = UUID.randomUUID();
+        when(ticketQrService.issueFor(any(), any()))
+                .thenReturn(new vn.edu.tvu.ticket.dto.response.TicketQrResponse(
+                        "payload", java.time.Instant.parse("2026-09-01T10:00:00Z")));
+
+        mockMvc.perform(get("/api/tickets/{id}/qr", ticketId)
+                        .with(jwt().jwt(builder -> builder.subject(UUID.randomUUID().toString()))
+                                .authorities(() -> "ROLE_SINH_VIEN")))
+                .andExpect(status().isOk());
+    }
+
+    /**
+     * And an organizer must not. Ownership is enforced in the service, but stating it at the filter
+     * chain too means an organizer token never reaches the code that mints a student's credential.
+     */
+    @Test
+    void anOrganizerCannotAskForAStudentsQrCode() throws Exception {
+        mockMvc.perform(get("/api/tickets/{id}/qr", UUID.randomUUID())
+                        .with(jwt().authorities(() -> "ROLE_ORGANIZER")))
+                .andExpect(status().isForbidden());
+
+        verify(ticketQrService, org.mockito.Mockito.never()).issueFor(any(), any());
+    }
+
+    @Test
+    void anAnonymousCallerCannotAskForAQrCode() throws Exception {
+        mockMvc.perform(get("/api/tickets/{id}/qr", UUID.randomUUID()))
+                .andExpect(status().isUnauthorized());
+
+        verify(ticketQrService, org.mockito.Mockito.never()).issueFor(any(), any());
+    }
 
     /**
      * The public event listing fetches remaining-ticket counts for many events in one call. The single-event

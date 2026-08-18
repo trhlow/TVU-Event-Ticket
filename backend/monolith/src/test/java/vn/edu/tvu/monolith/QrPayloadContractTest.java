@@ -51,6 +51,24 @@ class QrPayloadContractTest {
     private final QrPayloadVerifier verifier = new QrPayloadVerifier(new QrSigningProperties(SECRET));
 
     @Test
+    @DisplayName("The QR fetched from the fallback endpoint is byte-for-byte the one that was emailed")
+    void theFallbackPayloadIsIdenticalToTheEmailedOne() {
+        var ticketId = UUID.randomUUID();
+        var eventId = UUID.randomUUID();
+        var endsAt = Instant.now().plusSeconds(7200);
+
+        var emailed = signer.create(ticketId, eventId, endsAt).payload();
+        // What TicketQrService does, through the same shared format it uses.
+        var fetched = vn.edu.tvu.shared.qr.QrPayloadFormat.sign(ticketId, eventId, endsAt,
+                SECRET.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        // Equality, not merely "both verify". A student who finds the email after using the
+        // fallback page must not be holding two different codes for one seat, and an organizer
+        // comparing a screenshot against the inbox must see the same string.
+        assertThat(fetched).isEqualTo(emailed);
+    }
+
+    @Test
     @DisplayName("A payload the notification module signs is accepted by the ticket module")
     void signedPayloadIsAcceptedByTheVerifier() {
         var ticketId = UUID.randomUUID();

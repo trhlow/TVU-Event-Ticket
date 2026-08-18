@@ -1,6 +1,7 @@
 package vn.edu.tvu.notification.service;
 
 import vn.edu.tvu.notification.config.NotificationQrProperties;
+import vn.edu.tvu.shared.qr.QrPayloadFormat;
 
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -10,18 +11,19 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.HexFormat;
 import java.util.UUID;
-
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 
 import org.springframework.stereotype.Component;
 
+/**
+ * Turns an approved reservation into the QR image the student receives by email.
+ *
+ * <p>The payload construction moved to {@link QrPayloadFormat}; what stays here is the part that is
+ * this module's own business — rendering the code as a PNG small enough to embed in a message.
+ */
 @Component
 public class QrSigner {
 
-    private static final String HMAC_SHA256 = "HmacSHA256";
     private static final int QR_IMAGE_SIZE = 300;
 
     private final byte[] secret;
@@ -31,19 +33,8 @@ public class QrSigner {
     }
 
     public SignedQr create(UUID ticketId, UUID eventId, Instant expiresAt) {
-        var unsigned = ticketId + ":" + eventId + ":" + expiresAt.getEpochSecond();
-        var payload = unsigned + ":" + HexFormat.of().formatHex(sign(unsigned));
+        var payload = QrPayloadFormat.sign(ticketId, eventId, expiresAt, secret);
         return new SignedQr(payload, png(payload));
-    }
-
-    private byte[] sign(String unsignedPayload) {
-        try {
-            var mac = Mac.getInstance(HMAC_SHA256);
-            mac.init(new SecretKeySpec(secret, HMAC_SHA256));
-            return mac.doFinal(unsignedPayload.getBytes(StandardCharsets.UTF_8));
-        } catch (Exception ex) {
-            throw new IllegalStateException("Unable to sign QR payload", ex);
-        }
     }
 
     private byte[] png(String payload) {

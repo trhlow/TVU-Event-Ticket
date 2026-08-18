@@ -12,10 +12,25 @@ interface QRDisplayCardProps {
   event: Event;
   onDownload?: () => void;
   onPrint?: () => void;
+  /** True while the signed payload is being fetched, so the box shows progress and not "no code". */
+  isQrLoading?: boolean;
+  /** When the code stops being accepted. A past value is labelled rather than hidden. */
+  qrExpiresAt?: string | null;
 }
 
-export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QRDisplayCardProps) {
+export default function QRDisplayCard({
+  ticket,
+  event,
+  onDownload,
+  onPrint,
+  isQrLoading = false,
+  qrExpiresAt = null,
+}: QRDisplayCardProps) {
   const hasQrPayload = Boolean(ticket.qrCodeValue);
+  // Shown, not withheld. A student opening a ticket from last month is looking at their own
+  // history; check-in refuses the code on its own, so hiding it here would only make the page look
+  // broken for a ticket that is simply old.
+  const hasExpired = Boolean(qrExpiresAt && new Date(qrExpiresAt).getTime() <= Date.now());
   const tiltRef = useCardTilt<HTMLDivElement>({ maxTilt: 5 });
 
   return (
@@ -33,13 +48,23 @@ export default function QRDisplayCard({ ticket, event, onDownload, onPrint }: QR
       <div className="p-5 text-center">
         <div className="mx-auto grid h-56 w-56 place-items-center rounded-card border border-slate-200 bg-white p-3 shadow-inner">
           {hasQrPayload && ticket.qrCodeValue ? (
-            <QRCodeSVG value={ticket.qrCodeValue} size={208} level="M" marginSize={0} />
+            <div className={hasExpired ? "opacity-40 grayscale" : undefined}>
+              <QRCodeSVG value={ticket.qrCodeValue} size={208} level="M" marginSize={0} />
+            </div>
+          ) : isQrLoading ? (
+            <div className="px-4 text-center text-xs font-bold leading-5 text-slate-500" role="status">
+              Đang tạo lại mã QR…
+            </div>
           ) : (
             <div className="px-4 text-center text-xs font-bold leading-5 text-slate-500">
-              Mã QR đã được gửi qua email khi vé được duyệt. Trang này chưa hỗ trợ hiển thị lại mã QR — vui lòng kiểm tra hộp thư của bạn.
+              Không tải lại được mã QR lúc này. Mã đã được gửi qua email khi vé được duyệt — vui lòng
+              kiểm tra hộp thư của bạn, hoặc thử lại sau.
             </div>
           )}
         </div>
+        {hasExpired && (
+          <p className="mt-3 text-xs font-bold text-slate-500">Sự kiện đã kết thúc — mã này không còn điểm danh được.</p>
+        )}
         <div className="mt-4 rounded-card border border-slate-100 bg-slate-50 p-3">
           <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Mã vé</p>
           <p className="mt-1 font-mono text-sm font-semibold tracking-wider text-slate-950">{ticket.ticketCode}</p>

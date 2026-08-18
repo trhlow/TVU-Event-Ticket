@@ -60,6 +60,13 @@ export interface AttendeeQuery {
   sort?: string;
 }
 
+export interface TicketQr {
+  /** The signed string the check-in scanner reads: ticketId:eventId:epochSeconds:hexHMAC. */
+  payload: string;
+  /** When the code stops being accepted — the event's end, the same value the emailed code carries. */
+  expiresAt: string;
+}
+
 interface AvailabilityResponse {
   eventId: string;
   totalCapacity: number;
@@ -172,6 +179,16 @@ export const ticketService = {
     if (filters.keyword) params.set("keyword", filters.keyword);
     const suffix = params.size > 0 ? `?${params.toString()}` : "";
     return apiRequest<string>(`/ticketing/events/${eventId}/attendees.csv${suffix}`);
+  },
+  // The fallback for an email that never arrived. Until this endpoint existed the payload was
+  // produced only while the approval mail was being sent and stored nowhere, so a student whose
+  // message went to spam had no way in and nobody could issue them one by hand.
+  //
+  // Deliberately not folded into listRemote(): the payload is a credential, and fetching one for
+  // every ticket in the wallet just to render a list would hand out codes nobody asked to see.
+  // It is fetched when a student opens the ticket they actually want.
+  async fetchQr(ticketId: string): Promise<TicketQr> {
+    return apiRequest<TicketQr>(`/tickets/${ticketId}/qr`);
   },
   async checkIn(qrPayload: string): Promise<Ticket> {
     return mapTicket(await apiRequest<TicketResponse>("/ticketing/check-in", {

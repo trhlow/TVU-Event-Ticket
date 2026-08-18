@@ -7,6 +7,7 @@ import PageHeader from "../../components/common/PageHeader";
 import EmptyState from "../../components/common/EmptyState";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { useToast } from "../../hooks/useToast";
+import { useTicketQr } from "../../hooks/useTicketQr";
 import { ticketService } from "../../services/ticketService";
 import { eventService } from "../../services/eventService";
 import { Ticket } from "../../types/ticket";
@@ -73,6 +74,9 @@ export default function MyTicketsPage() {
   const eventFor = (ticket: Ticket) => eventsById[ticket.eventId] || fallbackEvent(ticket);
   const activeTicket = tickets.find((ticket) => ticket.id === selectedTicketId);
   const activeEvent = activeTicket ? eventFor(activeTicket) : null;
+  // Only the ticket the student actually opened. Fetching a payload for every ticket in the wallet
+  // would hand out codes nobody asked to see, and each one is a credential.
+  const qr = useTicketQr(selectedTicketId);
 
   return (
     <div className="space-y-6 text-left">
@@ -98,8 +102,8 @@ export default function MyTicketsPage() {
       <div className="flex gap-3 rounded-card border border-info-100 bg-info-50/60 p-4 text-left">
         <Info className="h-5 w-5 shrink-0 text-brand-600" aria-hidden="true" />
         <p className="text-[10px] font-semibold leading-relaxed text-brand-800">
-          Mã QR hiện chỉ được gửi qua email ngay khi Ban tổ chức duyệt đăng ký — trang này chưa hỗ trợ
-          hiển thị lại mã QR. Vui lòng kiểm tra hộp thư của bạn.
+          Mã QR được gửi qua email ngay khi Ban tổ chức duyệt đăng ký. Nếu email thất lạc, mở vé tại
+          đây để xem lại mã — mã hiển thị giống hệt mã trong email.
         </p>
       </div>
 
@@ -107,9 +111,11 @@ export default function MyTicketsPage() {
         <DetailDrawer isOpen={!!selectedTicketId} onClose={() => setSelectedTicketId(null)} title="Thông tin vé">
           <div className="p-1">
             <QRDisplayCard
-              ticket={activeTicket}
+              ticket={{ ...activeTicket, qrCodeValue: qr.value ?? undefined }}
               event={activeEvent}
-              onDownload={() => showToast("Mã QR được gửi qua email, chưa hỗ trợ tải trực tiếp tại đây.", "info")}
+              isQrLoading={qr.isLoading}
+              qrExpiresAt={qr.expiresAt}
+              onDownload={() => showToast("Dùng chức năng In vé để lưu lại mã QR.", "info")}
               onPrint={() => window.print()}
             />
           </div>
