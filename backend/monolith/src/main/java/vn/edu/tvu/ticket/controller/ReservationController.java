@@ -22,8 +22,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import vn.edu.tvu.ticket.domain.ReservationStatus;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -60,17 +58,14 @@ public class ReservationController {
         return service.listPendingForOrganizer(CurrentUser.from(jwt));
     }
 
-    @GetMapping
-    @Operation(summary = "List club reservations by status")
-    public List<ReservationResponse> byStatus(
-            @AuthenticationPrincipal Jwt jwt,
-            @RequestParam(defaultValue = "PENDING") ReservationStatus status) {
-        if (status != ReservationStatus.PENDING) {
-            throw new org.springframework.web.server.ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Only PENDING organizer listing is currently supported");
-        }
-        return service.listPendingForOrganizer(CurrentUser.from(jwt));
-    }
+    // GET /api/reservations was removed. It advertised "list club reservations by status", accepted
+    // exactly one status, answered 400 for every other value, and for that one value called the same
+    // service method as /pending above. Nothing called it: the front end's endpoint inventory lists
+    // /reservations/me and /reservations/pending and never the bare route, and no test exercised it.
+    //
+    // An endpoint whose parameter is a promise it does not keep is worse than no endpoint. The next
+    // person to need APPROVED or REJECTED would have found a route that looks like it already does
+    // that, and shipped the 400 to a user.
 
     @RequestMapping(path = "/{reservationId}/approve", method = {RequestMethod.POST, RequestMethod.PATCH})
     @Operation(summary = "Approve a reservation and atomically reserve a ticket")

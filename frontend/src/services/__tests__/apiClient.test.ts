@@ -106,3 +106,59 @@ describe("apiRequest", () => {
     expect(attempts.get("http://localhost:8080/api/events/stats")).toBe(2);
   });
 });
+
+describe("localizeError — 409 messages that must not be mistaken for one another", () => {
+  async function messageFor(status: number, backendMessage: string): Promise<string> {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(mockJsonResponse(status, { message: backendMessage })));
+    const { apiRequest } = await import("../apiClient");
+    try {
+      await apiRequest("/whatever", { method: "POST" });
+    } catch (error) {
+      return (error as { message: string }).message;
+    }
+    throw new Error("the request unexpectedly succeeded");
+  }
+
+  it("tells an organizer that capacity is locked, not that the event is sold out", async () => {
+    // EventService throws "Capacity cannot be changed after an event is opened". It contains the
+    // substring "capacity", which the sold-out branch matched -- so an organizer editing their own
+    // open event was told there were no tickets left. Untrue, and it points at the wrong fix:
+    // nothing about ticket availability is involved.
+    //
+    // Same family as the "ticket" substring bug this file already carries a comment about. A
+    // substring is not a classification.
+    const message = await messageFor(409, "Capacity cannot be changed after an event is opened");
+
+    expect(message).not.toMatch(/hết vé/);
+    expect(message).toMatch(/sức chứa/i);
+  });
+
+  it("still says sold out when the event really is sold out", async () => {
+    const message = await messageFor(409, "Event is sold out");
+    expect(message).toMatch(/hết vé/);
+  });
+
+  it("explains that a student has not entered an MSSV yet", async () => {
+    // The admin's verify action failed because the student has no MSSV on file. Unmapped, this fell
+    // to the generic "reload the page and try again" -- advice that cannot work, because reloading
+    // changes nothing about a student who has not filled in their profile.
+    const message = await messageFor(409, "User has no MSSV to verify");
+
+    expect(message).not.toMatch(/tải lại trang/);
+    expect(message).toMatch(/MSSV/);
+  });
+
+  it("explains that only student accounts have an MSSV", async () => {
+    const message = await messageFor(409, "Only a student account has an MSSV to verify");
+
+    expect(message).not.toMatch(/tải lại trang/);
+    expect(message).toMatch(/sinh viên/i);
+  });
+
+  it("keeps the generic conflict message for a genuinely unrecognised conflict", async () => {
+    // The fallback must stay a fallback. If every new branch nibbles at it, an unmapped backend
+    // string ends up matching something confidently wrong -- which is how both bugs above happened.
+    const message = await messageFor(409, "Some future conflict nobody has mapped");
+    expect(message).toMatch(/tải lại trang/);
+  });
+});
