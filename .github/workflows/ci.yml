@@ -442,6 +442,20 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq age
           bash backend/infra/production/scripts/backup-offsite.test.sh
 
+          # The restore drill. restore-postgres-into-new-stack.sh is the only way to rewind
+          # production data and no line of it had ever been executed; the first run found that its
+          # grant step referenced three variables the file never defined, aborting under set -u
+          # *after* dropdb and pg_restore. docker is stubbed, so this needs no daemon: what it
+          # proves is which commands run, with which values, and what does not run before the
+          # preconditions pass.
+          bash backend/infra/production/scripts/restore-drill.test.sh
+
+          # Same for rollback.sh. Everything worth testing in it is a refusal, and what makes a
+          # refusal worth anything is that it fires while the working tree is still where the
+          # operator left it -- the failure this script already carries a scar from. git is real
+          # here; docker, preflight and deploy are stubs.
+          bash backend/infra/production/scripts/rollback-drill.test.sh
+
           bash .github/scripts/common-sh-usage.test.sh
 
       - name: Lint deployment and operations scripts

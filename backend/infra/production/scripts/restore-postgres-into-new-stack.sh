@@ -56,9 +56,39 @@ if [[ ! -f "$backup_file" ]]; then
 fi
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# env_value lives here, and the grant step below needs it. The assignments that follow override
+# common.sh's with the same values, so this file still reads standalone -- the same arrangement
+# migrate.sh uses.
+# shellcheck source=common.sh
+source "$script_dir/common.sh"
 deployment_dir="$(cd -- "$script_dir/.." && pwd)"
 compose_file="$deployment_dir/compose.yaml"
 env_file="$deployment_dir/.env"
+
+[[ -f "$env_file" ]] || {
+  echo "Missing production environment file: $env_file" >&2
+  exit 1
+}
+
+# The grant step further down expands these in THIS shell -- it is the one psql invocation that is
+# not wrapped in a single-quoted `sh -c`, so the container's environment never supplies them -- and
+# nothing in this file had ever defined them. Under `set -u` that step therefore died on
+# "POSTGRES_USER: unbound variable" every single time, AFTER the dropdb and pg_restore below had
+# already run: database replaced, runtime account left with no grants, Redis unflushed, all three
+# queues unpurged, the SENT requeue skipped and monolith still stopped. Precisely the half-restored
+# state this file's header warns about, produced by the file itself.
+#
+# It survived because this script had never actually been run. Reading it does not reveal it; the
+# line looks exactly like migrate.sh:90, which works only because migrate.sh reads the .env first.
+#
+# Read here, and asserted here, because this is still before the first destructive step. A restore
+# that cannot name the database it is about to grant on must fail while the old one is intact.
+POSTGRES_DB="$(env_value POSTGRES_DB)"
+POSTGRES_USER="$(env_value POSTGRES_USER)"
+POSTGRES_APP_USER="$(env_value POSTGRES_APP_USER)"
+: "${POSTGRES_DB:?POSTGRES_DB is missing from $env_file}"
+: "${POSTGRES_USER:?POSTGRES_USER is missing from $env_file}"
+: "${POSTGRES_APP_USER:?POSTGRES_APP_USER is missing from $env_file}"
 
 # How far back from the backup moment to requeue already-sent notifications (see the SENT block below).
 requeue_window="${RESTORE_REQUEUE_WINDOW:-60 minutes}"
