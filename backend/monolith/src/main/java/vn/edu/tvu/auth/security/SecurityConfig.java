@@ -62,6 +62,16 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/admin/clubs/stats",
                                 "/api/admin/clubs/*/stats").hasRole("SUPER_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/admin/events").hasRole("SUPER_ADMIN")
+                        // The QR fallback, and the one student-facing route under /api/tickets.
+                        // It has to be stated ahead of the ORGANIZER rule below, which claims the
+                        // whole of /api/tickets/**: without this line every student asking for
+                        // their own check-in code gets 403, and the page that needs it is the one
+                        // a student opens when their email never arrived.
+                        //
+                        // SINH_VIEN is the outer gate; TicketQrService then requires the caller to
+                        // be the ticket's owner. Role alone would let any student fetch any
+                        // student's code.
+                        .requestMatchers(HttpMethod.GET, "/api/tickets/*/qr").hasRole("SINH_VIEN")
                         // ORGANIZER only, deliberately. A super-admin administers club accounts
                         // (/api/admin/**) and reads cross-club statistics (/api/ticketing/stats,
                         // /api/events/stats); it does not act inside a club's scope. The service layer

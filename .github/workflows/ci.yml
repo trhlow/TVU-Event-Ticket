@@ -383,6 +383,11 @@ jobs:
           # drives a copy of its subject over a fake tree, so it catches a subject that has grown a
           # dependency its callers do not carry -- which is how canonical.py arriving was noticed.
           bash .github/scripts/publish-decision.mutations.test.sh
+          # The runner for the *.test.py suites, which is a gate helper like the rest: what it can
+          # get wrong is not crashing but passing -- over a suite that asserted nothing, over a
+          # glob that matched nothing, over a shard split that dropped a file. Drives a copy of
+          # itself over a fake tree, so it needs no Docker and none of the real suites.
+          bash .github/scripts/run-py-suites.test.sh
 
       - name: Check the contract and the decision still agree
         # The schema and the decision function state the same rules in two languages, and they have
@@ -430,6 +435,33 @@ jobs:
           # "denied: denied" from docker login, and preflight validating the compose file before
           # deploy.sh had exported the image references it declares as required.
           bash backend/infra/production/scripts/env-guards.test.sh
+
+          # age is installed so the backup suite's encryption round-trip actually executes. That
+          # suite is written to state loudly when age is missing rather than quietly reduce itself
+          # to source-level greps -- installing it here is what turns the statement into a check.
+          sudo apt-get update -qq && sudo apt-get install -y -qq age
+          bash backend/infra/production/scripts/backup-offsite.test.sh
+
+          # The restore drill. restore-postgres-into-new-stack.sh is the only way to rewind
+          # production data and no line of it had ever been executed; the first run found that its
+          # grant step referenced three variables the file never defined, aborting under set -u
+          # *after* dropdb and pg_restore. docker is stubbed, so this needs no daemon: what it
+          # proves is which commands run, with which values, and what does not run before the
+          # preconditions pass.
+          bash backend/infra/production/scripts/restore-drill.test.sh
+
+          # Same for rollback.sh. Everything worth testing in it is a refusal, and what makes a
+          # refusal worth anything is that it fires while the working tree is still where the
+          # operator left it -- the failure this script already carries a scar from. git is real
+          # here; docker, preflight and deploy are stubs.
+          bash backend/infra/production/scripts/rollback-drill.test.sh
+
+          # The delivery-ledger report, run against a real PostgreSQL carrying the real migrations
+          # rather than a stub. A report fails by returning nothing -- a join condition that stopped
+          # matching, a column a later migration renamed -- and every one of those reads as "all
+          # clear" to whoever runs it. Each section is given a row it must find and a row it must
+          # not, so silence has to be earned.
+          bash backend/infra/production/scripts/delivery-ledger-report.test.sh
 
           bash .github/scripts/common-sh-usage.test.sh
 
@@ -487,11 +519,106 @@ jobs:
           MUTATION_SHARDS: 8
         run: python3 .github/scripts/publish-decision.mutations.py
 
+  # The *.test.py suites -- every collector, both registry readers, the observation assembler, the
+  # evidence-set carriers. They were written alongside the code they cover and CI ran none of them:
+  # `lint` runs fifteen .sh suites by name, and the only mention of a .test.py anywhere in this file
+  # was a comment citing one as evidence for a constant. Two bugs reached production through that.
+  #
+  # Sharded for the same reason `mutations` is: these are container-heavy (each builds a throwaway
+  # registry, some a Postgres) and run ~25 minutes end to end. The suites are independent, so shards
+  # change the wall clock and nothing else. Within a shard they run one at a time -- several assert
+  # on `docker ps --filter ancestor=registry:2`, which is machine-wide.
+  python-suites:
+    # Unconditional, like `lint` and `mutations` and for the identical reason: this is the code that
+    # decides what reaches production, and a run that skipped it because a path filter saw no change
+    # is a run that says nothing about it.
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # attest-verify.py and the two lookup readers shell out to `gh attestation verify`, which
+      # queries the attestations API. Granted here rather than at the file level, where it would
+      # apply to jobs that run third-party code.
+      attestations: read
+    strategy:
+      # One failing suite must not hide the state of the others. The useful output is the complete
+      # list, not the first thing to go red.
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Pinned and checksummed to the same versions the publish jobs use. The collectors shell out
+      # to all three, so an unpinned tool here would mean the suites test a different binary than
+      # the pipeline runs -- and a version drift is exactly the class of untested behaviour this
+      # directory exists to catch.
+      - name: Install crane, syft, trivy (pinned, checksummed)
+        env:
+          CRANE_VERSION: 0.21.9
+          CRANE_SHA256: 5c16d8ddb971cb1d5e6ed8b1e743da8224414eeba2c2762d8f1a61b2f095699e
+          SYFT_VERSION: 1.51.0
+          SYFT_SHA256: 2a2e837a2c8d59ec9af5472ee22d3b04ee463c4e44476ecf993fd1e5ab6ebc7f
+          TRIVY_VERSION: 0.73.0
+          TRIVY_SHA256: 2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --output crane.tar.gz \
+            "https://github.com/google/go-containerregistry/releases/download/v${CRANE_VERSION}/go-containerregistry_Linux_x86_64.tar.gz"
+          echo "${CRANE_SHA256}  crane.tar.gz" | sha256sum --check --strict
+          tar -xzf crane.tar.gz crane
+          sudo install crane /usr/local/bin/crane
+
+          curl --fail --silent --show-error --location --output syft.tar.gz \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  syft.tar.gz" | sha256sum --check --strict
+          tar -xzf syft.tar.gz syft
+          sudo install syft /usr/local/bin/syft
+
+          curl --fail --silent --show-error --location --output trivy.tar.gz \
+            "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tar.gz" | sha256sum --check --strict
+          tar -xzf trivy.tar.gz trivy
+          sudo install trivy /usr/local/bin/trivy
+
+      - name: Install the contract dependencies
+        # Pinned beside each other for the reason the lint job already records: these decide which
+        # schema a fixture was validated against, and an unpinned version is an unpinned answer.
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check \
+            jsonschema==4.26.0 referencing==0.37.0
+
+      - name: Build the tiny image fixture
+        # A .tar is not source, so it is gitignored and built here from the Dockerfile committed
+        # beside it. Seconds, and it is what eleven of the suites load. The runner refuses to start
+        # if this step did not produce it, rather than excluding the suites that need it -- an
+        # environment fault must not present itself as a smaller test run.
+        run: |
+          set -euo pipefail
+          fixtures=.github/scripts/collector-fixtures
+          docker build -q -f "$fixtures/Dockerfile.tiny-test-image" -t tvu-collector-test:tiny "$fixtures"
+          docker save tvu-collector-test:tiny -o "$fixtures/tiny-test-image.tar"
+
+      - name: Run this shard's suites
+        # monolith-test-image.tar is deliberately NOT produced here: it is a docker save of the real
+        # application image, needs the jar, and would put a multi-minute build in front of every
+        # shard. The four suites that read it are therefore excluded, and the runner prints them by
+        # name on every run so the gap stays visible instead of becoming invisible.
+        env:
+          PYTHON_SUITE_SHARD: ${{ matrix.shard }}
+          PYTHON_SUITE_SHARDS: 4
+          # Without this, `gh` refuses to run at all inside Actions and every suite that reaches it
+          # dies on "set the GH_TOKEN environment variable" -- an environment fault wearing the
+          # costume of an assertion failure. It cost three of four shards on this job's first real
+          # run, and did not reproduce locally because a developer's gh is already logged in.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash .github/scripts/run-py-suites.sh
+
   ci-gate:
     # Hand-maintained on purpose -- there is no wildcard for `needs` -- which means a job added
     # above and not added here passes this gate by not being in it. Anyone adding a job adds it to
     # both this list and the env block and the case statement below.
-    needs: [changes, backend, frontend, dependency-review, lint, mutations]
+    needs: [changes, backend, frontend, dependency-review, lint, mutations, python-suites]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -506,6 +633,8 @@ jobs:
           # One result for the whole 8-shard matrix: GitHub reports success only when every shard
           # succeeded, so a single surviving guard in any shard still fails this gate.
           MUTATIONS_RESULT: ${{ needs.mutations.result }}
+          # Same shape as MUTATIONS_RESULT: one result over the whole 4-shard matrix.
+          PYTHON_SUITES_RESULT: ${{ needs['python-suites'].result }}
           BACKEND_CHANGED: ${{ needs.changes.outputs.backend }}
           FRONTEND_CHANGED: ${{ needs.changes.outputs.frontend }}
         run: |
@@ -548,6 +677,12 @@ jobs:
           # and moving it must not have made it optional. Splitting a job changes when it runs, not
           # whether its result is required.
           [ "$MUTATIONS_RESULT" = success ]        || fail "mutations: expected success, got '$MUTATIONS_RESULT'"
+
+          # No path filter either, and required from its first run. Adding a job that guards the
+          # publish pipeline while leaving it out of this gate would reproduce the very thing it
+          # was added to fix: tests that exist, run, and are allowed to fail without stopping
+          # anything.
+          [ "$PYTHON_SUITES_RESULT" = success ]    || fail "python-suites: expected success, got '$PYTHON_SUITES_RESULT'"
 
           [ "$failed" -eq 0 ] || exit 1
           echo "All CI jobs accounted for."

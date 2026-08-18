@@ -71,6 +71,9 @@ describe("frontend API surface", () => {
       "GET /ticketing/events/:param/dashboard",
       "GET /ticketing/events/availability",
       "GET /ticketing/stats",
+      // The QR fallback. Note it sits under /tickets, not /ticketing: SecurityConfig claims all of
+      // /api/tickets/** for ORGANIZER, so this route needs its own SINH_VIEN rule ahead of that one.
+      "GET /tickets/:param/qr",
       "PATCH /admin/clubs/:param",
       "PATCH /admin/clubs/:param/activate",
       "PATCH /admin/organizers/:param/lock",

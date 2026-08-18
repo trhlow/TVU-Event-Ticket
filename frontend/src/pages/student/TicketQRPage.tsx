@@ -5,6 +5,7 @@ import PageHeader from "../../components/common/PageHeader";
 import QRDisplayCard from "../../components/tickets/QRDisplayCard";
 import LoadingSkeleton from "../../components/common/LoadingSkeleton";
 import { useToast } from "../../hooks/useToast";
+import { useTicketQr } from "../../hooks/useTicketQr";
 import { requireCurrentUser } from "../../state/authSession";
 import { eventService } from "../../services/eventService";
 import { ticketService } from "../../services/ticketService";
@@ -42,6 +43,7 @@ export default function TicketQRPage() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const qr = useTicketQr(ticketId);
 
   useEffect(() => {
     let mounted = true;
@@ -103,14 +105,16 @@ export default function TicketQRPage() {
     <div className="space-y-6 text-left">
       <PageHeader
         title="Chi tiết vé QR điện tử"
-        description="Mã QR được gửi qua email ngay khi vé được duyệt; trang này chưa hỗ trợ hiển thị lại mã QR."
+        description="Xuất trình mã QR này tại cửa để điểm danh. Mã cũng đã được gửi tới email của bạn."
       />
 
       <div className="grid max-w-5xl gap-8 lg:grid-cols-[390px_1fr]">
         <QRDisplayCard
-          ticket={ticket}
+          ticket={{ ...ticket, qrCodeValue: qr.value ?? undefined }}
           event={event}
-          onDownload={() => showToast("Mã QR được gửi qua email, chưa hỗ trợ tải trực tiếp tại đây.", "info")}
+          isQrLoading={qr.isLoading}
+          qrExpiresAt={qr.expiresAt}
+          onDownload={() => showToast("Dùng chức năng In vé để lưu lại mã QR.", "info")}
           onPrint={() => window.print()}
         />
 

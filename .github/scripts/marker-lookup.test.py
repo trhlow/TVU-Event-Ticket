@@ -4,13 +4,13 @@ can push -- the same content, the same push path, read back through the exact fe
 observer would use."""
 import importlib.util
 import pathlib
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+# The throwaway registry, with the setup guards all ten of these files used to skip.
+sys.path.insert(0, str(HERE))
+import registry_fixture  # noqa: E402
 
 
 def _load(name):
@@ -94,24 +94,7 @@ expected_marker_digest = envelope_mod.marker_digest(envelope_mod.envelope_for(co
 
 container_id = None
 try:
-    run_proc = subprocess.run(
-        ["docker", "run", "-d", "--rm", "-p", "127.0.0.1:0:5000", "registry:2"],
-        capture_output=True, text=True, timeout=60, check=False,
-    )
-    container_id = run_proc.stdout.strip()
-    port_proc = subprocess.run(["docker", "port", container_id, "5000/tcp"],
-                                capture_output=True, text=True, timeout=30, check=False)
-    host_port = port_proc.stdout.strip().splitlines()[0].rsplit(":", 1)[1]
-
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen(f"http://localhost:{host_port}/v2/", timeout=2) as resp:
-                if resp.status == 200:
-                    break
-        except (urllib.error.URLError, OSError):
-            pass
-        time.sleep(0.5)
+    container_id, host_port = registry_fixture.start_local_registry()
 
     registry_ref = f"localhost:{host_port}/marker-lookup-test"
     marker_envelope_mod.publish_marker(registry_ref, "prepared-testcommit", content)
@@ -152,9 +135,7 @@ try:
            absent_result.get("status") == "absent",
            f"absent_result={absent_result!r}")
 finally:
-    if container_id:
-        subprocess.run(["docker", "stop", container_id], capture_output=True, text=True, timeout=30,
-                        check=False)
+    registry_fixture.stop_local_registry(container_id)
 
 print(f"\npassed={passed} failed={failed}")
 sys.exit(1 if failed else 0)

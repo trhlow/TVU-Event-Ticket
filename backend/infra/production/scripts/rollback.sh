@@ -12,8 +12,11 @@ Usage: bash scripts/rollback.sh --confirm [COMMIT_OR_REF]
 This deploys old application code by pulling the verified GHCR image CI's publish pipeline already
 published for that commit (deploy.sh no longer builds on this host -- roadmap 4.1). A commit that was
 never successfully published has no such image and cannot be rolled back to. It does NOT reverse
-Flyway migrations or restore PostgreSQL. Review migration compatibility first. To rewind data, use a
-verified database backup and restore-postgres.sh separately.
+Flyway migrations or restore PostgreSQL. Review migration compatibility first.
+
+To rewind data, restore a verified backup into a SEPARATE stack with
+restore-postgres-into-new-stack.sh and cut traffic over to it -- see docs/CLEAN_SLATE_CUTOVER_VI.md.
+That script drops the database it is pointed at, so it must never be aimed at the live stack.
 EOF
   exit 2
 fi

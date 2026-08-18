@@ -218,6 +218,22 @@ OTP_PEPPER=$(openssl rand -base64 32)
 #SMTP_STANDBY_USERNAME=
 #SMTP_STANDBY_PASSWORD=
 #MAIL_FROM_ADDRESS_STANDBY=
+
+# Off-site backups. Without BACKUP_REMOTE, backup-postgres.sh writes a verified dump next to
+# postgres_data on this same disk: that survives a bad migration, and nothing else. Losing the
+# droplet loses the database and every backup of it in one step.
+#
+# Left commented rather than pre-filled because it needs two things this script cannot generate:
+# an rclone remote configured on the host (rclone config), and a key pair generated SOMEWHERE
+# ELSE -- age-keygen on your laptop, private key kept off this machine.
+#
+# BACKUP_AGE_RECIPIENT is the PUBLIC key ("age1..."). The host encrypts to it and cannot decrypt
+# the result, which is the point: a dump carries every student's name, email, MSSV and ticket
+# history, and it is about to be handed to somebody else's storage. Setting BACKUP_REMOTE without
+# this is refused rather than warned about -- an unencrypted upload cannot be taken back by
+# deleting the object afterwards.
+#BACKUP_REMOTE=
+#BACKUP_AGE_RECIPIENT=
 JWT_PRIVATE_KEY_PEM=$private_key_flat
 JWT_PUBLIC_KEY_PEM=$public_key_flat
 

@@ -156,3 +156,34 @@ describe("ticketService.exportAttendeesCsv", () => {
     expect(csv).toContain("studentEmail");
   });
 });
+
+describe("ticketService.fetchQr", () => {
+  it("asks the backend for the student's own signed payload", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        mockJsonResponse(200, { payload: "tid:eid:1790000000:abcdef", expiresAt: "2026-09-01T10:00:00Z" }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { ticketService } = await import("../ticketService");
+    const qr = await ticketService.fetchQr("t1");
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain("/tickets/t1/qr");
+    // The whole point of the endpoint: a payload the check-in scanner will accept, not an image
+    // and not the bare ticket id, which is what this page used to show and which never scanned.
+    expect(qr.payload).toBe("tid:eid:1790000000:abcdef");
+    expect(qr.expiresAt).toBe("2026-09-01T10:00:00Z");
+  });
+
+  it("propagates a refusal instead of returning an empty code", async () => {
+    // A 404 here means "not your ticket". Swallowing it into an empty string would render a blank
+    // QR box that looks like a loading state and never resolves.
+    const fetchMock = vi.fn().mockResolvedValue(mockJsonResponse(404, { message: "Không tìm thấy vé" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { ticketService } = await import("../ticketService");
+    await expect(ticketService.fetchQr("someone-elses-ticket")).rejects.toBeDefined();
+  });
+});

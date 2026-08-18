@@ -4,13 +4,13 @@ for this test alone."""
 import hashlib
 import importlib.util
 import pathlib
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+# The throwaway registry, with the setup guards all ten of these files used to skip.
+sys.path.insert(0, str(HERE))
+import registry_fixture  # noqa: E402
 
 
 def _load(name):
@@ -41,31 +41,9 @@ def report(name, ok, detail=""):
         print(f"FAIL  {name}: {detail}")
 
 
-def _wait_ready(port, timeout_seconds=30.0):
-    deadline = time.monotonic() + timeout_seconds
-    last = None
-    while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen(f"http://localhost:{port}/v2/", timeout=2) as resp:
-                if resp.status == 200:
-                    return
-        except (urllib.error.URLError, OSError) as exc:
-            last = exc
-        time.sleep(0.5)
-    raise RuntimeError(f"registry on {port} never became ready: {last}")
-
-
 container_id = None
 try:
-    run_proc = subprocess.run(
-        ["docker", "run", "-d", "--rm", "-p", "127.0.0.1:0:5000", "registry:2"],
-        capture_output=True, text=True, timeout=60, check=False,
-    )
-    container_id = run_proc.stdout.strip()
-    port_proc = subprocess.run(["docker", "port", container_id, "5000/tcp"],
-                                capture_output=True, text=True, timeout=30, check=False)
-    host_port = port_proc.stdout.strip().splitlines()[0].rsplit(":", 1)[1]
-    _wait_ready(host_port)
+    container_id, host_port = registry_fixture.start_local_registry()
 
     registry_ref = f"localhost:{host_port}/oci-read-test"
 
@@ -141,9 +119,7 @@ try:
            missing_blob_result["sizeVerified"] is False and missing_blob_result["raw"] is None,
            f"missing_blob_result={missing_blob_result!r}")
 finally:
-    if container_id:
-        subprocess.run(["docker", "stop", container_id], capture_output=True, text=True, timeout=30,
-                        check=False)
+    registry_fixture.stop_local_registry(container_id)
 
 print(f"\npassed={passed} failed={failed}")
 sys.exit(1 if failed else 0)

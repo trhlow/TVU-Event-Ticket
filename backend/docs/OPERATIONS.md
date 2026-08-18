@@ -51,13 +51,30 @@ automatic will ever resolve them.
 - **Always record the decision** — who, when, and on what evidence. This is the audit trail for a
   ticket that may or may not exist.
 
-```sql
--- The working queue.
-SELECT message_id, started_at, attempt_no, last_error
-  FROM notification_delivery_ledger
- WHERE status = 'UNKNOWN'
- ORDER BY started_at;
+```bash
+# The whole duty as one command, run from backend/infra/production on the host.
+# Read-only. Exit 0 = nothing needs a human; exit 3 = something does; exit 1 = it could not run,
+# which is NOT the same as "nothing found".
+bash scripts/inspect-delivery-ledger.sh
 ```
+
+It prints four sections and names the student behind every row, so the first step is no longer
+working out who a `message_id` belongs to:
+
+1. **UNKNOWN** — the working queue above, resolved per the steps in this section.
+2. **PROCESSING past its lease** — `DeliveryReconciler` should have swept these within a minute.
+   Rows lingering here mean the scheduler is not running and nothing is watching abandoned sends.
+3. **Delivered on a retry** — informational. Possible duplicate email if an earlier attempt had
+   already reached SMTP.
+4. **Approved, ticketed, never delivered** — the urgent one. These students hold a ticket and have
+   never received the email their QR code lives in, and there is no second way to send it: no
+   endpoint returns the payload and check-in has no manual path. Bounded to reservations reviewed
+   after V15 was installed, so historical tickets are not flagged.
+
+The queries live in `scripts/delivery-ledger-report.sql`, and
+`delivery-ledger-report.test.sh` runs that same file against a real PostgreSQL in CI — each section
+against a row it must find and a row it must not, so an empty section means "clear" rather than
+"broken".
 
 ## Backup and restore
 

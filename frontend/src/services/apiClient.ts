@@ -223,8 +223,25 @@ function localizeError(status: number, rawMessage?: string, retryAfterSeconds?: 
     // a reused or invalid QR code.
     if (lower.includes("expired")) return "Mã QR đã hết hạn.";
     if (lower.includes("cannot be checked in")) return "Vé không hợp lệ hoặc đã được check-in trước đó.";
+    // Also before the sold-out branch, and for exactly the same reason as the note above.
+    // EventService throws "Capacity cannot be changed after an event is opened"; that contains
+    // "capacity", so an organizer editing their own open event was told the event had no tickets
+    // left. Untrue, and it sends them looking at ticket numbers instead of at the rule they hit.
+    if (lower.includes("capacity cannot be changed")) {
+      return "Không thể đổi sức chứa sau khi sự kiện đã mở đăng ký.";
+    }
     if (lower.includes("sold out") || lower.includes("capacity")) {
       return "Sự kiện đã hết vé hoặc không còn khả dụng.";
+    }
+    // Verifying a student's MSSV. Both of these used to fall through to the generic "reload the
+    // page and try again", which is advice that cannot work: reloading changes nothing about a
+    // student who has not filled in their MSSV, and nothing about an account that is not a
+    // student's. The admin was left retrying an action that could never succeed.
+    if (lower.includes("no mssv to verify")) {
+      return "Sinh viên chưa nhập MSSV nên chưa thể xác minh.";
+    }
+    if (lower.includes("only a student account has an mssv")) {
+      return "Chỉ tài khoản sinh viên mới có MSSV để xác minh.";
     }
     if (lower.includes("inactive") || lower.includes("locked")) return "Câu lạc bộ hoặc tài khoản liên quan đang bị khóa.";
     if (lower.includes("must be completed")) return "Vui lòng hoàn tất hồ sơ (MSSV) trước khi tiếp tục.";

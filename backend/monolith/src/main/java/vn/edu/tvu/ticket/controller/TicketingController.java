@@ -7,9 +7,11 @@ import vn.edu.tvu.ticket.dto.response.AvailabilityResponse;
 import vn.edu.tvu.ticket.dto.response.ClubDashboardResponse;
 import vn.edu.tvu.ticket.dto.response.EventDashboardResponse;
 import vn.edu.tvu.shared.web.PageResponse;
+import vn.edu.tvu.ticket.dto.response.TicketQrResponse;
 import vn.edu.tvu.ticket.dto.response.TicketResponse;
 import vn.edu.tvu.ticket.security.CurrentUser;
 import vn.edu.tvu.ticket.service.DashboardService;
+import vn.edu.tvu.ticket.service.TicketQrService;
 import vn.edu.tvu.ticket.service.TicketingService;
 import vn.edu.tvu.shared.web.PageableFactory;
 
@@ -40,10 +42,13 @@ public class TicketingController {
 
     private final TicketingService service;
     private final DashboardService dashboardService;
+    private final TicketQrService ticketQrService;
 
-    public TicketingController(TicketingService service, DashboardService dashboardService) {
+    public TicketingController(TicketingService service, DashboardService dashboardService,
+            TicketQrService ticketQrService) {
         this.service = service;
         this.dashboardService = dashboardService;
+        this.ticketQrService = ticketQrService;
     }
 
     @GetMapping("/api/ticketing/events/{eventId}/availability")
@@ -62,6 +67,12 @@ public class TicketingController {
     @Operation(summary = "Verify a signed QR payload and check a ticket in once")
     public TicketResponse checkIn(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CheckInRequest request) {
         return service.checkIn(CurrentUser.from(jwt), request.qrPayload());
+    }
+
+    @GetMapping("/api/tickets/{ticketId}/qr")
+    @Operation(summary = "Re-issue the student's own signed check-in payload when the email never arrived")
+    public TicketQrResponse qr(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID ticketId) {
+        return ticketQrService.issueFor(CurrentUser.from(jwt), ticketId);
     }
 
     @GetMapping("/api/ticketing/events/{eventId}/attendees")

@@ -10,15 +10,15 @@ import hashlib
 import importlib.util
 import os
 import pathlib
-import subprocess
 import sys
-import time
-import urllib.error
-import urllib.request
 
 BASH = os.environ.get("PUBLISH_DECISION_BASH", "bash")
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+# The throwaway registry, with the setup guards all ten of these files used to skip.
+sys.path.insert(0, str(HERE))
+import registry_fixture  # noqa: E402
 MONOLITH_TARBALL = HERE / "collector-fixtures" / "monolith-test-image.tar"
 FRONTEND_TARBALL = HERE / "collector-fixtures" / "tiny-test-image.tar"
 RULESET = HERE / "collector-fixtures" / "trivy-secret-ruleset.yaml"
@@ -118,38 +118,11 @@ ENVIRONMENT = "production"
 
 container_id = None
 try:
-    run_proc = subprocess.run(
-        ["docker", "run", "-d", "--rm", "-p", "127.0.0.1:0:5000", "registry:2"],
-        capture_output=True, text=True, timeout=60, check=False,
-    )
-    container_id = run_proc.stdout.strip()
-    if run_proc.returncode != 0 or not container_id:
-        # A stopped Docker daemon used to surface here as `IndexError: list index out of range` two
-        # lines down -- an unreadable way to say "this suite never ran". Say what actually happened.
-        raise SystemExit(
-            "the throwaway registry could not be started, so NOTHING in this suite ran (this is not a "
-            f"test failure -- no test was executed): docker exited {run_proc.returncode}: "
-            f"{run_proc.stderr.strip()[:500]}"
-        )
-    port_proc = subprocess.run(["docker", "port", container_id, "5000/tcp"],
-                                capture_output=True, text=True, timeout=30, check=False)
-    port_lines = port_proc.stdout.strip().splitlines()
-    if not port_lines:
-        raise SystemExit(
-            f"registry container {container_id[:12]} published no host port for 5000/tcp, so nothing "
-            f"in this suite ran: {port_proc.stderr.strip()[:500]}"
-        )
-    host_port = port_lines[0].rsplit(":", 1)[1]
-
-    deadline = time.monotonic() + 30
-    while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen(f"http://localhost:{host_port}/v2/", timeout=2) as resp:
-                if resp.status == 200:
-                    break
-        except (urllib.error.URLError, OSError):
-            pass
-        time.sleep(0.5)
+    # This file already guarded docker run and docker port -- the comment that used to sit here
+    # recorded the IndexError those guards were added for. What it still did not guard was the
+    # readiness wait below, which simply ran out and carried on, so a registry that never came up
+    # surfaced far away as `crane push: connection refused`. registry_fixture now covers all three.
+    container_id, host_port = registry_fixture.start_local_registry()
 
     monolith_ref = f"localhost:{host_port}/test/monolith"
     frontend_ref = f"localhost:{host_port}/test/frontend"
@@ -288,9 +261,7 @@ try:
            and "attestationVerified is False" in second_result.get("decision", {}).get("reason", ""),
            f"second_result={ {k: v for k, v in second_result.items() if k != 'observation'} !r}")
 finally:
-    if container_id:
-        subprocess.run(["docker", "stop", container_id], capture_output=True, text=True, timeout=30,
-                        check=False)
+    registry_fixture.stop_local_registry(container_id)
 
 print(f"\npassed={passed} failed={failed}")
 sys.exit(1 if failed else 0)

@@ -6,13 +6,14 @@ import hashlib
 import importlib.util
 import json
 import pathlib
-import subprocess
 import sys
-import time
-import urllib.error
 import urllib.request
 
 HERE = pathlib.Path(__file__).resolve().parent
+
+# The throwaway registry, with the setup guards all ten of these files used to skip.
+sys.path.insert(0, str(HERE))
+import registry_fixture  # noqa: E402
 
 _spec = importlib.util.spec_from_file_location("oci_push", HERE / "oci-push.py")
 _module = importlib.util.module_from_spec(_spec)
@@ -34,36 +35,9 @@ def report(name, ok, detail=""):
         print(f"FAIL  {name}: {detail}")
 
 
-def _wait_for_registry(port, timeout_seconds=30.0):
-    deadline = time.monotonic() + timeout_seconds
-    last_error = None
-    while time.monotonic() < deadline:
-        try:
-            with urllib.request.urlopen(f"http://localhost:{port}/v2/", timeout=2) as resp:
-                if resp.status == 200:
-                    return
-        except (urllib.error.URLError, ConnectionError, OSError) as exc:
-            last_error = exc
-        time.sleep(0.5)
-    raise RuntimeError(f"registry on port {port} never became ready: {last_error}")
-
-
 container_id = None
 try:
-    run_proc = subprocess.run(
-        ["docker", "run", "-d", "--rm", "-p", "127.0.0.1:0:5000", "registry:2"],
-        capture_output=True, text=True, timeout=60, check=False,
-    )
-    if run_proc.returncode != 0:
-        report("throwaway registry starts", False, run_proc.stderr.strip()[:500])
-        print(f"\npassed={passed} failed={failed}")
-        sys.exit(1)
-    container_id = run_proc.stdout.strip()
-
-    port_proc = subprocess.run(["docker", "port", container_id, "5000/tcp"],
-                                capture_output=True, text=True, timeout=30, check=False)
-    host_port = port_proc.stdout.strip().splitlines()[0].rsplit(":", 1)[1]
-    _wait_for_registry(host_port)
+    container_id, host_port = registry_fixture.start_local_registry()
 
     registry_ref = f"localhost:{host_port}/oci-push-test"
 
@@ -134,9 +108,7 @@ try:
         report("pushing to an unreachable registry raises PublishError", False,
                f"raised {type(exc).__name__} instead")
 finally:
-    if container_id:
-        subprocess.run(["docker", "stop", container_id], capture_output=True, text=True, timeout=30,
-                        check=False)
+    registry_fixture.stop_local_registry(container_id)
 
 print(f"\npassed={passed} failed={failed}")
 sys.exit(1 if failed else 0)
