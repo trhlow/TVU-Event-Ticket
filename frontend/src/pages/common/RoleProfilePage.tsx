@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Building2, Info, Mail, Save, ShieldCheck, UserRound } from "lucide-react";
+import { Building2, Info, Mail, Save, UserRound } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import { requireCurrentUser } from "../../state/authSession";
 import { getRoleLabel } from "../../utils/roleHelpers";
@@ -38,8 +38,6 @@ export default function RoleProfilePage({ scope }: RoleProfilePageProps) {
   return (
     <div className="mx-auto max-w-4xl space-y-6 text-left">
       <PageHeader
-        eyebrow={getRoleLabel(user.role)}
-        icon={ShieldCheck}
         title="Hồ sơ tài khoản"
         description="Thông tin định danh và phạm vi phụ trách được đồng bộ từ tài khoản nội bộ TVU."
         actions={

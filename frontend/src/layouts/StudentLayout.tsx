@@ -6,7 +6,6 @@ export default function StudentLayout() {
       requiredRole="SINH_VIEN"
       scrollRegionId="student-scroll-region"
       showWorkspaceTitle={false}
-      contentMaxWidth="1240px"
     />
   );
 }

@@ -6,7 +6,6 @@ export default function OrganizerLayout() {
       requiredRole="ORGANIZER"
       scrollRegionId="organizer-scroll-region"
       showWorkspaceTitle={false}
-      contentMaxWidth="1240px"
     />
   );
 }

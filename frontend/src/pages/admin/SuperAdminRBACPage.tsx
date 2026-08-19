@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Eye, KeyRound, ShieldAlert } from "lucide-react";
+import { Eye, ShieldAlert } from "lucide-react";
 import PageHeader from "../../components/common/PageHeader";
 import DataTable from "../../components/common/DataTable";
 import Dialog from "../../components/common/Dialog";
@@ -59,8 +59,6 @@ export default function SuperAdminRBACPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        eyebrow="Chỉ đọc"
-        icon={KeyRound}
         title="Ma trận phân quyền RBAC"
         description="Hệ thống áp dụng phân quyền cố định theo từng vai trò, không phải cấu hình có thể chỉnh sửa qua giao diện. Bảng dưới đây phản ánh đúng quy tắc hiện có, chỉ để tra cứu."
       />
