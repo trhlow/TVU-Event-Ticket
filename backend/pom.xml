@@ -44,6 +44,11 @@
              through spring-boot-starter-logging — log4j-to-slf4j and the log4j-api underneath it —
              so they cannot drift apart. Drop it once the BOM catches up. -->
         <log4j2.version>2.25.5</log4j2.version>
+        <!-- Ahead of the Spring Boot 4.0.7 BOM (5.27.1), which the image scan rejects for
+             CVE-2026-63337 (fixed in 5.33.0) plus CVE-2026-69219 and CVE-2026-69220 (both fixed
+             in 5.33.1) — 5.33.1 is the lowest version clearing all three. The client arrives
+             transitively through spring-rabbit; drop this once the BOM catches up. -->
+        <rabbit-amqp-client.version>5.33.1</rabbit-amqp-client.version>
     </properties>
 
     <dependencyManagement>
