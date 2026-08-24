@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { AlertTriangle, ArrowRight, Award, Calendar, Sparkles, Ticket } from "lucide-react";
+import { AlertTriangle, ArrowRight, Award, Calendar, Ticket } from "lucide-react";
 import EventCard from "../../components/events/EventCard";
 import PageHeader from "../../components/common/PageHeader";
 import SectionCard from "../../components/common/SectionCard";
@@ -67,8 +67,6 @@ export default function StudentHomePage() {
   return (
     <div className="space-y-section text-left">
       <PageHeader
-        eyebrow="Cổng sinh viên"
-        icon={Sparkles}
         title="Tổng quan sự kiện cá nhân"
         description="Khám phá sự kiện CLB, gửi đăng ký tham gia và quản lý vé QR điện tử của bạn tại Trường Đại học Trà Vinh."
         actions={

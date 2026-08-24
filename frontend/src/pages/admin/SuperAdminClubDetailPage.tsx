@@ -121,7 +121,6 @@ export default function SuperAdminClubDetailPage() {
   return (
     <div className="space-y-6 text-left">
       <PageHeader
-        eyebrow={club.code}
         title={club.name}
         description={club.description || 'Chưa có mô tả.'}
         actions={<StatusBadge type="user" status={club.status === 'ACTIVE' ? 'ACTIVE' : 'LOCKED'} />}

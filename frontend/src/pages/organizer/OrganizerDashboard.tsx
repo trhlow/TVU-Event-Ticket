@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
-import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, ShieldCheck, Sparkles, Ticket } from "lucide-react";
+import { ArrowRight, Award, Calendar, CheckCircle, ClipboardList, ShieldCheck, Ticket } from "lucide-react";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import LineChartCard from "../../components/charts/LineChartCard";
 import PageHeader from "../../components/common/PageHeader";
@@ -107,8 +107,6 @@ export default function OrganizerDashboard() {
   return (
     <div className="space-y-section text-left">
       <PageHeader
-        eyebrow="Không gian Ban tổ chức"
-        icon={Sparkles}
         title="Tổng quan CLB"
         description={`Theo dõi sự kiện, duyệt đăng ký, phát hành vé QR và tiến độ check-in của ${currentUser.clubName || "CLB"}.`}
         actions={

@@ -27,7 +27,7 @@ export default function AppShell({
   headerTitle,
   showWorkspaceTitle = true,
   showGreeting = false,
-  contentMaxWidth = "1240px",
+  contentMaxWidth,
 }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
@@ -66,7 +66,11 @@ export default function AppShell({
         />
         <section ref={scrollRegionRef} id={scrollRegionId} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
           {showGreeting && <PageGreeting name={user.fullName} />}
-          <div key={location.pathname} className="page-enter mx-auto w-full px-4 py-4 sm:px-5 lg:px-6 lg:py-6" style={{ maxWidth: contentMaxWidth }}>
+          <div
+            key={location.pathname}
+            className="page-enter mx-auto w-full px-4 py-4 sm:px-5 lg:px-6 lg:py-6"
+            style={contentMaxWidth ? { maxWidth: contentMaxWidth } : undefined}
+          >
             <Outlet />
           </div>
           <ScrollToTopButton scrollContainerId={scrollRegionId} />

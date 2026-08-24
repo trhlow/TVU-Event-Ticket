@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Activity, Calendar, Gauge, Layers, ShieldCheck, Ticket, Users } from "lucide-react";
+import { Calendar, Gauge, Layers, ShieldCheck, Ticket, Users } from "lucide-react";
 import BarChartCard from "../../components/charts/BarChartCard";
 import DonutChartCard from "../../components/charts/DonutChartCard";
 import SectionCard from "../../components/common/SectionCard";
@@ -108,8 +108,6 @@ export default function SuperAdminDashboard() {
   return (
     <div className="space-y-section text-left">
       <PageHeader
-        eyebrow="Trung tâm điều hành hệ thống"
-        icon={Activity}
         title="Dashboard toàn trường"
         description="Giám sát dữ liệu CLB, người dùng, sự kiện, vé và check-in theo thời gian thực."
       />
